@@ -1,0 +1,6 @@
+[
+ {"name":"dog","items":[{"url":"/out/models/dog.glb"}],"view":{"yaw":300,"pitch":25,"w":512,"h":512,"exposure":1.8,"rim":2.5}},
+ {"name":"sloth","items":[{"url":"/out/models/sloth.glb"}],"view":{"yaw":10,"pitch":12,"w":512,"h":512,"exposure":1.15}},
+ {"name":"egg","items":[{"url":"/out/models/egg.glb"}],"view":{"yaw":10,"pitch":12,"w":512,"h":512,"exposure":1.05}},
+ {"name":"trio","items":[{"url":"/out/models/dog.glb","x":0,"z":-0.05,"yaw":-60,"scale":0.62},{"url":"/out/models/sloth.glb","x":-0.12,"z":0.03,"yaw":20},{"url":"/out/models/egg.glb","x":0.11,"z":0.04,"yaw":-15}],"view":{"yaw":0,"pitch":18,"w":768,"h":512,"exposure":1.3,"rim":2}}
+]

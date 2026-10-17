@@ -1,0 +1,9 @@
+{
+  "name": "plush-render",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.48.2",
+    "three": "0.170.0"
+  }
+}

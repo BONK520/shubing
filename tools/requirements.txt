@@ -1,0 +1,4 @@
+usd-core
+trimesh
+numpy
+pillow
