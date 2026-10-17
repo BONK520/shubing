@@ -1,5 +1,5 @@
 <!doctype html><html><body style="margin:0;background:transparent">
-<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -25,6 +25,8 @@ window.shot = async (items, v) => {
     o.scale.setScalar(s); o.rotation.y = THREE.MathUtils.degToRad(it.yaw||0); o.position.set(it.x||0,0,it.z||0); root.add(o); }
   const box = new THREE.Box3().setFromObject(root); const c = box.getCenter(new THREE.Vector3());
   const sph = box.getBoundingSphere(new THREE.Sphere());
+  if (v.lockFrame && items.length === 1) { const o = root.children[0], sz = o.userData.size.clone().multiplyScalar(o.scale.x);
+    c.set(o.position.x, sz.y/2, o.position.z); sph.radius = Math.hypot(Math.hypot(sz.x, sz.z)/2, sz.y/2); }
   const fov = THREE.MathUtils.degToRad(cam.fov/2); const fovx = Math.atan(Math.tan(fov)*cam.aspect);
   const d = sph.radius / Math.sin(Math.min(fov,fovx)) / (v.fill ?? 0.95);
   const y = THREE.MathUtils.degToRad(v.yaw||0), p = THREE.MathUtils.degToRad(v.pitch||15);
