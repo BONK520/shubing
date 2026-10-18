@@ -572,7 +572,8 @@ export function createEngine(opts = {}) {
       ok = stableAndPlayable();
     }
     const moves = [];
-    for (const [r, c] of cells) { const p = grid[r][c]; if (p) moves.push({ id: p.id, from: { ...from.get(p.id) }, to: { r, c } }); }
+    // piece = the piece after the shuffle (the last resort may have changed its kind)
+    for (const [r, c] of cells) { const p = grid[r][c]; if (p) moves.push({ id: p.id, from: { ...from.get(p.id) }, to: { r, c }, piece: { ...p } }); }
     return ev({ t: 'shuffle', moves });
   }
 

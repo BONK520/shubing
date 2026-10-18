@@ -182,7 +182,7 @@ Every event carries the board **after** the step: `board` (= `snapshot().grid`) 
   points:   [{ r, c, value }],        // floating score labels
   gained }                            // points for this step
 { t: 'fall', moves: [{ id, from: {r,c}, to: {r,c} }], spawns: [{ piece, from: {r,c}, to: {r,c} }] }  // spawn from.r < 0
-{ t: 'shuffle', moves: [{ id, from, to }] }
+{ t: 'shuffle', moves: [{ id, from, to, piece }] }   // piece = after the shuffle (a last-resort shuffle may change kinds)
 ```
 
 Order for one move: `swap` → (`transform`) → `clear` → `fall` → `clear` → `fall` … → (`shuffle`).

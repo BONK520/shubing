@@ -873,13 +873,29 @@ canvas.addEventListener('lostpointercapture', e => endPointer(e, true));
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- 過關 / 失敗 ----------
+// 過關紀錄：目標一達成就先存（之後就算中途離開也不會白過關），Sugar Crush 結束後再用最終分數更新一次
+function recordWin(score) {
+  const id = level.id;
+  const thr = level.stars || [];
+  const stars = clamp(thr.filter(s => score >= s).length, 1, 3);
+  if (score > (Number(save.best[id]) || 0)) save.best[id] = score;
+  save.stars[id] = Math.max(Number(save.stars[id]) || 0, stars);
+  save.unlocked = Math.max(save.unlocked, Math.min(levelIdx + 2, LEVELS.length + 1));
+  writeSave();
+  return stars;
+}
+
 async function winFlow() {
   const token = session;
   state = 'ending';
+  closeModal('m-settings');
   clearHint();
   selected = null;
   R.select(null);
   $('#btn-pause').disabled = true;
+  const prevBest = Number(save.best[level.id]) || 0;
+  const firstClear = save.unlocked < levelIdx + 2;
+  recordWin(engine.score);
   renderMoves();
   audio.play('win');
   $('#cheer').classList.add('party');
@@ -899,16 +915,8 @@ async function winFlow() {
   renderMoves();
   syncFromEngine();
   const score = engine.score;
-  const thr = level.stars || [];
-  const stars = clamp(thr.filter(s => score >= s).length, 1, 3);
-  const id = level.id;
-  const prevBest = Number(save.best[id]) || 0;
+  const stars = recordWin(score);
   const newBest = score > prevBest;
-  if (newBest) save.best[id] = score;
-  save.stars[id] = Math.max(Number(save.stars[id]) || 0, stars);
-  const firstClear = save.unlocked < levelIdx + 2;
-  save.unlocked = Math.max(save.unlocked, Math.min(levelIdx + 2, LEVELS.length + 1));
-  writeSave();
   state = 'won';
   await sleep(450);
   if (token !== session) return;
@@ -967,6 +975,7 @@ function confetti() {
 async function loseFlow() {
   const token = session;
   state = 'lost';
+  closeModal('m-settings');
   clearHint();
   selected = null;
   R.select(null);
@@ -1020,7 +1029,9 @@ function bindUI() {
   $('#btn-start').addEventListener('click', () => showMap());
   $('#map-back').addEventListener('click', () => show('title'));
   for (const b of $$('[data-open-settings]')) b.addEventListener('click', openSettings);
-  $('#btn-pause').addEventListener('click', () => { if (state === 'play' || state === 'intro') openSettings(); });
+  // 一步還在結算（掉落、連鎖）時不能暫停，免得過關／失敗的流程跑在暫停選單後面
+  const canPause = () => (state === 'play' && !moving && !(R && R.busy)) || state === 'intro';
+  $('#btn-pause').addEventListener('click', () => { if (canPause()) openSettings(); });
   $('#ms-play').addEventListener('click', () => { if (cardLevel >= 0) startLevel(cardLevel); });
   for (const b of $$('[data-close]')) b.addEventListener('click', () => closeModal(b.closest('.modal').id));
   // 點背景關閉（只限開始卡和設定）
@@ -1068,7 +1079,7 @@ function bindUI() {
     if (e.key !== 'Escape') return;
     if (isOpen('m-settings')) closeModal('m-settings');
     else if (isOpen('m-start')) closeModal('m-start');
-    else if (screen === 'game' && (state === 'play' || state === 'intro')) openSettings();
+    else if (screen === 'game' && canPause()) openSettings();
   });
   // iOS：擋住雙指縮放
   document.addEventListener('gesturestart', e => e.preventDefault());

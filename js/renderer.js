@@ -964,7 +964,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       let da = a1 - a0;
       while (da < 0) da += Math.PI * 2;
       da += Math.PI * 2;
+      const np = m.piece;
       v.mv = { t0: t, dur, x1: m.to.c, y1: m.to.r, path: p => {
+        // 最後手段的洗牌會換種類：在漩渦中間（方塊最小的時候）換圖
+        if (np && p >= 0.5 && (v.kind !== np.kind || v.special !== (np.special || 'none'))) { v.kind = np.kind; v.special = np.special || 'none'; }
         const e = easeInOutCubic(p), k = Math.sin(Math.PI * p), rad = lerp(r0, r1, e) * (1 - 0.72 * k), ang = a0 + da * e;
         return { x: cx + Math.cos(ang) * rad, y: cy + Math.sin(ang) * rad, s: 1 - 0.32 * k };
       } };

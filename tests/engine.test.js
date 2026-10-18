@@ -440,6 +440,17 @@ test('dead board: hasValidMove false, findHint null, shuffle fixes it', () => {
   eq(ms(e.snapshot().grid), ms(before.grid));
 });
 
+test('last-resort shuffle (kinds re-rolled) is still replayable from its event', () => {
+  // 3x3 with one of each-ish: no arrangement of these pieces has a move, so the shuffle must re-roll kinds
+  const e = createEngine({ kinds: [0, 1, 2, 3, 4], layout: ['0 1 2', '3 4 0', '1 2 3'], seed: 3 });
+  eq(e.hasValidMove(), false);
+  const before = e.snapshot();
+  const evs = e.shuffle();
+  ok(e.hasValidMove() && !runsIn(e.snapshot().grid).length, 'playable after shuffle');
+  ok(evs[0].moves.every(m => m.piece && m.piece.id === m.id), 'every move carries its piece');
+  replayEvents(before.grid, before.jelly, evs);
+});
+
 test('findHint prefers bigger matches', () => {
   const e = mk(['_______', '__0____', '00_00__', '_______', '_1_____', '1_1____']);
   const h = e.findHint();

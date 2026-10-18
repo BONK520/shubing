@@ -103,7 +103,7 @@ export function replayEvents(board0, jelly0, events) {
       }
       for (const [m, p] of lifted) {
         if (g[m.to.r][m.to.c]) fail(`${where}: move of id ${m.id} lands on occupied ${m.to.r},${m.to.c}`);
-        g[m.to.r][m.to.c] = p;
+        g[m.to.r][m.to.c] = m.piece ? { ...m.piece } : p;
       }
       for (const s of e.spawns || []) {
         at(s.to, where);
