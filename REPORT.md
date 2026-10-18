@@ -1,8 +1,27 @@
 # 毛絨消消樂：目前進度報告
 
-目標：做一款玩法和風格像 Candy Crush 的三消遊戲，畫面裡的方塊和圖案全部用這三個 AR 掃描的毛絨玩具。
+目標：做一款玩法和風格像 Candy Crush 的三消遊戲，畫面裡的方塊和圖案全部用這三個 AR 掃描的毛絨玩具：
+**皮蛋**（黑色小狗）、**薯餅**（樹懶）、**蛋黃哥**（蛋）。
 
-這份報告整理到目前為止分析完的部分，方便在新的對話裡接著做。
+這份報告整理到目前為止的進度，方便在新的對話裡接著做。
+
+---
+
+## 0. 目前狀態（2026-10-18）
+
+遊戲已經可以玩了。
+
+- **怎麼玩**：在專案根目錄跑 `python -m http.server 8000`，瀏覽器打開 `http://localhost:8000`。手機在同一個 Wi-Fi 下用電腦的 IP 開。
+- **方塊 6 種**：皮蛋、薯餅、蛋黃哥（AR 掃描）＋ 兔兔、呱呱、小鯨（程式做的暫代玩具，之後換成自己的掃描）。
+  只用 3 種會一直自己連鎖消除，所以每關用 4–6 種，再加上防連鎖補位。
+- **換掉暫代玩具**：把新的掃描改名成 `bunny.usdz`／`frog.usdz`／`whale.usdz` 放進 `tools/source/`，
+  跑 `python tools/build_assets.py`，再改 `js/pieces.js` 的名字。詳細步驟見 [tools/README.md](tools/README.md)。
+- **已完成**：盤面邏輯（配對、掉落、防連鎖補位、洗牌、條紋／包裝／彩色炸彈與全部組合技、果凍、Sugar Crush 收尾）、
+  15 關（分數、收集、異形盤面、果凍）、關卡地圖與存檔、Canvas 動畫與粒子特效、Web Audio 合成音效與背景音樂、
+  3D / AR 看看頁（model-viewer，iPhone 用 USDZ 開 AR Quick Look）、一鍵素材流程。
+- **檔案**：`index.html`、`style.css`、`js/`（engine、renderer、main、levels、audio、pieces）、`ar.html`、`assets/`、`tools/`、`tests/`。
+  各模組的介面寫在 [docs/SPEC.md](docs/SPEC.md)。
+- **測試**：`python tests/run_tests.py`（盤面邏輯，含隨機走幾千步的壓力測試）。
 
 ---
 
@@ -12,9 +31,9 @@
 
 | 檔案 | 內容 | 建議代號 | 實際尺寸（寬×高×深） |
 |---|---|---|---|
-| `16f3fa10-AR-Code-Object-Capture-app-1786851926.usdz` | 黑色小狗（趴著，灰色垂耳，有項圈） | `dog` | 22 × 12 × 14 cm |
-| `c14d1742-AR-Code-Object-Capture-app-1789054299.usdz` | 樹懶（咖啡色，坐姿） | `sloth` | 27 × 20 × 14 cm |
-| `c47d4ae8-AR-Code-Object-Capture-app-1788967608.usdz` | 黃色蛋蛋（坐在蛋殼裡，衣服上寫 gudetama） | `egg` | 13 × 15 × 11 cm |
+| `16f3fa10-AR-Code-Object-Capture-app-1786851926.usdz` | 皮蛋：黑色小狗（趴著，灰色垂耳，有項圈） | `dog` | 22 × 12 × 14 cm |
+| `c14d1742-AR-Code-Object-Capture-app-1789054299.usdz` | 薯餅：樹懶（咖啡色，坐姿） | `sloth` | 27 × 20 × 14 cm |
+| `c47d4ae8-AR-Code-Object-Capture-app-1788967608.usdz` | 蛋黃哥：黃色的蛋（坐在蛋殼裡，衣服上寫 gudetama） | `egg` | 13 × 15 × 11 cm |
 
 每個 USDZ 裡面有：
 
@@ -41,7 +60,7 @@
 
 另外試了一張三隻合照（打算當「彩色炸彈」特殊方塊）。目前小狗太小、構圖太鬆，要再調。
 
-> 蛋蛋是蛋黃哥（Gudetama）的造型。自己玩沒問題，如果之後要公開或上架，要留意角色版權。
+> 蛋黃哥是三麗鷗的角色（Gudetama）。自己玩沒問題，如果之後要公開或上架，要留意角色版權。
 
 ---
 
@@ -50,46 +69,24 @@
 **USDZ → GLB → 透明背景 PNG（遊戲方塊圖）**
 
 1. `tools/usd_to_glb.py`：用 `usd-core` 讀 USDZ，把 faceVarying UV 展開成每頂點 UV，貼圖縮到 1024 並轉 JPEG，用 `trimesh` 輸出 GLB。樹懶測試結果：約 13,800 頂點，**942 KB**（原檔 8.7 MB）。
-2. `tools/render/render.html` + `shoot.mjs`：用 Playwright 開無頭瀏覽器，three.js 載入 GLB，打光（RoomEnvironment + 主光 + 可選背光），輸出透明背景 PNG。
+2. `tools/render/render.html` + `shoot.py`（另有舊的 `shoot.mjs`）：用 Playwright 開無頭瀏覽器，three.js 載入 GLB，打光（RoomEnvironment + 主光 + 可選背光），輸出透明背景 PNG。
 3. `tools/inspect_usd.py`：印出 USD 檔的結構、點數、包圍盒（除錯用）。
 
 ### 在你電腦本地跑
 
-需要：Python 3.10 以上、Node.js 18 以上。
+現在整套流程只要 Python（不需要 Node.js），一個指令全部重做：
 
 ```bash
-# 0. 把三個 .usdz 放進 tools/source/，改名成 dog.usdz、sloth.usdz、egg.usdz
-cd tools
-
-# 1. Python 環境
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# 2. 轉成 GLB
-mkdir -p out/models
-python usd_to_glb.py source/dog.usdz   out/models/dog.glb
-python usd_to_glb.py source/sloth.usdz out/models/sloth.glb
-python usd_to_glb.py source/egg.usdz   out/models/egg.glb
-
-# 3. 渲染方塊圖（開兩個終端機）
-#    終端機 A（在 tools/ 目錄）：
-python3 -m http.server 8765
-#    終端機 B：
-cd render
-npm install
-npx playwright install chromium
-cd ..
-node render/shoot.mjs render/jobs.example.json out/sprites
+pip install -r tools/requirements.txt
+python -m playwright install chromium
+python tools/build_assets.py
 ```
 
-輸出在 `tools/out/sprites/`：`dog.png`、`sloth.png`、`egg.png`、`trio.png`。
-
-要調角度、曝光，改 `render/jobs.example.json` 裡的 `yaw`、`pitch`、`exposure`、`rim` 再跑一次。
+細節（角度怎麼調、怎麼換掉暫代玩具）見 [tools/README.md](tools/README.md)。
 
 ---
 
-## 3. 遊戲設計規劃（還沒開始寫程式）
+## 3. 遊戲設計規劃（已實作，細節以程式和 docs/SPEC.md 為準）
 
 ### 最重要的問題：只有 3 種方塊
 
@@ -151,7 +148,7 @@ Candy Crush 通常用 4–6 種顏色。只有 3 種的話，盤面隨便補一�
 
 ---
 
-## 4. 預計的檔案結構
+## 4. 檔案結構（原本的規劃）
 
 ```
 index.html              遊戲主頁（純 HTML/CSS/JS，Canvas 2D 畫盤面，不用打包工具）
@@ -169,21 +166,20 @@ tools/                  轉檔和渲染腳本（已完成）
 
 ## 5. 下一步
 
-1. 本地跑完第 2 節的流程，確認三張方塊圖 OK
-2. 寫一個 Python 後製腳本：方塊圖加白色描邊和陰影、輸出 256px；再渲染 24 格旋轉序列並拼成一張圖
-3. 修三隻合照的構圖（小狗放大、靠近一點）
-4. 寫遊戲本體：先做盤面邏輯（配對、掉落、防連鎖補位、洗牌），再加特殊方塊、關卡、畫面特效、音效
-5. 做 3D / AR 看看頁，並打包縮小版 USDZ
+原本第 5 節的 1–5 項都做完了。接下來可以做的：
+
+1. 把兔兔、呱呱、小鯨換成自己掃描的玩具（見 [tools/README.md](tools/README.md)）
+2. 在真的手機上試玩，調手感、音量、難度；在 iPhone 上試 AR Quick Look
+3. 想公開的話：用 GitHub Pages 發布（純靜態網頁，直接可以放）；蛋黃哥是三麗鷗的角色，公開前要留意版權
+4. 更多關卡、更多障礙物（例如巧克力、鎖鏈）
 
 ---
 
 ## 6. 給新對話用的開場提示（直接複製貼上）
 
 ```
-我在做一個像 Candy Crush 的三消網頁遊戲，方塊全部用我自己用 Object Capture 掃的三個毛絨玩具
-（黑色小狗 dog、樹懶 sloth、黃色蛋蛋 egg）。請先讀專案裡的 REPORT.md，裡面有素材分析、
-已經寫好的轉檔腳本（tools/）、和完整的遊戲設計規劃。
-
-我已經在本地把三個 .usdz 放在 tools/source/，請從 REPORT.md 第 5 節「下一步」開始做。
+我在做一個像 Candy Crush 的三消網頁遊戲「毛絨消消樂」，方塊用我自己用 Object Capture 掃的毛絨玩具：
+皮蛋（黑色小狗 dog）、薯餅（樹懶 sloth）、蛋黃哥（egg），另外三隻兔兔、呱呱、小鯨是暫代玩具。
+請先讀專案裡的 REPORT.md（第 0 節是目前狀態）和 docs/SPEC.md（各模組的介面）。
 遊戲用純 HTML/CSS/JS，不用打包工具，介面用繁體中文。
 ```
