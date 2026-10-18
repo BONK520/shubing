@@ -560,6 +560,8 @@ def write_usdz(toy, path, tex):
         out_tmp = os.path.join(work, toy.name + '.usdz')
         if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(usdc), out_tmp):
             raise RuntimeError('CreateNewUsdzPackage failed')
+        from slim_usdz import fix_zip_times
+        fix_zip_times(out_tmp)       # 固定 zip 時間戳：每次重做 bytes 都一樣，git 不會一直顯示 .usdz 有改
         shutil.copyfile(out_tmp, path)
     finally:
         shutil.rmtree(work, ignore_errors=True)

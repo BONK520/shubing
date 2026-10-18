@@ -15,13 +15,16 @@
 - **方塊 6 種**：皮蛋、薯餅、蛋黃哥（AR 掃描）＋ 兔兔、呱呱、小鯨（程式做的暫代玩具，之後換成自己的掃描）。
   只用 3 種會一直自己連鎖消除，所以每關用 4–6 種，再加上防連鎖補位。
 - **換掉暫代玩具**：把新的掃描改名成 `bunny.usdz`／`frog.usdz`／`whale.usdz` 放進 `tools/source/`，
-  跑 `python tools/build_assets.py`，再改 `js/pieces.js` 的名字。詳細步驟見 [tools/README.md](tools/README.md)。
+  把 `tools/assets.json` 那隻的 `source` 改成 `"scan"`，跑 `python tools/build_assets.py`，再改 `js/pieces.js` 的名字和 `scan: true`。
+  詳細步驟見 [tools/README.md](tools/README.md)。
 - **已完成**：盤面邏輯（配對、掉落、防連鎖補位、洗牌、條紋／包裝／彩色炸彈與全部組合技、果凍、Sugar Crush 收尾）、
   15 關（分數、收集、異形盤面、果凍）、關卡地圖與存檔、Canvas 動畫與粒子特效、Web Audio 合成音效與背景音樂、
   3D / AR 看看頁（model-viewer，iPhone 用 USDZ 開 AR Quick Look）、一鍵素材流程。
 - **檔案**：`index.html`、`style.css`、`js/`（engine、renderer、main、levels、audio、pieces）、`ar.html`、`assets/`、`tools/`、`tests/`。
   各模組的介面寫在 [docs/SPEC.md](docs/SPEC.md)。
 - **測試**：`python tests/run_tests.py`（盤面邏輯，含隨機走幾千步的壓力測試）。
+- **手機橫放**也能玩（狀態列在左、盤面在右）。
+- **分享給別人**：GitHub repo 設定 → Pages → Deploy from a branch → 選這個分支、`/ (root)`，網址是 `https://bonk520.github.io/shubing/`。
 
 ---
 

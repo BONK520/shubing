@@ -9,9 +9,23 @@
 <title>3D / AR 看看 · 毛絨消消樂</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="stylesheet" href="ar.css">
-<!-- 只有這一頁可以用 CDN：@google/model-viewer，鎖定版本 -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.2.0/dist/model-viewer.min.js"
-        onerror="document.documentElement.classList.add('mv-failed')"></script>
+<script>
+  // 3D 檢視器載不到（沒網路）或在這個瀏覽器跑不起來時：在 <html> 做記號、通知頁面程式（只做一次）
+  function mvFail(kind) {
+    var h = document.documentElement;
+    if (h.classList.contains('mv-failed') || (window.customElements && customElements.get('model-viewer'))) return;
+    h.setAttribute('data-mv-fail', kind);
+    h.classList.add('mv-failed');
+    try { window.dispatchEvent(new Event('mv-failed')); } catch (e) { /* 很舊的瀏覽器 */ }
+  }
+  window.addEventListener('error', function (e) {
+    if (e && e.filename && e.filename.indexOf('/@google/model-viewer@') >= 0) mvFail('js');
+  });
+</script>
+<!-- 只有這一頁可以用 CDN：@google/model-viewer，鎖定版本。
+     async：CDN 很慢或連不上時，選單、資訊卡和說明照樣先出來，不必等它 -->
+<script type="module" async src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.2.0/dist/model-viewer.min.js"
+        onerror="mvFail('net')"></script>
 </head>
 <body>
 
@@ -65,15 +79,13 @@
 
     <div class="loading" id="loading" aria-hidden="true">
       <div class="loading-face" id="loadingFace"></div>
-      <p>毛絨正在跑過來…</p>
+      <p id="loadingText">毛絨正在跑過來…</p>
     </div>
 
     <div class="fail" id="fail" hidden>
       <div class="fail-face" id="failFace"></div>
       <p id="failText">模型還在路上，等一下再來看看！</p>
     </div>
-
-    <p class="placeholder-note" id="placeholderNote" hidden>這是暫代模型，之後會換成真的掃描</p>
   </section>
 
   <aside class="side">
@@ -82,6 +94,9 @@
         <h2 id="name">毛絨</h2>
         <span class="badge" id="badge">真實掃描</span>
       </div>
+      <!-- 說明放在資訊卡（不放在舞台上，免得蓋到高的毛絨，例如兔兔的耳朵）；兩種說明一樣高，切換時下面的選單不會跳 -->
+      <p class="model-note scan-note" id="scanNote">用 3D 掃描真的毛絨玩具做成的！</p>
+      <p class="model-note placeholder-note" id="placeholderNote" hidden>這是暫代模型，之後會換成真的掃描</p>
       <p class="size" id="size">量尺寸中…</p>
       <ul class="tips">
         <li><b>拖曳</b>轉一轉</li>
@@ -105,6 +120,35 @@ import { PIECES, spritePath, glbPath, usdzPath } from './js/pieces.js';
 
 const $ = id => document.getElementById(id);
 const mv = $('mv');
+const html = document.documentElement;
+
+// 3D 檢視器（model-viewer，從 CDN 用 async 載入，可能比這段程式晚到）的狀態：
+// wait 還在載、ok 可以用、slow 等了 12 秒還沒好（繼續等，載到就自動恢復）、net 載不到（沒網路）、js 這個瀏覽器跑不起來
+let viewer = customElements.get('model-viewer') ? 'ok' : 'wait';
+const LOADING_TEXT = '毛絨正在跑過來…';
+const VIEWER_TEXT = {
+  slow: '網路有點慢，3D 檢視器還在路上…',
+  net: '3D 檢視器要連上網路才能打開喔！',
+  js: '這個瀏覽器打不開 3D 檢視器，換一個試試看？',
+};
+const viewerBroken = () => viewer === 'net' || viewer === 'js';
+// 依檢視器狀態畫舞台：打不開就一直顯示說明（切換毛絨也一樣），不然就照 loading 顯示載入中
+function paintStage(loading) {
+  const broken = viewerBroken();
+  $('stage').classList.toggle('is-loading', !!loading && !broken);
+  $('fail').hidden = !broken;
+  if (broken) {
+    $('failText').textContent = VIEWER_TEXT[viewer];
+    $('size').textContent = '';
+  }
+  $('loadingText').textContent = viewer === 'slow' ? VIEWER_TEXT.slow : LOADING_TEXT;
+}
+function setViewer(state) {
+  if (state === viewer || viewer === 'ok') return;
+  if (state === 'slow' && viewer !== 'wait') return;
+  viewer = state;
+  paintStage(!mv.loaded);
+}
 
 // 測試用：?models=tools/out/models/ 改用別的模型資料夾（只接受同網站的相對路徑）
 const params = new URLSearchParams(location.search);
@@ -211,16 +255,18 @@ async function select(i, user) {
   $('badge').textContent = p.scan ? '真實掃描' : '暫代模型';
   $('badge').classList.toggle('temp', !p.scan);
   $('placeholderNote').hidden = p.scan;
+  $('scanNote').hidden = !p.scan;
   $('size').textContent = '量尺寸中…';
-  $('fail').hidden = true;
   setFaces(p);
-  $('stage').classList.add('switching', 'is-loading');
+  $('stage').classList.add('switching');
+  paintStage(true);
   setTimeout(() => $('stage').classList.remove('switching'), 450);
   try { history.replaceState(null, '', location.pathname + location.search + '#' + p.id); } catch (e) { /* ignore */ }
 
-  mv.alt = `${p.name}的 3D 模型，可以旋轉和放大`;
-  mv.exposure = viewOf(p.id).exposure;
-  mv.src = glbOf(p.id);
+  // 用屬性設定：檢視器還沒載好（元素還沒升級）時也一定有效，載好後會照著讀
+  mv.setAttribute('alt', `${p.name}的 3D 模型，可以旋轉和放大`);
+  mv.setAttribute('exposure', String(viewOf(p.id).exposure));
+  mv.setAttribute('src', glbOf(p.id));
   // 有 USDZ 就給 iPhone 用；沒有的話讓 model-viewer 從 GLB 自動轉
   const u = usdzOf(p.id);
   const man = modelsDir ? null : await manifestP;
@@ -290,19 +336,16 @@ function toast(msg) {
   toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
 }
 
-// 檢視器載不到（沒網路）時的說明
-function viewerMissing() {
-  document.documentElement.classList.add('mv-failed');
-  $('stage').classList.remove('is-loading');
-  $('fail').hidden = false;
-  $('failText').textContent = '3D 檢視器要連上網路才能打開喔！';
-  $('size').textContent = '';
-}
-if (document.documentElement.classList.contains('mv-failed')) viewerMissing();
-const ready = customElements.whenDefined('model-viewer').then(() => true);
-Promise.race([ready, new Promise(r => setTimeout(() => r(false), 12000))]).then(ok => {
-  if (!ok) { viewerMissing(); return; }
-  document.documentElement.classList.add('mv-ready');
+// 檢視器載不到 / 跑不起來：<head> 裡的 mvFail() 會加上 mv-failed 並發出 mv-failed 事件（可能在這段程式之前或之後）
+const failKind = () => (html.getAttribute('data-mv-fail') === 'js' ? 'js' : 'net');
+if (html.classList.contains('mv-failed')) setViewer(failKind());
+window.addEventListener('mv-failed', () => setViewer(failKind()));
+// 12 秒還沒好：只換成「網路有點慢」的提示，繼續等；之後載到了照樣可以用
+setTimeout(() => { if (viewer === 'wait') setViewer('slow'); }, 12000);
+customElements.whenDefined('model-viewer').then(() => {
+  setViewer('ok');
+  html.classList.remove('mv-failed');
+  html.classList.add('mv-ready');
   // 電腦上沒有 AR：顯示「用手機打開」的提示
   const arCheck = () => {
     const can = !!mv.canActivateAR;
@@ -312,9 +355,6 @@ Promise.race([ready, new Promise(r => setTimeout(() => r(false), 12000))]).then(
   setTimeout(arCheck, 600);
   mv.addEventListener('load', arCheck);
 });
-new MutationObserver(() => {
-  if (document.documentElement.classList.contains('mv-failed') && !customElements.get('model-viewer')) viewerMissing();
-}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
 const start = Math.max(0, PIECES.findIndex(p => p.id === location.hash.slice(1)));
 select(start, false);

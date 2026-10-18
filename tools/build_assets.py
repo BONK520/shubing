@@ -4,13 +4,15 @@
 #   python tools/build_assets.py --no-contact   # 不輸出檢查用的總覽圖
 #
 # 流程（設定在 tools/assets.json）:
-#   1. 模型：tools/source/<id>.usdz 存在就用掃描檔（usd_to_glb 轉 GLB、slim_usdz 縮小 USDZ），
+#   1. 模型：tools/source/<id>.usdz 存在就用掃描檔（usd_to_glb 轉 GLB、slim_usdz 縮小 USDZ；
+#      原檔或工具的內容變了才重轉，紀錄在 tools/out/models/stamps.json），
 #      否則 source = placeholder 的用 make_placeholders.py 程式產生 GLB + USDZ
+#      （assets/models/<id>.glb 已經是掃描模型的話會沿用它並警告，不會被暫代玩具蓋掉）
 #   2. 渲染：靜態圖、24 格轉盤、三寶合照與標題圖的每一隻（tools/render，無頭 Chromium + three.js）
 #   3. 後製：貼紙白邊 + 陰影（postprocess.py）-> assets/sprites/
 #   4. 複製模型到 assets/models/，寫 assets/manifest.json
 #   5. 總覽圖 tools/out/contact.png（contact_sheet.py）
-import argparse, hashlib, io, json, os, shutil, sys, time
+import argparse, hashlib, io, json, os, shutil, struct, sys, time
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TOOLS)
@@ -39,15 +41,24 @@ def sha1(path):
     return h.hexdigest()
 
 
-def stale(out, deps):
-    return not os.path.exists(out) or any(os.path.getmtime(d) > os.path.getmtime(out) for d in deps)
-
-
 def copy_if_changed(src, dst):
     if os.path.exists(dst) and sha1(src) == sha1(dst):
         return False
     shutil.copyfile(src, dst)
     return True
+
+
+def glb_generator(path):
+    """GLB 的 asset.generator；檔案不在或不是 GLB 就回傳 None。
+    make_placeholders.py 做的暫代模型寫 'shubing tools/make_placeholders.py'，掃描檔轉的是 trimesh。"""
+    try:
+        with open(path, 'rb') as f:
+            magic, _, _, n, kind = struct.unpack('<5I', f.read(20))
+            if magic != 0x46546C67 or kind != 0x4E4F534A:
+                return None
+            return str(json.loads(f.read(n)).get('asset', {}).get('generator', ''))
+    except (OSError, ValueError, struct.error, AttributeError):
+        return None
 
 
 # ---------------------------------------------------------------- 1. 模型
@@ -56,6 +67,20 @@ def build_models(cfg, force):
     from slim_usdz import slim
     import make_placeholders as mp
     os.makedirs(MODELS, exist_ok=True)
+    # 掃描檔轉出來的 GLB / USDZ 各是用哪個原檔、哪版工具做的。比的是內容 sha1，不是修改時間：
+    # 從檔案總管複製、解壓縮的掃描檔會保留原本的修改時間，常常比上次建置還舊，用時間比會漏掉。
+    stamp_file = os.path.join(MODELS, 'stamps.json')
+    try:
+        with open(stamp_file, encoding='utf-8') as f:
+            stamps = json.load(f)
+    except (OSError, ValueError):
+        stamps = {}
+
+    def save_stamps():
+        with open(stamp_file, 'w', encoding='utf-8') as f:
+            json.dump(stamps, f, indent=0, sort_keys=True)
+
+    tool = {n: sha1(os.path.join(TOOLS, n)) for n in ('usd_to_glb.py', 'slim_usdz.py')}
     kinds, ph = {}, []
     for p in cfg['pieces']:
         i = p['id']
@@ -63,26 +88,43 @@ def build_models(cfg, force):
         glb, usdz = os.path.join(MODELS, i + '.glb'), os.path.join(MODELS, i + '.usdz')
         if os.path.exists(src):
             kinds[i] = 'scan'
-            if force or stale(glb, [src, os.path.join(TOOLS, 'usd_to_glb.py')]):
-                convert(src, glb)
-            if force or stale(usdz, [src, os.path.join(TOOLS, 'slim_usdz.py')]):
-                slim(src, usdz)
+            s = sha1(src)
+            for out, make, t in ((glb, convert, 'usd_to_glb.py'), (usdz, slim, 'slim_usdz.py')):
+                name, key = os.path.basename(out), s + ':' + tool[t]
+                if force or stamps.get(name) != key or not os.path.exists(out):
+                    stamps.pop(name, None); save_stamps()      # 做到一半中斷的話，下次一定重做
+                    make(src, out)
+                    stamps[name] = key; save_stamps()
             if p.get('source') == 'placeholder':
                 print(f'  {i}: 找到 tools/source/{i}.usdz，改用掃描檔（不再用暫代模型）')
-        elif p.get('source') == 'placeholder':
-            kinds[i] = 'placeholder'; ph.append(i)
+                print(f'  {i}: 記得把 tools/assets.json 裡 {i} 的 "source" 改成 "scan"'
+                      f'（tools/source/ 不進 git，換電腦或重新 clone 就沒有這個檔）')
+            continue
+        # 輸出不是（或不再是）這台電腦上的掃描原檔轉的：清掉紀錄，之後放回同一個掃描檔也一定會重轉
+        stamps.pop(i + '.glb', None); stamps.pop(i + '.usdz', None)
+        ag, au = os.path.join(A_MOD, i + '.glb'), os.path.join(A_MOD, i + '.usdz')
+        if p.get('source') == 'placeholder':
+            gen = glb_generator(ag)
+            if gen is None or 'make_placeholders' in gen:
+                kinds[i] = 'placeholder'; ph.append(i)
+                continue
+            # assets/models 裡已經是掃描模型（以前放過 tools/source/<id>.usdz），只是原檔不在這台電腦：
+            # 不要拿暫代玩具把它蓋掉
+            print(f'  警告：{i} 在 tools/assets.json 還是 "source": "placeholder"，但 assets/models/{i}.glb 已經是掃描模型'
+                  f'（沒有 tools/source/{i}.usdz）。沿用它，不重做暫代玩具。')
+            print(f'        請把 {i} 的 "source" 改成 "scan"；真的要換回暫代玩具，先刪掉 assets/models/{i}.glb 再跑一次。')
         else:
             # 掃描原檔不在（tools/source 不進 git）：沿用 assets/models 裡已經做好的檔案
-            ag, au = os.path.join(A_MOD, i + '.glb'), os.path.join(A_MOD, i + '.usdz')
             if not os.path.exists(ag):
                 raise SystemExit(f'找不到 {i} 的掃描檔 tools/source/{i}.usdz，也沒有 assets/models/{i}.glb')
             print(f'  {i}: 沒有 tools/source/{i}.usdz，沿用 assets/models 的現成模型')
-            copy_if_changed(ag, glb)
-            if os.path.exists(au):
-                copy_if_changed(au, usdz)
-            kinds[i] = 'scan'
+        copy_if_changed(ag, glb)
+        if os.path.exists(au):
+            copy_if_changed(au, usdz)
+        kinds[i] = 'scan'
+    save_stamps()
     if ph:
-        mp.build(ph, MODELS)     # 很快而且結果固定（亂數有種子），每次都重做
+        mp.build(ph, MODELS)     # 很快而且結果固定（亂數有種子、zip 時間戳固定），每次都重做
     return kinds
 
 

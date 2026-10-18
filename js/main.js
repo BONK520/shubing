@@ -90,12 +90,17 @@ async function loadImages(onProgress) {
   images.set(TRIO.id, trio);
   jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));
   // manifest 的 spinScale = 旋轉序列第 0 格相對靜態圖的大小；畫旋轉時放大回來，選取時才不會突然變小
-  jobs.push(fetch('assets/manifest.json').then(r => (r.ok ? r.json() : null)).then(m => {
+  // manifest 可有可無：跟圖片一樣有時限（8 秒就放棄），請求卡住也不會讓載入畫面停在 98%
+  const mac = typeof AbortController === 'function' ? new AbortController() : null;
+  let mto = 0;
+  const manifest = fetch('assets/manifest.json', mac ? { signal: mac.signal } : undefined).then(r => (r.ok ? r.json() : null)).then(m => {
     for (const e of (m && m.pieces) || []) {
       const entry = e && images.get(e.id);
       if (entry && Number.isFinite(e.spinScale) && e.spinScale > 0.4 && e.spinScale < 2.5) entry.spinScale = e.spinScale;
     }
-  }).catch(() => {}));
+  }).catch(() => {});
+  jobs.push(Promise.race([manifest, new Promise(res => { mto = setTimeout(() => { if (mac) mac.abort(); res(); }, 8000); })])
+    .finally(() => clearTimeout(mto)));
   await Promise.all(jobs);
 }
 
@@ -130,9 +135,18 @@ function restartAnim(node, cls) { node.classList.remove(cls); void node.offsetWi
 
 // ---------- 畫面切換 ----------
 let screen = 'loading';
+let parkTimer = 0;
 function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
+  // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
+  // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
+  clearTimeout(parkTimer);
+  if (name !== 'game' && R) {
+    R.select(null);
+    R.hint(null);
+    parkTimer = setTimeout(() => { if (screen !== 'game' && R) R.setBoard(null); }, 400);   // 等遊戲畫面淡出（.35s）再清
+  }
 }
 
 // ---------- 對話框 ----------
@@ -302,7 +316,9 @@ function buildMap(popIndex = -1) {
     if (!unlocked) {
       b.classList.add('locked');
       b.setAttribute('aria-label', `第 ${i + 1} 關（還沒解鎖）`);
-      b.innerHTML = '<svg class="lock"><use href="#i-lock"/></svg>';
+      // 鎖住的關卡也顯示關卡編號（灰色），鎖頭當角落小徽章
+      b.appendChild(el('span', 'num', String(i + 1)));
+      b.insertAdjacentHTML('beforeend', '<span class="lock-badge" aria-hidden="true"><svg class="lock"><use href="#i-lock"/></svg></span>');
       b.addEventListener('click', () => { audio.play('invalid'); toast('先過前面的關卡喔！', 1200); });
     } else {
       b.classList.add(i === cur && stars === 0 ? 'current' : 'done');
@@ -319,12 +335,15 @@ function buildMap(popIndex = -1) {
     mapNodes.push(b);
   });
 
-  // 頭像標記站在目前關卡上
+  // 頭像標記站在目前關卡「旁邊」（靠地圖中間那一側），箭頭橫向指著關卡：
+  // 放在正上方會蓋到這關的星星和上一格的下一關（兩關只差 MAP_GAP 高）
   const marker = el('span', 'map-marker');
   marker.appendChild(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 26));   // 中間那隻（薯餅）當頭像
   const mp = pts[cur];
-  marker.style.left = mp.x + '%';
-  marker.style.top = (mp.y - 62) + 'px';   // 箭頭剛好停在星星上方，不會壓到下一關
+  const side = mp.x <= 50 ? 1 : -1;   // 1 = 在關卡右邊
+  marker.classList.add(side > 0 ? 'on-right' : 'on-left');
+  marker.style.left = `calc(${mp.x}% + ${side * 84}px)`;
+  marker.style.top = mp.y + 'px';
   inner.appendChild(marker);
 
   const end = el('span', 'map-end', '更多關卡製作中…');
@@ -357,10 +376,35 @@ function scoreTarget(lvl) { return (lvl.goal && lvl.goal.target) || (lvl.stars &
 function goalText(lvl) {
   const g = lvl.goal || {};
   if (g.type === 'collect') {
-    return '收集 ' + Object.entries(g.items || {}).map(([id, n]) => `${(pieceById(id) || { name: id }).name} ×${n}`).join('、');
+    // 名字和數量之間用不斷行空格（ ），配合 .goal-text 的 keep-all：只會在「收集」後面或「、」後面換行，名字不會被拆開
+    return '收集 ' + Object.entries(g.items || {}).map(([id, n]) => `${(pieceById(id) || { name: id }).name} ×${n}`).join('、');
   }
   if (g.type === 'jelly') return '把果凍全部清掉！';
   return `拿到 ${fmt(scoreTarget(lvl))} 分`;
+}
+
+// ---------- 中文換行 ----------
+// 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
+// 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
+const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間'];
+const NO_LINE_START = /^[，、。！？～：；）」』…]/;
+const zhSeg = (() => {
+  try {
+    const s = new Intl.Segmenter('zh-TW', { granularity: 'word' });
+    return [...s.segment('彩色炸彈')].length <= 2 ? s : null;   // 沒有中文詞典的環境會一字一段，那就不用（維持 keep-all）
+  } catch (e) { return null; }
+})();
+function softWrap(text) {
+  if (!zhSeg || !text) return text;
+  let out = '', prevWord = false;
+  for (const { segment, isWordLike } of zhSeg.segment(text)) {
+    if (isWordLike) { out += (prevWord ? '​' : '') + segment; prevWord = true; }
+    else { out += (NO_LINE_START.test(segment) ? '⁠' : '') + segment; prevWord = false; }
+  }
+  for (const w of [...PIECES.map(p => p.name), ...KEEP_WORDS]) {
+    if (w.length > 1) out = out.replace(new RegExp([...w].join('​?'), 'g'), w);
+  }
+  return out;
 }
 
 // ---------- 關卡開始卡 ----------
@@ -400,7 +444,7 @@ function openStartCard(i) {
   $('#ms-moves').textContent = lvl.moves;
   const hint = lvl.hint || '';
   $('#ms-hint-box').hidden = !hint;
-  $('#ms-hint').textContent = hint;
+  $('#ms-hint').textContent = softWrap(hint);
   const av = $('#ms-avatar');
   av.innerHTML = '';
   av.appendChild(toyEl(TITLE_TOYS[i % TITLE_TOYS.length], 24));

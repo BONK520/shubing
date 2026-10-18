@@ -61,13 +61,19 @@
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
     <div class="title-main">
-      <h1 class="logo" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
-      <p class="logo-sub" aria-label="主角：薯餅、皮蛋、蛋黃哥"><span>薯餅</span><i>・</i><span>皮蛋</span><i>・</i><span>蛋黃哥</span></p>
-      <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
-      <div class="title-toys" id="title-toys"></div>
-      <div class="title-btns">
-        <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg>開始遊戲</button>
-        <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg>3D / AR 看看</a>
+      <!-- 直式：兩個包裝都是 display:contents（一欄排下來）；橫式手機：左欄標題、右欄玩具＋按鈕 -->
+      <div class="title-head">
+        <h1 class="logo" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+        <!-- 名字順序 = 下面玩具由左到右的順序（皮蛋、薯餅在中間、蛋黃哥） -->
+        <p class="logo-sub" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
+        <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
+      </div>
+      <div class="title-play">
+        <div class="title-toys" id="title-toys"></div>
+        <div class="title-btns">
+          <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg>開始遊戲</button>
+          <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg>3D / AR 看看</a>
+        </div>
       </div>
     </div>
   </section>
@@ -119,7 +125,7 @@
 
 <!-- 關卡開始卡 -->
 <div class="modal" id="m-start" role="dialog" aria-modal="true" aria-labelledby="ms-title" aria-hidden="true">
-  <div class="card">
+  <div class="card start-card">
     <button class="icon-btn close" data-close aria-label="關閉"><svg><use href="#i-close"/></svg></button>
     <div class="ribbon"><span id="ms-title">第 1 關</span></div>
     <div class="card-stars" id="ms-stars"></div>

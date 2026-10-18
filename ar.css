@@ -140,6 +140,8 @@ model-viewer {
   --progress-bar-height: 0px;
   outline: none;
 }
+/* 檢視器還沒載好或載不到時，AR 按鈕和進度條只是普通的元素：藏起來，免得出現按了沒反應的按鈕 */
+model-viewer:not(:defined) > [slot] { display: none; }
 .stage.switching model-viewer { animation: boing 0.45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes boing { 0% { transform: scale(0.86); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
 
@@ -225,19 +227,19 @@ model-viewer {
 .fail[hidden] { display: none; }
 .fail-face { transform: rotate(-8deg); filter: saturate(0.85); }
 
-.placeholder-note {
-  position: absolute; left: 14px; top: 62px; z-index: 3;
-  width: max-content; max-width: calc(100% - 28px);
-  margin: 0; padding: 6px 12px;
+/* 資訊卡裡的說明（真實掃描 / 暫代模型），不放舞台上，才不會蓋到毛絨 */
+.model-note {
+  width: max-content; max-width: 100%;
+  margin: 10px 0 0; padding: 5px 12px;
   border-radius: 14px;
-  border: 2px dashed #f2c35f;
-  background: rgba(255, 249, 226, 0.94);
-  color: #9a6408;
-  font-size: 13px; font-weight: 800; text-align: left;
-  pointer-events: none;
+  border: 2px dashed #8fd9b6;
+  background: rgba(228, 250, 239, 0.94);
+  color: #23885e;
+  font-size: 13px; font-weight: 800; line-height: 1.45; text-align: left;
   animation: note-in 0.4s cubic-bezier(.3, 1.6, .5, 1);
 }
-.placeholder-note[hidden] { display: none; }
+.placeholder-note { border-color: #f2c35f; background: rgba(255, 249, 226, 0.94); color: #9a6408; }
+.model-note[hidden] { display: none; }
 @keyframes note-in { from { transform: translateY(-6px) scale(0.92); opacity: 0; } }
 
 /* ---------- 小臉（貼紙圖或彩色圓） ---------- */

@@ -1,6 +1,11 @@
 // 毛絨消消樂：Canvas 2D 盤面渲染、動畫、粒子、橫幅（docs/SPEC.md §6）
 // 所有位置都用「格」做單位（r、c 可以是小數），畫的時候才換成像素，所以 layout() 隨時可以呼叫。
 // 每個引擎事件播完後都會用事件附帶的 board 重新同步，畫面永遠不會和引擎不一致。
+// 除了 SPEC §6 的 API，另有：
+//   R.pause()   停掉 requestAnimationFrame 迴圈（遊戲畫面被藏起來時用，例如回到地圖 / 標題），
+//               選取、提示、特殊方塊的待機動畫都不再每幀重畫。play() / banner() 照常計時完成，不會卡住。
+//   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
+//   R.paused    目前是否暫停（唯讀）。
 
 const FONT = '"Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
 const WORDS = ['', '', '好棒！', '太甜了！', '超可愛！', '毛茸茸爆發！'];
@@ -112,7 +117,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   let gen = 0, busyCount = 0, destroyed = false;
   let queue = Promise.resolve(), bannerQueue = Promise.resolve();
   const waits = new Set();
-  let raf = 0, lastDraw = 0;
+  let raf = 0, lastDraw = 0, paused = false;
   // ---- 快取 ----
   const tileCache = new Map();
   let cacheS = 0;
@@ -563,8 +568,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function layout() {
     if (destroyed) return;
-    const rect = canvas.getBoundingClientRect();
-    const w = rect.width, h = rect.height;
+    // 用排版尺寸（不含 transform）：切換畫面時 .screen 有 scale(1.03) 的過場，這時量 getBoundingClientRect
+    // 會大 3%，過場結束後 ResizeObserver 也不會再通知，整個盤面就一直被縮放重取樣（變糊）
+    let w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!(w > 0 && h > 0)) { const rect = canvas.getBoundingClientRect(); w = rect.width; h = rect.height; }
     if (w < 4 || h < 4) return;           // 還看不見
     const d = Math.min(MAX_DPR, Math.max(1, window.devicePixelRatio || 1));
     const pw = Math.round(w * d), ph = Math.round(h * d);
@@ -910,18 +917,42 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
 
     // --- 飄分 ---
-    for (const pt of ev.points || []) {
-      if (!pt) continue;
+    // 同一次消除裡上下左右相鄰的分數（例如配對分數和底下每格果凍的 +100）合成一個，放在它們中間；
+    // 不然相鄰兩格的「+700」「+420」會黏成看起來像「+700420」的錯誤大數字。出現時 addText 再避開還在飄的分數。
+    const pts = (ev.points || []).filter(pt => pt && Number.isFinite(pt.value));
+    const ptAt = new Map(pts.map((pt, i) => [key(pt.r, pt.c), i]));
+    const kindAt = pt => {
       const it = remAt.get(key(pt.r, pt.c));
       let kind = it && it.piece ? it.piece.kind : -1;
       if (kind < 0) {
         const g = groups.find(gg => gg.cells && gg.cells.some(q => q.r === pt.r && q.c === pt.c));
         if (g) kind = g.kind;
       }
-      at(t0 + Math.min(520, tOf(pt.r, pt.c)) + 80, tt => {
-        texts.push({ text: '+' + pt.value, x: pt.c + 0.5, y: pt.r + 0.5, t0: tt, dur: 1000,
-          col: kind >= 0 ? kindColor(kind) : [255, 170, 60], big: pt.value >= 200 });
-      });
+      return kind;
+    };
+    const seen = new Set();
+    for (let i = 0; i < pts.length; i++) {
+      if (seen.has(i)) continue;
+      const comp = [i];
+      seen.add(i);
+      for (let j = 0; j < comp.length; j++) {
+        const q = pts[comp[j]];
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const n = ptAt.get(key(q.r + dr, q.c + dc));
+          if (n !== undefined && !seen.has(n)) { seen.add(n); comp.push(n); }
+        }
+      }
+      let value = 0, sr = 0, sc = 0, tm = Infinity, top = null;
+      for (const n of comp) {
+        const q = pts[n];
+        value += q.value; sr += q.r; sc += q.c;
+        tm = Math.min(tm, tOf(q.r, q.c));
+        if (!top || q.value > top.value) top = q;
+      }
+      const kind = kindAt(top);
+      const x = sc / comp.length + 0.5, y = sr / comp.length + 0.5;
+      at(t0 + Math.min(520, tm) + 80, tt => addText('+' + value, x, y, tt,
+        kind >= 0 ? kindColor(kind) : [255, 170, 60], value >= 200));
     }
 
     if ((ev.cascade | 0) >= 2) showWord(WORDS[Math.min(5, ev.cascade | 0)], ev.cascade | 0);
@@ -1446,6 +1477,74 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.fillStyle = fill; ctx.fillText(text, x, y);
   }
 
+  // ---- 飄分 ----
+  // 位置用格：從 (x, y) 往上飄 TEXT_RISE 格，剛出現時先彈大再縮回（textScale）。textPos() 把整段軌跡收在
+  // 畫布裡（第 0 列、最左右兩欄的分數不會被畫布邊緣切掉）；放的時候和畫的時候用同一個函式，
+  // 所以 addText 能預先算出兩個分數之後會不會疊在一起。
+  const TEXT_DUR = 1000, TEXT_RISE = 0.85, TEXT_GAP = 0.06;
+  // 依序嘗試的位移（格）：原位、上、下、左右、再遠一點
+  const TEXT_TRY = [[0, 0], [0, -0.5], [0, 0.5], [0.6, 0], [-0.6, 0], [0.6, -0.5], [-0.6, -0.5],
+    [0, -1], [0, 1], [0.6, 0.5], [-0.6, 0.5], [1.2, 0], [-1.2, 0], [0, -1.5], [0, 1.5]];
+  const textFont = f => (f.big ? 0.56 : 0.44);       // 字級 / 格
+  const textScale = p => (p < 0.14 ? lerp(0.4, 1.15, easeOutCubic(p / 0.14)) : p < 0.24 ? lerp(1.15, 1, (p - 0.14) / 0.1) : 1);
+  function textPos(f, t) {
+    const p = clamp01((t - f.t0) / f.dur), e = easeOutCubic(p), s = textScale(p);
+    let x = f.x, y = f.y - TEXT_RISE * e;
+    if (cs > 0 && W > 0 && H > 0) {
+      const k = Math.max(1, s), pad = 2 / cs, hw = (f.w * k) / 2 + pad, hh = (f.h * k) / 2 + pad;
+      const x0 = -ox / cs + hw, x1 = (W - ox) / cs - hw, y0 = -oy / cs + hh, y1 = (H - oy) / cs - hh;
+      x = x1 > x0 ? clamp(x, x0, x1) : (x0 + x1) / 2;
+      // 起點先收進畫布，再把上飄距離縮短到剛好碰到上緣（曲線不變，只是飄得比較少）
+      const sy = y1 > y0 ? clamp(f.y, y0, y1) : (y0 + y1) / 2;
+      y = sy - Math.min(TEXT_RISE, Math.max(0, sy - y0)) * e;
+    }
+    return { x, y, s };
+  }
+  // 兩個分數在都還清楚可見（淡到 1/3 以前）的期間，外框最多重疊多少格（0 = 不重疊）
+  function textsOverlap(a, b) {
+    // 起點離很遠就不用逐格時間檢查（收進畫布最多只會移動不到半格）
+    if (Math.abs(a.x - b.x) > (a.w + b.w) * 0.6 + 0.5 || Math.abs(a.y - b.y) > TEXT_RISE + (a.h + b.h) * 0.6 + 0.5) return 0;
+    const end = Math.min(a.t0 + a.dur * 0.9, b.t0 + b.dur * 0.9);
+    let worst = 0;
+    for (let t = Math.max(a.t0, b.t0); t <= end; t += 30) {
+      const pa = textPos(a, t), pb = textPos(b, t);
+      const dx = (a.w * pa.s + b.w * pb.s) / 2 + TEXT_GAP - Math.abs(pa.x - pb.x);
+      const dy = (a.h * pa.s + b.h * pb.s) / 2 + TEXT_GAP - Math.abs(pa.y - pb.y);
+      if (dx > 0 && dy > 0) worst = Math.max(worst, Math.min(dx, dy));
+    }
+    return worst;
+  }
+  function addText(text, x, y, t0, col, big) {
+    const f = { text, x, y, t0, dur: TEXT_DUR, col, big, w: 0, h: 0 };
+    // 外框大小（格）：用實際字型量，加上描邊（小字級的字框會略高一點，多留 0.04）
+    let wr = 0.62 * text.length, hr = 0.78;
+    try {
+      ctx.font = `900 100px ${FONT}`;
+      const m = ctx.measureText(text);
+      if (m.width > 0) wr = m.width / 100;
+      const mh = (m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0);
+      if (mh > 0) hr = mh / 100 + 0.04;
+    } catch (err) { /* 量不到就用估計值 */ }
+    const fs = textFont(f);
+    f.w = (wr + 0.22) * fs; f.h = (hr + 0.22) * fs;
+    // 避開還在飄的分數：照 TEXT_TRY 的順序找第一個完全不重疊的位置，找不到就取重疊最少的
+    const live = texts.filter(o => o.t0 + o.dur * 0.9 > t0);
+    if (live.length) {
+      let best = null;
+      for (const [dx, dy] of TEXT_TRY) {
+        f.x = x + dx; f.y = y + dy;
+        let s = 0;
+        for (const o of live) { s += textsOverlap(f, o); if (best && s >= best.s) break; }
+        if (!best || s < best.s - 1e-6) best = { s, x: f.x, y: f.y };
+        if (s <= 0) break;
+      }
+      f.x = best.x; f.y = best.y;
+    }
+    texts.push(f);
+    requestDraw();
+    return f;
+  }
+
   function drawTexts(t) {
     let w = 0;
     for (const f of texts) {
@@ -1453,10 +1552,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (p >= 1) continue;
       texts[w++] = f;
       if (p < 0) continue;
-      const sc = p < 0.14 ? lerp(0.4, 1.15, easeOutCubic(p / 0.14)) : p < 0.24 ? lerp(1.15, 1, (p - 0.14) / 0.1) : 1;
-      const x = ox + f.x * cs, y = oy + (f.y - 0.85 * easeOutCubic(p)) * cs;
+      const q = textPos(f, t);
       ctx.globalAlpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
-      strokeFillText(f.text, x, y, cs * (f.big ? 0.56 : 0.44) * sc, '#fff', css(mixc(saturate(f.col, 0.5), BLACK, 0.42)));
+      strokeFillText(f.text, ox + q.x * cs, oy + q.y * cs, cs * textFont(f) * q.s, '#fff', css(mixc(saturate(f.col, 0.5), BLACK, 0.42)));
     }
     texts.length = w;
     ctx.globalAlpha = 1;
@@ -1587,7 +1685,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function frame() {
     raf = 0;
-    if (destroyed) return;
+    if (destroyed || paused) return;
     const t = now(), act = moving(t), amb = !act && ambient();
     if (amb && t - lastDraw < 31) { raf = requestAnimationFrame(frame); return; }   // 只有待機動畫：約 30fps
     lastDraw = t;
@@ -1595,7 +1693,20 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (act || amb || busyCount > 0) raf = requestAnimationFrame(frame);
   }
   function requestDraw() {
-    if (!raf && !destroyed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
+    if (!raf && !destroyed && !paused && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
+  }
+  // 畫面藏起來時停掉迴圈；play() 的等待用 setTimeout，所以動畫流程照樣會走完（只是不畫）
+  function pause() {
+    if (destroyed || paused) return;
+    paused = true;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+  }
+  function resume() {
+    if (destroyed) return;
+    paused = false;
+    layout();          // 有尺寸時會立刻重畫並接回迴圈
+    requestDraw();
   }
 
   // ================= 生命週期 =================
@@ -1622,13 +1733,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
 
   const R = {
-    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy,
+    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume,
     get busy() { return busyCount > 0; },
+    get paused() { return paused; },
   };
   // 測試用（非正式 API）
   Object.defineProperty(R, '_debug', { enumerable: false, value: () => ({
     rows, cols, cs, ox, oy, dpr, W, H, visuals: visuals.size, ghosts: ghosts.length, fx: fx.length,
-    parts: parts.length, texts: texts.length, sched: sched.length, busy: busyCount, raf: !!raf,
+    parts: parts.length, texts: texts.length, sched: sched.length, busy: busyCount, raf: !!raf, paused,
     grid: cellMap.map(row => row.map(v => (v ? v.id : null))),
   }) });
   layout();

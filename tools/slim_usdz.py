@@ -2,9 +2,39 @@
 # 用法: python tools/slim_usdz.py <輸入.usdz> <輸出.usdz> [貼圖尺寸=1024]
 #       python tools/slim_usdz.py --check <檔案.usdz> ...     # 只檢查（usd-core 能開、貼圖找得到、ARKit 規則）
 # 打包用 UsdUtils.CreateNewUsdzPackage，會照 USDZ 規則：不壓縮（stored）、每個檔案 64 bytes 對齊。
-import os, shutil, sys, tempfile, zipfile
+# 打包後再用 fix_zip_times 固定 zip 時間戳：同樣內容 = 同樣 bytes，重跑 build_assets.py 不會讓 git 顯示 .usdz 有改。
+import os, shutil, struct, sys, tempfile, zipfile
 from PIL import Image
 from pxr import Sdf, Usd, UsdUtils
+
+ZIP_DATE, ZIP_TIME = (1 << 5) | 1, 0          # MS-DOS 日期格式的 1980-01-01 00:00:00（zip 能表示的最早時間）
+
+
+def fix_zip_times(path):
+    """把 zip 裡每個檔案的修改時間改成 1980-01-01（local header 和 central directory 兩處都改）。
+    CreateNewUsdzPackage 會寫入打包當下的時間，內容一樣 bytes 也會不一樣。
+    這裡只改那兩個時間欄位，其他 bytes（順序、64 bytes 對齊、大小）完全不動；重複執行結果不變。"""
+    with open(path, 'rb') as f:
+        data = bytearray(f.read())
+    eocd = data.rfind(b'PK\x05\x06')
+    if eocd < 0:
+        raise ValueError(f'{path}: 不是 zip（找不到 end of central directory）')
+    n, = struct.unpack_from('<H', data, eocd + 10)
+    p, = struct.unpack_from('<I', data, eocd + 16)
+    if n == 0xFFFF or p == 0xFFFFFFFF:
+        raise ValueError(f'{path}: zip64 不支援')
+    for _ in range(n):
+        if data[p:p + 4] != b'PK\x01\x02':
+            raise ValueError(f'{path}: central directory 格式不對 ({p})')
+        struct.pack_into('<HH', data, p + 12, ZIP_TIME, ZIP_DATE)
+        nl, xl, cl = struct.unpack_from('<HHH', data, p + 28)
+        lh, = struct.unpack_from('<I', data, p + 42)
+        if data[lh:lh + 4] != b'PK\x03\x04':
+            raise ValueError(f'{path}: local header 格式不對 ({lh})')
+        struct.pack_into('<HH', data, lh + 10, ZIP_TIME, ZIP_DATE)
+        p += 46 + nl + xl + cl
+    with open(path, 'wb') as f:
+        f.write(data)
 
 
 def slim(src, out, texsize=1024, quality=88, verbose=True):
@@ -45,6 +75,7 @@ def slim(src, out, texsize=1024, quality=88, verbose=True):
         tmp = os.path.join(work, 'slim_out.usdz')
         if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(root), tmp):
             raise RuntimeError('CreateNewUsdzPackage failed: ' + src)
+        fix_zip_times(tmp)
         shutil.copyfile(tmp, out)
         if verbose:
             print(f'{os.path.basename(src)}: {os.path.getsize(src) / 1e6:.1f} MB -> {os.path.basename(out)} '
