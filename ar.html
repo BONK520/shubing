@@ -122,9 +122,12 @@ const VIEW = {
   egg:   { yaw: 10,  pitch: 12, exposure: 1.0 },
 };
 const manifestViews = {};
-fetch('assets/manifest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => {
-  (m && m.pieces || []).forEach(e => { if (e && e.id && e.view) manifestViews[e.id] = e.view; });
-}).catch(() => {});
+// manifest 列出哪些毛絨有 USDZ；拿得到就不用再一個個去問伺服器
+const manifestP = fetch('assets/manifest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => {
+  const byId = {};
+  (m && m.pieces || []).forEach(e => { if (e && e.id) { byId[e.id] = e; if (e.view) manifestViews[e.id] = e.view; } });
+  return m ? byId : null;
+}).catch(() => null);
 const viewOf = id => Object.assign({}, VIEW_DEFAULT, VIEW[id] || {}, manifestViews[id] || {});
 // model-viewer 只在數值有變時才更新相機，所以每次載入都讓半徑差一點點，確保會重設視角
 let orbitFlip = false;
@@ -220,8 +223,10 @@ async function select(i, user) {
   mv.src = glbOf(p.id);
   // 有 USDZ 就給 iPhone 用；沒有的話讓 model-viewer 從 GLB 自動轉
   const u = usdzOf(p.id);
-  if (await hasFile(u)) { if (current === i) mv.setAttribute('ios-src', u); }
-  else if (current === i) mv.removeAttribute('ios-src');
+  const man = modelsDir ? null : await manifestP;
+  const ok = man ? !!(man[p.id] && man[p.id].usdz) : await hasFile(u);
+  if (current !== i) return;
+  if (ok) mv.setAttribute('ios-src', u); else mv.removeAttribute('ios-src');
 }
 
 function fmt(m) { return Math.max(1, Math.round(m * 100)); }

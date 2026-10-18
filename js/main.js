@@ -89,6 +89,13 @@ async function loadImages(onProgress) {
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);
   jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));
+  // manifest 的 spinScale = 旋轉序列第 0 格相對靜態圖的大小；畫旋轉時放大回來，選取時才不會突然變小
+  jobs.push(fetch('assets/manifest.json').then(r => (r.ok ? r.json() : null)).then(m => {
+    for (const e of (m && m.pieces) || []) {
+      const entry = e && images.get(e.id);
+      if (entry && Number.isFinite(e.spinScale) && e.spinScale > 0.4 && e.spinScale < 2.5) entry.spinScale = e.spinScale;
+    }
+  }).catch(() => {}));
   await Promise.all(jobs);
 }
 
@@ -184,6 +191,8 @@ function buildTitle() {
     if (spin) {
       const sp = el('span', 'spinner');
       sp.style.backgroundImage = `url("${spin.src}")`;
+      const ss = images.get(p.id).spinScale;
+      if (ss && ss !== 1) sp.style.transform = `scale(${(1 / ss).toFixed(3)})`;
       b.appendChild(sp);
     }
     b.addEventListener('click', () => {
@@ -312,10 +321,10 @@ function buildMap(popIndex = -1) {
 
   // 頭像標記站在目前關卡上
   const marker = el('span', 'map-marker');
-  marker.appendChild(toyEl(TITLE_TOYS[0], 26));
+  marker.appendChild(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 26));   // 中間那隻（薯餅）當頭像
   const mp = pts[cur];
   marker.style.left = mp.x + '%';
-  marker.style.top = (mp.y - 90) + 'px';
+  marker.style.top = (mp.y - 62) + 'px';   // 箭頭剛好停在星星上方，不會壓到下一關
   inner.appendChild(marker);
 
   const end = el('span', 'map-end', '更多關卡製作中…');
@@ -1085,6 +1094,8 @@ function installDebug() {
     get levelIdx() { return levelIdx; },
     get movesLeft() { return movesLeft; },
     get selected() { return selected; },
+    // 可以接受輸入了嗎（測試腳本用：state === 'play' 且沒有動畫在跑）
+    get idle() { return state === 'play' && !moving && !!R && !R.busy && !ptr && !$('.modal.open'); },
     levels: LEVELS,
     save,
     startLevel,

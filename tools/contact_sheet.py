@@ -7,7 +7,7 @@ TOOLS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TOOLS)
 # 和 js/pieces.js（SPEC §2.1）一樣的底色
 COLORS = {'dog': '#8fd3ff', 'sloth': '#9be8c8', 'egg': '#ffb3d1', 'bunny': '#c9b6ff', 'frog': '#ffe08a', 'whale': '#ffc49b'}
-NAMES = {'dog': '小狗', 'sloth': '樹懶', 'egg': '蛋蛋', 'bunny': '兔兔', 'frog': '呱呱', 'whale': '小鯨'}
+NAMES = {'dog': '皮蛋', 'sloth': '薯餅', 'egg': '蛋黃哥', 'bunny': '兔兔', 'frog': '呱呱', 'whale': '小鯨'}
 BOARD = (43, 22, 74)
 
 

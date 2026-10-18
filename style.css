@@ -245,6 +245,17 @@ svg use { pointer-events: none; }
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: clamp(8px, 2.2vh, 22px); min-height: 0;
 }
+.logo-sub { /* 主角名字：薯餅・皮蛋・蛋黃哥 */
+  margin: calc(-1 * clamp(14px, 4.2vw, 24px)) 0 0; position: relative; z-index: 1;
+  display: flex; align-items: center; gap: .1em;
+  font-weight: 900; font-size: clamp(20px, 5.8vw, 28px); letter-spacing: .08em; line-height: 1.2;
+  color: #fff;
+  text-shadow:
+    0 0 0 #b4357b, 2px 0 0 #b4357b, -2px 0 0 #b4357b, 0 2px 0 #b4357b, 0 -2px 0 #b4357b,
+    2px 2px 0 #b4357b, -2px 2px 0 #b4357b, 2px -2px 0 #b4357b, -2px -2px 0 #b4357b,
+    0 4px 0 #b4357b, 0 6px 6px rgba(70, 10, 70, .3);
+}
+.logo-sub i { font-style: normal; color: #ffd23f; }
 .tagline {
   margin: -6px 0 0; padding: 5px 16px; border-radius: 999px;
   background: rgba(255, 255, 255, .78); border: 2px solid #fff;
@@ -599,7 +610,7 @@ svg use { pointer-events: none; }
 .goal-big .gb .ic svg { width: 64px; height: 64px; fill: url(#g-gold); stroke: #fff; stroke-width: 1.6; paint-order: stroke; filter: drop-shadow(0 3px 3px rgba(150, 90, 0, .3)); }
 .goal-big .gb .ic .jelly-ic { width: 58px; height: 58px; border-radius: 14px; }
 .goal-big .gb b { font-size: 24px; font-weight: 900; color: var(--ink); }
-.goal-text { font-weight: 800; font-size: 17px; color: var(--ink); text-align: center; }
+.goal-text { font-weight: 800; font-size: 17px; color: var(--ink); text-align: center; text-wrap: balance; }
 .moves-line { font-weight: 800; font-size: 17px; color: var(--ink-soft); }
 .moves-line b { font-size: 26px; color: #7a4ae6; margin: 0 2px; }
 .hint-bubble {
@@ -609,14 +620,16 @@ svg use { pointer-events: none; }
 .hint-avatar img, .hint-avatar .toy-fallback { width: 100%; height: 100%; object-fit: contain; }
 .hint-avatar .toy-fallback { --fs: 24px; }
 .hint-bubble p {
-  position: relative; flex: 1; margin: 0; padding: 10px 14px; border-radius: 18px;
-  background: #fff; border: 3px solid #ffd0e6; font-weight: 800; font-size: 16px; line-height: 1.45; color: var(--ink);
+  position: relative; flex: 1; margin: 0; padding: 10px 12px; border-radius: 18px;
+  background: #fff; border: 3px solid #ffd0e6; font-weight: 800; font-size: 15px; line-height: 1.45; color: var(--ink);
   box-shadow: 0 4px 10px rgba(92, 38, 128, .1);
+  word-break: keep-all; overflow-wrap: anywhere;   /* 中文只在標點後換行，太長才硬斷 */
+  text-wrap: balance;
 }
 .hint-bubble p::before { content: ''; position: absolute; left: -12px; top: 50%; margin-top: -9px; border: 9px solid transparent; border-right: 11px solid #ffd0e6; border-left: 0; }
 
 /* 過關卡 */
-.win-card { padding-top: 46px; }
+.win-card { padding-top: 54px; }
 .big-stars { display: flex; justify-content: center; align-items: flex-end; gap: 4px; height: 96px; margin-top: 2px; }
 .bs { width: 78px; height: 78px; fill: #ece2f6; stroke: #fff; stroke-width: 1.6; paint-order: stroke; filter: drop-shadow(0 3px 3px rgba(90, 40, 120, .25)); }
 .bs:nth-child(2) { width: 96px; height: 96px; transform: translateY(-12px); }
@@ -644,7 +657,7 @@ svg use { pointer-events: none; }
 .btn-col { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: 100%; margin-top: 4px; }
 .btn-row { display: flex; gap: 12px; }
 .btn-row .btn { flex: 1; padding-left: 12px; padding-right: 12px; }
-.lose-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); }
+.lose-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
 .lose-text .row { display: inline-flex; align-items: center; gap: 2px; margin: 4px 8px 0; padding: 2px 12px 2px 4px; border-radius: 999px; background: #f3ebff; }
 .lose-text img, .lose-text .toy-fallback { width: 38px; height: 38px; object-fit: contain; vertical-align: middle; }
 .lose-text .toy-fallback { --fs: 14px; border-width: 2px; display: inline-grid; }
@@ -701,6 +714,8 @@ svg use { pointer-events: none; }
   background: rgba(255, 255, 255, .95); border: 3px solid #fff;
   box-shadow: 0 0 0 3px rgba(255, 120, 190, .5), var(--shadow);
   font-weight: 900; font-size: 19px; color: var(--ink);
+  word-break: keep-all; overflow-wrap: anywhere;
+  text-wrap: balance;
   pointer-events: none;
   transition: transform .3s cubic-bezier(.3, 1.6, .5, 1), opacity .2s;
 }

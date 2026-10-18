@@ -34,6 +34,7 @@
 // * points[] labels: one per match group, one per firing special / combo (sum of its 20 × mult),
 //   one per jelly layer (100); labels on the same cell are merged. sum(points) === gained.
 // * findHint() / hasValidMove() never touch the PRNG, so calling them does not change the game.
+//   findHint prefers combos, then bigger matches, matches that fire specials, and matches on jelly.
 // * sugarCrush(n): one `transform` event per converted piece, then repeated rounds of
 //   "fire every special on the board" (clear, cascade 1) + gravity/cascades until no special is left.
 //   No shuffle is appended at the end of sugarCrush.
@@ -496,7 +497,8 @@ export function createEngine(opts = {}) {
     let s = h >= 5 || v >= 5 ? 300 : h >= 3 && v >= 3 ? 200 : h === 4 || v === 4 ? 150 : 100;
     s += (h >= 3 ? h : 0) + (v >= 3 ? v : 0);
     const k = kAt(r, c);
-    const sp = (y, x) => (grid[y][x].special !== NONE ? 40 : 0);
+    // specials in the match fire (+40); cells on jelly help the jelly goal (+35)
+    const sp = (y, x) => (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
     if (h >= 3) {
       for (let x = c - 1; kAt(r, x) === k; x--) s += sp(r, x);
       for (let x = c + 1; kAt(r, x) === k; x++) s += sp(r, x);

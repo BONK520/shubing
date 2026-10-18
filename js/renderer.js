@@ -116,7 +116,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   // ---- 快取 ----
   const tileCache = new Map();
   let cacheS = 0;
-  let bgCache = null, clipPath = null, jellyCache = [], glowImg = null, starImg = null;
+  let bgCache = null, clipPath = null, jellyCache = [], rimCache = [], glowImg = null, starImg = null;
   const fluffCache = new Map();
   const spriteCache = new WeakMap();
   const watched = new WeakSet();
@@ -387,7 +387,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function getTile(kind, special) {
     const S = Math.max(4, Math.round(cs * dpr));
-    if (S !== cacheS) { tileCache.clear(); cacheS = S; jellyCache = []; glowImg = null; }
+    if (S !== cacheS) { tileCache.clear(); cacheS = S; jellyCache = []; rimCache = []; glowImg = null; }
     const key = special === 'bomb' || kind < 0 ? 'bomb' : kind + '|' + special;
     let e = tileCache.get(key);
     if (!e) {
@@ -452,6 +452,45 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     jellyCache[level] = c;
     return c;
   }
+  // 果凍外框：畫在方塊上面一圈發亮的粉紅邊，方塊蓋住果凍時也看得出哪幾格還有果凍（兩層 = 深桃紅雙框）
+  function getJellyRim(level) {
+    if (rimCache[level]) return rimCache[level];
+    const S = Math.max(4, Math.round(cs * dpr)), c = makeCanvas(S, S), g = c.getContext('2d');
+    const two = level >= 2, inset = S * 0.05, w = S - 2 * inset, rad = S * 0.22;
+    const col = two ? [214, 40, 140] : [255, 92, 176];
+    g.save();
+    g.shadowColor = css(col, 0.9); g.shadowBlur = S * 0.07;
+    rr(g, inset, inset, w, w, rad);
+    g.lineWidth = S * (two ? 0.085 : 0.07); g.strokeStyle = css(col, 0.95); g.stroke();
+    g.restore();
+    rr(g, inset, inset, w, w, rad);
+    g.lineWidth = S * 0.022; g.strokeStyle = 'rgba(255,255,255,0.75)'; g.stroke();
+    if (two) {
+      const i2 = S * 0.12;
+      rr(g, i2, i2, S - 2 * i2, S - 2 * i2, rad * 0.75);
+      g.lineWidth = S * 0.03; g.strokeStyle = css(col, 0.85); g.stroke();
+    }
+    // 左上角的小亮點
+    g.beginPath(); g.arc(inset + rad * 0.55, inset + rad * 0.55, S * 0.028, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.95)'; g.fill();
+    rimCache[level] = c;
+    return c;
+  }
+  function drawJellyRims(t) {
+    for (let r = 0; r < rows; r++) {
+      const jr = jelly[r];
+      if (!jr) continue;
+      for (let c = 0; c < cols; c++) {
+        const lv = jr[c] | 0;
+        if (lv <= 0 || !mask[r][c]) continue;
+        const jf = jellyFx.get(r * 1024 + c);
+        let s = 1;
+        if (jf) { const p = (t - jf.t0) / 420; if (p < 1) s = 1 + 0.13 * Math.sin(p * Math.PI * 3) * (1 - p); }
+        const x = ox + (c + 0.5) * cs, y = oy + (r + 0.5) * cs, z = cs * s;
+        ctx.drawImage(getJellyRim(Math.min(2, lv)), x - z / 2, y - z / 2, z, z);
+      }
+    }
+  }
   function buildBg() {
     bgCache = null; clipPath = null;
     if (!rows || !cols || !W) return;
@@ -494,7 +533,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const x = Math.round(m + c2 * S), y = Math.round(m + r * S);
       g.fillRect(x, y, Math.round(m + (c2 + 1) * S) - x, Math.round(m + (r + 1) * S) - y);
     }
-    bgCache = { c, x: ox - MARGIN * cs, y: oy - MARGIN * cs, w: Wd / dpr, h: Hd / dpr };
+    // 橫幅出現時用的暗色遮罩：和盤面外框同形狀（不會在盤面外畫出一個方框）
+    const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');
+    sg.drawImage(outer, 0, 0);
+    sg.globalCompositeOperation = 'source-in';
+    sg.fillStyle = 'rgb(40,12,70)'; sg.fillRect(0, 0, Wd, Hd);
+    bgCache = { c, shade, x: ox - MARGIN * cs, y: oy - MARGIN * cs, w: Wd / dpr, h: Hd / dpr };
     // 掉落方塊只畫在格子裡（新方塊從盤面上緣「長」出來）
     const p = new Path2D();
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
@@ -1129,12 +1173,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const s = st.s * (age < 300 ? lerp(1, 1.12, easeOutBack(age / 300, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
-    const info = pieceInfo(v.kind), { spin, sprite } = imgsFor(info.id);
+    const info = pieceInfo(v.kind), { spin, sprite, spinScale } = imgsFor(info.id);
     const box = cs * (v.special === 'wrap' ? SPR_WRAP : SPR) * s;
     if (usable(spin)) {
       ctx.drawImage(e.base, cx - P / 2, cy - P / 2, P, P);
+      // spinScale（manifest）：旋轉序列裡玩具比靜態圖小多少，放大回來讓大小一致
       const fw = natW(spin) / 6, fh = natH(spin) / 4, i = Math.floor(age / 50) % 24;
-      ctx.drawImage(spin, (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, cx - box / 2, cy - box / 2, box, box);
+      const sb = box / clamp(+spinScale || 1, 0.5, 2);
+      ctx.drawImage(spin, (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, cx - sb / 2, cy - sb / 2, sb, sb);
       if (e.top) ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
     } else if (usable(sprite)) {
       // 沒有旋轉序列：靜態圖輕輕搖擺
@@ -1197,6 +1243,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else drawVisual(v, st, t);
     }
     for (const [v, st] of late) drawVisual(v, st, t);
+    drawJellyRims(t);
     if (falling.length) {
       ctx.save();
       if (clipPath) ctx.clip(clipPath);
@@ -1444,8 +1491,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const pin = clamp01((t - b.t0) / 340), pout = clamp01((t - b.t0 - b.dur + 320) / 320);
     const vis = easeOutCubic(pin) * (1 - easeInCubic(pout));
     ctx.save();
-    ctx.fillStyle = `rgba(40,12,70,${0.28 * vis})`;
-    ctx.fillRect(0, 0, W, H);
+    if (bgCache && bgCache.shade) {
+      ctx.globalAlpha = 0.34 * vis;
+      ctx.drawImage(bgCache.shade, bgCache.x, bgCache.y, bgCache.w, bgCache.h);
+      ctx.globalAlpha = 1;
+    }
     const bh = unit * (b.sub ? 2.5 : 1.9);
     ctx.save();
     ctx.translate(cx, cy);

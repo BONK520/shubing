@@ -1,6 +1,6 @@
 # 無頭瀏覽器小工具：在專案根目錄開臨時伺服器，打開頁面、執行 JS、截圖、印出 console 錯誤
 # 用法（在專案根目錄）:
-#   python tools/browse.py /index.html --shot tools/out/check/a.png --w 390 --h 844 --wait 1500
+#   python tools/browse.py index.html --shot tools/out/check/a.png --w 390 --h 844 --wait 1500
 #   python tools/browse.py /index.html --eval "document.title"
 #   python tools/browse.py /index.html --script my_steps.py   # my_steps.py 裡定義 run(page, base_url)
 import argparse, functools, http.server, json, os, sys, threading, runpy
@@ -35,6 +35,8 @@ def main():
     ap.add_argument('--script')
     ap.add_argument('--touch', action='store_true')
     a = ap.parse_args()
+    # Git Bash 會把 /index.html 改寫成 C:/Program Files/Git/index.html，所以也接受不加斜線的寫法
+    a.path = '/' + a.path.replace('\\', '/').split('/Git/', 1)[-1].lstrip('/')
     srv = serve()
     base = f'http://127.0.0.1:{srv.server_port}'
     logs = []
