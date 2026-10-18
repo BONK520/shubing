@@ -1,0 +1,41 @@
+{
+  "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。",
+  "sprite": { "size": 256, "render": 1024 },
+  "spin": { "frames": 24, "cols": 6, "rows": 4, "size": 192, "render": 384, "webpQuality": 85 },
+  "defaults": {
+    "view": { "pitch": 14, "exposure": 1.0, "tone": "neutral", "key": 1.6, "fillLight": 0.5, "rim": 1.2, "fill": 0.95 }
+  },
+  "pieces": [
+    { "id": "dog", "source": "scan",
+      "view": { "yaw": 300, "pitch": 36, "exposure": 2.4, "key": 2.2, "fillLight": 1.0, "rim": 6 },
+      "grade": { "gamma": 0.78, "gain": 1.08, "contrast": 1.15, "tint": [1.05, 1.0, 0.94] } },
+    { "id": "sloth", "source": "scan",
+      "view": { "yaw": 10, "pitch": 12, "exposure": 1.0, "fillLight": 0.6, "rim": 1.0 } },
+    { "id": "egg", "source": "scan",
+      "view": { "yaw": 10, "pitch": 12, "exposure": 1.05, "tone": "aces", "fillLight": 0.4, "rim": 1.0 } },
+    { "id": "bunny", "source": "placeholder",
+      "view": { "yaw": 18, "pitch": 10 } },
+    { "id": "frog", "source": "placeholder",
+      "view": { "yaw": 15, "pitch": 16 } },
+    { "id": "whale", "source": "placeholder",
+      "view": { "yaw": 32, "pitch": 14 } }
+  ],
+  "trio": {
+    "_doc": "彩色炸彈圖。layers 由後往前畫；h = 高度、cx = 水平中心、by = 底部位置（輸出 px，最後整組會再縮放置中到 fill）。",
+    "size": [384, 384], "outline": 6, "group": true, "fill": 0.9,
+    "layers": [
+      { "id": "sloth", "view": { "yaw": 25 }, "h": 205, "cx": 120, "by": 262 },
+      { "id": "egg",   "view": { "yaw": -12 }, "h": 190, "cx": 268, "by": 262 },
+      { "id": "dog",   "view": { "yaw": 292, "pitch": 30 }, "h": 165, "cx": 196, "by": 352 }
+    ]
+  },
+  "hero": {
+    "_doc": "標題畫面的三隻合照（1024x640）。",
+    "size": [1024, 640], "outline": 6, "unit": 2.0, "group": false, "fill": 0.92,
+    "layers": [
+      { "id": "sloth", "view": { "yaw": 28 }, "h": 380, "cx": 290, "by": 520, "rot": 4 },
+      { "id": "egg",   "view": { "yaw": -18 }, "h": 360, "cx": 740, "by": 520, "rot": -4 },
+      { "id": "dog",   "view": { "yaw": 292, "pitch": 30 }, "h": 300, "cx": 512, "by": 610 }
+    ]
+  }
+}

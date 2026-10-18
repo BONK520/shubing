@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8fcfff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="用自己 3D 掃描的毛絨玩具玩的三消小遊戲">
+<title>毛絨消消樂</title>
+<link rel="icon" href="assets/sprites/sloth.png">
+<link rel="apple-touch-icon" href="assets/sprites/sloth.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 共用小圖示 -->
+<svg class="defs" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6a8"/>
+      <stop offset=".45" stop-color="#ffd23f"/>
+      <stop offset="1" stop-color="#ff9d1c"/>
+    </linearGradient>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.13L12 16.68l-5.5 2.9 1.05-6.13L3.1 9.1l6.15-.9z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-dasharray="2.98 2.99"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="3.4"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><path d="M8 11V8.2a4 4 0 0 1 8 0V11" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><rect x="5" y="10.5" width="14" height="10" rx="3"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3.5 9.2h3.8L12 5.3v13.4l-4.7-3.9H3.5z"/><path d="M15.3 9a4.2 4.2 0 0 1 0 6M17.8 6.4a8 8 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2.2v11.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3.1" ry="2.5"/><ellipse cx="16.6" cy="15.4" rx="3.1" ry="2.5"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8l8.2 4.6v9.2L12 21.2l-8.2-4.6V7.4z M3.8 7.4L12 12l8.2-4.6 M12 12v9.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<!-- 背景：天空、光點、雲 -->
+<div class="sky" aria-hidden="true">
+  <i class="bk b1"></i><i class="bk b2"></i><i class="bk b3"></i><i class="bk b4"></i><i class="bk b5"></i><i class="bk b6"></i>
+  <i class="cloud c1"></i><i class="cloud c2"></i><i class="cloud c3"></i>
+</div>
+
+<div id="app">
+
+  <!-- 載入中 -->
+  <section id="scr-loading" class="screen active" aria-label="載入中">
+    <div class="load-wrap">
+      <h1 class="logo logo-sm" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+      <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
+      <p class="load-text" id="load-text">毛絨玩具準備中…</p>
+    </div>
+  </section>
+
+  <!-- 標題 -->
+  <section id="scr-title" class="screen" aria-label="標題畫面">
+    <div class="topbar">
+      <span class="spacer"></span>
+      <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
+    </div>
+    <div class="title-main">
+      <h1 class="logo" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+      <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
+      <div class="title-toys" id="title-toys"></div>
+      <div class="title-btns">
+        <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg>開始遊戲</button>
+        <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg>3D / AR 看看</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 關卡地圖 -->
+  <section id="scr-map" class="screen" aria-label="關卡地圖">
+    <div class="topbar">
+      <button class="icon-btn" id="map-back" aria-label="回到標題"><svg><use href="#i-back"/></svg></button>
+      <div class="pill star-pill" aria-label="星星總數"><svg class="pill-star"><use href="#i-star"/></svg><b id="map-stars">0</b><span id="map-stars-max">/ 0</span></div>
+      <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
+    </div>
+    <div class="map-scroll" id="map-scroll">
+      <div class="map-inner" id="map-inner"></div>
+    </div>
+  </section>
+
+  <!-- 遊戲 -->
+  <section id="scr-game" class="screen" aria-label="遊戲">
+    <div class="topbar game-top">
+      <button class="icon-btn" id="btn-pause" aria-label="暫停"><svg><use href="#i-pause"/></svg></button>
+      <div class="pill level-pill">第 <b id="hud-level">1</b> 關</div>
+      <button class="icon-btn dbg" id="btn-dbg-win" aria-label="測試：直接過關" hidden>⚡</button>
+    </div>
+    <div class="hud">
+      <div class="hud-moves" id="hud-moves-box">
+        <span class="lbl">步數</span>
+        <b id="hud-moves">0</b>
+      </div>
+      <div class="hud-goal">
+        <span class="lbl">目標</span>
+        <div class="goal-items" id="hud-goal"></div>
+      </div>
+      <div class="hud-score">
+        <div class="score-line"><span class="lbl">分數</span><b id="hud-score">0</b></div>
+        <div class="starbar" id="starbar">
+          <div class="starbar-track"><div class="starbar-fill" id="starbar-fill"></div></div>
+          <svg class="sb-star" style="--p:33%"><use href="#i-star"/></svg>
+          <svg class="sb-star" style="--p:66%"><use href="#i-star"/></svg>
+          <svg class="sb-star" style="--p:100%"><use href="#i-star"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="board-wrap" id="board-wrap">
+      <canvas id="board" aria-label="遊戲盤面：按住方塊拖向旁邊，或先後點兩個相鄰方塊來交換"></canvas>
+    </div>
+    <div class="cheer" id="cheer" aria-hidden="true"></div>
+  </section>
+</div>
+
+<!-- 關卡開始卡 -->
+<div class="modal" id="m-start" role="dialog" aria-modal="true" aria-labelledby="ms-title" aria-hidden="true">
+  <div class="card">
+    <button class="icon-btn close" data-close aria-label="關閉"><svg><use href="#i-close"/></svg></button>
+    <div class="ribbon"><span id="ms-title">第 1 關</span></div>
+    <div class="card-stars" id="ms-stars"></div>
+    <div class="goal-box">
+      <div class="goal-box-lbl">目標</div>
+      <div class="goal-big" id="ms-goal"></div>
+      <div class="goal-text" id="ms-goal-text"></div>
+    </div>
+    <div class="moves-line">有 <b id="ms-moves">20</b> 步可以用</div>
+    <div class="hint-bubble" id="ms-hint-box">
+      <span class="hint-avatar" id="ms-avatar"></span>
+      <p id="ms-hint"></p>
+    </div>
+    <button class="btn green xl" id="ms-play"><svg class="bi"><use href="#i-play"/></svg>開始！</button>
+  </div>
+</div>
+
+<!-- 過關 -->
+<div class="modal" id="m-win" role="dialog" aria-modal="true" aria-labelledby="mw-title" aria-hidden="true">
+  <div class="confetti" id="confetti" aria-hidden="true"></div>
+  <div class="card win-card">
+    <div class="ribbon"><span id="mw-title">過關！</span></div>
+    <div class="big-stars" id="mw-stars" aria-label="得到星星">
+      <svg class="bs" style="--k:0"><use href="#i-star"/></svg>
+      <svg class="bs" style="--k:1"><use href="#i-star"/></svg>
+      <svg class="bs" style="--k:2"><use href="#i-star"/></svg>
+    </div>
+    <div class="score-box">
+      <span class="lbl">分數</span>
+      <b id="mw-score">0</b>
+      <em id="mw-best" hidden>新紀錄！</em>
+      <span class="best-line" id="mw-best-line"></span>
+    </div>
+    <div class="modal-toys" id="mw-toys"></div>
+    <div class="btn-col">
+      <button class="btn green xl" id="mw-next">下一關</button>
+      <div class="btn-row">
+        <button class="btn blue" id="mw-retry">再玩一次</button>
+        <button class="btn purple" id="mw-map">地圖</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 失敗 -->
+<div class="modal" id="m-lose" role="dialog" aria-modal="true" aria-labelledby="ml-title" aria-hidden="true">
+  <div class="card lose-card">
+    <div class="ribbon sad"><span id="ml-title">步數用完了</span></div>
+    <div class="modal-toys sad" id="ml-toys"></div>
+    <p class="lose-text" id="ml-text"></p>
+    <div class="btn-col">
+      <button class="btn green xl" id="ml-retry">再試一次</button>
+      <button class="btn purple" id="ml-map">地圖</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定 / 暫停 -->
+<div class="modal sheet" id="m-settings" role="dialog" aria-modal="true" aria-labelledby="set-title" aria-hidden="true">
+  <div class="card sheet-card">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <h2 id="set-title">設定</h2>
+    <div class="toggles">
+      <button class="toggle" id="tg-sound" aria-pressed="true"><svg class="ti"><use href="#i-sound"/></svg><span class="tl">音效</span><span class="sw" aria-hidden="true"><i></i></span></button>
+      <button class="toggle" id="tg-music" aria-pressed="true"><svg class="ti"><use href="#i-music"/></svg><span class="tl">音樂</span><span class="sw" aria-hidden="true"><i></i></span></button>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn blue" id="set-map">回到地圖</button>
+      <button class="btn orange" id="set-restart">重新開始</button>
+      <button class="btn green" id="set-close">繼續</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<noscript><p class="fatal">這個遊戲需要開啟 JavaScript。</p></noscript>
+
+<!-- 載入保險：主程式沒有啟動（例如用 file:// 直接開）就顯示說明 -->
+<script>
+  setTimeout(function () {
+    if (window.__plushBooted) return;
+    var t = document.getElementById('load-text');
+    if (t) t.innerHTML = '載入失敗了 QQ<br><small>請用 http 伺服器開啟（在專案資料夾執行 python -m http.server 8000），然後重新整理。</small>';
+    document.documentElement.classList.add('load-failed');
+  }, 9000);
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

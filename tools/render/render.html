@@ -1,36 +1,68 @@
 <!doctype html><html><body style="margin:0;background:transparent">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
 <script type="module">
+// 無頭渲染器：shoot.py 會呼叫 window.shot(items, view) 拿透明背景 PNG（data URL）
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const r = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true});
-r.setClearColor(0x000000,0); r.toneMapping = THREE.ACESFilmicToneMapping;
+r.setClearColor(0x000000, 0);
 document.body.appendChild(r.domElement);
 const scene = new THREE.Scene();
-const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(1,2,1.5); scene.add(key);
-const rim = new THREE.DirectionalLight(0xddeeff, 0); rim.position.set(-1.5,1,-2); scene.add(rim);
-const cam = new THREE.PerspectiveCamera(30,1,0.01,100);
+const pm = new THREE.PMREMGenerator(r);
+scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+scene.add(cam);
+// 燈光掛在相機上：不管 yaw 多少，光都從同一個方向打（轉盤序列的光影才會一致）
+function camLight(color, dir) {
+  const l = new THREE.DirectionalLight(color, 0), t = new THREE.Object3D();
+  t.position.set(0, 0, -10); l.position.set(dir[0], dir[1], -10 + dir[2]);
+  cam.add(t); cam.add(l); l.target = t; return l;
+}
+const key  = camLight(0xffffff, [1.0, 1.4, 1.2]);    // 右上前方主光
+const fill = camLight(0xfff4ea, [-1.3, 0.3, 1.0]);   // 左前方補光
+const rimL = camLight(0xdde8ff, [-1.2, 0.9, -1.4]);  // 左後方背光（勾輪廓）
+const rimR = camLight(0xdde8ff, [1.2, 0.7, -1.4]);   // 右後方背光
+const TONE = {aces: THREE.ACESFilmicToneMapping, neutral: THREE.NeutralToneMapping, agx: THREE.AgXToneMapping};
 const cache = {}; const root = new THREE.Group(); scene.add(root);
-async function get(url){ if(!cache[url]){ const g = await new GLTFLoader().loadAsync(url); const o=g.scene;
-  const box=new THREE.Box3().setFromObject(o); const c=box.getCenter(new THREE.Vector3()); o.position.set(-c.x,-box.min.y,-c.z);
-  const p=new THREE.Group(); p.add(o); p.userData.size=box.getSize(new THREE.Vector3()); cache[url]=p;} return cache[url]; }
-// items: [{url, x, z, yaw, scale}] ; view: {yaw,pitch,fill,exposure,rim,w,h}
+async function get(url) {
+  if (!cache[url]) {
+    const g = await new GLTFLoader().loadAsync(url); const o = g.scene;
+    const box = new THREE.Box3().setFromObject(o); const c = box.getCenter(new THREE.Vector3());
+    o.position.set(-c.x, -box.min.y, -c.z);
+    const p = new THREE.Group(); p.add(o); p.userData.size = box.getSize(new THREE.Vector3()); cache[url] = p;
+  }
+  return cache[url];
+}
+// items: [{url, x, z, yaw, scale, albedo}]
+// view:  {yaw, pitch, fill, exposure, key, fillLight, rim, env, tone, lockFrame, w, h}
 window.shot = async (items, v) => {
-  r.setSize(v.w, v.h); cam.aspect = v.w/v.h; cam.updateProjectionMatrix();
-  r.toneMappingExposure = v.exposure ?? 1.1; rim.intensity = v.rim ?? 0;
+  r.setSize(v.w, v.h); cam.aspect = v.w / v.h; cam.updateProjectionMatrix();
+  r.toneMapping = TONE[v.tone || 'aces']; r.toneMappingExposure = v.exposure ?? 1.1;
+  scene.environmentIntensity = v.env ?? 1;
+  key.intensity = v.key ?? 1.6; fill.intensity = v.fillLight ?? 0;
+  rimL.intensity = v.rim ?? 0; rimR.intensity = (v.rim ?? 0) * (v.rimBalance ?? 0.6);
   root.clear();
-  for (const it of items){ const o = await get(it.url); const s = it.scale ?? 1/o.userData.size.y*0.15;
-    o.scale.setScalar(s); o.rotation.y = THREE.MathUtils.degToRad(it.yaw||0); o.position.set(it.x||0,0,it.z||0); root.add(o); }
+  for (const it of items) {
+    const o = await get(it.url); const s = it.scale ?? 1 / o.userData.size.y * 0.15;
+    o.scale.setScalar(s); o.rotation.y = THREE.MathUtils.degToRad(it.yaw || 0); o.position.set(it.x || 0, 0, it.z || 0);
+    o.traverse(m => { if (!m.material) return;
+      for (const mat of [].concat(m.material)) { if (!mat.color) continue;
+        if (!mat.userData.c0) mat.userData.c0 = mat.color.clone();
+        mat.color.copy(mat.userData.c0).multiplyScalar(it.albedo ?? 1); } });
+    root.add(o);
+  }
   const box = new THREE.Box3().setFromObject(root); const c = box.getCenter(new THREE.Vector3());
   const sph = box.getBoundingSphere(new THREE.Sphere());
-  if (v.lockFrame && items.length === 1) { const o = root.children[0], sz = o.userData.size.clone().multiplyScalar(o.scale.x);
-    c.set(o.position.x, sz.y/2, o.position.z); sph.radius = Math.hypot(Math.hypot(sz.x, sz.z)/2, sz.y/2); }
-  const fov = THREE.MathUtils.degToRad(cam.fov/2); const fovx = Math.atan(Math.tan(fov)*cam.aspect);
-  const d = sph.radius / Math.sin(Math.min(fov,fovx)) / (v.fill ?? 0.95);
-  const y = THREE.MathUtils.degToRad(v.yaw||0), p = THREE.MathUtils.degToRad(v.pitch||15);
-  cam.position.set(c.x+d*Math.cos(p)*Math.sin(y), c.y+d*Math.sin(p), c.z+d*Math.cos(p)*Math.cos(y)); cam.lookAt(c);
+  if (v.lockFrame && items.length === 1) {   // 用模型本身尺寸決定構圖，轉一圈大小不會跳
+    const o = root.children[0], sz = o.userData.size.clone().multiplyScalar(o.scale.x);
+    c.set(o.position.x, sz.y / 2, o.position.z); sph.radius = Math.hypot(Math.hypot(sz.x, sz.z) / 2, sz.y / 2);
+  }
+  const fov = THREE.MathUtils.degToRad(cam.fov / 2); const fovx = Math.atan(Math.tan(fov) * cam.aspect);
+  const d = sph.radius / Math.sin(Math.min(fov, fovx)) / (v.fill ?? 0.95);
+  const y = THREE.MathUtils.degToRad(v.yaw || 0), p = THREE.MathUtils.degToRad(v.pitch ?? 15);
+  cam.position.set(c.x + d * Math.cos(p) * Math.sin(y), c.y + d * Math.sin(p), c.z + d * Math.cos(p) * Math.cos(y));
+  cam.lookAt(c); cam.updateMatrixWorld(true);
   r.render(scene, cam); return r.domElement.toDataURL('image/png');
 };
 window.ready = true;

@@ -1,0 +1,96 @@
+{
+  "pieces": [
+    {
+      "id": "dog",
+      "sprite": "assets/sprites/dog.png",
+      "spin": "assets/sprites/dog_spin.webp",
+      "glb": "assets/models/dog.glb",
+      "usdz": "assets/models/dog.usdz",
+      "placeholder": false,
+      "spinScale": 0.84,
+      "sizeCm": [
+        22.3,
+        11.6,
+        13.5
+      ]
+    },
+    {
+      "id": "sloth",
+      "sprite": "assets/sprites/sloth.png",
+      "spin": "assets/sprites/sloth_spin.webp",
+      "glb": "assets/models/sloth.glb",
+      "usdz": "assets/models/sloth.usdz",
+      "placeholder": false,
+      "spinScale": 1.0,
+      "sizeCm": [
+        27.5,
+        20.4,
+        14.0
+      ]
+    },
+    {
+      "id": "egg",
+      "sprite": "assets/sprites/egg.png",
+      "spin": "assets/sprites/egg_spin.webp",
+      "glb": "assets/models/egg.glb",
+      "usdz": "assets/models/egg.usdz",
+      "placeholder": false,
+      "spinScale": 1.0,
+      "sizeCm": [
+        12.7,
+        14.7,
+        10.5
+      ]
+    },
+    {
+      "id": "bunny",
+      "sprite": "assets/sprites/bunny.png",
+      "spin": "assets/sprites/bunny_spin.webp",
+      "glb": "assets/models/bunny.glb",
+      "usdz": "assets/models/bunny.usdz",
+      "placeholder": true,
+      "spinScale": 1.0,
+      "sizeCm": [
+        9.8,
+        19.2,
+        10.1
+      ]
+    },
+    {
+      "id": "frog",
+      "sprite": "assets/sprites/frog.png",
+      "spin": "assets/sprites/frog_spin.webp",
+      "glb": "assets/models/frog.glb",
+      "usdz": "assets/models/frog.usdz",
+      "placeholder": true,
+      "spinScale": 1.0,
+      "sizeCm": [
+        15.4,
+        11.8,
+        12.5
+      ]
+    },
+    {
+      "id": "whale",
+      "sprite": "assets/sprites/whale.png",
+      "spin": "assets/sprites/whale_spin.webp",
+      "glb": "assets/models/whale.glb",
+      "usdz": "assets/models/whale.usdz",
+      "placeholder": true,
+      "spinScale": 0.904,
+      "sizeCm": [
+        14.5,
+        13.3,
+        20.1
+      ]
+    }
+  ],
+  "trio": "assets/sprites/trio.png",
+  "hero": "assets/sprites/hero.png",
+  "spin": {
+    "frames": 24,
+    "cols": 6,
+    "rows": 4,
+    "size": 192
+  }
+}

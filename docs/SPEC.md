@@ -37,9 +37,9 @@ UI language: Traditional Chinese (zh-TW). Code comments: short, Chinese or Engli
 
 ```js
 export const PIECES = [
-  { id: 'dog',   name: '小狗', color: '#8fd3ff', scan: true  },
-  { id: 'sloth', name: '樹懶', color: '#9be8c8', scan: true  },
-  { id: 'egg',   name: '蛋蛋', color: '#ffb3d1', scan: true  },
+  { id: 'dog',   name: '皮蛋',   color: '#8fd3ff', scan: true  },  // black plush dog
+  { id: 'sloth', name: '薯餅',   color: '#9be8c8', scan: true  },  // sloth (the repo is named after it)
+  { id: 'egg',   name: '蛋黃哥', color: '#ffb3d1', scan: true  },  // Gudetama egg
   { id: 'bunny', name: '兔兔', color: '#c9b6ff', scan: false },  // placeholder until a real scan exists
   { id: 'frog',  name: '呱呱', color: '#ffe08a', scan: false },  // placeholder
   { id: 'whale', name: '小鯨', color: '#ffc49b', scan: false },  // placeholder
@@ -52,6 +52,7 @@ export const glbPath    = id => `assets/models/${id}.glb`;
 export const usdzPath   = id => `assets/models/${id}.usdz`;
 ```
 
+The three scanned toys are named 皮蛋 (dog), 薯餅 (sloth) and 蛋黃哥 (egg); always use these names in UI text.
 A piece's **kind** is its index in `PIECES`. The color bomb has kind `-1`.
 Replacing a placeholder later = new files with the same id (or edit this list). Nothing else in the game
 may hard-code piece ids, except `levels.js`.
