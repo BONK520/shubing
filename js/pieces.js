@@ -6,7 +6,7 @@ export const PIECES = [
   { id: 'egg',   name: '蛋黃哥', color: '#ffb3d1', scan: true  },  // Gudetama egg
   { id: 'bunny', name: '兔兔', color: '#c9b6ff', scan: false },  // placeholder until a real scan exists
   { id: 'frog',  name: '呱呱', color: '#ffe08a', scan: false },  // placeholder
-  { id: 'whale', name: '小鯨', color: '#ffc49b', scan: false },  // placeholder
+  { id: 'moodeng', name: '彈跳豬', color: '#ffc49b', scan: false },  // Moo Deng（程式做的暫代模型）
 ];
 export const TRIO = { id: 'trio', name: '三寶合照' };           // the color bomb picture
 export const spritePath = id => `assets/sprites/${id}.png`;

@@ -1,7 +1,7 @@
-# 程式產生三隻「暫代」毛絨玩具（兔兔 bunny、呱呱 frog、小鯨 whale），輸出 GLB + USDZ
+# 程式產生三隻「暫代」毛絨玩具（兔兔 bunny、呱呱 frog、彈跳豬 moodeng = Moo Deng 河馬寶寶），輸出 GLB + USDZ
 # 等之後有真正的 Object Capture 掃描，把 tools/source/<id>.usdz 放進去，build_assets.py 就會改用掃描檔。
 #
-# 用法（在專案根目錄）: python tools/make_placeholders.py [bunny frog whale] [--out tools/out/models]
+# 用法（在專案根目錄）: python tools/make_placeholders.py [bunny frog moodeng] [--out tools/out/models]
 #
 # 座標：Y 朝上、單位公尺、底部在 y=0、臉朝 +Z（yaw 0 = 正面），和掃描檔一樣 metersPerUnit = 1。
 # 每個部件是平滑的參數曲面（橢球、沿曲線掃掠的管子），各自有 PBR 材質（粗糙度 0.9、布料法線貼圖、
@@ -344,43 +344,71 @@ def build_frog():
     return t.finish()
 
 
-def build_whale():
-    t = Toy('whale')
-    t.mat('skin', '#3d94e6', sheen=0.3)
-    t.mat('belly', '#e2f3ff', sheen=0.3)
-    t.mat('fin', '#2f7fd2', sheen=0.3)
-    t.mat('water', '#8fdcff', rough=0.35, fabric=False, sheen=0)
-    t.mat('blush', '#ff9db6', sheen=0.2)
-    t.mat('line', '#24324a', rough=0.8, fabric=False, sheen=0)
-    t.mat('eye', '#141822', rough=0.18, fabric=False, sheen=0, ao=False)
+def build_moodeng():
+    """Moo Deng（หมูเด้ง，彈跳豬）：泰國 Khao Kheow 開放動物園的侏儒河馬寶寶，做成圓滾滾的毛絨版。
+    四隻短短的腳、超寬的圓鼻口（鼻孔長在上面）、小眼睛、小圓耳朵、張著嘴的招牌表情、粉紅臉頰。
+    顏色用比真的河馬淺的灰粉紫，64px 也看得出來，不會跟深灰色的皮蛋搞混。"""
+    t = Toy('moodeng')
+    t.mat('skin', '#8f7d89', sheen=0.35)       # 灰粉紫的身體
+    t.mat('snout', '#9c8893', sheen=0.35)      # 鼻口稍微亮一點
+    t.mat('chin', '#a98893', sheen=0.3)        # 下巴：偏粉的灰
+    t.mat('pink', '#c49aa3', sheen=0.3)        # 肚子
+    t.mat('inner', '#b8435f', sheen=0.15)      # 嘴巴裡面
+    t.mat('tongue', '#ff8ea5', sheen=0.2)
+    t.mat('tooth', '#fffaf2', rough=0.5, fabric=False, sheen=0)
+    t.mat('blush', '#ff86a3', sheen=0.2)
+    t.mat('earin', '#eba0ae', sheen=0.25)
+    t.mat('nostril', '#4a2f3b', rough=0.8, fabric=False, sheen=0)
+    t.mat('nail', '#f3dfd9', sheen=0.2)
+    t.mat('eye', '#1d1416', rough=0.18, fabric=False, sheen=0, ao=False)
     t.mat('hl', '#ffffff', rough=0.3, fabric=False, sheen=0, emissive=(1, 1, 1), ao=False)
-    # 身體：從頭（+Z）往尾巴（-Z）掃掠，尾巴微微翹起
-    path = [(0, 0.056, 0.078), (0, 0.054, 0.02), (0, 0.051, -0.04), (0, 0.060, -0.085), (0, 0.084, -0.114)]
-    prof = profile([(0, 0), (0.006, 0.28), (0.02, 0.5), (0.05, 0.7), (0.1, 0.86), (0.2, 0.98), (0.32, 1.0),
-                    (0.5, 0.86), (0.68, 0.6), (0.84, 0.36), (0.95, 0.24), (0.99, 0.13), (1, 0)], 0.066, 0.056)
-    t.add('body', 'skin', sweep(path, prof, 64, 72, hint=(0, 1, 0)), deform=flat_bottom(0.012, 0.3))
-    t.ell('belly', 'belly', (0.050, 0.030, 0.052), (0, 0.033, 0.030), nu=48, nv=26, deform=flat_bottom(0.012, 0.3))
-    # 尾鰭：兩片葉子形，往兩側張開、往上翹
+    # 身體：前後長的圓桶
+    t.ell('body', 'skin', (0.052, 0.044, 0.064), (0, 0.060, -0.022), nu=64, nv=36)
+    t.ell('belly', 'pink', (0.038, 0.026, 0.048), (0, 0.041, -0.020), nu=36, nv=20)
+    # 四隻短腿 + 三片趾甲
     for s in (-1, 1):
-        t.ell(f'fluke{s}', 'fin', (0.034, 0.0068, 0.019), (s * 0.025, 0.094, -0.124), rot(45, s * 28, 0) @ rot(0, 0, s * 10), 36, 16)
-        t.ell(f'flipper{s}', 'fin', (0.026, 0.0068, 0.0145), (s * 0.060, 0.026, 0.020), rot(0, s * 35, -s * 28), 32, 16)
+        for zk, z in (('f', 0.018), ('b', -0.060)):
+            nm = f'leg{zk}{s}'
+            t.ell(nm, 'skin', (0.0175, 0.021, 0.0185), (s * 0.031, 0.019, z), nu=32, nv=18, deform=flat_bottom(0.005, 0.2))
+            for k, dx in enumerate((-0.0075, 0.0, 0.0075)):
+                t.stick(f'nail{zk}{s}{k}', 'nail', (0.0036, 0.0030, 0.0022), s * 0.031 + dx, 0.0065, [nm], inset=0.45, nu=14, nv=8)
+    # 頭：圓圓的頭殼 + 很寬的鼻口（底部壓平）+ 往下張開的下巴，中間露出嘴巴裡面和舌頭
+    t.ell('head', 'skin', (0.047, 0.043, 0.042), (0, 0.112, 0.034), nu=64, nv=36)
+    t.ell('snout', 'snout', (0.050, 0.029, 0.036), (0, 0.098, 0.066), nu=64, nv=32, deform=flat_bottom(0.086, 0.35))
+    # 張開的嘴：下巴往下掉，上緣兩邊和後面往上翹到鼻口下面（側面看是一個楔形的大嘴），
+    # 中間露出深粉紅的嘴巴裡面、舌頭和兩顆小牙；喉嚨把下巴接回身體
+    def jaw_u(V):
+        V = V.copy()
+        up = np.clip((V[:, 1] - 0.034) / 0.022, 0, 1)
+        V[:, 1] += up * (0.034 * np.clip(V[:, 0] / 0.038, -1, 1) ** 2 + 0.026 * np.clip((0.068 - V[:, 2]) / 0.030, 0, 1))
+        return V
+    t.ell('throat', 'skin', (0.040, 0.030, 0.026), (0, 0.066, 0.030), nu=40, nv=22)
+    t.ell('jaw', 'chin', (0.038, 0.0155, 0.031), (0, 0.0445, 0.061), nu=56, nv=28, deform=jaw_u)
+    t.ell('inner', 'inner', (0.031, 0.020, 0.024), (0, 0.066, 0.058), nu=32, nv=18)
+    t.ell('tongue', 'tongue', (0.019, 0.0075, 0.015), (0, 0.0585, 0.071), rot(10, 0, 0), nu=28, nv=14)
+    for s in (-1, 1):
+        t.stick(f'tooth{s}', 'tooth', (0.0044, 0.0040, 0.0060), 0, 0, ['jaw'], inset=0.3, up=(0, 0, 1),
+                d=(0, -1, 0), origin=(s * 0.021, 0.2, 0.082), nu=14, nv=10)
+    # 鼻孔：鼻口上面的兩個小鼓包 + 深色橢圓
+    for s in (-1, 1):
+        t.stick(f'nbump{s}', 'snout', (0.011, 0.010, 0.0075), 0, 0, ['snout'], inset=0.5,
+                up=(0, 0, 1), d=(0, -1, 0), origin=(s * 0.018, 0.2, 0.086), nu=20, nv=12)
+        t.stick(f'nostril{s}', 'nostril', (0.0048, 0.0028, 0.0022), 0, 0, [f'nbump{s}'], inset=0.4,
+                up=(-s * 0.5, 0, 1), d=(0, -1, 0), origin=(s * 0.018, 0.2, 0.087), nu=16, nv=10)
+    # 小眼睛（高高的）、小圓耳朵、粉紅臉頰
     for s, side in ((-1, 'L'), (1, 'R')):
-        eye(t, side, s * 0.032, 0.066, ['body'], size=1.25)
-        t.stick(f'cheek{s}', 'blush', (0.0115, 0.0068, 0.003), s * 0.046, 0.051, ['body', 'belly'], inset=0.45)
-    xs = np.linspace(-0.017, 0.017, 11)
-    t.curve('mouth', 'line', [(x, 0.0505 - 0.0065 * (1 - (x / 0.017) ** 2)) for x in xs], ['body', 'belly'], 0.0016)
-    # 頭頂噴水：一根水柱 + 三顆水滴
-    t.add('spout', 'water', sweep([(0, 0.100, 0.022), (0, 0.118, 0.023), (0, 0.133, 0.022)],
-                                  profile([(0, 0.0), (0.05, 0.8), (0.4, 0.7), (0.8, 0.9), (1, 0)], 0.0052, 0.0052), 18, 20))
-    for k, (x, y, r) in enumerate(((-0.0145, 0.136, 0.0062), (0.0, 0.146, 0.0072), (0.0145, 0.136, 0.0062))):
-        R = rot(0, 0, -np.degrees(np.arctan2(x, 0.012)))
-        t.add(f'drop{k}', 'water', sweep([(0, -r * 1.1, 0), (0, r * 1.3, 0)],
-                                         profile([(0, 0), (0.04, 0.6), (0.3, 1.0), (0.65, 0.75), (1, 0)], r, r), 18, 18,
-                                         hint=(0, 0, 1)), R, (x, y, 0.022))
-    return t.finish(0.9)
+        eye(t, side, s * 0.024, 0.134, ['head'], size=1.02)
+        R = rot(-10, s * 20, -s * 28)
+        c = np.array((s * 0.034, 0.150, 0.016))
+        t.ell(f'ear{s}', 'skin', (0.0105, 0.0125, 0.0065), c, R, 24, 14)
+        t.ell(f'earin{s}', 'earin', (0.0062, 0.0078, 0.0028), c + R @ np.array((0, -0.0005, 0.0042)), R, 18, 10)
+        t.stick(f'cheek{s}', 'blush', (0.0125, 0.0075, 0.0032), s * 0.040, 0.103, ['snout', 'head'], inset=0.45)
+    # 小尾巴
+    t.ell('tail', 'skin', (0.0065, 0.0060, 0.012), (0, 0.072, -0.086), rot(30, 0, 0), 18, 12)
+    return t.finish()
 
 
-BUILDERS = {'bunny': build_bunny, 'frog': build_frog, 'whale': build_whale}
+BUILDERS = {'bunny': build_bunny, 'frog': build_frog, 'moodeng': build_moodeng}
 
 
 # ---------------------------------------------------------------- 布料貼圖（可無縫拼接，固定亂數種子）

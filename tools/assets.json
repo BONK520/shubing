@@ -17,8 +17,8 @@
       "view": { "yaw": 18, "pitch": 10 } },
     { "id": "frog", "source": "placeholder",
       "view": { "yaw": 15, "pitch": 16 } },
-    { "id": "whale", "source": "placeholder",
-      "view": { "yaw": 32, "pitch": 14 } }
+    { "id": "moodeng", "source": "placeholder",
+      "view": { "yaw": 30, "pitch": 14 } }
   ],
   "trio": {
     "_doc": "彩色炸彈圖。layers 由後往前畫；h = 高度、cx = 水平中心、by = 底部位置（輸出 px，最後整組會再縮放置中到 fill）。",

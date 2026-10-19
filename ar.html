@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f7c4e6">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="毛絨消消樂的 3D 毛絨玩具：轉一轉、放大看，還能用 AR 放進你家">
-<title>3D / AR 看看 · 毛絨消消樂</title>
+<meta name="description" content="毛絨消消樂的 3D 毛絨玩具：拖曳轉一轉、兩指放大，近近地看每一隻">
+<title>3D 看看 · 毛絨消消樂</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="stylesheet" href="ar.css">
 <script>
@@ -37,8 +37,8 @@
 <header class="top">
   <a class="back" href="index.html">← 回到遊戲</a>
   <div class="title">
-    <h1>3D / AR 看看</h1>
-    <p>轉一轉、放大看，還能放進你家！</p>
+    <h1>3D 看看</h1>
+    <p>轉一轉、放大看，每一隻都看清楚！</p>
   </div>
 </header>
 
@@ -54,13 +54,8 @@
       min-camera-orbit="auto 10deg 45%" max-camera-orbit="auto 100deg 260%"
       shadow-intensity="1.1" shadow-softness="0.85"
       environment-image="neutral" exposure="1.05" tone-mapping="neutral"
-      ar ar-modes="webxr scene-viewer quick-look" ar-scale="auto" ar-placement="floor"
       interpolation-decay="110"
       alt="可以旋轉的 3D 毛絨玩具">
-      <button slot="ar-button" class="ar-btn" type="button">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l8.2 4.6v9.2L12 21.2l-8.2-4.6V7.4z M3.8 7.4L12 12l8.2-4.6 M12 12v9.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
-        在你家看看（AR）
-      </button>
       <div slot="progress-bar" class="progress" id="progress" aria-hidden="true"><span></span></div>
     </model-viewer>
 
@@ -101,9 +96,8 @@
       <ul class="tips">
         <li><b>拖曳</b>轉一轉</li>
         <li><b>兩指</b>放大縮小</li>
-        <li><b>AR</b>放到桌上</li>
+        <li><b>左右</b>換一隻</li>
       </ul>
-      <p class="no-ar" id="noAr" hidden>用手機打開這一頁，就能把毛絨放到你家桌上喔！</p>
     </section>
 
     <nav class="picker card" aria-label="選一隻毛絨">
@@ -113,10 +107,8 @@
   </aside>
 </main>
 
-<div class="toast" id="toast" role="status" hidden></div>
-
 <script type="module">
-import { PIECES, spritePath, glbPath, usdzPath } from './js/pieces.js';
+import { PIECES, spritePath, glbPath } from './js/pieces.js';
 
 const $ = id => document.getElementById(id);
 const mv = $('mv');
@@ -161,24 +153,21 @@ const modelsDir = (() => {
 // 只是微調用的提示；沒列到的 id（例如之後新增的掃描）就用預設值。assets/manifest.json 若有 view 欄位會優先使用。
 const VIEW_DEFAULT = { yaw: 20, pitch: 15, exposure: 1.05 };
 const VIEW = {
-  dog:   { yaw: 300, pitch: 22, exposure: 1.6 },   // 黑色毛很暗，曝光拉高
-  sloth: { yaw: 10,  pitch: 12, exposure: 1.1 },
-  egg:   { yaw: 10,  pitch: 12, exposure: 1.0 },
+  dog:     { yaw: 300, pitch: 22, exposure: 1.6 },   // 黑色毛很暗，曝光拉高
+  sloth:   { yaw: 10,  pitch: 12, exposure: 1.1 },
+  egg:     { yaw: 10,  pitch: 12, exposure: 1.0 },
+  moodeng: { yaw: 30,  pitch: 14 },                  // 斜前方：看得到張開的嘴和圓滾滾的身體
 };
 const manifestViews = {};
-// manifest 列出哪些毛絨有 USDZ；拿得到就不用再一個個去問伺服器
-const manifestP = fetch('assets/manifest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => {
-  const byId = {};
-  (m && m.pieces || []).forEach(e => { if (e && e.id) { byId[e.id] = e; if (e.view) manifestViews[e.id] = e.view; } });
-  return m ? byId : null;
-}).catch(() => null);
+fetch('assets/manifest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => {
+  (m && m.pieces || []).forEach(e => { if (e && e.id && e.view) manifestViews[e.id] = e.view; });
+}).catch(() => { /* 沒有 manifest 就用上面的預設視角 */ });
 const viewOf = id => Object.assign({}, VIEW_DEFAULT, VIEW[id] || {}, manifestViews[id] || {});
 // model-viewer 只在數值有變時才更新相機，所以每次載入都讓半徑差一點點，確保會重設視角
 let orbitFlip = false;
 const orbitOf = v => `${v.yaw}deg ${90 - v.pitch}deg ${(orbitFlip = !orbitFlip) ? 125 : 125.01}%`;
 
-const glbOf  = id => modelsDir ? `${modelsDir}${id}.glb`  : glbPath(id);
-const usdzOf = id => modelsDir ? `${modelsDir}${id}.usdz` : usdzPath(id);
+const glbOf = id => modelsDir ? `${modelsDir}${id}.glb` : glbPath(id);
 
 // 小圖：貼紙圖，載入失敗就畫一個彩色圓圈 + 名字第一個字
 function face(p, cls = '') {
@@ -219,15 +208,6 @@ const cards = PIECES.map((p, i) => {
 });
 
 let current = -1;
-const usdzOk = new Map();
-
-async function hasFile(url) {
-  if (usdzOk.has(url)) return usdzOk.get(url);
-  let ok = false;
-  try { ok = (await fetch(url, { method: 'HEAD', cache: 'no-store' })).ok; } catch (e) { ok = false; }
-  usdzOk.set(url, ok);
-  return ok;
-}
 
 function setFaces(p) {
   for (const id of ['loadingFace', 'failFace']) {
@@ -236,7 +216,7 @@ function setFaces(p) {
   }
 }
 
-async function select(i, user) {
+function select(i, user) {
   i = (i + PIECES.length) % PIECES.length;
   if (i === current) return;
   current = i;
@@ -267,12 +247,6 @@ async function select(i, user) {
   mv.setAttribute('alt', `${p.name}的 3D 模型，可以旋轉和放大`);
   mv.setAttribute('exposure', String(viewOf(p.id).exposure));
   mv.setAttribute('src', glbOf(p.id));
-  // 有 USDZ 就給 iPhone 用；沒有的話讓 model-viewer 從 GLB 自動轉
-  const u = usdzOf(p.id);
-  const man = modelsDir ? null : await manifestP;
-  const ok = man ? !!(man[p.id] && man[p.id].usdz) : await hasFile(u);
-  if (current !== i) return;
-  if (ok) mv.setAttribute('ios-src', u); else mv.removeAttribute('ios-src');
 }
 
 function fmt(m) { return Math.max(1, Math.round(m * 100)); }
@@ -284,12 +258,12 @@ mv.addEventListener('load', () => {
     const d = mv.getDimensions();
     $('size').textContent = `大約 寬 ${fmt(d.x)} × 高 ${fmt(d.y)} × 深 ${fmt(d.z)} 公分`;
   } catch (e) { $('size').textContent = ''; }
-  // 新模型載入後才設定視角（載入前設定會被忽略）；中心稍微往下，讓毛絨偏上一點，下方留給 AR 按鈕
+  // 新模型載入後才設定視角（載入前設定會被忽略）；對準模型中心
   try {
     const p = PIECES[current];
     mv.cameraOrbit = orbitOf(viewOf(p.id));
-    const c = mv.getBoundingBoxCenter(), d = mv.getDimensions();
-    mv.cameraTarget = `${c.x}m ${c.y - d.y * 0.06}m ${c.z}m`;
+    const c = mv.getBoundingBoxCenter();
+    mv.cameraTarget = `${c.x}m ${c.y}m ${c.z}m`;
   } catch (e) { /* ignore */ }
   try { mv.resetTurntableRotation && mv.resetTurntableRotation(); } catch (e) { /* ignore */ }
   Promise.resolve(mv.updateComplete).then(() => requestAnimationFrame(() => {
@@ -311,10 +285,6 @@ mv.addEventListener('progress', ev => {
   $('progress').classList.toggle('done', v >= 1);
 });
 
-mv.addEventListener('ar-status', ev => {
-  if (ev.detail && ev.detail.status === 'failed') toast('這台裝置暫時打不開 AR，換支手機試試看？');
-});
-
 $('prev').addEventListener('click', () => select(current - 1, true));
 $('next').addEventListener('click', () => select(current + 1, true));
 document.addEventListener('keydown', e => {
@@ -327,15 +297,6 @@ window.addEventListener('hashchange', () => {
   if (k >= 0) select(k, false);
 });
 
-let toastTimer = 0;
-function toast(msg) {
-  const t = $('toast');
-  t.textContent = msg;
-  t.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
-}
-
 // 檢視器載不到 / 跑不起來：<head> 裡的 mvFail() 會加上 mv-failed 並發出 mv-failed 事件（可能在這段程式之前或之後）
 const failKind = () => (html.getAttribute('data-mv-fail') === 'js' ? 'js' : 'net');
 if (html.classList.contains('mv-failed')) setViewer(failKind());
@@ -346,14 +307,6 @@ customElements.whenDefined('model-viewer').then(() => {
   setViewer('ok');
   html.classList.remove('mv-failed');
   html.classList.add('mv-ready');
-  // 電腦上沒有 AR：顯示「用手機打開」的提示
-  const arCheck = () => {
-    const can = !!mv.canActivateAR;
-    $('noAr').hidden = can;
-    $('stage').classList.toggle('has-ar', can);
-  };
-  setTimeout(arCheck, 600);
-  mv.addEventListener('load', arCheck);
 });
 
 const start = Math.max(0, PIECES.findIndex(p => p.id === location.hash.slice(1)));

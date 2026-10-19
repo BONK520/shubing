@@ -1,7 +1,19 @@
 // 毛絨消消樂：Canvas 2D 盤面渲染、動畫、粒子、橫幅（docs/SPEC.md §6）
 // 所有位置都用「格」做單位（r、c 可以是小數），畫的時候才換成像素，所以 layout() 隨時可以呼叫。
 // 每個引擎事件播完後都會用事件附帶的 board 重新同步，畫面永遠不會和引擎不一致。
+//
+// 手感（像 Candy Crush 那樣「刷刷刷」）：
+//   * 事件是「接力」播放，不是一個播完才播下一個：消除的方塊還在縮小時，上面的方塊就開始掉；
+//     掉落用重力加速度，同一欄由下往上錯開一點點，落地有壓扁回彈；下一輪連鎖只等「會被消掉的那幾顆」落地就爆。
+//     還在掉的方塊被下一次掉落接手時，保留當下的位置和速度繼續掉（不會停頓）。
+//   * 粒子、飄分、連鎖字、光束尾巴都在背景播，不會拖住 play()。play() 在盤面完全停下來的那一刻 resolve。
+//   * 每幀不建立漸層、不用 shadowBlur：光暈 / 光束 / 文字都先畫好快取起來。
+//
 // 除了 SPEC §6 的 API，另有：
+//   R.play(events, { onEvent, onCue })
+//               onCue(name, { delay, ... })：音效 / 震動的時間點，和畫面同步。delay = 從現在算起幾毫秒後發生。
+//               name：'swap' 'invalid' 'pop'(cascade, group, size) 'stripe' 'wrap'(radius) 'bomb'(n) 'board'
+//                     'combo' 'special'(special) 'land' 'chime'(level) 'shuffle'
 //   R.pause()   停掉 requestAnimationFrame 迴圈（遊戲畫面被藏起來時用，例如回到地圖 / 標題），
 //               選取、提示、特殊方塊的待機動畫都不再每幀重畫。play() / banner() 照常計時完成，不會卡住。
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
@@ -9,14 +21,30 @@
 
 const FONT = '"Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
 const WORDS = ['', '', '好棒！', '太甜了！', '超可愛！', '毛茸茸爆發！'];
-const MAX_DPR = 2.5;      // 手機上限，兼顧清晰和效能
+const MAX_DPR = 2;        // 手機上限：再高肉眼幾乎看不出差別，填色量卻多很多
 const MARGIN = 0.3;       // 盤面四周保留（格）
 const PAD = 1.42;         // 方塊快取畫布邊長 / 格（留給陰影、糖果紙兩端）
 const TILE = 0.88;        // 圓角方塊邊長 / 格
 const SPR = 0.95;         // 貼紙圖框 / 格（貼紙本身約占 84%）
 const SPR_WRAP = 0.8;
-const MAX_PARTS = 520;
-const G_FALL = 0.000082;  // 掉落重力（格 / ms²）
+const MAX_PARTS = 300;
+
+// ---- 節奏（毫秒）----
+const SWAP_MS = 140;      // 成功交換（主動的那顆有一點點回彈）
+const SWAP_BAD_MS = 100;  // 不成立的交換：過去
+const SWAP_BACK_MS = 120; //                 彈回來
+const POP_MS = 190;       // 消除：放大 + 白光 → 縮小消失
+const POP_LEAD = 100;     // 最後一顆開始爆之後多久就開始掉落（爆的動畫還在收尾）
+const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
+const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
+const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
+const LAND_MS = 230;      // 落地壓扁回彈
+const LAND_HOLD = 30;     // 下一輪連鎖：方塊落地後多久爆
+const G_FALL = 0.00018;   // 掉落重力（格 / ms²）
+const V0_FALL = 0.005;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 7, STAGGER_MAX = 35, COL_JITTER = 12;
+// 特效傳到某格要多久
+const LINE_MS = 21, BLAST_MS = 42, BOARD_MS = 30, CHAIN_MS = 30, BOMB_FIRST = 90, CLEAR_CAP = 650;
 
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112];
 const now = () => performance.now();
@@ -25,10 +53,11 @@ const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const easeInCubic = t => t * t * t;
-const easeInQuad = t => t * t;
 const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t, s = 1.70158) => { const u = t - 1; return 1 + (s + 1) * u * u * u + s * u * u; };
-const easeSwapBack = t => easeOutBack(t, 2.6);
+const easeInBack = (t, s = 1.70158) => (s + 1) * t * t * t - s * t * t;
+const easeSwap = t => easeOutBack(t, 1.25);
+const easeSwapBack = t => easeOutBack(t, 2.4);
 // 彈出：小 → 放大 → 回彈到 1
 const popCurve = p => (p < 0.22 ? lerp(0.35, 1.3, easeOutCubic(p / 0.22))
   : 1 + 0.3 * Math.exp(-5.5 * (p - 0.22)) * Math.cos((p - 0.22) * 11));
@@ -113,19 +142,22 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   let sched = [];                   // 定時動作 { t, fn }
   const jellyFx = new Map();        // key -> { t0, from }
   let selected = null, hintPair = null, dragState = null;
+  let fallSeq = 0;
   // ---- 流程 ----
   let gen = 0, busyCount = 0, destroyed = false;
   let queue = Promise.resolve(), bannerQueue = Promise.resolve();
+  let curOpts = null;
   const waits = new Set();
-  let raf = 0, lastDraw = 0, paused = false;
+  let raf = 0, lastDraw = 0, paused = false, inFrame = false;
   // ---- 快取 ----
   const tileCache = new Map();
   let cacheS = 0;
-  let bgCache = null, clipPath = null, jellyCache = [], rimCache = [], glowImg = null, starImg = null;
-  const fluffCache = new Map();
+  let bgCache = null, clipPath = null, jellyCache = [], rimCache = [], glowImg = null, starImg = null, flashImg = null;
+  const fluffCache = new Map(), starColCache = new Map(), glowColCache = new Map(), beamCache = new Map();
   const spriteCache = new WeakMap();
   const watched = new WeakSet();
   const colorMemo = new Map();
+  let scratch = null;
 
   // ================= 素材 =================
   function pieceInfo(kind) { return pieces[kind] || { id: '?', name: '?', color: '#cccccc' }; }
@@ -583,16 +615,122 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (canvas.width !== pw) canvas.width = pw;
     if (canvas.height !== ph) canvas.height = ph;
     W = w; H = h; dpr = d;
-    if (changed || !bgCache) geom();
+    if (changed || !bgCache) { geom(); if (changed && rows) prewarm(); }
     draw(now());
     requestDraw();
+  }
+
+  // ================= 快取的光暈 / 星星 / 光束 =================
+  // 白色光暈（閃光用）：固定大小，畫的時候縮放
+  function getFlash() {
+    if (flashImg) return flashImg;
+    const s = 128, c = makeCanvas(s, s), g = c.getContext('2d'), h = s / 2;
+    const rg = g.createRadialGradient(h, h, 0, h, h, h);
+    rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.35, 'rgba(255,252,235,0.7)');
+    rg.addColorStop(0.7, 'rgba(255,240,215,0.18)'); rg.addColorStop(1, 'rgba(255,240,215,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, s, s);
+    flashImg = c;
+    return c;
+  }
+  // 帶顏色的光暈（衝擊波中心、閃電源頭）
+  function getGlowCol(col) {
+    const key = col[0] * 65536 + col[1] * 256 + col[2];
+    let c = glowColCache.get(key);
+    if (c) return c;
+    const s = 128, h = s / 2;
+    c = makeCanvas(s, s);
+    const g = c.getContext('2d'), rg = g.createRadialGradient(h, h, 0, h, h, h);
+    rg.addColorStop(0, 'rgba(255,255,255,0.95)'); rg.addColorStop(0.45, css(mixc(col, WHITE, 0.3), 0.5)); rg.addColorStop(1, css(col, 0));
+    g.fillStyle = rg; g.fillRect(0, 0, s, s);
+    glowColCache.set(key, c);
+    return c;
+  }
+  // 方塊顏色的小星星（消除時的閃粉）
+  function getStarCol(col) {
+    const key = col[0] * 65536 + col[1] * 256 + col[2];
+    let c = starColCache.get(key);
+    if (c) return c;
+    const base = getStar(), s = base.width;
+    c = makeCanvas(s, s);
+    const g = c.getContext('2d');
+    g.drawImage(base, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = css(saturate(mixc(col, WHITE, 0.15), 0.6), 0.8); g.fillRect(0, 0, s, s);
+    g.globalCompositeOperation = 'lighter';
+    g.drawImage(base, s * 0.25, s * 0.25, s * 0.5, s * 0.5);     // 白色亮心
+    starColCache.set(key, c);
+    return c;
+  }
+  // 條紋光束的橫切面（h：橫的光束，漸層在垂直方向；v 反過來），畫的時候拉長
+  function getBeam(col, dir) {
+    const key = dir + col.join(',');
+    let c = beamCache.get(key);
+    if (c) return c;
+    const L = 64, Wd = 4, h = dir === 'h';
+    c = h ? makeCanvas(Wd, L) : makeCanvas(L, Wd);
+    const g = c.getContext('2d');
+    const gr = h ? g.createLinearGradient(0, 0, 0, L) : g.createLinearGradient(0, 0, L, 0);
+    const cc = mixc(col, WHITE, 0.25);
+    gr.addColorStop(0, css(cc, 0)); gr.addColorStop(0.3, css(cc, 0.6)); gr.addColorStop(0.5, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.7, css(cc, 0.6)); gr.addColorStop(1, css(cc, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+    beamCache.set(key, c);
+    return c;
+  }
+  // 方塊的白色剪影（消除瞬間的白光）
+  function tileWhite(e) {
+    if (e.white) return e.white;
+    const src = e.full, c = makeCanvas(src.width, src.height), g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    e.white = c;
+    return c;
+  }
+
+  // ================= 預熱 =================
+  // 第一次出現條紋 / 包裝 / 炸彈 / 連鎖字時才畫圖、上傳到 GPU 會卡一下；盤面閒著（等玩家出手）時先做好。
+  // 每次最多做約 6ms，用 setTimeout 分批，不會擋住輸入。
+  let warmQ = [], warmTimer = 0;
+  function prewarm() {
+    clearTimeout(warmTimer);
+    warmQ = [];
+    if (!rows || !cols || !W) return;
+    const kinds = new Set();
+    for (const v of visuals.values()) if (v.kind >= 0) kinds.add(v.kind);
+    // 先做最常用到的：每次消除都會用的白光、粒子、連鎖字，再來才是特殊方塊
+    warmQ.push(getFlash, getGlow, getStar);
+    for (const k of kinds) warmQ.push(() => [tileWhite(getTile(k, 'none')), getStarCol(kindColor(k)), getFluff(kindColor(k))]);
+    for (let lv = 2; lv <= 5; lv++) warmQ.push(() => wordSprite(WORDS[lv], lv).c);
+    for (const sp of ['h', 'v', 'wrap']) for (const k of kinds) warmQ.push(() => getTile(k, sp).full);
+    warmQ.push(() => { const e = getTile(-1, 'bomb'); return [e.under, e.orb, e.top, e.trio]; });
+    warmTimer = setTimeout(pumpWarm, 250);
+  }
+  function pumpWarm() {
+    warmTimer = 0;
+    if (destroyed || !warmQ.length) return;
+    if (busyCount > 0 || paused) { warmTimer = setTimeout(pumpWarm, 200); return; }
+    const t0 = now();
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 0.01;
+    while (warmQ.length && now() - t0 < 6) {
+      const f = warmQ.shift();
+      try {
+        const out = f();
+        for (const img of Array.isArray(out) ? out : [out]) if (img && img.width) ctx.drawImage(img, 0, 0, 1, 1);
+      } catch (e) { /* 預熱失敗沒關係，用到時再畫 */ }
+    }
+    ctx.restore();
+    requestDraw();       // 下一幀整張重畫，蓋掉那幾個看不見的點
+    if (warmQ.length) warmTimer = setTimeout(pumpWarm, 40);
   }
 
   // ================= 盤面同步 =================
   function make2D(r, c, v) { return Array.from({ length: r }, () => new Array(c).fill(v)); }
   function newVisual(p, r, c) {
     return { id: p.id, kind: p.kind, special: p.special || 'none', r, c, mv: null,
-      landT: -1e9, landAmp: 0, popT: -1e9, phase: Math.random() * Math.PI * 2 };
+      landT: -1e9, landAmp: 0, popT: -1e9, hideUntil: 0, morph: null, phase: Math.random() * Math.PI * 2 };
   }
   function cellV(q) { return q && cellMap[q.r] ? cellMap[q.r][q.c] || null : null; }
   function readMask(m, R, C) {
@@ -617,6 +755,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     return out;
   }
+  // 動畫還在跑、而且終點就是這一格：保留（掉到一半的方塊繼續掉）；其他情況直接放到格子上
+  function mvEndsAt(m, r, c) { return m && Math.abs(m.x1 - c) < 1e-6 && Math.abs(m.y1 - r) < 1e-6; }
   function syncBoard(grid, jel) {
     if (!Array.isArray(grid) || !grid.length) return;
     const R = grid.length, C = (grid[0] || []).length;
@@ -630,7 +770,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!p) continue;
       let v = visuals.get(p.id);
       if (!v || nv.has(p.id)) v = newVisual(p, r, c);
-      v.kind = p.kind; v.special = p.special || 'none'; v.r = r; v.c = c; v.mv = null;
+      if (!mvEndsAt(v.mv, r, c)) v.mv = null;
+      if (v.morph && (v.kind !== p.kind || v.special !== (p.special || 'none'))) v.morph = null;
+      v.kind = p.kind; v.special = p.special || 'none'; v.r = r; v.c = c;
       nv.set(p.id, v);
       cellMap[r][c] = v;
     }
@@ -652,6 +794,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     syncBoard(snap.grid, null);
     if (!W) layout(); else geom();
     requestDraw();
+    prewarm();
   }
 
   // ================= 時間 / 排程 =================
@@ -684,49 +827,64 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const e of all) { try { e.fn(e.t); } catch (err) { console.error('[renderer]', err); } }
   }
   function shake(mag, dur, t0 = now()) { shakes.push({ mag, dur, t0 }); }
+  // 音效 / 震動提示：delay 毫秒之後發生（音效那邊會照 AudioContext 的時鐘排好，和畫面對齊）
+  function cue(name, delay = 0, data = null) {
+    const o = curOpts;
+    if (!o || typeof o.onCue !== 'function') return;
+    try { o.onCue(name, Object.assign({ delay: Math.max(0, delay) }, data)); } catch (e) { console.error('[renderer] onCue', e); }
+  }
 
   // ================= 粒子 =================
   function emit(p) {
     if (parts.length >= MAX_PARTS) parts.splice(0, parts.length - MAX_PARTS + 1);
     parts.push(p);
   }
-  function burst(x, y, col, n, t, { speed = 3.2, stars = 2, up = 0.8 } = {}) {
+  function burst(x, y, col, n, t, { speed = 3.4, stars = 2, up = 0.8 } = {}) {
+    const fl = getFluff(col), sc = getStarCol(col);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, v = speed * (0.45 + Math.random() * 0.75);
-      emit({ type: 0, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.2, t0: t,
-        life: 480 + Math.random() * 320, size: 0.16 + Math.random() * 0.16, col });
+      emit({ type: 0, img: fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.4, t0: t,
+        life: 380 + Math.random() * 260, size: 0.14 + Math.random() * 0.14 });
     }
     for (let i = 0; i < stars; i++) {
-      const a = Math.random() * Math.PI * 2, v = speed * (0.3 + Math.random() * 0.6);
-      emit({ type: 1, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.6, t0: t,
-        life: 520 + Math.random() * 300, size: 0.32 + Math.random() * 0.22 });
+      const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
+      emit({ type: 1, img: sc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.8, t0: t,
+        life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
     }
   }
   function sparkle(x, y, n, t, spread = 0.5) {
+    const st = getStar();
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, v = 1 + Math.random() * 2.4;
-      emit({ type: 1, x: x + Math.cos(a) * spread * Math.random(), y: y + Math.sin(a) * spread * Math.random(),
-        vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.6, g: 1.5, drag: 3, t0: t + Math.random() * 120,
-        life: 420 + Math.random() * 380, size: 0.25 + Math.random() * 0.3 });
+      emit({ type: 1, img: st, x: x + Math.cos(a) * spread * Math.random(), y: y + Math.sin(a) * spread * Math.random(),
+        vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.6, g: 1.5, drag: 3, t0: t + Math.random() * 90,
+        life: 380 + Math.random() * 320, size: 0.25 + Math.random() * 0.28 });
     }
   }
 
   // ================= 事件動畫 =================
-  async function animSwap(ev, back) {
-    const t = now(), dur = back ? 300 : 170;
+  // 每個 anim* 回傳的 Promise 在「下一個事件可以開始」的時候 resolve，不是等畫面全部播完
+  async function animSwap(ev, back, next) {
+    const t = now();
+    const bad = !back && next && next.t === 'swapBack';
+    const dur = back ? SWAP_BACK_MS : bad ? SWAP_BAD_MS : SWAP_MS;
     const va = cellV(ev.a), vb = cellV(ev.b);
     const pairs = [[va, ev.b, true], [vb, ev.a, false]];
     for (const [v, to, main] of pairs) {
       if (!v || !to) continue;
       const cur = evalVisual(v, t);
-      v.mv = { x0: cur.x, y0: cur.y, x1: to.c, y1: to.r, t0: t, dur, ease: back ? easeSwapBack : easeInOutCubic,
-        lift: main ? (back ? 0.08 : 0.14) : -0.05, top: main };
+      v.mv = { x0: cur.x, y0: cur.y, x1: to.c, y1: to.r, t0: t, dur,
+        ease: back ? easeSwapBack : bad ? easeOutCubic : main ? easeSwap : easeOutCubic,
+        lift: main ? (back ? 0.06 : 0.16) : -0.06, top: main };
     }
     dragState = null;
-    await wait(dur + 12);
+    if (back) cue('invalid');
+    else cue('swap', 0, { bad: !!bad });
+    // 成功的交換：回彈快結束時就開始爆（爆的那一下剛好落在停穩的瞬間）
+    await wait(back ? dur + 8 : bad ? dur : dur - 18);
     if (back) {
       const tt = now();
-      for (const v of [va, vb]) if (v) { v.landT = tt; v.landAmp = 0.12; }
+      for (const v of [va, vb]) if (v) { v.landT = tt; v.landAmp = 0.1; }
     }
   }
 
@@ -734,7 +892,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const cells = (ev.cells || []).filter(Boolean);
     const n = cells.length;
     if (!n) return;
-    const stagger = Math.min(85, 620 / n), t = now();
+    const stagger = Math.min(55, 420 / n), t = now();
     cells.forEach((cl, i) => at(t + i * stagger, tt => {
       const p = cl.piece;
       if (!p) return;
@@ -743,31 +901,32 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (old && !v) visuals.delete(old.id);
       if (!v) { v = visuals.get(p.id) || newVisual(p, cl.r, cl.c); visuals.set(p.id, v); }
       v.kind = p.kind; v.special = p.special || 'none'; v.r = cl.r; v.c = cl.c; v.mv = null; v.popT = tt;
+      v.morph = null; v.hideUntil = 0;
       if (cellMap[cl.r]) cellMap[cl.r][cl.c] = v;
-      fx.push({ type: 'flash', x: cl.c + 0.5, y: cl.r + 0.5, t0: tt, dur: 360, R: 0.95 });
-      burst(cl.c + 0.5, cl.r + 0.5, kindColor(p.kind), 5, tt, { speed: 2.2, stars: 3 });
+      fx.push({ type: 'flash', x: cl.c + 0.5, y: cl.r + 0.5, t0: tt, dur: 300, R: 0.95 });
+      burst(cl.c + 0.5, cl.r + 0.5, kindColor(p.kind), 4, tt, { speed: 2.2, stars: 3 });
     }));
-    await wait((n - 1) * stagger + 320);
+    await wait((n - 1) * stagger + 220);
     flushSched();
   }
 
   // 每個效果什麼時候碰到某一格（毫秒），-1 = 碰不到
-  function bombStagger(n) { return Math.min(42, 520 / Math.max(1, n)); }
+  function bombStagger(n) { return Math.min(30, 420 / Math.max(1, n)); }
   function travel(e, r, c) {
     switch (e.fx) {
       case 'line':
-        if (e.dir === 'h') return r === e.r ? Math.abs(c - e.c) * 32 : -1;
-        return c === e.c ? Math.abs(r - e.r) * 32 : -1;
+        if (e.dir === 'h') return r === e.r ? Math.abs(c - e.c) * LINE_MS : -1;
+        return c === e.c ? Math.abs(r - e.r) * LINE_MS : -1;
       case 'blast': {
         const d = Math.max(Math.abs(r - e.r), Math.abs(c - e.c));
-        return d <= (e.radius == null ? 1 : e.radius) ? d * 55 : -1;
+        return d <= (e.radius == null ? 1 : e.radius) ? d * BLAST_MS : -1;
       }
       case 'bomb': {
         const ts = e.targets || [];
         const i = ts.findIndex(q => q && q.r === r && q.c === c);
-        return i < 0 ? -1 : 110 + i * bombStagger(ts.length);
+        return i < 0 ? -1 : BOMB_FIRST + i * bombStagger(ts.length);
       }
-      case 'board': return Math.hypot(r - (rows - 1) / 2, c - (cols - 1) / 2) * 42;
+      case 'board': return Math.hypot(r - (rows - 1) / 2, c - (cols - 1) / 2) * BOARD_MS;
     }
     return -1;
   }
@@ -775,16 +934,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   async function animClear(ev) {
     const t0 = now();
     const removed = (ev.removed || []).filter(Boolean), effects = (ev.effects || []).filter(Boolean);
-    const groups = (ev.groups || []).filter(Boolean), created = (ev.created || []).filter(Boolean);
+    const groups = (ev.groups || []).filter(g => g && Array.isArray(g.cells)), created = (ev.created || []).filter(Boolean);
+    const cascade = Math.max(1, ev.cascade | 0);
     const key = (r, c) => r * 1024 + c;
     const remAt = new Map();
     for (const it of removed) remAt.set(key(it.r, it.c), it);
+
+    // --- 好幾組消除時一組接一組爆（36ms），音高一組比一組高 ---
+    const matchT = new Map();
+    groups.forEach((g, i) => {
+      for (const q of g.cells) {
+        const k = key(q.r, q.c), tm = i * GROUP_STAGGER;
+        if (!matchT.has(k) || matchT.get(k) > tm) matchT.set(k, tm);
+      }
+    });
 
     // --- 效果的啟動時間：被別的效果波及的特殊方塊，等波及到了才發動 ---
     const E = effects.map(e => ({ e, r: e.r, c: e.c, start: Infinity, board: e.fx === 'board' }));
     for (const x of E) {
       const it = x.board ? null : remAt.get(key(x.r, x.c));
-      if (x.board || !it || it.cause === 'match' || it.cause === 'combo') x.start = 0;
+      if (x.board || !it || it.cause === 'match' || it.cause === 'combo') x.start = x.board ? 0 : (matchT.get(key(x.r, x.c)) || 0);
     }
     for (let iter = 0; iter < 10; iter++) {
       let changed = false;
@@ -794,7 +963,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         for (const y of E) {
           if (y === x || y.start === Infinity) continue;
           const tr = travel(y.e, x.r, x.c);
-          if (tr >= 0 && y.start + tr + 40 < best) best = y.start + tr + 40;
+          if (tr >= 0 && y.start + tr + CHAIN_MS < best) best = y.start + tr + CHAIN_MS;
         }
         if (best < x.start) { x.start = best; changed = true; }
       }
@@ -805,103 +974,122 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // --- 每顆被消掉的方塊什麼時候爆 ---
     const remT = new Map();
     for (const it of removed) {
-      let tm = it.cause === 'match' ? 0 : Infinity;
+      const k = key(it.r, it.c);
+      let tm = it.cause === 'match' ? (matchT.get(k) || 0) : Infinity;
       for (const x of E) {
         const tr = travel(x.e, it.r, it.c);
         if (tr >= 0) tm = Math.min(tm, x.start + tr);
       }
-      remT.set(key(it.r, it.c), tm === Infinity ? 0 : tm);
+      remT.set(k, tm === Infinity ? 0 : tm);
     }
     for (const x of E) {     // 彩色炸彈本身等閃電放完才消失
       if (x.e.fx !== 'bomb') continue;
       const n = (x.e.targets || []).length, k = key(x.r, x.c);
-      if (remAt.has(k)) remT.set(k, Math.max(remT.get(k), x.start + 110 + n * bombStagger(n) + 80));
+      if (remAt.has(k)) remT.set(k, Math.max(remT.get(k), x.start + BOMB_FIRST + n * bombStagger(n) + 50));
     }
     let maxT = 0;
     for (const v of remT.values()) maxT = Math.max(maxT, v);
     for (const x of E) maxT = Math.max(maxT, x.start);
-    const f = maxT > 800 ? 800 / maxT : 1;
+    const f = maxT > CLEAR_CAP ? CLEAR_CAP / maxT : 1;
     const tOf = (r, c) => (remT.get(key(r, c)) || 0) * f;
 
     // --- 合成特殊方塊的那一組，會先往新方塊的位置吸過去 ---
     const mergeTo = new Map();
     for (const cr of created) {
       for (const g of groups) {
-        if (!g.cells || !g.cells.some(q => q.r === cr.r && q.c === cr.c)) continue;
+        if (!g.cells.some(q => q.r === cr.r && q.c === cr.c)) continue;
         for (const q of g.cells) if (q.r !== cr.r || q.c !== cr.c) mergeTo.set(key(q.r, q.c), cr);
       }
     }
 
-    // --- 方塊變成「殘影」播放消失動畫 ---
-    let end = t0 + 260;
+    // --- 方塊變成「殘影」播放消失動畫（位置用畫面上目前的位置）---
+    let lastPop = 0;
     const heavy = removed.length > 24;
     for (const it of removed) {
       const v = (it.piece && visuals.get(it.piece.id)) || cellV(it);
       const p = it.piece || v;
       if (!p) continue;
+      let gx = it.c, gy = it.r, phase = 0;
       if (v) {
+        const st = evalVisual(v, t0);
+        if (Math.abs(st.x - it.c) + Math.abs(st.y - it.r) > 0.12) { gx = st.x; gy = st.y; }
+        phase = v.phase;
         visuals.delete(v.id);
         if (cellMap[it.r] && cellMap[it.r][it.c] === v) cellMap[it.r][it.c] = null;
       }
       const k = key(it.r, it.c);
       const m = it.cause === 'match' ? mergeTo.get(k) : null;
-      const g = { kind: p.kind, special: p.special || 'none', x: it.c, y: it.r, t0: t0 + tOf(it.r, it.c),
-        dur: m ? 190 : 270, to: m ? { x: m.c, y: m.r } : null, burst: false, heavy, phase: v ? v.phase : 0 };
-      ghosts.push(g);
-      end = Math.max(end, g.t0 + g.dur * 0.8);
+      const tm = tOf(it.r, it.c);
+      ghosts.push({ kind: p.kind, special: p.special || 'none', x: gx, y: gy, t0: t0 + tm,
+        dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase });
+      lastPop = Math.max(lastPop, tm);
     }
 
     // --- 特效 ---
     for (const x of E) {
-      const st = t0 + x.start * f, e = x.e;
+      const st = x.start * f, at0 = t0 + st, e = x.e;
       const src = x.board ? null : remAt.get(key(x.r, x.c));
       const sk = src && src.piece ? src.piece.kind : -1;
       const col = sk >= 0 ? kindColor(sk) : [255, 226, 140];
       if (e.fx === 'line') {
-        fx.push({ type: 'beam', dir: e.dir === 'v' ? 'v' : 'h', r: e.r, c: e.c, t0: st, dur: 560, col });
-        shake(3.5, 260, st);
-        end = Math.max(end, st + 300);
+        const h = e.dir !== 'v';
+        fx.push({ type: 'beam', dir: h ? 'h' : 'v', r: e.r, c: e.c, t0: at0, dur: 420, col,
+          sweep: Math.max(1, (h ? cols : rows)) * LINE_MS * f });
+        fx.push({ type: 'flash', x: e.c + 0.5, y: e.r + 0.5, t0: at0, dur: 260, R: 1.25 });
+        shake(2.5, 200, at0);
+        cue('stripe', st, { dir: e.dir });
       } else if (e.fx === 'blast') {
         const rad = e.radius == null ? 1 : e.radius;
-        fx.push({ type: 'ring', x: e.c + 0.5, y: e.r + 0.5, R: rad + 0.9, t0: st, dur: 540, col });
-        shake(5 + 2.5 * (rad - 1), 360, st);
-        at(st, tt => sparkle(e.c + 0.5, e.r + 0.5, 10 + rad * 4, tt, rad));
-        end = Math.max(end, st + 320);
+        fx.push({ type: 'ring', x: e.c + 0.5, y: e.r + 0.5, R: rad + 0.9, t0: at0, dur: 420, col });
+        shake(3.5 + 1.5 * (rad - 1), 260, at0);
+        at(at0, tt => sparkle(e.c + 0.5, e.r + 0.5, 8 + rad * 4, tt, rad));
+        cue('wrap', st, { radius: rad });
       } else if (e.fx === 'bomb') {
         const ts = (e.targets || []).filter(Boolean);
         const stg = bombStagger(ts.length) * f;
         fx.push({ type: 'bolts', x: e.c + 0.5, y: e.r + 0.5, targets: ts.map(q => ({ x: q.c + 0.5, y: q.r + 0.5 })),
-          t0: st, stagger: stg, end: st + 110 * f + ts.length * stg + 260 });
-        shake(6, 520, st);
-        end = Math.max(end, st + 110 * f + ts.length * stg + 120);
+          t0: at0, first: BOMB_FIRST * f, stagger: stg, end: at0 + BOMB_FIRST * f + ts.length * stg + 220 });
+        shake(4, 380, at0);
+        cue('bomb', st, { n: ts.length });
       } else if (e.fx === 'board') {
-        fx.push({ type: 'boardfx', t0: st, dur: 1000 });
-        shake(14, 760, st);
-        end = Math.max(end, st + 420);
+        fx.push({ type: 'boardfx', t0: at0, dur: 800 });
+        shake(9, 560, at0);
+        cue('board', st);
       }
     }
+    if (removed.some(r => r.cause === 'combo')) cue('combo', 0);
 
-    // --- 新的特殊方塊 ---
+    // --- 消除音效：每組一聲，跟著畫面 ---
+    groups.forEach((g, i) => {
+      let tm = Infinity;
+      for (const q of g.cells) if (remT.has(key(q.r, q.c))) tm = Math.min(tm, tOf(q.r, q.c));
+      if (tm === Infinity) tm = i * GROUP_STAGGER * f;
+      cue('pop', tm, { cascade, group: i, size: g.cells.length, shape: g.shape });
+    });
+
+    // --- 新的特殊方塊：狀態馬上放好（下一次掉落可能就要移動它），畫面到時間才變身 ---
     for (const cr of created) {
       if (!cr.piece) continue;
-      const k = key(cr.r, cr.c);
-      let tm = 0;
-      for (const v of mergeTo.values()) if (v === cr) { tm = 185; break; }
-      if (remT.has(k)) tm = Math.max(tm, tOf(cr.r, cr.c) + 140);
-      tm = Math.max(tm, 120);
+      const k = key(cr.r, cr.c), p = cr.piece;
+      let merged = false;
+      for (const v of mergeTo.values()) if (v === cr) { merged = true; break; }
+      let tm = merged ? (matchT.get(k) || 0) * f + MERGE_MS - 10 : 90;
+      if (remT.has(k)) tm = Math.max(tm, tOf(cr.r, cr.c) + 110);
+      const old = cellV(cr);
+      const keep = old && old.id === p.id ? old : null;
+      if (old && !keep) visuals.delete(old.id);
+      const v = keep || visuals.get(p.id) || newVisual(p, cr.r, cr.c);
+      if (keep) { v.morph = { kind: keep.kind, special: keep.special, until: t0 + tm }; v.hideUntil = 0; }
+      else { v.morph = null; v.hideUntil = t0 + tm; }
+      v.kind = p.kind; v.special = p.special || 'none'; v.r = cr.r; v.c = cr.c; v.mv = null; v.popT = t0 + tm;
+      visuals.set(p.id, v);
+      if (cellMap[cr.r]) cellMap[cr.r][cr.c] = v;
       at(t0 + tm, tt => {
-        const p = cr.piece;
-        const old = cellV(cr);
-        if (old && old.id !== p.id) visuals.delete(old.id);
-        const v = (old && old.id === p.id ? old : null) || visuals.get(p.id) || newVisual(p, cr.r, cr.c);
-        v.kind = p.kind; v.special = p.special || 'none'; v.r = cr.r; v.c = cr.c; v.mv = null; v.popT = tt;
-        visuals.set(p.id, v);
-        if (cellMap[cr.r]) cellMap[cr.r][cr.c] = v;
-        fx.push({ type: 'flash', x: cr.c + 0.5, y: cr.r + 0.5, t0: tt, dur: 420, R: 1.3 });
+        fx.push({ type: 'flash', x: cr.c + 0.5, y: cr.r + 0.5, t0: tt, dur: 360, R: 1.4 });
+        fx.push({ type: 'pring', x: cr.c + 0.5, y: cr.r + 0.5, t0: tt, dur: 320, col: kindColor(p.kind), R: 0.95 });
         sparkle(cr.c + 0.5, cr.r + 0.5, 10, tt, 0.3);
-        shake(2.5, 200, tt);
       });
-      end = Math.max(end, t0 + tm + 170);
+      cue('special', tm, { special: p.special });
     }
 
     // --- 果凍 ---
@@ -909,10 +1097,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!jh) continue;
       at(t0 + tOf(jh.r, jh.c), tt => {
         if (!jelly[jh.r]) return;
-        const from = jelly[jh.r][jh.c] || 0;
-        jelly[jh.r][jh.c] = jh.left | 0;
-        jellyFx.set(key(jh.r, jh.c), { t0: tt, from });
-        burst(jh.c + 0.5, jh.r + 0.5, [255, 120, 190], 6, tt, { speed: 2.6, stars: 0, up: 1.4 });
+        const from = jelly[jh.r][jh.c] || 0, left = Math.min(from, jh.left | 0);
+        jelly[jh.r][jh.c] = left;
+        if (left < from) jellyFx.set(key(jh.r, jh.c), { t0: tt, from });
+        burst(jh.c + 0.5, jh.r + 0.5, [255, 120, 190], 5, tt, { speed: 2.6, stars: 0, up: 1.4 });
       });
     }
 
@@ -925,7 +1113,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const it = remAt.get(key(pt.r, pt.c));
       let kind = it && it.piece ? it.piece.kind : -1;
       if (kind < 0) {
-        const g = groups.find(gg => gg.cells && gg.cells.some(q => q.r === pt.r && q.c === pt.c));
+        const g = groups.find(gg => gg.cells.some(q => q.r === pt.r && q.c === pt.c));
         if (g) kind = g.kind;
       }
       return kind;
@@ -951,41 +1139,102 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       }
       const kind = kindAt(top);
       const x = sc / comp.length + 0.5, y = sr / comp.length + 0.5;
-      at(t0 + Math.min(520, tm) + 80, tt => addText('+' + value, x, y, tt,
+      at(t0 + Math.min(520, tm) + 70, tt => addText('+' + value, x, y, tt,
         kind >= 0 ? kindColor(kind) : [255, 170, 60], value >= 200));
     }
 
-    if ((ev.cascade | 0) >= 2) showWord(WORDS[Math.min(5, ev.cascade | 0)], ev.cascade | 0);
-    await wait(end - now());
-    flushSched();
+    if (cascade >= 2) showWord(WORDS[Math.min(5, cascade)], cascade);
+    if (cascade >= 3) cue('chime', 40, { level: cascade });
+    if (cascade >= 4) shake(1.8 + 0.4 * Math.min(4, cascade - 4), 220, t0 + 40);
+    // 最後一顆開始爆之後一下下就讓上面的方塊開始掉（爆的動畫在背景收尾）
+    await wait(t0 + lastPop + POP_LEAD - now());
   }
 
-  async function animFall(ev) {
+  // 掉落中的方塊：位置、速度
+  function fallState(m, t) {
+    const dt = t - m.t0;
+    if (dt <= 0) return { y: m.y0, vel: 0, done: false };
+    if (dt >= m.dur) return { y: m.y1, vel: 0, done: true };
+    return { y: m.y0 + m.v0 * dt + 0.5 * G_FALL * dt * dt, vel: m.v0 + G_FALL * dt, done: false };
+  }
+  function fallDur(dist, v0) { return dist <= 0 ? 1 : (-v0 + Math.sqrt(v0 * v0 + 2 * G_FALL * dist)) / G_FALL; }
+  function topCell(c) { for (let r = 0; r < rows; r++) if (mask[r] && mask[r][c]) return r; return 0; }
+
+  async function animFall(ev, next) {
     const t = now();
-    let end = t + 60;
-    const mk = (v, from, to) => {
-      const d = Math.hypot(to.r - from.r, to.c - from.c);
-      const dur = Math.sqrt((2 * Math.max(0.25, d)) / G_FALL);
-      v.mv = { x0: from.c, y0: from.r, x1: to.c, y1: to.r, t0: t, dur, ease: easeInQuad, clip: true };
-      v.landT = t + dur; v.landAmp = Math.min(0.24, 0.08 + d * 0.035);
-      end = Math.max(end, t + dur);
-    };
+    const seq = ++fallSeq;
+    const items = [];
     for (const m of ev.moves || []) {
       if (!m || !m.from || !m.to) continue;
       const v = visuals.get(m.id) || cellV(m.from);
-      if (v) mk(v, m.from, m.to);
+      if (v) items.push({ v, to: m.to, spawn: -1 });
     }
     for (const s of ev.spawns || []) {
       if (!s || !s.piece || !s.to) continue;
       const v = newVisual(s.piece, s.to.r, s.to.c);
       visuals.set(s.piece.id, v);
-      mk(v, s.from || { r: s.to.r - rows, c: s.to.c }, s.to);
+      const j = s.from && s.from.r < 0 ? -1 - s.from.r : 0;
+      items.push({ v, to: s.to, spawn: j });
     }
-    await wait(end - now() + 25);
+    // 同一欄由下往上，每顆晚一點點出發；每欄再有一點點不同（看起來比較自然）
+    const byCol = new Map();
+    for (const it of items) {
+      let l = byCol.get(it.to.c);
+      if (!l) byCol.set(it.to.c, l = []);
+      l.push(it);
+    }
+    let endAll = t + 30, firstLand = Infinity;
+    for (const [c, list] of byCol) {
+      list.sort((a, b) => b.to.r - a.to.r);
+      const jit = ((c * 7919 + seq * 104729) % 97) / 97 * COL_JITTER;
+      const top = topCell(c);
+      list.forEach((it, k) => {
+        const v = it.v;
+        let y0, vel, delay;
+        const m = v.mv;
+        if (it.spawn >= 0) { y0 = top - 1 - it.spawn; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW); }
+        else if (m && m.fall && t < m.t0 + m.dur) {
+          // 還在掉：接著目前的位置和速度繼續
+          const fs = fallState(m, t);
+          y0 = fs.y; vel = Math.max(V0_FALL, fs.vel); delay = t < m.t0 ? m.t0 - t : 0;
+        } else {
+          const cur = evalVisual(v, t);
+          y0 = cur.y; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
+        }
+        const dist = it.to.r - y0;
+        if (dist <= 0.001) { v.mv = null; return; }
+        const dur = fallDur(dist, vel);
+        v.mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
+        v.landT = t + delay + dur;
+        v.landAmp = clamp((vel + G_FALL * dur) * 2.4, 0.07, 0.2);
+        endAll = Math.max(endAll, v.landT);
+        firstLand = Math.min(firstLand, v.landT);
+      });
+    }
+    if (firstLand < Infinity) cue('land', firstLand - t);
+    // 還在掉（上一次掉落沒被這次接手）的方塊也算進去
+    for (const v of visuals.values()) if (v.mv && v.mv.fall && v.landT > endAll) endAll = v.landT;
+    let end = endAll;
+    if (next && next.t === 'clear') {
+      // 下一輪連鎖：只等會被消掉 / 變身的那幾格落地
+      const cells = [];
+      for (const it of next.removed || []) if (it) cells.push(it);
+      for (const it of next.created || []) if (it) cells.push(it);
+      for (const g of next.groups || []) for (const q of (g && g.cells) || []) cells.push(q);
+      let endInv = t;
+      const board = ev.board;
+      for (const q of cells) {
+        const p = board && board[q.r] && board[q.r][q.c];
+        const v = p ? visuals.get(p.id) : cellV(q);
+        if (v && v.mv && v.mv.fall) endInv = Math.max(endInv, v.landT);
+      }
+      if (cells.length) end = Math.min(endAll, endInv + LAND_HOLD);
+    }
+    await wait(end - now());
   }
 
   async function animShuffle(ev) {
-    const t = now(), dur = 920, cx = (cols - 1) / 2, cy = (rows - 1) / 2;
+    const t = now(), dur = 620, cx = (cols - 1) / 2, cy = (rows - 1) / 2;
     for (const m of ev.moves || []) {
       if (!m || !m.from || !m.to) continue;
       const v = visuals.get(m.id) || cellV(m.from);
@@ -1004,21 +1253,23 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       } };
     }
     fx.push({ type: 'swirl', t0: t, dur });
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * Math.PI * 2, v = 2.5 + Math.random() * 2;
-      emit({ type: 1, x: cx + 0.5, y: cy + 0.5, vx: Math.cos(a) * v - Math.sin(a) * 3, vy: Math.sin(a) * v + Math.cos(a) * 3,
-        g: 0, drag: 1.6, t0: t + 250 + Math.random() * 300, life: 600, size: 0.3 + Math.random() * 0.25 });
+    const st = getStar();
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2, v = 2.5 + Math.random() * 2;
+      emit({ type: 1, img: st, x: cx + 0.5, y: cy + 0.5, vx: Math.cos(a) * v - Math.sin(a) * 3, vy: Math.sin(a) * v + Math.cos(a) * 3,
+        g: 0, drag: 1.6, t0: t + 160 + Math.random() * 220, life: 520, size: 0.3 + Math.random() * 0.25 });
     }
-    await wait(dur + 20);
+    cue('shuffle');
+    await wait(dur + 15);
   }
 
-  function animateEvent(ev) {
+  function animateEvent(ev, next) {
     switch (ev && ev.t) {
-      case 'swap': return animSwap(ev, false);
-      case 'swapBack': return animSwap(ev, true);
+      case 'swap': return animSwap(ev, false, next);
+      case 'swapBack': return animSwap(ev, true, next);
       case 'transform': return animTransform(ev);
-      case 'clear': return animClear(ev);
-      case 'fall': return animFall(ev);
+      case 'clear': return animClear(ev, next);
+      case 'fall': return animFall(ev, next);
       case 'shuffle': return animShuffle(ev);
       default: return null;
     }
@@ -1027,12 +1278,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   async function runEvents(events, opts, myGen) {
     if (myGen !== gen || destroyed) return;
     selected = null; hintPair = null;
-    for (const ev of events) {
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i], next = events[i + 1] || null;
       if (myGen !== gen || destroyed) return;
       if (opts && typeof opts.onEvent === 'function') {
         try { opts.onEvent(ev); } catch (e) { console.error('[renderer] onEvent', e); }
       }
-      try { await animateEvent(ev); } catch (e) { console.error('[renderer]', e); }
+      curOpts = opts;
+      try { await animateEvent(ev, next); } catch (e) { console.error('[renderer]', e); }
+      curOpts = null;
       if (myGen !== gen || destroyed) return;
       try { if (ev && ev.board) syncBoard(ev.board, ev.jelly); } catch (e) { console.error('[renderer] sync', e); }
       requestDraw();
@@ -1044,17 +1298,49 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const list = Array.isArray(events) ? events.slice() : [];
     busyCount++;
     const p = queue
-      .then(() => runEvents(list, opts, myGen))
+      .then(() => runEvents(list, opts || {}, myGen))
       .catch(e => console.error('[renderer]', e))
       .finally(() => { busyCount = Math.max(0, busyCount - 1); requestDraw(); });
     queue = p;
     return p;
   }
 
-  // ================= 文字 =================
+  // ================= 文字（先畫成小圖，之後每幀只貼圖）=================
+  function scratchCtx() {
+    if (!scratch) scratch = makeCanvas(4, 4).getContext('2d');
+    return scratch;
+  }
+  // size：CSS px。回傳 { c, w, h }，w / h 是 CSS px
+  function textSprite(text, size, fill, outline, outer, shadow) {
+    const k = dpr, sc = scratchCtx();
+    sc.font = `900 ${Math.max(6, size * k)}px ${FONT}`;
+    const mw = sc.measureText(text).width / k;
+    const pad = size * (outer ? 0.36 : 0.28) + (shadow ? size * 0.22 : 0);
+    const w = mw + pad * 2, h = size * 1.25 + pad * 2;
+    const c = makeCanvas(w * k, h * k), g = c.getContext('2d');
+    g.scale(k, k);
+    g.font = `900 ${Math.max(6, size)}px ${FONT}`;
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    const x = w / 2, y = h / 2;
+    const fs = typeof fill === 'function' ? fill(g, size) : fill;
+    // 陰影不用 shadowBlur（很貴）：往下偏一點的半透明粗描邊，兩層疊出柔和的邊
+    if (shadow) {
+      g.strokeStyle = 'rgba(50,10,80,0.18)'; g.lineWidth = size * 0.5; g.strokeText(text, x, y + size * 0.1);
+      g.strokeStyle = 'rgba(50,10,80,0.3)'; g.lineWidth = size * 0.38; g.strokeText(text, x, y + size * 0.08);
+    }
+    if (outer) { g.lineWidth = size * 0.34; g.strokeStyle = outer; g.strokeText(text, x, y); }
+    g.lineWidth = size * (outer ? 0.17 : 0.22); g.strokeStyle = outline; g.strokeText(text, x, y);
+    g.fillStyle = fs; g.fillText(text, x, y);
+    return { c, w, h };
+  }
+  function drawSprite(sp, x, y, s) {
+    if (!sp) return;
+    const w = sp.w * s, h = sp.h * s;
+    ctx.drawImage(sp.c, x - w / 2, y - h / 2, w, h);
+  }
   function showWord(text, level) {
     if (!text) return;
-    word = { text, level, t0: now(), dur: 1150 };
+    word = { text, level, t0: now(), dur: 1100, sp: null, size: 0 };
     requestDraw();
   }
   function banner(text, { sub = '', duration = 1600 } = {}) {
@@ -1062,7 +1348,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const p = bannerQueue.then(() => new Promise(res => {
       if (destroyed) { res(); return; }
       const b = { text: String(text == null ? '' : text), sub: sub ? String(sub) : '', t0: now(),
-        dur: Math.max(500, +duration || 1600), res, timer: 0 };
+        dur: Math.max(500, +duration || 1600), res, timer: 0, sp: null, key: '' };
       banners.push(b);
       b.timer = setTimeout(() => { banners = banners.filter(x => x !== b); requestDraw(); res(); }, b.dur);
       requestDraw();
@@ -1107,7 +1393,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   function dragOffset(t) {
     if (!dragState) return { x: 0, y: 0 };
     if (!dragState.rel) return { x: dragState.dx, y: dragState.dy };
-    const p = (t - dragState.rel) / 180;
+    const p = (t - dragState.rel) / 160;
     if (p >= 1) return { x: 0, y: 0 };
     const k = (1 - p) * (1 - p) * Math.cos(p * Math.PI * 1.4);
     return { x: dragState.dx * k, y: dragState.dy * k };
@@ -1115,34 +1401,44 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
   // ================= 繪製 =================
   function evalVisual(v, t) {
-    let x = v.c, y = v.r, s = 1, sx = 1, sy = 1, rot = 0, falling = false, top = false, hl = 0;
+    let x = v.c, y = v.r, s = 1, sx = 1, sy = 1, falling = false, top = false, hl = 0;
     const m = v.mv;
     if (m) {
-      const p = clamp01((t - m.t0) / m.dur);
-      if (m.path) {
-        if (p >= 1) { x = m.x1; y = m.y1; } else { const q = m.path(p); x = q.x; y = q.y; if (q.s) s *= q.s; }
+      if (m.fall) {
+        const fs = fallState(m, t);
+        x = m.x1; y = fs.y;
+        if (!fs.done) {
+          falling = true;
+          const k = Math.min(0.11, fs.vel * 1.5);        // 掉得快時拉長一點
+          sy *= 1 + k; sx *= 1 - k * 0.5;
+        }
       } else {
-        const e = p >= 1 ? 1 : m.ease ? m.ease(p) : p;
-        x = lerp(m.x0, m.x1, e); y = lerp(m.y0, m.y1, e);
-      }
-      if (p < 1) {
-        if (m.lift) s *= 1 + m.lift * Math.sin(Math.PI * p);
-        falling = !!m.clip; top = !!m.top;
+        const p = clamp01((t - m.t0) / m.dur);
+        if (m.path) {
+          if (p >= 1) { x = m.x1; y = m.y1; } else { const q = m.path(p); x = q.x; y = q.y; if (q.s) s *= q.s; }
+        } else {
+          const e = p >= 1 ? 1 : m.ease ? m.ease(p) : p;
+          x = lerp(m.x0, m.x1, e); y = lerp(m.y0, m.y1, e);
+        }
+        if (p < 1) {
+          if (m.lift) s *= 1 + m.lift * Math.sin(Math.PI * Math.min(1, p * 1.15));
+          falling = !!m.clip; top = !!m.top;
+        }
       }
     }
     if (t >= v.landT) {
-      const p = (t - v.landT) / 280;
+      const p = (t - v.landT) / LAND_MS;
       if (p < 1) {
-        const k = Math.exp(-4.2 * p) * Math.cos(p * Math.PI * 2.6);
-        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * 0.75 * k;
+        const k = Math.exp(-4.6 * p) * Math.cos(p * Math.PI * 2.5);
+        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * 0.7 * k;
       }
     }
-    if (t >= v.popT) { const p = (t - v.popT) / 440; if (p < 1) s *= popCurve(p); }
+    if (t >= v.popT) { const p = (t - v.popT) / POPIN_MS; if (p < 1) s *= popCurve(p); }
     if (v.special === 'wrap') s *= 1 + 0.045 * Math.sin(t / 230 + v.phase);
     if (dragState && dragState.id === v.id) {
       const o = dragOffset(t);
       x += o.x; y += o.y; top = true; s *= 1.06;
-      if (dragState.rel && t - dragState.rel > 180) dragState = null;
+      if (dragState.rel && t - dragState.rel > 160) dragState = null;
     }
     if (hintPair && !m) {
       const { a, b } = hintPair;
@@ -1153,7 +1449,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         x += dx * 0.1 * w; y += dy * 0.1 * w; s *= 1 + 0.07 * w; hl = 0.35 + 0.65 * w;
       }
     }
-    return { x, y, s, sx, sy, rot, falling, top, hl };
+    return { x, y, s, sx, sy, falling, top, hl };
   }
 
   function drawBomb(cx, cy, s, t, phase, spinRate = 1) {
@@ -1167,26 +1463,42 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.drawImage(e.trio, cx - P / 2, cy - P / 2, P, P);
     // 閃閃
     const star = getStar();
-    ctx.save();
+    const op = ctx.globalCompositeOperation, ga = ctx.globalAlpha;
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 3; i++) {
       const a = t / 900 + phase + (i * Math.PI * 2) / 3, tw = Math.max(0, Math.sin(t / 210 + i * 2.1 + phase));
       if (tw < 0.05) continue;
       const rr2 = cs * 0.4 * s, sz = cs * 0.34 * tw * s;
-      ctx.globalAlpha = tw;
+      ctx.globalAlpha = tw * ga;
       ctx.drawImage(star, cx + Math.cos(a) * rr2 - sz / 2, cy + Math.sin(a) * rr2 - sz / 2, sz, sz);
     }
-    ctx.restore();
+    ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
   }
 
-  function drawPieceAt(kind, special, cx, cy, s, sx, sy, t, phase) {
-    if (special === 'bomb' || kind < 0) { drawBomb(cx, cy, s * Math.sqrt(sx * sy), t, phase); return; }
+  function drawPieceAt(kind, special, cx, cy, s, sx, sy, t, phase, white = 0) {
+    if (special === 'bomb' || kind < 0) {
+      drawBomb(cx, cy, s * Math.sqrt(sx * sy), t, phase);
+      if (white > 0.01) {
+        const z = cs * 1.3 * s, ga = ctx.globalAlpha;
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * white;
+        ctx.drawImage(getFlash(), cx - z / 2, cy - z / 2, z, z);
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+      }
+      return;
+    }
     const e = getTile(kind, special), P = e.P / dpr;
     const w = P * s * sx, h = P * s * sy, dy = (1 - sy) * cs * TILE * s * 0.5;
     ctx.drawImage(e.full, cx - w / 2, cy - h / 2 + dy, w, h);
+    if (white > 0.01) {
+      const ga = ctx.globalAlpha;
+      ctx.globalAlpha = ga * white;
+      ctx.drawImage(tileWhite(e), cx - w / 2, cy - h / 2 + dy, w, h);
+      ctx.globalAlpha = ga;
+    }
   }
 
   function drawVisual(v, st, t) {
+    if (v.hideUntil && t < v.hideUntil) return;
     const cx = ox + (st.x + 0.5) * cs, cy = oy + (st.y + 0.5) * cs;
     if (st.hl > 0) {
       const g = getGlow(), gs = cs * 1.45;
@@ -1194,17 +1506,22 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.drawImage(g, cx - gs / 2, cy - gs / 2, gs, gs);
       ctx.globalAlpha = 1;
     }
-    drawPieceAt(v.kind, v.special, cx, cy, st.s, st.sx, st.sy, t, v.phase);
+    let kind = v.kind, special = v.special;
+    if (v.morph) {
+      if (t < v.morph.until) { kind = v.morph.kind; special = v.morph.special; } else v.morph = null;
+    }
+    drawPieceAt(kind, special, cx, cy, st.s, st.sx, st.sy, t, v.phase);
   }
 
   function drawSelected(v, st, t) {
     const cx = ox + (st.x + 0.5) * cs, cy = oy + (st.y + 0.5) * cs, age = t - selected.t0;
     const pulse = 0.5 + 0.5 * Math.sin(age / 160);
     const g = getGlow(), gs = cs * (1.6 + 0.14 * pulse);
-    ctx.globalAlpha = 0.6 + 0.4 * pulse;
+    ctx.globalAlpha = Math.min(1, age / 90) * (0.6 + 0.4 * pulse);
     ctx.drawImage(g, cx - gs / 2, cy - gs / 2, gs, gs);
     ctx.globalAlpha = 1;
-    const s = st.s * (age < 300 ? lerp(1, 1.12, easeOutBack(age / 300, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
+    // 按下去：先輕輕一壓，再彈大（立刻有反應）
+    const s = st.s * (age < 60 ? lerp(1, 0.94, age / 60) : age < 220 ? lerp(0.94, 1.12, easeOutBack((age - 60) / 160, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
     const info = pieceInfo(v.kind), { spin, sprite, spinScale } = imgsFor(info.id);
@@ -1241,7 +1558,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!jr) continue;
       for (let c = 0; c < cols; c++) {
         if (!mask[r][c]) continue;
-        const lv = jr[c] | 0, jf = jellyFx.get(r * 1024 + c);
+        const lv = jr[c] | 0, jf = jellyFx.size ? jellyFx.get(r * 1024 + c) : null;
         let s = 1;
         const x = ox + (c + 0.5) * cs, y = oy + (r + 0.5) * cs;
         if (jf) {
@@ -1264,6 +1581,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
   }
 
+  const fallCols = [];
   function drawPieces(t) {
     const sel = selected ? cellV(selected) : null;
     let selSt = null;
@@ -1279,6 +1597,24 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const [v, st] of late) drawVisual(v, st, t);
     drawJellyRims(t);
     if (falling.length) {
+      // 同一欄掉落中的方塊不重疊（後面掉得比較快的會「頂」在前面那顆上面）
+      for (let c = 0; c < cols; c++) fallCols[c] = null;
+      for (const it of falling) {
+        const m = it[0].mv;
+        if (!m || !m.fall) continue;
+        const c = m.x1 | 0;
+        if (c < 0 || c >= cols) continue;
+        (fallCols[c] || (fallCols[c] = [])).push(it);
+      }
+      for (let c = 0; c < cols; c++) {
+        const l = fallCols[c];
+        if (!l || l.length < 2) continue;
+        l.sort((a, b) => b[0].mv.y1 - a[0].mv.y1);
+        for (let i = 1; i < l.length; i++) {
+          const lim = l[i - 1][1].y - 1;
+          if (l[i][1].y > lim) l[i][1].y = lim;
+        }
+      }
       ctx.save();
       if (clipPath) ctx.clip(clipPath);
       for (const [v, st] of falling) drawVisual(v, st, t);
@@ -1296,27 +1632,31 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ghosts[w++] = g;
       const cx0 = ox + (g.x + 0.5) * cs, cy0 = oy + (g.y + 0.5) * cs;
       if (p < 0) { drawPieceAt(g.kind, g.special, cx0, cy0, 1, 1, 1, t, g.phase); continue; }
-      if (!g.burst) {
-        g.burst = true;
+      if (!g.fired) {
+        g.fired = true;
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
         if (g.to) sparkle(g.x + 0.5, g.y + 0.5, 1, g.t0, 0.2);
         else {
-          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 4 : 8, g.t0, { stars: g.heavy ? 1 : 2, speed: g.special !== 'none' ? 4.2 : 3.2 });
-          fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 240, R: 0.75 });
+          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 3 : 6, g.t0, { stars: g.heavy ? 1 : 3, speed: g.special !== 'none' ? 4.4 : 3.4 });
+          fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
+          if (!g.heavy) fx.push({ type: 'pring', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 230, col, R: 0.7 });
         }
       }
-      let x = cx0, y = cy0, s, a;
+      let x = cx0, y = cy0, s, a, wh;
       if (g.to) {
         const e = easeInCubic(p);
         x = lerp(cx0, ox + (g.to.x + 0.5) * cs, e); y = lerp(cy0, oy + (g.to.y + 0.5) * cs, e);
-        s = 1 - 0.4 * e; a = 1 - p * p;
+        s = 1 - 0.45 * e; a = 1 - p * p * 0.6; wh = 0.55 * Math.sin(Math.PI * Math.min(1, p * 1.4));
       } else {
-        s = p < 0.28 ? 1 + 0.26 * (p / 0.28) : 1.26 * (1 - easeInCubic((p - 0.28) / 0.72));
+        // 一下子放大 + 變白（「啵」），接著很快往內縮掉、碎成粒子
+        const q = 0.2;
+        if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.8 * u; }
+        else { const u = (p - q) / (1 - q); s = 1.2 * (1 - u * u * (3 - 2 * u)); wh = 0.8 * (1 - u) * (1 - u); }
         a = p < 0.55 ? 1 : 1 - (p - 0.55) / 0.45;
       }
       if (s <= 0.01) continue;
       ctx.globalAlpha = clamp01(a);
-      drawPieceAt(g.kind, g.special, x, y, s, 1, 1, t, g.phase);
+      drawPieceAt(g.kind, g.special, x, y, s, 1, 1, t, g.phase, wh);
       ctx.globalAlpha = 1;
     }
     ghosts.length = w;
@@ -1343,40 +1683,46 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.stroke();
   }
 
+  const BOLT_PINK = [255, 170, 240];
   function drawFx(t) {
+    if (!fx.length) return;
     let w = 0;
-    const star = getStar();
+    const star = getStar(), flash = getFlash();
+    ctx.globalCompositeOperation = 'lighter';
     for (const f of fx) {
       const endT = f.end != null ? f.end : f.t0 + f.dur;
       if (t >= endT) continue;
       fx[w++] = f;
       if (t < f.t0) continue;
       const p = f.end != null ? (t - f.t0) / (f.end - f.t0) : (t - f.t0) / f.dur;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
       if (f.type === 'flash') {
-        const x = ox + f.x * cs, y = oy + f.y * cs, R = cs * f.R * (0.55 + 0.7 * easeOutCubic(p));
-        const rg = ctx.createRadialGradient(x, y, 0, x, y, R);
-        rg.addColorStop(0, `rgba(255,255,255,${0.85 * (1 - p)})`); rg.addColorStop(0.5, `rgba(255,240,200,${0.4 * (1 - p)})`);
-        rg.addColorStop(1, 'rgba(255,240,200,0)');
-        ctx.fillStyle = rg; ctx.fillRect(x - R, y - R, R * 2, R * 2);
+        const x = ox + f.x * cs, y = oy + f.y * cs, R = cs * f.R * (0.6 + 0.6 * easeOutCubic(p));
+        ctx.globalAlpha = 0.95 * (1 - p) * (1 - p);
+        ctx.drawImage(flash, x - R, y - R, R * 2, R * 2);
+      } else if (f.type === 'pring') {
+        // 消除時的光圈：從方塊邊緣往外擴散
+        const x = ox + f.x * cs, y = oy + f.y * cs, e = easeOutCubic(p), R = cs * (0.36 + f.R * 0.55 * e);
+        ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
+        ctx.lineWidth = cs * 0.09 * (1 - p) + 0.5; ctx.strokeStyle = css(mixc(f.col, WHITE, 0.5), 0.75 * (1 - p)); ctx.stroke();
       } else if (f.type === 'beam') {
         const cx = ox + (f.c + 0.5) * cs, cy = oy + (f.r + 0.5) * cs, h = f.dir === 'h';
-        const span = (h ? cols : rows) * cs, reach = (span + cs) * easeOutCubic(clamp01(p / 0.42));
-        const grow = Math.sin(Math.min(1, p / 0.18) * Math.PI / 2), fade = p > 0.42 ? 1 - easeInCubic((p - 0.42) / 0.58) : 1;
-        const th = cs * (0.18 + 0.42 * grow) * fade;
+        const span = (h ? cols : rows) * cs;
+        const sweepP = clamp01((t - f.t0) / Math.max(1, f.sweep));
+        const reach = (span + cs) * easeOutCubic(sweepP);
+        const hold = f.sweep / f.dur;
+        const grow = Math.sin(Math.min(1, p / 0.12) * Math.PI / 2), fade = p > hold ? 1 - easeInCubic((p - hold) / (1 - hold)) : 1;
+        const th = cs * (0.2 + 0.45 * grow) * fade;
         const lo = h ? ox - cs * 0.2 : oy - cs * 0.2, hi = h ? ox + cols * cs + cs * 0.2 : oy + rows * cs + cs * 0.2;
         const c0 = h ? cx : cy, a0 = Math.max(lo, c0 - reach), a1 = Math.min(hi, c0 + reach);
-        const col = mixc(f.col, WHITE, 0.25);
-        const gr = h ? ctx.createLinearGradient(0, cy - th * 1.8, 0, cy + th * 1.8) : ctx.createLinearGradient(cx - th * 1.8, 0, cx + th * 1.8, 0);
-        gr.addColorStop(0, css(col, 0)); gr.addColorStop(0.3, css(col, 0.55 * fade)); gr.addColorStop(0.5, `rgba(255,255,255,${0.95 * fade})`);
-        gr.addColorStop(0.7, css(col, 0.55 * fade)); gr.addColorStop(1, css(col, 0));
-        ctx.fillStyle = gr;
-        if (h) ctx.fillRect(a0, cy - th * 1.8, a1 - a0, th * 3.6); else ctx.fillRect(cx - th * 1.8, a0, th * 3.6, a1 - a0);
-        ctx.fillStyle = `rgba(255,255,255,${0.9 * fade})`;
-        if (h) ctx.fillRect(a0, cy - th * 0.22, a1 - a0, th * 0.44); else ctx.fillRect(cx - th * 0.22, a0, th * 0.44, a1 - a0);
-        if (p < 0.55) {
-          const sz = cs * (1.3 - p), al = 1 - p / 0.55;
+        ctx.globalAlpha = fade;
+        const img = getBeam(f.col, h ? 'h' : 'v');
+        if (h) ctx.drawImage(img, a0, cy - th * 1.8, a1 - a0, th * 3.6); else ctx.drawImage(img, cx - th * 1.8, a0, th * 3.6, a1 - a0);
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.9 * fade;
+        if (h) ctx.fillRect(a0, cy - th * 0.2, a1 - a0, th * 0.4); else ctx.fillRect(cx - th * 0.2, a0, th * 0.4, a1 - a0);
+        if (sweepP < 1 || p < hold + 0.1) {
+          const sz = cs * 1.25, al = sweepP < 1 ? 1 : clamp01(1 - (p - hold) / 0.1);
           ctx.globalAlpha = al;
           for (const q of [a0, a1]) {
             if (h) ctx.drawImage(star, q - sz / 2, cy - sz / 2, sz, sz); else ctx.drawImage(star, cx - sz / 2, q - sz / 2, sz, sz);
@@ -1385,108 +1731,109 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       } else if (f.type === 'ring') {
         const x = ox + f.x * cs, y = oy + f.y * cs, e = easeOutCubic(p), R = cs * (0.3 + f.R * e);
         if (p < 0.4) {
-          const fr = cs * f.R * 0.95, rg = ctx.createRadialGradient(x, y, 0, x, y, fr), a = 1 - p / 0.4;
-          rg.addColorStop(0, `rgba(255,255,255,${0.9 * a})`); rg.addColorStop(0.6, css(mixc(f.col, WHITE, 0.3), 0.4 * a));
-          rg.addColorStop(1, css(f.col, 0));
-          ctx.fillStyle = rg; ctx.fillRect(x - fr, y - fr, fr * 2, fr * 2);
+          const fr = cs * f.R * 1.9 * (0.6 + 0.4 * e);
+          ctx.globalAlpha = 1 - p / 0.4;
+          ctx.drawImage(getGlowCol(f.col), x - fr / 2, y - fr / 2, fr, fr);
         }
+        ctx.globalAlpha = 1;
         ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2);
         ctx.lineWidth = cs * 0.5 * (1 - p) + 1; ctx.strokeStyle = css(mixc(f.col, WHITE, 0.2), 0.7 * (1 - p)); ctx.stroke();
-        ctx.lineWidth = cs * 0.14 * (1 - p) + 0.5; ctx.strokeStyle = `rgba(255,255,255,${0.95 * (1 - p)})`; ctx.stroke();
+        ctx.lineWidth = cs * 0.14 * (1 - p) + 0.5; ctx.strokeStyle = css(WHITE, 0.95 * (1 - p)); ctx.stroke();
         ctx.beginPath(); ctx.arc(x, y, R * 0.7, 0, Math.PI * 2);
-        ctx.lineWidth = cs * 0.08 * (1 - p); ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - p)})`; ctx.stroke();
+        ctx.lineWidth = cs * 0.08 * (1 - p); ctx.strokeStyle = css(WHITE, 0.5 * (1 - p)); ctx.stroke();
       } else if (f.type === 'bolts') {
         const sx = ox + f.x * cs, sy = oy + f.y * cs;
         const tail = Math.min(1, (f.end - t) / 220);
-        const og = cs * (0.9 + 0.25 * Math.sin(t / 40)), rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, og);
-        rg.addColorStop(0, `rgba(255,255,255,${0.9 * tail})`); rg.addColorStop(0.4, `rgba(255,200,255,${0.45 * tail})`); rg.addColorStop(1, 'rgba(255,200,255,0)');
-        ctx.fillStyle = rg; ctx.fillRect(sx - og, sy - og, og * 2, og * 2);
+        const og = cs * (1.8 + 0.5 * Math.sin(t / 40));
+        ctx.globalAlpha = tail;
+        ctx.drawImage(getGlowCol(BOLT_PINK), sx - og / 2, sy - og / 2, og, og);
         ctx.lineJoin = 'round'; ctx.lineCap = 'round';
         const seedT = Math.floor(t / 55);
-        f.targets.forEach((q, i) => {
-          const st = f.t0 + 60 + i * f.stagger;
-          if (t < st) return;
+        for (let i = 0; i < f.targets.length; i++) {
+          const q = f.targets[i];
+          const st = f.t0 + f.first * 0.6 + i * f.stagger;
+          if (t < st) continue;
           const tx = ox + q.x * cs, ty = oy + q.y * cs, life = t - st;
-          const grow = clamp01(life / 70), ex = lerp(sx, tx, grow), ey = lerp(sy, ty, grow);
+          const grow = clamp01(life / 60), ex = lerp(sx, tx, grow), ey = lerp(sy, ty, grow);
           const pts = boltPts(sx, sy, ex, ey, seedT * 131 + i * 977);
           const hue = (i * 47 + t / 6) % 360;
-          ctx.strokeStyle = `hsla(${hue},100%,68%,${0.55 * tail})`; ctx.lineWidth = cs * 0.14; strokePts(pts);
-          ctx.strokeStyle = `rgba(255,255,255,${0.95 * tail})`; ctx.lineWidth = cs * 0.045; strokePts(pts);
-          if (life < 260 && grow >= 1) {
-            const a = 1 - life / 260, fr = cs * 0.75, g2 = ctx.createRadialGradient(tx, ty, 0, tx, ty, fr);
-            g2.addColorStop(0, `rgba(255,255,255,${a})`); g2.addColorStop(1, `hsla(${hue},100%,70%,0)`);
-            ctx.fillStyle = g2; ctx.fillRect(tx - fr, ty - fr, fr * 2, fr * 2);
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = `hsla(${hue | 0},100%,68%,${(0.55 * tail).toFixed(3)})`; ctx.lineWidth = cs * 0.14; strokePts(pts);
+          ctx.strokeStyle = css(WHITE, 0.95 * tail); ctx.lineWidth = cs * 0.045; strokePts(pts);
+          if (life < 240 && grow >= 1) {
+            const fr = cs * 1.4;
+            ctx.globalAlpha = 1 - life / 240;
+            ctx.drawImage(flash, tx - fr / 2, ty - fr / 2, fr, fr);
           }
-        });
+        }
       } else if (f.type === 'boardfx') {
         const bx = ox, by = oy, bw = cols * cs, bh = rows * cs, cx = bx + bw / 2, cy = by + bh / 2;
+        ctx.globalAlpha = 1;
         if (p < 0.5) {
-          ctx.fillStyle = `rgba(255,255,255,${0.75 * Math.pow(1 - p / 0.5, 2)})`;
+          ctx.fillStyle = css(WHITE, 0.75 * Math.pow(1 - p / 0.5, 2));
           ctx.fillRect(bx - cs * 0.3, by - cs * 0.3, bw + cs * 0.6, bh + cs * 0.6);
         }
         const R = Math.hypot(bw, bh) * 0.6 * easeOutCubic(p), n = 18;
         ctx.lineWidth = cs * 0.5 * (1 - p) + 1;
         for (let i = 0; i < n; i++) {
           ctx.beginPath(); ctx.arc(cx, cy, R, (i / n) * Math.PI * 2 + t / 300, ((i + 1) / n) * Math.PI * 2 + t / 300);
-          ctx.strokeStyle = `hsla(${(i / n) * 360},100%,68%,${0.8 * (1 - p)})`; ctx.stroke();
+          ctx.strokeStyle = `hsla(${(i / n) * 360},100%,68%,${(0.8 * (1 - p)).toFixed(3)})`; ctx.stroke();
         }
       } else if (f.type === 'swirl') {
         const cx = ox + (cols / 2) * cs, cy = oy + (rows / 2) * cs, k = Math.sin(Math.PI * p);
-        const R = cs * 1.8 * k, rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, R + 1);
-        rg.addColorStop(0, `rgba(255,255,255,${0.55 * k})`); rg.addColorStop(1, 'rgba(255,220,255,0)');
-        ctx.fillStyle = rg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+        const R = cs * 3.6 * k;
+        ctx.globalAlpha = 0.6 * k;
+        ctx.drawImage(flash, cx - R / 2, cy - R / 2, R, R);
       }
-      ctx.restore();
     }
     fx.length = w;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   function drawParticles(t) {
     if (!parts.length) return;
-    const star = getStar();
-    let w = 0;
+    let w = 0, stars = 0;
     for (const p of parts) {
       const age = (t - p.t0) / p.life;
       if (age >= 1) continue;
       parts[w++] = p;
       if (age < 0) continue;
+      if (p.type !== 0) { stars++; continue; }
       const s = (t - p.t0) / 1000, k = p.drag, fd = k ? (1 - Math.exp(-k * s)) / k : s;
       const x = ox + (p.x + p.vx * fd) * cs, y = oy + (p.y + p.vy * fd + 0.5 * p.g * s * s) * cs;
-      const a = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4;
-      if (p.type === 0) {
-        const z = p.size * cs * (1 - age * 0.45);
-        ctx.globalAlpha = a;
-        ctx.drawImage(getFluff(p.col), x - z, y - z, z * 2, z * 2);
-      } else {
-        const z = p.size * cs * (0.6 + 0.4 * Math.sin(age * Math.PI));
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = a;
-        ctx.drawImage(star, x - z / 2, y - z / 2, z, z);
-        ctx.globalCompositeOperation = 'source-over';
-      }
+      const z = p.size * cs * (1 - age * 0.45);
+      ctx.globalAlpha = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4;
+      ctx.drawImage(p.img, x - z, y - z, z * 2, z * 2);
     }
     parts.length = w;
+    if (stars) {
+      ctx.globalCompositeOperation = 'lighter';
+      for (const p of parts) {
+        if (p.type === 0) continue;
+        const age = (t - p.t0) / p.life;
+        if (age < 0 || age >= 1) continue;
+        const s = (t - p.t0) / 1000, k = p.drag, fd = k ? (1 - Math.exp(-k * s)) / k : s;
+        const x = ox + (p.x + p.vx * fd) * cs, y = oy + (p.y + p.vy * fd + 0.5 * p.g * s * s) * cs;
+        const z = p.size * cs * (0.6 + 0.4 * Math.sin(age * Math.PI));
+        ctx.globalAlpha = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4;
+        ctx.drawImage(p.img, x - z / 2, y - z / 2, z, z);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.globalAlpha = 1;
-  }
-
-  function strokeFillText(text, x, y, size, fill, outline, outer) {
-    ctx.font = `900 ${Math.max(6, size)}px ${FONT}`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-    if (outer) { ctx.lineWidth = size * 0.34; ctx.strokeStyle = outer; ctx.strokeText(text, x, y); }
-    ctx.lineWidth = size * (outer ? 0.17 : 0.22); ctx.strokeStyle = outline; ctx.strokeText(text, x, y);
-    ctx.fillStyle = fill; ctx.fillText(text, x, y);
   }
 
   // ---- 飄分 ----
   // 位置用格：從 (x, y) 往上飄 TEXT_RISE 格，剛出現時先彈大再縮回（textScale）。textPos() 把整段軌跡收在
   // 畫布裡（第 0 列、最左右兩欄的分數不會被畫布邊緣切掉）；放的時候和畫的時候用同一個函式，
   // 所以 addText 能預先算出兩個分數之後會不會疊在一起。
-  const TEXT_DUR = 1000, TEXT_RISE = 0.85, TEXT_GAP = 0.06;
+  const TEXT_DUR = 950, TEXT_RISE = 0.85, TEXT_GAP = 0.06, TEXT_MAXS = 1.15;
   // 依序嘗試的位移（格）：原位、上、下、左右、再遠一點
   const TEXT_TRY = [[0, 0], [0, -0.5], [0, 0.5], [0.6, 0], [-0.6, 0], [0.6, -0.5], [-0.6, -0.5],
     [0, -1], [0, 1], [0.6, 0.5], [-0.6, 0.5], [1.2, 0], [-1.2, 0], [0, -1.5], [0, 1.5]];
   const textFont = f => (f.big ? 0.56 : 0.44);       // 字級 / 格
-  const textScale = p => (p < 0.14 ? lerp(0.4, 1.15, easeOutCubic(p / 0.14)) : p < 0.24 ? lerp(1.15, 1, (p - 0.14) / 0.1) : 1);
+  const textScale = p => (p < 0.14 ? lerp(0.4, TEXT_MAXS, easeOutCubic(p / 0.14)) : p < 0.24 ? lerp(TEXT_MAXS, 1, (p - 0.14) / 0.1) : 1);
   function textPos(f, t) {
     const p = clamp01((t - f.t0) / f.dur), e = easeOutCubic(p), s = textScale(p);
     let x = f.x, y = f.y - TEXT_RISE * e;
@@ -1515,12 +1862,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return worst;
   }
   function addText(text, x, y, t0, col, big) {
-    const f = { text, x, y, t0, dur: TEXT_DUR, col, big, w: 0, h: 0 };
+    const f = { text, x, y, t0, dur: TEXT_DUR, col, big, w: 0, h: 0, sp: null, spCs: 0 };
     // 外框大小（格）：用實際字型量，加上描邊（小字級的字框會略高一點，多留 0.04）
     let wr = 0.62 * text.length, hr = 0.78;
     try {
-      ctx.font = `900 100px ${FONT}`;
-      const m = ctx.measureText(text);
+      const sc = scratchCtx();
+      sc.font = `900 100px ${FONT}`;
+      const m = sc.measureText(text);
       if (m.width > 0) wr = m.width / 100;
       const mh = (m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0);
       if (mh > 0) hr = mh / 100 + 0.04;
@@ -1552,36 +1900,58 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (p >= 1) continue;
       texts[w++] = f;
       if (p < 0) continue;
+      if (!f.sp || f.spCs !== cs) {
+        f.sp = textSprite(f.text, cs * textFont(f) * TEXT_MAXS, '#fff', css(mixc(saturate(f.col, 0.5), BLACK, 0.42)));
+        f.spCs = cs;
+      }
       const q = textPos(f, t);
       ctx.globalAlpha = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
-      strokeFillText(f.text, ox + q.x * cs, oy + q.y * cs, cs * textFont(f) * q.s, '#fff', css(mixc(saturate(f.col, 0.5), BLACK, 0.42)));
+      drawSprite(f.sp, ox + q.x * cs, oy + q.y * cs, q.s / TEXT_MAXS);
     }
     texts.length = w;
     ctx.globalAlpha = 1;
   }
 
+  const WORD_PAL = [['#fff8b0', '#ffc23d', '#ff7a59'], ['#fff3fb', '#ff9ad1', '#ff4f9a'], ['#f3ecff', '#c49bff', '#8a5cff'], ['#fffbe0', '#ffd23d', '#ff4fa3']];
   function drawWord(t) {
     if (!word) return;
     const p = (t - word.t0) / word.dur;
     if (p >= 1) { word = null; return; }
     const bw = cols * cs, cx = ox + bw / 2, cy = oy + rows * cs * 0.4;
-    const pin = clamp01((t - word.t0) / 300), pout = clamp01((t - word.t0 - word.dur + 260) / 260);
-    let size = cs * (1.05 + 0.08 * (word.level - 2));
-    ctx.font = `900 ${size}px ${FONT}`;
-    const mw = ctx.measureText(word.text).width;
-    if (mw > bw * 0.92) size *= (bw * 0.92) / mw;
+    const pin = clamp01((t - word.t0) / 280), pout = clamp01((t - word.t0 - word.dur + 250) / 250);
+    if (!word.sp || word.spCs !== cs) word.sp = wordSprite(word.text, word.level), word.spCs = cs;
     const sc = easeOutBack(pin, 2.4) * (1 + 0.15 * pout);
     ctx.save();
     ctx.translate(cx, cy - pout * cs * 0.6);
     ctx.rotate(-0.07 + 0.03 * Math.sin((t - word.t0) / 120) * (1 - pin));
-    ctx.scale(sc, sc);
     ctx.globalAlpha = 1 - pout;
-    const gr = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
-    const pal = [['#fff8b0', '#ffc23d', '#ff7a59'], ['#fff3fb', '#ff9ad1', '#ff4f9a'], ['#f3ecff', '#c49bff', '#8a5cff'], ['#fffbe0', '#ffd23d', '#ff4fa3']][Math.min(3, Math.max(0, word.level - 2))];
-    gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[2]);
-    ctx.shadowColor = 'rgba(50,10,80,0.45)'; ctx.shadowBlur = size * 0.15; ctx.shadowOffsetY = size * 0.08;
-    strokeFillText(word.text, 0, 0, size, gr, '#fff', css(PLUM));
+    drawSprite(word.sp, 0, 0, Math.max(0.001, sc));
     ctx.restore();
+  }
+  // 連鎖字的小圖：同一個字、同樣大小只畫一次
+  const wordCache = new Map();
+  function wordSprite(text, level) {
+    const bw = cols * cs, key = text + '|' + cs + '|' + dpr + '|' + bw;
+    let sp = wordCache.get(key);
+    if (sp) return sp;
+    {
+      let size = cs * (1.05 + 0.08 * (Math.min(5, level) - 2));
+      const sc = scratchCtx();
+      sc.font = `900 ${size}px ${FONT}`;
+      const mw = sc.measureText(text).width;
+      if (mw > bw * 0.92) size *= (bw * 0.92) / mw;
+      const pal = WORD_PAL[Math.min(3, Math.max(0, level - 2))];
+      // 漸層的座標以字的中心為原點：textSprite 會在 (w/2, h/2) 畫字，所以先位移
+      sp = textSprite(text, size, (g, s) => {
+        const w0 = g.canvas.width / dpr / 2, h0 = g.canvas.height / dpr / 2;
+        const gr = g.createLinearGradient(w0, h0 - s / 2, w0, h0 + s / 2);
+        gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[2]);
+        return gr;
+      }, '#fff', css(PLUM), true);
+    }
+    if (wordCache.size > 16) wordCache.clear();
+    wordCache.set(key, sp);
+    return sp;
   }
 
   function drawBanners(t) {
@@ -1591,6 +1961,30 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const unit = cols ? cs : Math.min(W, H) / 9;
     const pin = clamp01((t - b.t0) / 340), pout = clamp01((t - b.t0 - b.dur + 320) / 320);
     const vis = easeOutCubic(pin) * (1 - easeInCubic(pout));
+    const maxW = Math.min(W * 0.92, bw * 1.05);
+    const key = unit.toFixed(2) + '|' + maxW.toFixed(1) + '|' + dpr;
+    if (!b.sp || b.key !== key) {
+      let size = unit * 1.15;
+      const sc = scratchCtx();
+      sc.font = `900 ${size}px ${FONT}`;
+      const mw = sc.measureText(b.text).width;
+      if (mw > maxW) size *= maxW / mw;
+      b.sp = textSprite(b.text, size, (g, s) => {
+        const w0 = g.canvas.width / dpr / 2, h0 = g.canvas.height / dpr / 2;
+        const gr = g.createLinearGradient(w0, h0 - s / 2, w0, h0 + s / 2);
+        gr.addColorStop(0, '#fffdf0'); gr.addColorStop(0.55, '#fff0a8'); gr.addColorStop(1, '#ffc94d');
+        return gr;
+      }, '#fff', css(PLUM), true);
+      b.subSp = null;
+      if (b.sub) {
+        let ss = unit * 0.46;
+        sc.font = `900 ${ss}px ${FONT}`;
+        const sw = sc.measureText(b.sub).width;
+        if (sw > maxW) ss *= maxW / sw;
+        b.subSp = textSprite(b.sub, ss, '#fff', css(PLUM));
+      }
+      b.key = key;
+    }
     ctx.save();
     if (bgCache && bgCache.shade) {
       ctx.globalAlpha = 0.34 * vis;
@@ -1611,26 +2005,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.fillRect(-W / 2, bh / 2 - Math.max(1.5, unit * 0.05), W, Math.max(1.5, unit * 0.05));
     ctx.restore();
     const ty = cy - (b.sub ? unit * 0.32 : 0);
-    let size = unit * 1.15;
-    ctx.font = `900 ${size}px ${FONT}`;
-    const mw = ctx.measureText(b.text).width, maxW = Math.min(W * 0.92, bw * 1.05);
-    if (mw > maxW) size *= maxW / mw;
     const sc = easeOutBack(clamp01((t - b.t0 - 80) / 360), 2.2) * (1 + 0.25 * pout);
     ctx.translate(cx, ty);
     ctx.scale(Math.max(0.001, sc), Math.max(0.001, sc));
     ctx.globalAlpha = 1 - pout;
-    const gr = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
-    gr.addColorStop(0, '#fffdf0'); gr.addColorStop(0.55, '#fff0a8'); gr.addColorStop(1, '#ffc94d');
-    ctx.shadowColor = 'rgba(50,10,80,0.5)'; ctx.shadowBlur = size * 0.18; ctx.shadowOffsetY = size * 0.08;
-    strokeFillText(b.text, 0, 0, size, gr, '#fff', css(PLUM));
-    if (b.sub) {
-      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      let ss = unit * 0.46;
-      ctx.font = `900 ${ss}px ${FONT}`;
-      const sw = ctx.measureText(b.sub).width;
-      if (sw > maxW) ss *= maxW / sw;
-      strokeFillText(b.sub, 0, unit * 0.95, ss, '#fff', css(PLUM));
-    }
+    drawSprite(b.sp, 0, 0, 1);
+    if (b.subSp) drawSprite(b.subSp, 0, unit * 0.95, 1);
     ctx.restore();
   }
 
@@ -1640,6 +2020,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
     if (rows && cols && W) {
       let sx = 0, sy = 0;
       if (shakes.length) {
@@ -1673,8 +2055,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   function moving(t) {
     if (sched.length || ghosts.length || fx.length || parts.length || texts.length || word || banners.length || shakes.length || dragState || jellyFx.size) return true;
     for (const v of visuals.values()) {
-      if (v.mv && t < v.mv.t0 + v.mv.dur + 20) return true;
-      if (t - v.landT < 300 || t - v.popT < 460) return true;
+      const m = v.mv;
+      if (m && t < m.t0 + m.dur + 20) return true;
+      if (t - v.landT < LAND_MS + 20 || t - v.popT < POPIN_MS + 20) return true;
+      if ((v.morph && t < v.morph.until + 20) || (v.hideUntil && t < v.hideUntil + 20)) return true;
     }
     return false;
   }
@@ -1683,17 +2067,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const v of visuals.values()) if (v.special === 'wrap' || v.special === 'bomb' || v.kind < 0) return true;
     return false;
   }
+  // 每幀最多畫一次：畫的途中有人呼叫 requestDraw()（加飄分、排程…）不會再多掛一個 rAF
   function frame() {
     raf = 0;
     if (destroyed || paused) return;
-    const t = now(), act = moving(t), amb = !act && ambient();
-    if (amb && t - lastDraw < 31) { raf = requestAnimationFrame(frame); return; }   // 只有待機動畫：約 30fps
-    lastDraw = t;
-    draw(t);
-    if (act || amb || busyCount > 0) raf = requestAnimationFrame(frame);
+    const t = now();
+    inFrame = true;
+    let act = false, amb = false;
+    try {
+      act = moving(t);
+      amb = !act && ambient();
+      if (!(amb && t - lastDraw < 31)) { lastDraw = t; draw(t); }   // 只有待機動畫：約 30fps
+    } catch (e) {
+      console.error('[renderer] draw', e);
+    } finally {
+      inFrame = false;
+    }
+    if (!raf && !destroyed && !paused && (act || amb || busyCount > 0 || moving(now()))) raf = requestAnimationFrame(frame);
   }
   function requestDraw() {
-    if (!raf && !destroyed && !paused && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
+    if (!raf && !inFrame && !destroyed && !paused && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
   }
   // 畫面藏起來時停掉迴圈；play() 的等待用 setTimeout，所以動畫流程照樣會走完（只是不畫）
   function pause() {
@@ -1725,11 +2118,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     abortWaits();
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    clearTimeout(warmTimer); warmQ = [];
     if (ro) ro.disconnect();
     window.removeEventListener('resize', onResize);
     for (const b of banners) { clearTimeout(b.timer); b.res(); }
     banners = []; ghosts = []; fx = []; parts = []; texts = []; sched = [];
-    tileCache.clear(); fluffCache.clear();
+    tileCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
   }
 
   const R = {
@@ -1742,6 +2136,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     rows, cols, cs, ox, oy, dpr, W, H, visuals: visuals.size, ghosts: ghosts.length, fx: fx.length,
     parts: parts.length, texts: texts.length, sched: sched.length, busy: busyCount, raf: !!raf, paused,
     grid: cellMap.map(row => row.map(v => (v ? v.id : null))),
+    kinds: cellMap.map(row => row.map(v => (v ? v.kind + '|' + v.special : null))),
+    moving: [...visuals.values()].filter(v => v.mv && now() < v.mv.t0 + v.mv.dur).length,
+    warm: warmQ.length, words: wordCache.size,
+    offCell: [...visuals.values()].filter(v => { const st = evalVisual(v, now()); return Math.abs(st.x - v.c) > 0.02 || Math.abs(st.y - v.r) > 0.02; }).length,
   }) });
   layout();
   return R;

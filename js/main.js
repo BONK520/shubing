@@ -7,7 +7,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const fmt = n => Math.round(n).toLocaleString('en-US');
+// 千分位（toLocaleString 很慢，分數跑動時每幀都會呼叫）
+const fmt = n => { const s = String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ','); return n < 0 ? '-' + s : s; };
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -131,7 +132,13 @@ function starSvg(cls = '') {
 }
 function jellyIcon(sm) { const d = document.createElement('span'); d.className = 'jelly-ic' + (sm ? ' sm' : ''); return d; }
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
-function restartAnim(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }
+// 重播 CSS 動畫：拿掉 class，隔兩幀再加回去（不用 offsetWidth 強迫同步排版，盤面動畫時不會卡一下）
+function restartAnim(node, cls) {
+  if (!node) return;
+  node.classList.remove(cls);
+  const tok = (node._ra = (node._ra || 0) + 1);
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (node._ra === tok) node.classList.add(cls); }));
+}
 
 // ---------- 畫面切換 ----------
 let screen = 'loading';
@@ -550,6 +557,7 @@ async function startLevel(idx) {
   if (token !== session) return;
   state = 'play';
   scheduleHint();
+  try { cellSize(); } catch (e) { /* 第一次拖曳時再量 */ }   // 先量好格子大小，第一次拖曳不用等
 }
 
 function leaveToMap(opts) {
@@ -657,6 +665,8 @@ function buildGoal() {
   const s = level.stars || [1, 2, 3];
   const top = s[2] || s[s.length - 1] || 1;
   $$('.sb-star').forEach((st, i) => { st.style.setProperty('--p', clamp((s[i] || top) / top * 100, 8, 100) + '%'); st.classList.remove('on'); });
+  hud.on = hudEls().stars.map(() => false);
+  hud.text = ''; hud.width = '';
   renderGoal(true);
 }
 function clearedOf(k) { return liveCleared[k] || 0; }
@@ -684,28 +694,43 @@ function renderMoves() {
   $('#hud-moves').textContent = Math.max(0, dispMoves);
   $('#hud-moves-box').classList.toggle('low', state !== 'ending' && dispMoves <= 5 && dispMoves > 0);
 }
+// 分數往上跑：每幀只改一個數字（文字有變才寫），星星條的寬度只在目標分數改變時設一次，由 CSS transition 補間
 let scoreRaf = 0;
+const hud = { score: null, fill: null, stars: null, text: '', width: '', on: [] };
+function hudEls() {
+  if (!hud.score || !hud.score.isConnected) {
+    hud.score = $('#hud-score'); hud.fill = $('#starbar-fill'); hud.stars = $$('.sb-star');
+    hud.on = hud.stars.map(st => st.classList.contains('on'));
+  }
+  return hud;
+}
 function renderScore(instant = false) {
-  if (instant) { shownScore = dispScore; paintScore(); return; }
+  const h = hudEls();
+  const s = level ? level.stars || [] : [];
+  const w = clamp(dispScore / (s[2] || 1) * 100, 0, 100).toFixed(1) + '%';
+  if (instant) { shownScore = dispScore; if (h.fill) h.fill.style.width = w; h.width = w; paintScore(); return; }
+  if (w !== h.width) { h.width = w; if (h.fill) h.fill.style.width = w; }
   if (scoreRaf) return;
   const step = () => {
     const diff = dispScore - shownScore;
     if (Math.abs(diff) < 1) { shownScore = dispScore; paintScore(); scoreRaf = 0; return; }
-    shownScore += diff * 0.18 + Math.sign(diff) * 0.5;
+    shownScore += diff * 0.2 + Math.sign(diff) * 0.5;
     paintScore();
     scoreRaf = requestAnimationFrame(step);
   };
   scoreRaf = requestAnimationFrame(step);
 }
 function paintScore() {
-  $('#hud-score').textContent = fmt(shownScore);
+  const h = hudEls();
+  const txt = fmt(shownScore);
+  if (txt !== h.text && h.score) { h.score.textContent = txt; h.text = txt; }
   const s = level ? level.stars || [] : [];
-  const top = s[2] || 1;
-  $('#starbar-fill').style.width = clamp(shownScore / top * 100, 0, 100) + '%';
-  $$('.sb-star').forEach((st, i) => {
+  h.stars.forEach((st, i) => {
     const on = s[i] != null && shownScore >= s[i];
-    if (on && !st.classList.contains('on')) { st.classList.add('on'); if (state === 'play' || state === 'ending') audio.play('star', { n: i + 1 }); }
-    else if (!on) st.classList.remove('on');
+    if (on === h.on[i]) return;
+    h.on[i] = on;
+    if (on) { st.classList.add('on'); if (state === 'play' || state === 'ending') audio.play('star', { n: i + 1 }); }
+    else st.classList.remove('on');
   });
   if (goalRefs.length && goalRefs[0].kind === 'score') renderGoal();
 }
@@ -746,12 +771,39 @@ function clearHint() {
   if (R) R.hint(null);
 }
 
-// ---------- 事件 → 音效 / HUD ----------
+// ---------- 震動 ----------
+// 手機（Android Chrome）上消除 / 特殊方塊時輕輕震一下；iOS Safari 沒有 navigator.vibrate，就不震。跟著「音效」開關。
+let lastBuzz = 0;
+function buzz(pattern, minGap = 70) {
+  if (save.muted || typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;   // 還沒碰過螢幕：瀏覽器不准震
+  const t = performance.now();
+  if (t - lastBuzz < minGap) return;
+  lastBuzz = t;
+  try { navigator.vibrate(pattern); } catch (e) { /* 不支援就算了 */ }
+}
+const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => buzz(pattern, minGap), delay); else buzz(pattern, minGap); };
+
+// ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
+const CUE_SOUND = { swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
+  combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle' };
+function onCue(name, data, token) {
+  if (token !== session) return;
+  const snd = CUE_SOUND[name];
+  if (snd) audio.play(snd, data);
+  const d = (data && data.delay) || 0;
+  switch (name) {
+    case 'pop': buzzLater(d, 10, 80); break;
+    case 'special': buzzLater(d, 12, 60); break;
+    case 'stripe': case 'wrap': buzzLater(d, 16, 60); break;
+    case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
+  }
+}
+
+// ---------- 事件 → HUD ----------
 function onEvent(ev, token) {
   if (token !== session || !ev) return;
   switch (ev.t) {
-    case 'swap': audio.play('swap'); break;
-    case 'swapBack': audio.play('invalid'); break;
     case 'transform':
       if (sugarMode) {
         audio.play('sugar');
@@ -762,15 +814,10 @@ function onEvent(ev, token) {
       }
       break;
     case 'clear': {
+      // 音效和震動由 onCue 照畫面時間播；這裡只更新分數和目標
       const cascade = Math.max(1, ev.cascade || 1);
-      audio.play('match', { cascade });
       const fx = new Set((ev.effects || []).map(e => e.fx));
-      if (fx.has('line')) audio.play('stripe');
-      if (fx.has('blast')) audio.play('wrap');
-      if (fx.has('bomb') || fx.has('board')) audio.play('bomb');
       const removed = ev.removed || [];
-      if (removed.some(r => r.cause === 'combo')) audio.play('combo');
-      if (ev.created && ev.created.length) audio.play('special');
       for (const r of removed) {
         const k = r.piece ? r.piece.kind : -1;
         if (k >= 0) liveCleared[k] = (liveCleared[k] || 0) + 1;
@@ -782,8 +829,7 @@ function onEvent(ev, token) {
       if (cascade >= 2 || fx.size || (ev.created && ev.created.length)) cheer();
       break;
     }
-    case 'fall': audio.play('land'); break;
-    case 'shuffle': audio.play('shuffle'); toast('沒有步可以走了，洗牌！'); break;
+    case 'shuffle': toast('沒有步可以走了，洗牌！'); break;
   }
 }
 
@@ -823,8 +869,9 @@ async function doSwap(a, b) {
     moving = false;
     return;
   }
+  const opts = { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) };
   if (!res || !res.ok) {
-    try { await R.play((res && res.events) || [], { onEvent: ev => onEvent(ev, token) }); } catch (e) { console.error(e); }
+    try { await R.play((res && res.events) || [], opts); } catch (e) { console.error(e); }
     if (token === session) { moving = false; scheduleHint(); }
     return;
   }
@@ -832,7 +879,7 @@ async function doSwap(a, b) {
   dispMoves = movesLeft;
   renderMoves();
   try {
-    await R.play(res.events, { onEvent: ev => onEvent(ev, token) });
+    await R.play(res.events, opts);
   } catch (e) {
     console.error(e);
     if (token === session) R.setBoard(engine.snapshot());
@@ -857,12 +904,22 @@ const same = (a, b) => a && b && a.r === b.r && a.c === b.c;
 function hasPiece(c) { return c && engine.isCell(c.r, c.c) && !!engine.cell(c.r, c.c); }
 function setDrag(cell, dx, dy) { if (typeof R.drag === 'function' && cell) { try { R.drag(cell, dx, dy); } catch (e) {} } }
 
+// 拖曳門檻：手指滑過 1/4 格就交換（不用放開）
+const SWAP_DRAG = 0.25;
 canvas.addEventListener('pointerdown', e => {
-  if (state !== 'play' || moving || !R || R.busy) return;
+  if (state !== 'play' || !R) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (ptr) return;
   e.preventDefault();
   const cell = R.cellAt(e.clientX, e.clientY);
+  if (moving || R.busy) {
+    // 盤面還在動：先記住手指的起點，停下來的那一刻起就照這個起點判斷拖曳（提早開始滑也接得住）
+    if (cell) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (er) {}
+      ptr = { id: e.pointerId, cell, x: e.clientX, y: e.clientY, wasSelected: false, consumed: false, moved: false, early: true };
+    }
+    return;
+  }
   clearHint();
   scheduleHint();
   if (!hasPiece(cell)) {
@@ -887,11 +944,12 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   if (!ptr || ptr.id !== e.pointerId || ptr.consumed) return;
   if (state !== 'play' || moving || R.busy) return;
+  if (ptr.early && !hasPiece(ptr.cell)) { ptr.consumed = true; return; }
   const cs = cellSize();
   const dx = (e.clientX - ptr.x) / cs, dy = (e.clientY - ptr.y) / cs;
   const ax = Math.abs(dx), ay = Math.abs(dy);
   if (Math.max(ax, ay) > 0.08) ptr.moved = true;
-  if (Math.max(ax, ay) >= 0.3) {
+  if (Math.max(ax, ay) >= SWAP_DRAG) {
     const t = ax >= ay ? { r: ptr.cell.r, c: ptr.cell.c + Math.sign(dx) } : { r: ptr.cell.r + Math.sign(dy), c: ptr.cell.c };
     if (hasPiece(t)) {
       ptr.consumed = true;
@@ -950,7 +1008,7 @@ async function winFlow() {
     sugarMode = true;
     try {
       const res = engine.sugarCrush(left);
-      await R.play((res && res.events) || [], { onEvent: ev => onEvent(ev, token) });
+      await R.play((res && res.events) || [], { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
     } catch (e) { console.error(e); }
     sugarMode = false;
     if (token !== session) return;

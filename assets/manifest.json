@@ -71,17 +71,17 @@
       ]
     },
     {
-      "id": "whale",
-      "sprite": "assets/sprites/whale.png",
-      "spin": "assets/sprites/whale_spin.webp",
-      "glb": "assets/models/whale.glb",
-      "usdz": "assets/models/whale.usdz",
+      "id": "moodeng",
+      "sprite": "assets/sprites/moodeng.png",
+      "spin": "assets/sprites/moodeng_spin.webp",
+      "glb": "assets/models/moodeng.glb",
+      "usdz": "assets/models/moodeng.usdz",
       "placeholder": true,
-      "spinScale": 0.904,
+      "spinScale": 0.952,
       "sizeCm": [
-        14.5,
-        13.3,
-        20.1
+        10.4,
+        15.9,
+        19.9
       ]
     }
   ],

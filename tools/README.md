@@ -34,9 +34,13 @@ python tools/build_assets.py --force   # 全部重做
 
 同樣的輸入重跑結果完全一樣（.usdz 的 zip 時間戳固定成 1980-01-01），沒改東西就跑完，`git status` 不會出現有改的素材。
 
-## 把暫代玩具換成自己的 AR 掃描
+## 把暫代玩具換成自己的掃描
 
-目前的暫代玩具：`bunny`（兔兔）、`frog`（呱呱）、`whale`（小鯨）。以換掉兔兔為例：
+目前的暫代玩具：`bunny`（兔兔）、`frog`（呱呱）、`moodeng`（彈跳豬）。
+
+彈跳豬就是泰國 Khao Kheow 動物園的侏儒河馬寶寶 Moo Deng（หมูเด้ง）。網路上找不到可以免費使用的 3D 模型，所以先用 `make_placeholders.py` 程式做一隻毛絨風格的（`build_moodeng`）。之後買到真的 Moo Deng 娃娃，用 Object Capture 掃好、改名成 **`moodeng.usdz`** 放進 `tools/source/`，照下面的步驟就會換成掃描版。
+
+以換掉兔兔為例：
 
 1. 用 Object Capture 掃好，得到一個 `.usdz`。
 2. 改名成 **`bunny.usdz`**，放進 `tools/source/`。檔名決定換掉哪一隻。
@@ -47,7 +51,7 @@ python tools/build_assets.py --force   # 全部重做
    - `pitch`：俯角，10–35 之間通常好看
    - `exposure`：曝光，玩具很暗（像皮蛋）就調高到 2 左右
    - `rim`：背光，深色玩具調高才看得到輪廓
-6. 改 `js/pieces.js` 那一行：`name` 改成新玩具的名字，`scan: true`（3D/AR 頁就不會再顯示「暫代模型」）；`color` 是方塊底色，挑一個跟玩具對比明顯、又跟其他五隻不撞色的顏色。
+6. 改 `js/pieces.js` 那一行：`name` 改成新玩具的名字，`scan: true`（3D 看看頁就不會再顯示「暫代模型」）；`color` 是方塊底色，挑一個跟玩具對比明顯、又跟其他五隻不撞色的顏色。
 7. 在專案根目錄跑 `python -m http.server 8000`，打開 `http://localhost:8000` 試玩。
 
 **想換回暫代玩具**：刪掉 `tools/source/bunny.usdz` 和 `assets/models/bunny.glb`，`source` 改回 `"placeholder"`，`js/pieces.js` 改回 `scan: false`，再跑一次。
@@ -63,7 +67,7 @@ python tools/build_assets.py --force   # 全部重做
 | `build_assets.py` | 一鍵重建（上面那套流程） |
 | `assets.json` | 每隻的來源、角度、曝光、調色；三寶合照與標題圖的排列 |
 | `usd_to_glb.py` | USDZ → GLB（貼圖縮到 1024） |
-| `slim_usdz.py` | 縮小版 USDZ，給 iPhone AR Quick Look |
+| `slim_usdz.py` | 縮小版 USDZ（3D 看看頁只用 GLB；USDZ 留著，方便之後在 Mac / iPhone 上直接打開看） |
 | `make_placeholders.py` | 程式產生暫代玩具（GLB + USDZ） |
 | `postprocess.py` | 貼紙描邊、陰影、旋轉圖拼成一張 |
 | `contact_sheet.py` | 檢查用總覽圖 |

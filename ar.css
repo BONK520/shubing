@@ -1,4 +1,4 @@
-/* 毛絨消消樂 — 3D / AR 看看頁 */
+/* 毛絨消消樂 — 3D 看看頁 */
 :root {
   --pink: #ff6fb1;
   --pink-soft: #ffd3ea;
@@ -140,7 +140,7 @@ model-viewer {
   --progress-bar-height: 0px;
   outline: none;
 }
-/* 檢視器還沒載好或載不到時，AR 按鈕和進度條只是普通的元素：藏起來，免得出現按了沒反應的按鈕 */
+/* 檢視器還沒載好或載不到時，進度條只是普通的元素：藏起來 */
 model-viewer:not(:defined) > [slot] { display: none; }
 .stage.switching model-viewer { animation: boing 0.45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes boing { 0% { transform: scale(0.86); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
@@ -180,24 +180,6 @@ model-viewer:not(:defined) > [slot] { display: none; }
 .nav:active { transform: translateY(2px) scale(0.95); }
 .prev { left: 10px; }
 .next { right: 10px; }
-
-.ar-btn {
-  position: absolute; left: 50%; bottom: 16px; z-index: 4;
-  transform: translateX(-50%);
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 13px 22px 13px 18px;
-  border: 0; border-radius: 999px;
-  background: linear-gradient(135deg, #ff7cbc 0%, #c77dff 100%);
-  color: #fff;
-  font-size: 17px; font-weight: 900; letter-spacing: 0.04em; white-space: nowrap;
-  text-shadow: 0 1px 0 rgba(140, 40, 140, 0.35);
-  box-shadow: 0 5px 0 #a24fc1, 0 12px 24px rgba(160, 60, 180, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.45);
-  cursor: pointer;
-  animation: breathe 2.6s ease-in-out infinite;
-}
-.ar-btn svg { width: 22px; height: 22px; }
-.ar-btn:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 2px 0 #a24fc1, 0 6px 14px rgba(160, 60, 180, 0.3); animation: none; }
-@keyframes breathe { 50% { transform: translateX(-50%) scale(1.04); } }
 
 .progress {
   position: absolute; left: 0; right: 0; top: 0; height: 6px; z-index: 5;
@@ -279,12 +261,6 @@ model-viewer:not(:defined) > [slot] { display: none; }
   box-shadow: 0 2px 0 rgba(214, 170, 230, 0.6);
 }
 .tips b { color: #d0569f; margin-right: 3px; }
-.no-ar {
-  margin: 12px 0 0; padding: 9px 12px; border-radius: 14px;
-  background: linear-gradient(135deg, rgba(255, 214, 235, 0.9), rgba(226, 210, 255, 0.9));
-  font-size: 13.5px; font-weight: 800; color: var(--deep);
-}
-.no-ar[hidden] { display: none; }
 
 /* ---------- 選毛絨 ---------- */
 .picker { padding: 10px 10px 12px; }
@@ -320,17 +296,6 @@ model-viewer:not(:defined) > [slot] { display: none; }
 }
 .toy-tag.temp { background: #fff1c4; color: #a86b05; }
 
-.toast {
-  position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 20;
-  transform: translateX(-50%);
-  max-width: calc(100% - 32px);
-  padding: 11px 18px; border-radius: 999px;
-  background: rgba(98, 50, 130, 0.92); color: #fff;
-  font-weight: 800; font-size: 14px; text-align: center;
-  box-shadow: 0 10px 24px rgba(80, 30, 110, 0.3);
-}
-.toast[hidden] { display: none; }
-
 :focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 6px rgba(201, 99, 182, 0.55); }
 
 /* ---------- 大一點的螢幕 ---------- */
@@ -364,7 +329,6 @@ model-viewer:not(:defined) > [slot] { display: none; }
   .picker .face { width: 40px; height: 40px; }
   .toy-name { font-size: 12px; }
   .grid { gap: 5px; }
-  .ar-btn { font-size: 15px; padding: 12px 16px 12px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
