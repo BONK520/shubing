@@ -31,19 +31,19 @@ const SPR_WRAP = 0.8;
 const MAX_PARTS = 900;
 
 // ---- 節奏（毫秒）----
-const SWAP_MS = 140;      // 成功交換（主動的那顆有一點點回彈）
-const SWAP_BAD_MS = 100;  // 不成立的交換：過去
-const SWAP_BACK_MS = 120; //                 彈回來
-const POP_MS = 340;       // 消除：放大 + 白光 → 碎開
-const POP_LEAD = 260;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
+const SWAP_MS = 200;      // 成功交換（主動的那顆有一點點回彈）
+const SWAP_BAD_MS = 150;  // 不成立的交換：過去
+const SWAP_BACK_MS = 170; //                 彈回來
+const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
+const POP_LEAD = 300;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
 const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
 const LAND_MS = 270;      // 落地壓扁回彈
-const LAND_HOLD = 70;     // 下一輪連鎖：方塊落地後多久爆
-const G_FALL = 0.000085;  // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.38 秒
-const V0_FALL = 0.003;    // 掉落初速（格 / ms）
-const STAGGER_ROW = 14, STAGGER_MAX = 70, COL_JITTER = 20;
+const LAND_HOLD = 100;     // 下一輪連鎖：方塊落地後多久爆
+const G_FALL = 0.00005;   // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.45 秒（參考 Candy Crush 類遊戲：約 0.1 秒 / 格）
+const V0_FALL = 0.004;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 60, STAGGER_MAX = 360, COL_JITTER = 30;   // 同一欄一顆接一顆落下（間隔約 0.06 秒），像瀑布
 // 特效傳到某格要多久
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
 
