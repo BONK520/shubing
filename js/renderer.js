@@ -302,7 +302,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         if (!a[i + 3]) continue;
         let r = lut[a[i]], gg = lut[a[i + 1]], b = lut[a[i + 2]];
         const l = 0.299 * r + 0.587 * gg + 0.114 * b;
-        r = l + (r - l) * 1.3; gg = l + (gg - l) * 1.3; b = l + (b - l) * 1.3;      // 飽和度 ×1.3
+        r = l + (r - l) * 1.12; gg = l + (gg - l) * 1.12; b = l + (b - l) * 1.12;   // 飽和度 ×1.12（素材已經公仔化、加過飽和）
         r = (r - 128) * 1.07 + 133; gg = (gg - 128) * 1.07 + 133; b = (b - 128) * 1.07 + 133;   // 對比、稍微提亮
         a[i] = r < 0 ? 0 : r > 255 ? 255 : r; a[i + 1] = gg < 0 ? 0 : gg > 255 ? 255 : gg; a[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
       }
@@ -328,15 +328,22 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     c = makeCanvas(W, W);
     const g = c.getContext('2d'), col = kindColor(kind);
     // 陰影：往下偏一點、用好幾個位置疊出柔邊
-    const sh = silhouette(src, 'rgba(25,5,50,1)'), off = box * 0.05, bl = Math.max(1, box * 0.025);
-    g.globalAlpha = 0.07;
+    const sh = silhouette(src, css(mixc(saturate(col, 0.6), BLACK, 0.62))), off = box * 0.05, bl = Math.max(1, box * 0.025);
+    g.globalAlpha = 0.085;
     for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) g.drawImage(sh, pad + dx * bl, pad + off + dy * bl);
     // 發光邊：糖果色帶白的剪影，往外擴一點點
     const gl = silhouette(src, css(mixc(saturate(col, 0.4), WHITE, 0.72), 1)), ex = Math.max(1, box * 0.018);
     g.globalAlpha = 0.5;
     for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; g.drawImage(gl, pad + Math.cos(a) * ex, pad + Math.sin(a) * ex); }
     g.globalAlpha = 1;
-    g.drawImage(src, pad, pad);
+    // 玩具本身：下半部反射一點糖果的顏色（像坐在發光的糖果上）
+    const lit = makeCanvas(src.width, src.height), lg = lit.getContext('2d');
+    lg.drawImage(src, 0, 0);
+    lg.globalCompositeOperation = 'source-atop';
+    const bg2 = lg.createLinearGradient(0, src.height * 0.45, 0, src.height);
+    bg2.addColorStop(0, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0)); bg2.addColorStop(1, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0.32));
+    lg.fillStyle = bg2; lg.fillRect(0, 0, src.width, src.height);
+    g.drawImage(lit, pad, pad);
     if (toyCache.size > 80) toyCache.clear();
     toyCache.set(key, c);
     return c;
@@ -360,7 +367,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else g.fillRect(x + o, y - T, band, T * 3);
     }
   }
-  const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', dino: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };
+  const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', dino: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };   // 顏色在 pieces.js
   const SHAPE_CYCLE = ['ball', 'square', 'egg', 'flower', 'hex', 'bean', 'heart'];
   function shapeOf(kind) { const id = pieceInfo(kind).id; return SHAPE_OF[id] || SHAPE_CYCLE[((kind % 7) + 7) % 7]; }
   const CANDY_R = 0.45;     // 糖果半徑 / 格
@@ -802,32 +809,50 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       return t;
     };
     const c = makeCanvas(Wd, Hd), g = c.getContext('2d');
-    const outer = shape(S * 0.2, S * 0.36), inner = shape(S * 0.09, S * 0.24);
-    // 白色外框 + 柔和陰影
+    const outer = shape(S * 0.17, S * 0.34), inner = shape(S * 0.07, S * 0.24);
+    // 有厚度的外框：上亮下暗的漸層 + 柔和投影，內側再一圈細深線（像糖果玻璃的邊）
+    const frame = makeCanvas(Wd, Hd), fr = frame.getContext('2d');
+    fr.drawImage(outer, 0, 0);
+    fr.globalCompositeOperation = 'source-in';
+    const fgr = fr.createLinearGradient(0, 0, 0, Hd);
+    fgr.addColorStop(0, '#ffffff'); fgr.addColorStop(0.5, '#eef3ff'); fgr.addColorStop(1, '#b9c6ef');
+    fr.fillStyle = fgr; fr.fillRect(0, 0, Wd, Hd);
     g.save();
-    g.shadowColor = 'rgba(50,10,90,0.35)'; g.shadowBlur = S * 0.22; g.shadowOffsetY = S * 0.08;
-    g.globalAlpha = 0.92; g.drawImage(outer, 0, 0);
+    g.shadowColor = 'rgba(50,20,110,0.35)'; g.shadowBlur = S * 0.22; g.shadowOffsetY = S * 0.09;
+    g.drawImage(frame, 0, 0);
     g.restore();
+    // 外框下緣的厚度：往下偏一點的深色邊
+    const lip = makeCanvas(Wd, Hd), lp = lip.getContext('2d');
+    lp.drawImage(outer, 0, Math.max(1, S * 0.035));
+    lp.globalCompositeOperation = 'destination-out'; lp.drawImage(outer, 0, 0);
+    lp.globalCompositeOperation = 'source-in'; lp.fillStyle = 'rgba(110,120,190,0.85)'; lp.fillRect(0, 0, Wd, Hd);
+    g.drawImage(lip, 0, 0);
     g.globalCompositeOperation = 'destination-out'; g.drawImage(inner, 0, 0);
     g.globalCompositeOperation = 'source-over';
+    // 內側細深線
+    const rim = makeCanvas(Wd, Hd), rmg = rim.getContext('2d');
+    rmg.drawImage(shape(S * 0.095, S * 0.26), 0, 0);
+    rmg.globalCompositeOperation = 'destination-out'; rmg.drawImage(inner, 0, 0);
+    rmg.globalCompositeOperation = 'source-in'; rmg.fillStyle = 'rgba(120,130,200,0.75)'; rmg.fillRect(0, 0, Wd, Hd);
+    g.drawImage(rim, 0, 0);
     // 半透明面板
     const tint = makeCanvas(Wd, Hd), tg = tint.getContext('2d');
     tg.drawImage(inner, 0, 0);
     tg.globalCompositeOperation = 'source-in';
     const pg = tg.createLinearGradient(0, 0, 0, Hd);
-    pg.addColorStop(0, 'rgba(46,30,128,0.86)'); pg.addColorStop(1, 'rgba(26,14,84,0.9)');   // 深色半透明盤面：方塊顏色才跳得出來
+    pg.addColorStop(0, 'rgba(232,244,255,0.62)'); pg.addColorStop(1, 'rgba(196,220,250,0.7)');   // 淺色半透明毛玻璃（像冰塊 / 果凍），糖果像浮在上面
     tg.fillStyle = pg; tg.fillRect(0, 0, Wd, Hd);
     g.drawImage(tint, 0, 0);
     // 棋盤格
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
-      g.fillStyle = (r + c2) % 2 ? 'rgba(160,190,255,0.05)' : 'rgba(170,200,255,0.13)';
+      g.fillStyle = (r + c2) % 2 ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.3)';
       const x = Math.round(m + c2 * S), y = Math.round(m + r * S);
       const cw = Math.round(m + (c2 + 1) * S) - x, ch = Math.round(m + (r + 1) * S) - y;
       g.fillRect(x, y, cw, ch);
       // 每格一點點立體：上緣一條亮線、下緣一條暗線
-      g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x + 2, y + 1, cw - 4, Math.max(1, S * 0.02));
-      g.fillStyle = 'rgba(0,0,30,0.18)'; g.fillRect(x + 2, y + ch - Math.max(1, S * 0.025), cw - 4, Math.max(1, S * 0.025));
+      g.fillStyle = 'rgba(255,255,255,0.45)'; g.fillRect(x + 2, y + 1, cw - 4, Math.max(1, S * 0.02));
+      g.fillStyle = 'rgba(60,80,150,0.12)'; g.fillRect(x + 2, y + ch - Math.max(1, S * 0.025), cw - 4, Math.max(1, S * 0.025));
     }
     // 橫幅出現時用的暗色遮罩：和盤面外框同形狀（不會在盤面外畫出一個方框）
     const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');

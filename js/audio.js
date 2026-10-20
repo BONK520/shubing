@@ -74,7 +74,12 @@ function makeContext() {
 
     sfxBus = c.createGain();
     sfxBus.gain.value = muted ? 0 : SFX_VOL;
-    sfxBus.connect(master);
+    // 溫暖的濾波：把刺耳的高頻收掉（聽起來比較圓、比較療癒）
+    const warm = c.createBiquadFilter();
+    warm.type = 'lowpass'; warm.frequency.value = 4600; warm.Q.value = 0.4;
+    const shelf = c.createBiquadFilter();
+    shelf.type = 'highshelf'; shelf.frequency.value = 2800; shelf.gain.value = -5;
+    sfxBus.connect(shelf); shelf.connect(warm); warm.connect(master);
     sfxBus.connect(revIn);
 
     musicBus = c.createGain();
@@ -276,17 +281,15 @@ function noise(t, o = {}) {
 function marimba(m, t, gain = 0.15, dur = 0.45, dest = sfxBus, pan = 0) {
   const f = mtof(m), out = panNode(pan, dest), own = out !== dest ? [out] : null;
   tone(f, t, { dur, attack: 0.003, gain, dest: out, own });
-  tone(f * 3.93, t, { dur: 0.07, attack: 0.002, gain: gain * 0.32, dest: out });
-  tone(f * 9.2, t, { dur: 0.025, attack: 0.001, gain: gain * 0.08, dest: out });
+  tone(f * 3.93, t, { dur: 0.06, attack: 0.002, gain: gain * 0.18, dest: out });
 }
 
 // 鈴聲：不和諧泛音、比較長的尾巴
 function bell(m, t, gain = 0.1, dur = 1.0, dest = sfxBus, pan = 0) {
   const f = mtof(m), out = panNode(pan, dest), own = out !== dest ? [out] : null;
   tone(f, t, { dur, attack: 0.003, gain, dest: out, own });
-  tone(f * 2.76, t, { dur: dur * 0.55, attack: 0.002, gain: gain * 0.35, dest: out });
-  tone(f * 5.4, t, { dur: dur * 0.3, attack: 0.002, gain: gain * 0.16, dest: out });
-  tone(f * 8.93, t, { dur: dur * 0.15, attack: 0.001, gain: gain * 0.07, dest: out });
+  tone(f * 2.76, t, { dur: dur * 0.5, attack: 0.002, gain: gain * 0.22, dest: out });
+  tone(f * 5.4, t, { dur: dur * 0.25, attack: 0.002, gain: gain * 0.06, dest: out });
 }
 
 // 啵
@@ -296,6 +299,7 @@ function pop(t, f0 = 700, f1 = 260, gain = 0.12, dur = 0.08) {
 
 // 亮晶晶：一串高音小鈴
 function sparkle(t, n = 5, gain = 0.05, base = 96, spread = 0.045) {
+  base = Math.min(base, 96) - 12; gain *= 0.6;          // 低一個八度、小聲一點，不刺耳
   for (let i = 0; i < n; i++) {
     const m = penta(base, Math.floor(rnd(0, 8)));
     bell(m, t + i * spread + rnd(0, 0.015), gain * rnd(0.6, 1), 0.28, sfxBus, rnd(-0.6, 0.6));
@@ -322,8 +326,7 @@ const SFX = {
   },
   // 交換：輕輕的「咻」
   swap(t, o) {
-    noise(t, { dur: 0.16, attack: 0.01, gain: o.bad ? 0.07 : 0.11, type: 'bandpass', f0: 500, f1: 3600, q: 1.4 });
-    noise(t + 0.02, { dur: 0.12, attack: 0.01, gain: o.bad ? 0.03 : 0.05, type: 'highpass', f0: 3500, f1: 7000, q: 0.7 });
+    noise(t, { dur: 0.16, attack: 0.012, gain: o.bad ? 0.06 : 0.09, type: 'bandpass', f0: 400, f1: 2200, q: 1.4 });
     tone(280, t, { dur: 0.11, attack: 0.008, gain: 0.07, to: 520, glide: 0.1, type: 'triangle', lp: 1800 });
   },
   // 換不了：「啵啵」往下彈回去
@@ -336,13 +339,13 @@ const SFX = {
     // 療癒的「啵」：圓圓的泡泡聲（音高快速往上滑）+ 一點點木琴般的音色；同一組一顆比一顆高、連鎖越多越高
     const c = clamp(Math.round(o.cascade || 1), 1, 12), g = clamp(Math.round(o.group || 0), 0, 8), j = clamp(Math.round(o.idx || 0), 0, 8);
     const step = (c - 1) * 2 + g + j;
-    const m = penta(67, Math.min(step, 16));
+    const m = penta(60, Math.min(step, 14));
     const f = mtof(m);
     const pan = clamp((j - 2) * 0.18, -0.5, 0.5);
     tone(f * 0.5, t, { dur: 0.11, attack: 0.003, gain: 0.2, type: 'sine', to: f * 1.15, glide: 0.06, pan });
     tone(f, t + 0.012, { dur: 0.16, attack: 0.004, gain: 0.05, type: 'triangle', pan });
-    noise(t, { dur: 0.01, attack: 0.001, gain: 0.025, type: 'lowpass', f0: 1800, q: 0.7 });
-    if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.022, 91 + Math.min(c, 6));
+    noise(t, { dur: 0.01, attack: 0.001, gain: 0.02, type: 'lowpass', f0: 1200, q: 0.7 });
+    if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 5), 0.02, 88);
   },
   match(t, o) { SFX.pop(t, o); },
   // 做出特殊方塊：亮晶晶往上爬
@@ -355,10 +358,10 @@ const SFX = {
   },
   // 條紋：「咻——滋」掃過去
   stripe(t) {
-    tone(320, t, { dur: 0.18, attack: 0.004, gain: 0.13, to: 2600, glide: 0.16, type: 'sawtooth', lp: 3000, q: 1.2 });
-    tone(480, t + 0.01, { dur: 0.16, attack: 0.004, gain: 0.06, to: 3200, glide: 0.15 });
+    tone(260, t, { dur: 0.18, attack: 0.006, gain: 0.11, to: 1500, glide: 0.16, type: 'sawtooth', lp: 1700, q: 1 });
+    tone(390, t + 0.01, { dur: 0.16, attack: 0.006, gain: 0.05, to: 1900, glide: 0.15 });
     tone(110, t, { dur: 0.2, attack: 0.003, gain: 0.12, to: 55, glide: 0.18 });
-    noise(t, { dur: 0.26, attack: 0.004, gain: 0.13, type: 'bandpass', f0: 1200, f1: 8000, q: 0.9 });
+    noise(t, { dur: 0.26, attack: 0.006, gain: 0.1, type: 'bandpass', f0: 900, f1: 3500, q: 0.9 });
     pop(t, 900, 300, 0.05, 0.05);
     sparkle(t + 0.12, 3, 0.026, 98);
   },
@@ -402,7 +405,7 @@ const SFX = {
   },
   // 長連鎖：「好棒！」「太甜了！」跳出來時的和弦叮咚，越長越高
   chime(t, o) {
-    const lv = clamp(Math.round(o.level || 3), 3, 8), base = 76 + (lv - 3) * 2;
+    const lv = clamp(Math.round(o.level || 3), 3, 8), base = 64 + (lv - 3) * 2;
     [0, 4, 7, 12].forEach((d, i) => bell(base + d, t + i * 0.045, 0.085, 0.9, sfxBus, -0.3 + i * 0.2));
     marimba(base - 12, t, 0.1, 0.4);
     sparkle(t + 0.15, 4 + lv, 0.03, 96, 0.03);
@@ -410,11 +413,10 @@ const SFX = {
   // 落地：脆脆的「喀」— 很短的敲擊聲 + 一點點糖果共鳴；音高依位置稍微不同，一串落下來像糖果互相敲到
   land(t, o) {
     const r = o.r || 0, c = o.c || 0, k = o.k || 0;
-    const f = 1650 + ((r * 37 + c * 53 + k * 29) % 9) * 95;
-    noise(t, { dur: 0.012, attack: 0.0005, gain: 0.05, type: 'bandpass', f0: 3600, q: 1.6 });
-    tone(f, t, { dur: 0.05, attack: 0.001, gain: 0.05, type: 'sine', to: f * 0.93, glide: 0.045 });
-    tone(f * 2.7, t, { dur: 0.026, attack: 0.001, gain: 0.016, type: 'sine' });
-    tone(260, t, { dur: 0.03, attack: 0.001, gain: 0.025, to: 180, glide: 0.03 });     // 很輕的底，聽起來有重量
+    const f = 820 + ((r * 37 + c * 53 + k * 29) % 9) * 55;
+    noise(t, { dur: 0.012, attack: 0.001, gain: 0.03, type: 'bandpass', f0: 1700, q: 1.4 });
+    tone(f, t, { dur: 0.06, attack: 0.002, gain: 0.05, type: 'sine', to: f * 0.9, glide: 0.05 });
+    tone(220, t, { dur: 0.04, attack: 0.001, gain: 0.03, to: 150, glide: 0.035 });     // 很輕的底，聽起來有重量
   },
   shuffle(t) {
     noise(t, { dur: 0.5, attack: 0.05, gain: 0.06, type: 'bandpass', f0: 900, mid: 3200, f1: 700, q: 1.2 });
@@ -462,48 +464,52 @@ const SFX = {
 };
 
 // ---------- 背景音樂（排程 + lookahead） ----------
-const BPM = 92;
+// 16 小節、兩段（A：記得住的主旋律；B：往上爬再回來），F 大調、108 BPM：
+// 主旋律用溫暖的木琴 + 低八度輕輕墊著，貝斯一彈一跳，反拍和弦，輕輕的鼓（全部收掉刺耳的高頻）
+const BPM = 108;
 const STEP = 60 / BPM / 2;                      // 八分音符
-const CHORDS = [                                // 每小節：根音、墊音
-  { root: 36, pad: [60, 64, 67] },              // C
-  { root: 33, pad: [57, 60, 64] },              // Am
-  { root: 29, pad: [57, 60, 65] },              // F
-  { root: 31, pad: [55, 59, 62] },              // G
+const C_ = (root, chord) => ({ root, chord });
+const CHORDS = [                                // 每小節的和弦（根音、和弦音）
+  C_(41, [65, 69, 72]), C_(38, [62, 65, 69]), C_(46, [62, 65, 70]), C_(48, [64, 67, 72]),   // F  Dm Bb C
+  C_(41, [65, 69, 72]), C_(38, [62, 65, 69]), C_(46, [62, 65, 70]), C_(48, [64, 67, 72]),
+  C_(46, [62, 65, 70]), C_(48, [64, 67, 72]), C_(45, [64, 69, 72]), C_(38, [62, 65, 69]),   // Bb C  Am Dm
+  C_(46, [62, 65, 70]), C_(48, [64, 67, 72]), C_(41, [65, 69, 72]), C_(41, [65, 69, 72]),   // Bb C  F  F
 ];
 const _ = null;
-const MELODY = [                                // 8 小節 × 8 個八分音符，全部在五聲音階
-  76, _, 79, 76, 74, _, 72, _,
-  69, _, 72, 74, 76, _, _, _,
-  76, 74, 72, _, 69, _, 72, _,
-  74, _, 79, _, 76, 74, _, _,
-  79, _, 81, 79, 76, _, 79, _,
-  81, _, 79, 76, 72, _, 74, _,
-  72, _, 69, 72, 74, _, 76, _,
-  79, 76, 74, _, 72, _, _, _,
+const MELODY = [
+  72, _, 74, 72, 69, _, 65, _,     67, 69, _, 72, _, 69, 67, _,     65, _, 67, 69, 70, _, 69, _,     67, _, _, _, 72, _, 74, _,
+  77, _, 76, 74, 72, _, 69, _,     74, _, 72, 69, 67, _, 69, _,     70, 69, 67, 65, 67, _, 69, _,     72, _, 67, _, 65, _, _, _,
+  74, _, 74, 72, 70, _, 72, _,     76, _, 74, 72, 74, _, _, _,      72, _, 72, 69, 76, _, 74, _,     72, _, 69, _, 74, _, _, _,
+  77, _, 76, 74, 72, _, 70, _,     72, _, 74, 76, 77, _, 79, _,     77, _, 72, _, 69, _, 72, 74,     72, _, 69, _, 65, _, _, _,
 ];
-const TOTAL = MELODY.length;
+const TOTAL = MELODY.length;                    // 128 步 = 16 小節
 let musicTimer = null, nextTime = 0, stepIdx = 0;
 
 function musicStep(i, t) {
   const bar = Math.floor(i / 8), s = i % 8;
-  const ch = CHORDS[bar % 4];
+  const ch = CHORDS[bar % CHORDS.length];
+  // 墊底：每小節一個很軟的和弦（慢慢浮起來）
   if (s === 0) {
     const len = STEP * 8;
-    ch.pad.forEach((m, k) => {
-      tone(mtof(m), t, { type: 'triangle', lp: 950, attack: 0.5, dur: len - 0.55, release: 0.9, gain: 0.032, detune: -5, dest: musicBus, pan: (k - 1) * 0.4 });
-      tone(mtof(m), t, { type: 'sine', attack: 0.6, dur: len - 0.65, release: 0.9, gain: 0.03, detune: 6, dest: musicBus, pan: (1 - k) * 0.4 });
-    });
+    ch.chord.forEach((m, k) => tone(mtof(m - 12), t, { type: 'sine', attack: 0.35, dur: len - 0.4, release: 0.6, gain: 0.022, detune: (k - 1) * 4, dest: musicBus, pan: (k - 1) * 0.35 }));
   }
-  if (s === 0 || s === 4 || s === 7) {
-    const m = s === 7 ? ch.root + 7 : ch.root + (s === 4 && bar % 2 ? 7 : 0);
-    const f = mtof(m + 12);
-    tone(f, t, { type: 'sine', attack: 0.01, dur: s === 7 ? STEP * 0.8 : STEP * 2.6, gain: 0.13, dest: musicBus });
-    tone(f * 2, t, { type: 'triangle', lp: 700, attack: 0.01, dur: STEP * 0.9, gain: 0.02, dest: musicBus });
-  }
+  // 貝斯：第 1、3 拍根音，第 2 拍後半上八度，一彈一跳
+  if (s === 0 || s === 4) tone(mtof(ch.root), t, { type: 'triangle', lp: 600, attack: 0.008, dur: STEP * 1.7, gain: 0.16, dest: musicBus });
+  if (s === 3 || s === 7) tone(mtof(ch.root + 12), t, { type: 'triangle', lp: 700, attack: 0.008, dur: STEP * 0.8, gain: 0.09, dest: musicBus });
+  // 反拍和弦：短短的撥弦
+  if (s % 2 === 1) ch.chord.forEach((m, k) => tone(mtof(m), t + k * 0.006, { type: 'triangle', lp: 1300, attack: 0.004, dur: STEP * 0.55, gain: 0.018, dest: musicBus, pan: (k - 1) * 0.3 }));
+  // 主旋律：溫暖的木琴 + 低八度輕輕墊著
   const m = MELODY[i];
-  if (m != null) marimba(m, t, 0.075, 0.5, musicBus, 0.1);
-  if (s === 7 && bar % 2 === 1) bell(penta(96, bar % 5), t, 0.022, 0.6, musicBus, -0.3);
-  if (s % 2 === 1) noise(t, { dur: 0.045, attack: 0.004, gain: s === 3 || s === 7 ? 0.012 : 0.007, type: 'highpass', f0: 7000, q: 0.5, dest: musicBus, pan: 0.25 });
+  if (m != null) {
+    marimba(m, t, 0.085, 0.45, musicBus, 0.08);
+    tone(mtof(m - 12), t, { type: 'sine', attack: 0.01, dur: 0.3, gain: 0.03, dest: musicBus });
+  }
+  // 鼓：大鼓 1、3 拍，拍手 2、4 拍，沙鈴八分音符（都很輕）
+  if (s === 0 || s === 4) tone(110, t, { type: 'sine', attack: 0.002, dur: 0.14, gain: 0.16, to: 46, glide: 0.11, dest: musicBus });
+  if (s === 2 || s === 6) noise(t, { dur: 0.09, attack: 0.002, gain: 0.03, type: 'bandpass', f0: 1400, q: 0.9, dest: musicBus });
+  if (s % 2 === 1) noise(t, { dur: 0.035, attack: 0.004, gain: 0.008, type: 'bandpass', f0: 3200, q: 1.2, dest: musicBus, pan: 0.2 });
+  // 每 4 小節最後一下：小小的過門
+  if (bar % 4 === 3 && s === 6) tone(mtof(ch.root + 24), t, { type: 'triangle', lp: 1500, attack: 0.005, dur: STEP * 0.6, gain: 0.03, dest: musicBus });
 }
 
 function scheduler() {

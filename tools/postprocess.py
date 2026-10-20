@@ -163,9 +163,36 @@ def sprite(render, size=256, K=3, fill=FILL, g=None, transform=None, outline=OUT
     return to_im(downsample(stickerize(big, unit, outline=outline), size, size))
 
 
-def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None):
-    """沒有白邊、沒有陰影的玩具圖（盤面上放進糖果裡用；陰影和發光邊由遊戲畫）"""
+def toonify(a):
+    """照片 → 「發光的塑膠公仔」：保留邊緣的磨皮（去掉布料雜訊）、暗部拉亮、飽和度和局部對比提高。
+    a：float RGBA（0..1）。透明的地方先用周圍顏色補滿，磨皮時邊緣才不會帶進黑邊。"""
+    import cv2
+    rgb, al = a[..., :3], a[..., 3:4]
+    w = cv2.GaussianBlur(al[..., 0], (0, 0), 4)[..., None]
+    fill = cv2.GaussianBlur(rgb * al, (0, 0), 4) / np.maximum(w, 1e-4)
+    base = np.where(al > 0.5, rgb, np.clip(fill, 0, 1))
+    u8 = (base * 255 + 0.5).astype(np.uint8)
+    sz = max(u8.shape[:2])
+    d = 7 if sz < 600 else 11
+    sm = cv2.bilateralFilter(u8, d, 45, d)
+    sm = cv2.bilateralFilter(sm, d, 35, d)
+    hsv = cv2.cvtColor(sm, cv2.COLOR_RGB2HSV).astype(np.float32)
+    v = hsv[..., 2] / 255.0
+    v = np.power(v, 0.78)                                   # 暗部拉亮
+    clahe = cv2.createCLAHE(clipLimit=1.6, tileGridSize=(4, 4))
+    v8 = clahe.apply((v * 255).astype(np.uint8)).astype(np.float32) / 255.0
+    v = 0.6 * v + 0.4 * v8                                  # 一點局部對比
+    hsv[..., 2] = np.clip(v * 255, 0, 255)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.32 + 6, 0, 255)  # 飽和度
+    out = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
+    return np.concatenate([out, al], -1)
+
+
+def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None, toon=True):
+    """沒有白邊、沒有陰影的玩具圖（盤面上放進糖果裡用；陰影和發光邊由遊戲畫）。toon：塑膠公仔化"""
     a = grade(to_np(render), g)
+    if toon:
+        a = toonify(a)
     W = size * K; unit = size / 256 * K
     if transform is None:
         s, ox, oy = fit_transform(bbox(a), W, W, unit, fill, outline=0)
