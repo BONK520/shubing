@@ -19,15 +19,16 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
+import { SLOGANS, cascadeSlogan } from './slogans.js';
+
 const FONT = '"Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
-const WORDS = ['', '', '好棒！', '太甜了！', '超可愛！', '毛茸茸爆發！'];
 const MAX_DPR = 2;        // 手機上限：再高肉眼幾乎看不出差別，填色量卻多很多
 const MARGIN = 0.3;       // 盤面四周保留（格）
 const PAD = 1.42;         // 方塊快取畫布邊長 / 格（留給陰影、糖果紙兩端）
 const TILE = 0.88;        // 圓角方塊邊長 / 格
 const SPR = 0.95;         // 貼紙圖框 / 格（貼紙本身約占 84%）
 const SPR_WRAP = 0.8;
-const MAX_PARTS = 300;
+const MAX_PARTS = 520;
 
 // ---- 節奏（毫秒）----
 const SWAP_MS = 140;      // 成功交換（主動的那顆有一點點回彈）
@@ -136,7 +137,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   let fx = [];                      // 光束 / 衝擊波 / 閃電 / 閃光
   let parts = [];                   // 粒子
   let texts = [];                   // 飄分
-  let word = null;                  // 連鎖字
+  let word = null;                  // 連鎖字（口號）
+  let surpriseUsed = false;         // 照片驚喜口號每關最多一次（setBoard 重設）
   let banners = [];
   let shakes = [];
   let sched = [];                   // 定時動作 { t, fn }
@@ -701,7 +703,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // 先做最常用到的：每次消除都會用的白光、粒子、連鎖字，再來才是特殊方塊
     warmQ.push(getFlash, getGlow, getStar);
     for (const k of kinds) warmQ.push(() => [tileWhite(getTile(k, 'none')), getStarCol(kindColor(k)), getFluff(kindColor(k))]);
-    for (let lv = 2; lv <= 5; lv++) warmQ.push(() => wordSprite(WORDS[lv], lv).c);
+    for (let lv = 2; lv <= 5; lv++) warmQ.push(() => wordSprite(cascadeSlogan(lv).text, lv).c);
     for (const sp of ['h', 'v', 'wrap']) for (const k of kinds) warmQ.push(() => getTile(k, sp).full);
     warmQ.push(() => { const e = getTile(-1, 'bomb'); return [e.under, e.orb, e.top, e.trio]; });
     warmTimer = setTimeout(pumpWarm, 250);
@@ -783,7 +785,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (destroyed) return;
     gen++;
     abortWaits();
-    sched = []; ghosts = []; fx = []; parts = []; texts = []; word = null; shakes = [];
+    sched = []; ghosts = []; fx = []; parts = []; texts = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
     if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
@@ -1143,7 +1145,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         kind >= 0 ? kindColor(kind) : [255, 170, 60], value >= 200));
     }
 
-    if (cascade >= 2) showWord(WORDS[Math.min(5, cascade)], cascade);
+    // 口號（js/slogans.js）：連鎖第 2/3/4/5+ 步；組合技；很大的一步偶爾來一張照片驚喜（每關最多一次）
+    const isCombo = removed.some(it => it.cause === 'combo') || effects.some(e => e.fx === 'board');
+    if (cascade >= 4 && !surpriseUsed && SLOGANS.surprise.length && Math.random() < 0.4) {
+      surpriseUsed = true;
+      const sl = SLOGANS.surprise[Math.floor(Math.random() * SLOGANS.surprise.length)];
+      showWord(sl.text, 5, sl);
+    } else if (cascade >= 2) {
+      const sl = cascadeSlogan(cascade);
+      if (sl) showWord(sl.text, cascade, sl);
+    } else if (isCombo) {
+      showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
+    }
     if (cascade >= 3) cue('chime', 40, { level: cascade });
     if (cascade >= 4) shake(1.8 + 0.4 * Math.min(4, cascade - 4), 220, t0 + 40);
     // 最後一顆開始爆之後一下下就讓上面的方塊開始掉（爆的動畫在背景收尾）
@@ -1338,9 +1351,24 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const w = sp.w * s, h = sp.h * s;
     ctx.drawImage(sp.c, x - w / 2, y - h / 2, w, h);
   }
-  function showWord(text, level) {
+  // 口號旁邊的玩具圖：toy = 方塊 id（從旋轉序列隨機挑一格，角度每次不同）或 'trio'；img = 直接用那張圖
+  const sloganImgs = new Map();
+  function sloganPic(sl) {
+    if (!sl) return null;
+    if (sl.img) {
+      let im = sloganImgs.get(sl.img);
+      if (!im) { im = new Image(); im.decoding = 'async'; im.src = sl.img; sloganImgs.set(sl.img, im); }
+      return { img: im, frame: -1 };
+    }
+    if (!sl.toy) return null;
+    const e = imgsFor(sl.toy);
+    // 24 格轉一圈：只挑正面附近 ±75°（第 19…23、0…5 格），每次角度不同又看得到臉
+    if (sl.toy !== 'trio' && usable(e.spin)) return { img: e.spin, frame: (19 + Math.floor(Math.random() * 11)) % 24 };
+    return e.sprite ? { img: e.sprite, frame: -1 } : null;
+  }
+  function showWord(text, level, sl) {
     if (!text) return;
-    word = { text, level, t0: now(), dur: 1100, sp: null, size: 0 };
+    word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
     requestDraw();
   }
   function banner(text, { sub = '', duration = 1600 } = {}) {
@@ -1534,13 +1562,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.drawImage(spin, (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, cx - sb / 2, cy - sb / 2, sb, sb);
       if (e.top) ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
     } else if (usable(sprite)) {
-      // 沒有旋轉序列：靜態圖輕輕搖擺
+      // 沒有旋轉序列（照片方塊）：原地彈跳，落地壓扁、跳起拉長（彈跳豬特別彈）
       ctx.drawImage(e.base, cx - P / 2, cy - P / 2, P, P);
       const sc = scaled(sprite, Math.round((box / s) * dpr * 1.12));
+      const amp = info.id === 'moodeng' ? 1.45 : 1;
+      const ph = (age % 560) / 560, hop = Math.sin(ph * Math.PI);
+      const land = Math.exp(-Math.min(ph, 1 - ph) * 14);         // 碰到地面附近 → 1
+      const sx = 1 + 0.16 * amp * land - 0.05 * hop, sy = 1 - 0.15 * amp * land + 0.07 * hop;
       ctx.save();
-      ctx.translate(cx, cy - Math.abs(Math.sin(age / 210)) * cs * 0.06);
-      ctx.rotate(0.16 * Math.sin(age / 150));
-      ctx.drawImage(sc, -box / 2, -box / 2, box, box);
+      ctx.translate(cx, cy + box / 2 - hop * cs * 0.13 * amp);
+      ctx.scale(sx, sy);
+      ctx.drawImage(sc, -box / 2, -box, box, box);
       ctx.restore();
       if (e.top) ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
     } else {
@@ -1637,7 +1669,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
         if (g.to) sparkle(g.x + 0.5, g.y + 0.5, 1, g.t0, 0.2);
         else {
-          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 3 : 6, g.t0, { stars: g.heavy ? 1 : 3, speed: g.special !== 'none' ? 4.4 : 3.4 });
+          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 5 : 11, g.t0, { stars: g.heavy ? 2 : 5, speed: g.special !== 'none' ? 5 : 4 });
           fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
           if (!g.heavy) fx.push({ type: 'pring', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 230, col, R: 0.7 });
         }
@@ -1920,12 +1952,35 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const bw = cols * cs, cx = ox + bw / 2, cy = oy + rows * cs * 0.4;
     const pin = clamp01((t - word.t0) / 280), pout = clamp01((t - word.t0 - word.dur + 250) / 250);
     if (!word.sp || word.spCs !== cs) word.sp = wordSprite(word.text, word.level), word.spCs = cs;
-    const sc = easeOutBack(pin, 2.4) * (1 + 0.15 * pout);
+    let sc = easeOutBack(pin, 2.4) * (1 + 0.15 * pout);
+    // 玩具圖放在字的左邊，一起置中；太寬就一起縮小
+    const pic = word.pic && usable(word.pic.img) ? word.pic : null;
+    const iw = pic ? cs * 2.5 : 0, gap = pic ? -cs * 0.35 : 0;
+    const total = iw + gap + word.sp.w;
+    const fit = Math.min(1, (bw * 0.98) / total);
+    const left = -total * fit / 2;
     ctx.save();
     ctx.translate(cx, cy - pout * cs * 0.6);
     ctx.rotate(-0.07 + 0.03 * Math.sin((t - word.t0) / 120) * (1 - pin));
     ctx.globalAlpha = 1 - pout;
-    drawSprite(word.sp, 0, 0, Math.max(0.001, sc));
+    if (pic) {
+      // 圖比字晚一點點彈出來，搖一下
+      const ppin = clamp01((t - word.t0 - 60) / 300), ps = easeOutBack(ppin, 3) * fit * (1 + 0.15 * pout);
+      ctx.save();
+      ctx.translate(left + iw * fit / 2, 0);
+      ctx.rotate(word.tilt + 0.12 * Math.sin((t - word.t0) / 110) * (1 - ppin * 0.6));
+      const img = pic.img, d = iw * ps;
+      if (pic.frame >= 0) {
+        const fw = natW(img) / 6, fh = natH(img) / 4, i = pic.frame;
+        if (d > 0) ctx.drawImage(img, (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, -d / 2, -d / 2, d, d);
+      } else if (d > 0) {
+        const ar = natW(img) / Math.max(1, natH(img));
+        const w = ar >= 1 ? d : d * ar, h = ar >= 1 ? d / ar : d;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      }
+      ctx.restore();
+    }
+    drawSprite(word.sp, left + (iw + gap) * fit + word.sp.w * fit / 2, 0, Math.max(0.001, sc * fit));
     ctx.restore();
   }
   // 連鎖字的小圖：同一個字、同樣大小只畫一次
