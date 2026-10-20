@@ -246,7 +246,7 @@ export const LEVELS = [
     id: 13, rows: 9, cols: 7, moves: 27, kinds: ['dog', 'sloth', 'egg', 'dino', 'snoopy', 'moodeng'], antiCascade: 0.76,
     goal: { type: 'collect', items: { dog: 17, sloth: 17, egg: 17 } }, stars: [15000, 30000, 45000],
     mask: ROUNDED, jelly: null, seed: 1334,
-    hint: '六種毛絨一起上場，眼睛要放亮！',
+    hint: '把兩個特殊方塊互換，會放出超強組合技！',
   },
   {
     id: 14, rows: 9, cols: 7, moves: 40, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko', 'snoopy'], antiCascade: 0.76,

@@ -20,7 +20,8 @@ const TITLE_TOYS = (SCANNED.length >= 3 ? SCANNED : PIECES).slice(0, 3);
 const SAVE_KEY = 'plushcrush.v1';
 const save = loadSave();
 function loadSave() {
-  const def = { unlocked: 1, stars: {}, best: {}, muted: false, music: true };
+  const BST0 = { hammer: 3, swap: 3, ufo: 2, moves5: 1 };      // 第一次玩送的道具
+  const def = { unlocked: 1, stars: {}, best: {}, muted: false, music: true, boosters: { ...BST0 } };
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return def;
@@ -32,6 +33,7 @@ function loadSave() {
       best: obj(s.best),
       muted: !!s.muted,
       music: s.music !== false,
+      boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
     };
   } catch (e) {
     return def;
@@ -510,6 +512,7 @@ function sumJelly(j, layers) {
 
 async function startLevel(idx) {
   sugarBonus = 0;
+  boosterMode = null; boosterFirst = null; renderBoosters();
   closeAllModals();
   session++;
   const token = session;
@@ -769,7 +772,7 @@ function scheduleHint() {
 }
 function showHint() {
   if (state !== 'play') return;
-  if (moving || R.busy || ptr || $('.modal.open')) { scheduleHint(); return; }
+  if (moving || R.busy || ptr || boosterMode || $('.modal.open')) { scheduleHint(); return; }
   const h = engine.findHint();
   if (h) R.hint(h.a, h.b);
 }
@@ -861,6 +864,83 @@ function goalMet() {
   return engine.score >= scoreTarget(level);     // 分數關：到了目標就過關，剩下的步數變成超級糖果
 }
 
+// ---------- 道具（不算步數） ----------
+const BOOSTER_TIP = { hammer: '點一顆方塊，用棒棒糖槌敲掉它', swap: '點兩顆相鄰的方塊，直接交換' };
+const BOOSTER_NAME = { hammer: '🍭 槌子', swap: '✋ 交換', ufo: '🛸 空投', moves5: '＋5 步' };
+let boosterMode = null, boosterFirst = null, lastRewards = [];
+function renderBoosters() {
+  for (const b of $$('.bst')) {
+    const k = b.dataset.b, n = save.boosters[k] || 0;
+    b.querySelector('.bc').textContent = n;
+    b.classList.toggle('empty', n <= 0);
+    b.classList.toggle('on', boosterMode === k);
+  }
+  const tip = $('#booster-tip');
+  if (tip) {
+    tip.hidden = !boosterMode || !BOOSTER_TIP[boosterMode];
+    tip.textContent = boosterMode === 'swap' && boosterFirst ? '再點旁邊那一顆' : (BOOSTER_TIP[boosterMode] || '');
+  }
+}
+function setBoosterMode(k) {
+  boosterMode = k; boosterFirst = null;
+  if (R) R.select(null);
+  clearHint();
+  renderBoosters();
+  if (!k) scheduleHint();
+}
+const boosterReady = () => state === 'play' && !moving && !!R && !R.busy;
+function onBoosterClick(k) {
+  if (!boosterReady()) return;
+  if ((save.boosters[k] || 0) <= 0) { toast('這個道具用完了，過關就能拿到更多！'); return; }
+  audio.play('select');
+  if (boosterMode === k) { setBoosterMode(null); return; }
+  if (k === 'ufo') { setBoosterMode(null); useBooster('ufo', () => engine.airDrop(3)); return; }
+  setBoosterMode(k);
+}
+async function useBooster(k, fn) {
+  if (!boosterReady()) return;
+  const token = session;
+  moving = true;
+  clearHint(); selected = null; R.select(null);
+  let res;
+  try { res = fn(); } catch (e) { console.error(e); moving = false; return; }
+  if (!res || !res.ok) { moving = false; setBoosterMode(null); return; }
+  save.boosters[k] = Math.max(0, (save.boosters[k] || 0) - 1);
+  writeSave();
+  boosterMode = null; boosterFirst = null; renderBoosters();
+  try { await R.play(res.events, { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) }); }
+  catch (e) { console.error(e); if (token === session) R.setBoard(engine.snapshot()); }
+  if (token !== session) return;
+  moving = false;
+  syncFromEngine();
+  if (state !== 'play') return;
+  if (goalMet()) { winFlow(); return; }
+  scheduleHint();
+}
+// 棒棒糖槌敲下去的動畫（畫在格子上方）
+function hammerFx(cell) {
+  try {
+    if (!cellCenters) cellCenters = computeCenters();
+    const p = cellCenters[cell.r + ',' + cell.c];
+    if (!p) return;
+    const d = el('div', 'hammer-fx');
+    d.textContent = '🍭';
+    d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 500);
+  } catch (e) { /* 動畫失敗不影響遊戲 */ }
+}
+// 過關獎勵：每次過關 1 個隨機道具；第一次拿到三星再送 ＋5 步
+function grantRewards(stars, prevStars) {
+  const got = [];
+  const pick = ['hammer', 'swap', 'ufo'][Math.floor(Math.random() * 3)];
+  got.push(pick);
+  if (stars === 3 && prevStars < 3) got.push('moves5');
+  for (const k of got) save.boosters[k] = (save.boosters[k] || 0) + 1;
+  writeSave();
+  return got;
+}
+
 // ---------- 交換 ----------
 async function doSwap(a, b) {
   if (state !== 'play' || moving || R.busy) return;
@@ -920,6 +1000,28 @@ canvas.addEventListener('pointerdown', e => {
   if (ptr) return;
   e.preventDefault();
   const cell = R.cellAt(e.clientX, e.clientY);
+  if (boosterMode) {
+    if (moving || R.busy || !hasPiece(cell)) return;
+    if (boosterMode === 'hammer') {
+      const c0 = cell;
+      boosterMode = 'busy'; renderBoosters();
+      hammerFx(c0);
+      setTimeout(() => { boosterMode = null; useBooster('hammer', () => engine.smash(c0)); }, 260);
+      return;
+    }
+    if (boosterMode === 'swap') {
+      if (boosterFirst && !same(boosterFirst, cell) && engine.isAdjacent(boosterFirst, cell)) {
+        const a = boosterFirst;
+        useBooster('swap', () => engine.freeSwap(a, cell));
+      } else {
+        boosterFirst = same(boosterFirst, cell) ? null : cell;
+        R.select(boosterFirst);
+        audio.play('select');
+        renderBoosters();
+      }
+    }
+    return;
+  }
   if (moving || R.busy) {
     // 盤面還在動：先記住手指的起點，停下來的那一刻起就照這個起點判斷拖曳（提早開始滑也接得住）
     if (cell) {
@@ -1024,7 +1126,9 @@ async function winFlow() {
   R.select(null);
   $('#btn-pause').disabled = true;
   const prevBest = Number(save.best[level.id]) || 0;
+  const prevStars = Number(save.stars[level.id]) || 0;
   const firstClear = save.unlocked < levelIdx + 2;
+  boosterMode = null; boosterFirst = null; renderBoosters();
   // 目標關：完成目標至少 1 顆星（分數不夠就先補到 1 星門檻，Candy Crush 也是這樣）
   if (!isScoreLevel(level) && engine.score < passScore(level) && typeof engine.addScore === 'function') {
     engine.addScore(passScore(level) - engine.score);
@@ -1054,6 +1158,8 @@ async function winFlow() {
   syncFromEngine();
   const score = engine.score;
   const stars = recordWin(score);
+  lastRewards = grantRewards(stars, prevStars);
+  renderBoosters();
   const newBest = score > prevBest;
   state = 'won';
   await sleep(450);
@@ -1075,6 +1181,8 @@ function showWin(stars, score, newBest, best, firstClear) {
   winTimers = [];
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
+  const rw = $('#mw-reward');
+  if (rw) { rw.hidden = !lastRewards.length; rw.textContent = '獲得道具：' + lastRewards.map(k => BOOSTER_NAME[k] + ' ×1').join('、'); }
   if (stars === 3 && SLOGANS.win3.voice) audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 });
   setPhoto('mw-photo', WIN_PHOTOS[Math.floor(Math.random() * WIN_PHOTOS.length)]);
   const bs = $$('#mw-stars .bs');
@@ -1131,6 +1239,8 @@ async function loseFlow() {
   $('#cheer').classList.add('sad');
   audio.play('lose');
   $('#ml-title').textContent = '步數用完了';
+  const more = $('#ml-more');
+  if (more) { const n = save.boosters.moves5 || 0; more.hidden = n <= 0; $('#ml-more-n').textContent = n; }
   setPhoto('ml-photo', SLOGANS.lose.img);
   await sleep(650);
   if (token !== session) return;
@@ -1217,6 +1327,17 @@ function bindUI() {
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-map').addEventListener('click', () => leaveToMap());
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
+  $('#ml-more').addEventListener('click', () => {
+    if (state !== 'lost' || (save.boosters.moves5 || 0) <= 0) return;
+    save.boosters.moves5--; writeSave(); renderBoosters();
+    closeModal('m-lose');
+    $('#cheer').classList.remove('sad');
+    movesLeft += 5; dispMoves = movesLeft; renderMoves();
+    state = 'play'; lowWarned = false;
+    toast('再給你 5 步，加油！');
+    scheduleHint();
+  });
+  for (const b of $$('.bst')) b.addEventListener('click', () => onBoosterClick(b.dataset.b));
   $('#ml-map').addEventListener('click', () => leaveToMap());
 
   // 每個按鈕都有小小的點擊聲
@@ -1232,6 +1353,7 @@ function bindUI() {
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (boosterMode && boosterMode !== 'busy') { setBoosterMode(null); return; }
     if (isOpen('m-settings')) closeModal('m-settings');
     else if (isOpen('m-start')) closeModal('m-start');
     else if (screen === 'game' && canPause()) openSettings();

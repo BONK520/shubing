@@ -660,6 +660,64 @@ export function createEngine(opts = {}) {
       return { ok: true, events, gained };
     },
 
+    // ---- 道具（Candy Crush 的 booster；都不算步數） ----
+    // smash(cell)：棒棒糖槌，敲掉一顆（特殊方塊會發動），之後照常掉落、連鎖
+    smash(cell) {
+      if (!cell || !isCell(cell.r, cell.c) || !grid[cell.r][cell.c]) return { ok: false, events: [], gained: 0 };
+      const events = [];
+      const st = newStep(1);
+      hit(st, cell.r, cell.c, 'combo', { r: cell.r, c: cell.c });
+      runQueue(st);
+      events.push(finishStep(st));
+      fall(events);
+      cascadesMax = Math.max(cascadesMax, settle(events, 2, null));
+      if (!hasValidMove()) events.push(shuffleInternal());
+      const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
+      score += gained;
+      return { ok: true, events, gained };
+    },
+    // freeSwap(a, b)：自由交換，相鄰兩顆不用湊成三連也能換；兩個特殊方塊照樣組合技
+    freeSwap(a, b) {
+      if (!a || !b || !isCell(a.r, a.c) || !isCell(b.r, b.c) || !engine.isAdjacent(a, b) ||
+        !grid[a.r][a.c] || !grid[b.r][b.c]) return { ok: false, events: [], gained: 0 };
+      a = { r: a.r, c: a.c }; b = { r: b.r, c: b.c };
+      const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
+      const combo = isComboPair(pa, pb);
+      grid[a.r][a.c] = pb; grid[b.r][b.c] = pa;
+      const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
+      let cascade = 1;
+      if (combo) { comboSteps(a, b, events); fall(events); cascade = 2; }
+      cascadesMax = Math.max(cascadesMax, settle(events, cascade, combo ? null : [b, a]));
+      if (!hasValidMove()) events.push(shuffleInternal());
+      const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
+      score += gained;
+      return { ok: true, events, gained };
+    },
+    // airDrop(n)：薯餅空投，隨機 n 顆普通方塊變成包裝糖果，一起爆
+    airDrop(n = 3) {
+      const cells = [];
+      for (let i = 0; i < n; i++) {
+        const normals = [];
+        forCells((r, c) => { const q = grid[r][c]; if (q && q.kind >= 0 && q.special === NONE) normals.push({ r, c }); });
+        if (!normals.length) break;
+        const { r, c } = normals[rand(normals.length)];
+        grid[r][c].special = 'wrap';
+        cells.push({ r, c, piece: cp(grid[r][c]) });
+      }
+      if (!cells.length) return { ok: false, events: [], gained: 0 };
+      const events = [ev({ t: 'transform', cells })];
+      const st = newStep(1);
+      for (const { r, c } of cells) if (grid[r][c]) hit(st, r, c, 'wrap', { r, c });
+      runQueue(st);
+      events.push(finishStep(st));
+      fall(events);
+      cascadesMax = Math.max(cascadesMax, settle(events, 2, null));
+      if (!hasValidMove()) events.push(shuffleInternal());
+      const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
+      score += gained;
+      return { ok: true, events, gained };
+    },
+
     findHint,
     hasValidMove,
     shuffle: () => [shuffleInternal()],

@@ -468,6 +468,42 @@ test('last-resort shuffle (kinds re-rolled) is still replayable from its event',
   replayEvents(before.grid, before.jelly, evs);
 });
 
+test('boosters: smash / freeSwap / airDrop keep every invariant and replay exactly', () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const e = createEngine({ kinds: [0, 1, 2, 3, 4], rows: 9, cols: 7, seed });
+    const rnd = mulberry(seed * 77);
+    for (const kind of ['smash', 'freeSwap', 'airDrop']) {
+      const before = e.snapshot();
+      let res;
+      if (kind === 'smash') res = e.smash({ r: Math.floor(rnd() * 9), c: Math.floor(rnd() * 7) });
+      else if (kind === 'freeSwap') {
+        const r = Math.floor(rnd() * 9), c = Math.floor(rnd() * 6);
+        res = e.freeSwap({ r, c }, { r, c: c + 1 });
+      } else res = e.airDrop(3);
+      ok(res.ok, `${kind} ok (seed ${seed})`);
+      replayEvents(before.grid, before.jelly, res.events);
+      const g = e.snapshot().grid;
+      ok(g.every(row => row.every(p => p)), `${kind}: board full`);
+      ok(!runsIn(g).length, `${kind}: no match left`);
+      ok(e.hasValidMove(), `${kind}: a move exists`);
+      const ids = g.flat().map(p => p.id);
+      eq(new Set(ids).size, ids.length, `${kind}: ids unique`);
+    }
+  }
+  // freeSwap of two non-matching pieces just swaps them (no swapBack)
+  const e2 = createEngine({ kinds: [0, 1, 2, 3], layout: ['0 1 2 3', '1 2 3 0', '2 3 0 1', '3 0 1 2'], seed: 2 });
+  const r2 = e2.freeSwap({ r: 0, c: 0 }, { r: 0, c: 1 });
+  ok(r2.ok && r2.events[0].t === 'swap' && !r2.events.some(x => x.t === 'swapBack'), 'free swap without a match');
+  if (!r2.events.some(x => x.t === 'shuffle')) { eq(e2.cell(0, 0).kind, 1); eq(e2.cell(0, 1).kind, 0); }
+  else eq(r2.events[0].t, 'swap');   // 小盤面換完沒步可走 → 自動洗牌
+  // airDrop makes wrapped pieces that fire
+  const e3 = createEngine({ kinds: [0, 1, 2, 3, 4], rows: 9, cols: 7, seed: 9 });
+  const r3 = e3.airDrop(3);
+  eq(r3.events[0].t, 'transform'); eq(r3.events[0].cells.length, 3);
+  ok(r3.events[0].cells.every(x => x.piece.special === 'wrap'), 'three wrapped');
+  ok(r3.events[1].effects.filter(x => x.fx === 'blast').length >= 3, 'they blast');
+});
+
 test('findHint prefers bigger matches', () => {
   const e = mk(['_______', '__0____', '00_00__', '_______', '_1_____', '1_1____']);
   const h = e.findHint();

@@ -137,6 +137,13 @@
       <canvas id="board" aria-label="遊戲盤面：按住方塊拖向旁邊，或先後點兩個相鄰方塊來交換"></canvas>
     </div>
     <div class="cheer" id="cheer" aria-hidden="true"></div>
+    <!-- 道具列（像 Candy Crush 下面那排）：都不算步數 -->
+    <div class="booster-tip" id="booster-tip" aria-live="polite" hidden></div>
+    <div class="boosters" id="boosters" role="toolbar" aria-label="道具">
+      <button class="bst" type="button" data-b="hammer" aria-label="棒棒糖槌：敲掉一顆"><span class="bi" aria-hidden="true">🍭</span><b class="bc">0</b><span class="bn">槌子</span></button>
+      <button class="bst" type="button" data-b="swap" aria-label="自由交換：相鄰兩顆隨便換"><span class="bi" aria-hidden="true">✋</span><b class="bc">0</b><span class="bn">交換</span></button>
+      <button class="bst" type="button" data-b="ufo" aria-label="薯餅空投：三顆包裝糖果一起爆"><span class="bi" aria-hidden="true">🛸</span><b class="bc">0</b><span class="bn">空投</span></button>
+    </div>
   </section>
 </div>
 
@@ -178,6 +185,7 @@
       <em id="mw-best" hidden>新紀錄！</em>
       <span class="best-line" id="mw-best-line"></span>
     </div>
+    <div class="mw-reward" id="mw-reward" hidden></div>
     <div class="modal-toys" id="mw-toys"></div>
     <div class="btn-col">
       <button class="btn green xl" id="mw-next">下一關</button>
@@ -198,6 +206,7 @@
     <div class="modal-toys sad" id="ml-toys"></div>
     <p class="lose-text" id="ml-text"></p>
     <div class="btn-col">
+      <button class="btn orange" id="ml-more" hidden>＋5 步繼續（剩 <b id="ml-more-n">0</b> 個）</button>
       <button class="btn green xl" id="ml-retry">再試一次</button>
       <button class="btn purple" id="ml-map">地圖</button>
     </div>
