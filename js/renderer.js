@@ -626,7 +626,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // 白色外框 + 柔和陰影
     g.save();
     g.shadowColor = 'rgba(50,10,90,0.35)'; g.shadowBlur = S * 0.22; g.shadowOffsetY = S * 0.08;
-    g.globalAlpha = 0.72; g.drawImage(outer, 0, 0);
+    g.globalAlpha = 0.92; g.drawImage(outer, 0, 0);
     g.restore();
     g.globalCompositeOperation = 'destination-out'; g.drawImage(inner, 0, 0);
     g.globalCompositeOperation = 'source-over';
@@ -635,13 +635,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     tg.drawImage(inner, 0, 0);
     tg.globalCompositeOperation = 'source-in';
     const pg = tg.createLinearGradient(0, 0, 0, Hd);
-    pg.addColorStop(0, 'rgba(92,58,160,0.66)'); pg.addColorStop(1, 'rgba(62,36,122,0.74)');
+    pg.addColorStop(0, 'rgba(46,30,128,0.86)'); pg.addColorStop(1, 'rgba(26,14,84,0.9)');   // 深色半透明盤面：方塊顏色才跳得出來
     tg.fillStyle = pg; tg.fillRect(0, 0, Wd, Hd);
     g.drawImage(tint, 0, 0);
     // 棋盤格
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
-      g.fillStyle = (r + c2) % 2 ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.16)';
+      g.fillStyle = (r + c2) % 2 ? 'rgba(160,190,255,0.05)' : 'rgba(170,200,255,0.13)';
       const x = Math.round(m + c2 * S), y = Math.round(m + r * S);
       g.fillRect(x, y, Math.round(m + (c2 + 1) * S) - x, Math.round(m + (r + 1) * S) - y);
     }
