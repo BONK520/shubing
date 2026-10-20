@@ -163,6 +163,18 @@ def sprite(render, size=256, K=3, fill=FILL, g=None, transform=None, outline=OUT
     return to_im(downsample(stickerize(big, unit, outline=outline), size, size))
 
 
+def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None):
+    """沒有白邊、沒有陰影的玩具圖（盤面上放進糖果裡用；陰影和發光邊由遊戲畫）"""
+    a = grade(to_np(render), g)
+    W = size * K; unit = size / 256 * K
+    if transform is None:
+        s, ox, oy = fit_transform(bbox(a), W, W, unit, fill, outline=0)
+    else:
+        s, ox, oy = transform[0] * K, transform[1] * K, transform[2] * K
+    big = resample(a, s, ox, oy, W, W)
+    return to_im(downsample(big, size, size))
+
+
 def spin_transform(frames, static_bb, static_wh, size=192, fill=FILL, margin=7.0, outline=OUTLINE):
     """轉盤序列的固定構圖。frames: 每格的 RGBA numpy（同一個相機）；static_bb: 靜態圖的 bbox。
     讓第 0 格盡量和靜態貼紙一樣大、一樣位置，但所有格都要放得下。回傳 ((scale, ox, oy), 和靜態比的縮放)"""

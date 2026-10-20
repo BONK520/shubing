@@ -1045,3 +1045,21 @@ svg use { pointer-events: none; }
 @media (orientation: landscape) and (max-height: 520px) {
   .boosters { position: absolute; left: calc(8px + var(--safe-l)); bottom: calc(6px + var(--safe-b)); margin: 0; flex-direction: row; transform: scale(.85); transform-origin: 0 100%; }
 }
+
+
+/* ---------- 盤面上的夢幻微光（慢慢飄、忽明忽暗） ---------- */
+.board-sparkles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.board-sparkles i {
+  position: absolute; left: var(--x); top: var(--y); width: 6px; height: 6px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 30%, rgba(255, 240, 200, .6) 45%, rgba(255, 240, 200, 0) 70%);
+  box-shadow: 0 0 8px 3px rgba(255, 255, 255, .45);
+  opacity: 0; animation: sparkleFloat var(--d) ease-in-out var(--k) infinite;
+}
+@keyframes sparkleFloat {
+  0% { transform: translate(0, 0) scale(.6); opacity: 0; }
+  20% { opacity: .9; }
+  50% { transform: translate(10px, -26px) scale(1.1); opacity: .55; }
+  80% { opacity: .85; }
+  100% { transform: translate(-6px, -52px) scale(.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .board-sparkles { display: none; } }

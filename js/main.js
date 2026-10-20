@@ -83,13 +83,16 @@ function loadImg(src, timeout = 12000) {
 async function loadImages(onProgress) {
   const jobs = [];
   let done = 0;
-  const total = PIECES.length + PIECES.filter(p => !p.photo).length + 1;
+  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 1;
   const track = p => p.then(v => { done++; onProgress(done / total); return v; });
   for (const p of PIECES) {
     const entry = { sprite: null, spin: null };
     images.set(p.id, entry);
     jobs.push(track(loadImg(spritePath(p.id))).then(im => { entry.sprite = im; }));
     if (!p.photo) jobs.push(track(loadImg(spinPath(p.id))).then(im => { entry.spin = im; }));   // 照片方塊沒有旋轉序列
+    // 盤面用的沒白邊版本（放進糖果裡，陰影和發光邊由 renderer 畫）
+    jobs.push(track(loadImg(`assets/sprites/${p.id}_n.png`)).then(im => { entry.clean = im; }));
+    if (!p.photo) jobs.push(track(loadImg(`assets/sprites/${p.id}_spin_n.webp`)).then(im => { entry.spinClean = im; }));
   }
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);

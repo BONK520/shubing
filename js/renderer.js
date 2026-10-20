@@ -292,9 +292,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.drawImage(src, 0, 0);
     try {
       const d = g.getImageData(0, 0, w, h), a = d.data;
+      // 暗色的玩具（像黑色的皮蛋）先把暗部提亮，臉和輪廓才看得清楚
+      let sumL = 0, nL = 0;
+      for (let i = 0; i < a.length; i += 16) if (a[i + 3] > 128) { sumL += 0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]; nL++; }
+      const meanL = nL ? sumL / nL : 128, lift = meanL < 115 ? 0.72 + (meanL / 115) * 0.28 : 1;
+      const lut = new Uint8ClampedArray(256);
+      for (let v = 0; v < 256; v++) lut[v] = 255 * Math.pow(v / 255, lift);
       for (let i = 0; i < a.length; i += 4) {
         if (!a[i + 3]) continue;
-        let r = a[i], gg = a[i + 1], b = a[i + 2];
+        let r = lut[a[i]], gg = lut[a[i + 1]], b = lut[a[i + 2]];
         const l = 0.299 * r + 0.587 * gg + 0.114 * b;
         r = l + (r - l) * 1.3; gg = l + (gg - l) * 1.3; b = l + (b - l) * 1.3;      // 飽和度 ×1.3
         r = (r - 128) * 1.07 + 133; gg = (gg - 128) * 1.07 + 133; b = (b - 128) * 1.07 + 133;   // 對比、稍微提亮
@@ -305,8 +311,44 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     vividCache.set(src, c);
     return c;
   }
+  // 盤面上的玩具：沒白邊的版本 + 柔和陰影 + 糖果色的微光邊（跟糖果融在一起，不像貼紙）
+  const toyCache = new Map();
+  function silhouette(src, color) {
+    const c = makeCanvas(src.width, src.height), g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+  function embeddedToy(kind, im, box) {
+    const key = kind + '|' + box;
+    let c = toyCache.get(key);
+    if (c) return c;
+    const src = vivid(scaled(im, box)), pad = Math.ceil(box * 0.14), W = src.width + pad * 2;
+    c = makeCanvas(W, W);
+    const g = c.getContext('2d'), col = kindColor(kind);
+    // 陰影：往下偏一點、用好幾個位置疊出柔邊
+    const sh = silhouette(src, 'rgba(25,5,50,1)'), off = box * 0.05, bl = Math.max(1, box * 0.025);
+    g.globalAlpha = 0.07;
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) g.drawImage(sh, pad + dx * bl, pad + off + dy * bl);
+    // 發光邊：糖果色帶白的剪影，往外擴一點點
+    const gl = silhouette(src, css(mixc(saturate(col, 0.4), WHITE, 0.72), 1)), ex = Math.max(1, box * 0.018);
+    g.globalAlpha = 0.5;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; g.drawImage(gl, pad + Math.cos(a) * ex, pad + Math.sin(a) * ex); }
+    g.globalAlpha = 1;
+    g.drawImage(src, pad, pad);
+    if (toyCache.size > 80) toyCache.clear();
+    toyCache.set(key, c);
+    return c;
+  }
   function paintSprite(g, kind, cx, cy, box) {
-    const info = pieceInfo(kind), im = imgsFor(info.id).sprite;
+    const info = pieceInfo(kind), all = imgsFor(info.id);
+    if (usable(all.clean)) {
+      const c = embeddedToy(kind, all.clean, Math.round(box));
+      g.drawImage(c, cx - c.width / 2, cy - c.height / 2);
+      return;
+    }
+    const im = all.sprite;
     if (usable(im)) { g.drawImage(vivid(scaled(im, box)), cx - Math.round(box) / 2, cy - Math.round(box) / 2); return; }
     paintFallback(g, info, cx, cy, box);
   }
@@ -521,7 +563,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     const full = makeCanvas(P, P), fg = full.getContext('2d');
     fg.drawImage(base, 0, 0);
-    const narrow = { heart: 0.72, egg: 0.72, bean: 0.74 }[shapeOf(kind)] || 0.8;
+    const narrow = { heart: 0.68, egg: 0.68, bean: 0.7, flower: 0.72 }[shapeOf(kind)] || 0.76;
     const box = Math.round(S * (special === 'wrap' ? 0.66 : narrow));   // 玩具在糖果裡面，看得到糖果的形狀
     if (special === 'h' || special === 'v') {
       // 玩具本身也印上條紋
@@ -781,7 +823,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!mask[r][c2]) continue;
       g.fillStyle = (r + c2) % 2 ? 'rgba(160,190,255,0.05)' : 'rgba(170,200,255,0.13)';
       const x = Math.round(m + c2 * S), y = Math.round(m + r * S);
-      g.fillRect(x, y, Math.round(m + (c2 + 1) * S) - x, Math.round(m + (r + 1) * S) - y);
+      const cw = Math.round(m + (c2 + 1) * S) - x, ch = Math.round(m + (r + 1) * S) - y;
+      g.fillRect(x, y, cw, ch);
+      // 每格一點點立體：上緣一條亮線、下緣一條暗線
+      g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(x + 2, y + 1, cw - 4, Math.max(1, S * 0.02));
+      g.fillStyle = 'rgba(0,0,30,0.18)'; g.fillRect(x + 2, y + ch - Math.max(1, S * 0.025), cw - 4, Math.max(1, S * 0.025));
     }
     // 橫幅出現時用的暗色遮罩：和盤面外框同形狀（不會在盤面外畫出一個方框）
     const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');
@@ -1775,7 +1821,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const s = st.s * (age < 60 ? lerp(1, 0.94, age / 60) : age < 220 ? lerp(0.94, 1.12, easeOutBack((age - 60) / 160, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
-    const info = pieceInfo(v.kind), { spin, sprite, spinScale } = imgsFor(info.id);
+    const info = pieceInfo(v.kind), imgs = imgsFor(info.id), spin = usable(imgs.spinClean) ? imgs.spinClean : imgs.spin, sprite = usable(imgs.clean) ? imgs.clean : imgs.sprite, spinScale = imgs.spinScale;
     const box = cs * (v.special === 'wrap' ? SPR_WRAP : SPR) * s;
     if (usable(spin)) {
       ctx.drawImage(e.base, cx - P / 2, cy - P / 2, P, P);

@@ -3,6 +3,7 @@
     {
       "id": "dog",
       "sprite": "assets/sprites/dog.png",
+      "clean": "assets/sprites/dog_n.png",
       "spin": "assets/sprites/dog_spin.webp",
       "glb": "assets/models/dog.glb",
       "usdz": "assets/models/dog.usdz",
@@ -17,6 +18,7 @@
     {
       "id": "sloth",
       "sprite": "assets/sprites/sloth.png",
+      "clean": "assets/sprites/sloth_n.png",
       "spin": "assets/sprites/sloth_spin.webp",
       "glb": "assets/models/sloth.glb",
       "usdz": "assets/models/sloth.usdz",
@@ -31,6 +33,7 @@
     {
       "id": "egg",
       "sprite": "assets/sprites/egg.png",
+      "clean": "assets/sprites/egg_n.png",
       "spin": "assets/sprites/egg_spin.webp",
       "glb": "assets/models/egg.glb",
       "usdz": "assets/models/egg.usdz",
@@ -45,21 +48,25 @@
     {
       "id": "dino",
       "sprite": "assets/sprites/dino.png",
+      "clean": "assets/sprites/dino_n.png",
       "photo": true
     },
     {
       "id": "nyanko",
       "sprite": "assets/sprites/nyanko.png",
+      "clean": "assets/sprites/nyanko_n.png",
       "photo": true
     },
     {
       "id": "moodeng",
       "sprite": "assets/sprites/moodeng.png",
+      "clean": "assets/sprites/moodeng_n.png",
       "photo": true
     },
     {
       "id": "snoopy",
       "sprite": "assets/sprites/snoopy.png",
+      "clean": "assets/sprites/snoopy_n.png",
       "photo": true
     }
   ],

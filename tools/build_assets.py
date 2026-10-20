@@ -221,10 +221,14 @@ def postprocess(cfg):
             continue
         static = rimg(i)
         pp.save_png(pp.sprite(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '.png'))
+        pp.save_png(pp.sprite_clean(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '_n.png'))   # 沒白邊（盤面用）
         frames = [rimg(f'{i}_s{k:02d}') for k in range(F['frames'])]
         T, ratio = pp.spin_transform([pp.to_np(f) for f in frames], pp.bbox(pp.to_np(static)), static.size, F['size'])
         cells = [pp.sprite(f, F['size'], K=2, g=g, transform=T) for f in frames]
         pp.save_webp(pp.sheet(cells, F['cols'], F['rows'], F['size']), os.path.join(A_SPR, i + '_spin.webp'),
+                     F.get('webpQuality', 85))
+        cells_n = [pp.sprite_clean(f, F['size'], K=2, g=g, transform=T) for f in frames]
+        pp.save_webp(pp.sheet(cells_n, F['cols'], F['rows'], F['size']), os.path.join(A_SPR, i + '_spin_n.webp'),
                      F.get('webpQuality', 85))
         info[i] = dict(spinScale=round(float(ratio), 3))
         print(f'  {i}: sprite + spin（第 0 格大小 = 靜態圖的 {ratio:.2f} 倍）')
@@ -251,7 +255,9 @@ def photo_piece(p):
             raise SystemExit(f'找不到 {i} 的照片 tools/source/photos/{p["photo"]}，也沒有 assets/sprites/{i}.png')
         print(f'  {i}: 沒有原照片，沿用 assets/sprites/{i}.png')
         return
-    pp.save_png(pc.sticker_piece(pc.cut(p), 256, fill=p.get('fill', pp.FILL), g=p.get('grade')), out)
+    rgba = pc.cut(p)
+    pp.save_png(pc.sticker_piece(rgba, 256, fill=p.get('fill', pp.FILL), g=p.get('grade')), out)
+    pp.save_png(pp.sprite_clean(pp.to_im(pc.enhance(rgba, p.get('grade'))), 256, fill=0.9), os.path.join(A_SPR, i + '_n.png'))
     print(f'  {i}: 照片貼紙')
 
 
@@ -280,12 +286,12 @@ def finish(cfg, kinds, info):
     for p in cfg['pieces']:
         i = p['id']
         if kinds[i] == 'photo':
-            pieces.append(dict(id=i, sprite=f'assets/sprites/{i}.png', photo=True))
+            pieces.append(dict(id=i, sprite=f'assets/sprites/{i}.png', clean=f'assets/sprites/{i}_n.png', photo=True))
             continue
         for ext in ('glb', 'usdz'):
             copy_if_changed(os.path.join(MODELS, f'{i}.{ext}'), os.path.join(A_MOD, f'{i}.{ext}'))
         ext = trimesh.load(os.path.join(A_MOD, i + '.glb'), force='mesh').extents
-        pieces.append(dict(id=i, sprite=f'assets/sprites/{i}.png', spin=f'assets/sprites/{i}_spin.webp',
+        pieces.append(dict(id=i, sprite=f'assets/sprites/{i}.png', clean=f'assets/sprites/{i}_n.png', spin=f'assets/sprites/{i}_spin.webp',
                            glb=f'assets/models/{i}.glb', usdz=f'assets/models/{i}.usdz',
                            placeholder=kinds[i] == 'placeholder', spinScale=info[i]['spinScale'],
                            sizeCm=[round(float(v) * 100, 1) for v in ext]))
