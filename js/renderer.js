@@ -37,6 +37,7 @@ const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
 const POP_LEAD = 300;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
 const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
+const POP_SEQ = 55;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
 const LAND_MS = 270;      // 落地壓扁回彈
@@ -105,6 +106,56 @@ function rr(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r);
   g.arcTo(x, y, x + w, y, r);
   g.closePath();
+}
+// 糖果外形（像 Candy Crush：每一種糖果形狀都不一樣，一眼就分得出來）
+function roundedPoly(g, pts, r) {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n];
+    if (i === 0) g.moveTo((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2);
+    g.arcTo(p1[0], p1[1], (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, r);
+  }
+  g.closePath();
+}
+function candyPath(g, shape, cx, cy, R) {
+  g.beginPath();
+  switch (shape) {
+    case 'ball': g.arc(cx, cy, R * 0.97, 0, Math.PI * 2); break;
+    case 'square': { const w = R * 1.74, r = w * 0.32; rr(g, cx - w / 2, cy - w / 2, w, w, r); break; }
+    case 'egg': {
+      const w = R * 0.84, h = R;
+      g.moveTo(cx, cy - h);
+      g.bezierCurveTo(cx + w * 1.08, cy - h, cx + w * 1.12, cy + h * 0.6, cx, cy + h);
+      g.bezierCurveTo(cx - w * 1.12, cy + h * 0.6, cx - w * 1.08, cy - h, cx, cy - h);
+      g.closePath();
+      break;
+    }
+    case 'flower': {
+      const r = R * 0.43, d = R * 0.55;
+      for (let k = 0; k < 6; k++) {
+        const a = k * Math.PI / 3 - Math.PI / 2, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+        g.moveTo(x + r, y); g.arc(x, y, r, 0, Math.PI * 2);
+      }
+      g.moveTo(cx + R * 0.62, cy); g.arc(cx, cy, R * 0.62, 0, Math.PI * 2);
+      break;
+    }
+    case 'hex': {
+      const pts = [];
+      for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; pts.push([cx + Math.cos(a) * R * 1.02, cy + Math.sin(a) * R * 0.92]); }
+      roundedPoly(g, pts, R * 0.24);
+      break;
+    }
+    case 'bean': g.ellipse(cx, cy, R * 1.0, R * 0.74, -0.38, 0, Math.PI * 2); break;
+    case 'heart': {
+      const k = R * 1.04, y0 = cy + k * 0.06;
+      g.moveTo(cx, y0 + k * 0.86);
+      g.bezierCurveTo(cx - k * 1.3, y0 + k * 0.0, cx - k * 0.78, y0 - k * 1.02, cx, y0 - k * 0.46);
+      g.bezierCurveTo(cx + k * 0.78, y0 - k * 1.02, cx + k * 1.3, y0 + k * 0.0, cx, y0 + k * 0.86);
+      g.closePath();
+      break;
+    }
+    default: g.arc(cx, cy, R, 0, Math.PI * 2);
+  }
 }
 // 四個角各自的圓角半徑（盤面外框用：只有凸出去的角才圓）
 function rr4(g, x, y, w, h, tl, tr, br, bl) {
@@ -267,6 +318,71 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else g.fillRect(x + o, y - T, band, T * 3);
     }
   }
+  const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', dino: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };
+  const SHAPE_CYCLE = ['ball', 'square', 'egg', 'flower', 'hex', 'bean', 'heart'];
+  function shapeOf(kind) { const id = pieceInfo(kind).id; return SHAPE_OF[id] || SHAPE_CYCLE[((kind % 7) + 7) % 7]; }
+  const CANDY_R = 0.45;     // 糖果半徑 / 格
+  // 立體糖果（像 Candy Crush）：深色外框、左上亮往邊緣變濃的球面漸層、底部透光、邊緣暗一圈；玩具在裡面，上面再蓋反光
+  function paintCandy(g, kind, cx, cy, S, col, special) {
+    const shape = shapeOf(kind), R = S * CANDY_R;
+    const sat = saturate(col, 0.45), deep = mixc(saturate(col, 0.65), BLACK, 0.55);
+    g.save();
+    g.shadowColor = 'rgba(20,4,50,0.6)'; g.shadowBlur = S * 0.09; g.shadowOffsetY = S * 0.07;
+    candyPath(g, shape, cx, cy + S * 0.035, R * 1.04); g.fillStyle = css(deep); g.fill();
+    g.restore();
+    candyPath(g, shape, cx, cy, R * 1.06); g.fillStyle = css(mixc(saturate(col, 0.65), BLACK, 0.5)); g.fill();
+    const rg = g.createRadialGradient(cx - R * 0.35, cy - R * 0.45, R * 0.04, cx, cy, R * 1.18);
+    rg.addColorStop(0, css(mixc(sat, WHITE, 0.62)));
+    rg.addColorStop(0.32, css(mixc(sat, WHITE, 0.18)));
+    rg.addColorStop(0.7, css(sat));
+    rg.addColorStop(1, css(mixc(saturate(col, 0.65), BLACK, 0.38)));
+    candyPath(g, shape, cx, cy, R); g.fillStyle = rg; g.fill();
+    g.save();
+    candyPath(g, shape, cx, cy, R); g.clip();
+    if (special === 'h' || special === 'v') {
+      g.fillStyle = 'rgba(255,255,255,0.86)';
+      paintStripes(g, cx - R, cy - R, R * 2, special);
+    }
+    // 底部透光
+    const cg = g.createRadialGradient(cx + R * 0.1, cy + R * 1.08, 0, cx + R * 0.1, cy + R * 1.08, R * 0.95);
+    cg.addColorStop(0, css(mixc(sat, WHITE, 0.68), 0.95)); cg.addColorStop(0.55, css(mixc(sat, WHITE, 0.35), 0.35)); cg.addColorStop(1, css(sat, 0));
+    g.fillStyle = cg; g.fillRect(cx - R * 1.3, cy, R * 2.6, R * 1.4);
+    // 邊緣暗一圈（球面感）
+    candyPath(g, shape, cx, cy, R);
+    g.lineWidth = R * 0.26; g.strokeStyle = css(mixc(saturate(col, 0.65), BLACK, 0.45), 0.32); g.stroke();
+    g.restore();
+    if (special === 'wrap') {
+      candyPath(g, shape, cx, cy, R * 0.86);
+      g.save();
+      g.setLineDash([0.001, R * 0.3]); g.lineCap = 'round';
+      g.lineWidth = R * 0.16; g.strokeStyle = 'rgba(255,255,255,0.92)'; g.stroke();
+      g.restore();
+    }
+  }
+  function paintCandyGloss(g, kind, cx, cy, S) {
+    const shape = shapeOf(kind), R = S * CANDY_R;
+    g.save();
+    candyPath(g, shape, cx, cy, R); g.clip();
+    // 左上大片鏡面反光
+    g.save();
+    g.translate(cx - R * 0.28, cy - R * 0.5); g.rotate(-0.42);
+    const hg = g.createLinearGradient(0, -R * 0.32, 0, R * 0.34);
+    hg.addColorStop(0, 'rgba(255,255,255,0.88)'); hg.addColorStop(0.6, 'rgba(255,255,255,0.22)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.beginPath(); g.ellipse(0, 0, R * 0.62, R * 0.32, 0, 0, Math.PI * 2); g.fillStyle = hg; g.fill();
+    g.restore();
+    // 右下邊緣一道亮光（反射）
+    g.save();
+    candyPath(g, shape, cx, cy, R);
+    const rl = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    rl.addColorStop(0, 'rgba(255,255,255,0)'); rl.addColorStop(0.7, 'rgba(255,255,255,0)'); rl.addColorStop(1, 'rgba(255,255,255,0.55)');
+    g.lineWidth = R * 0.1; g.strokeStyle = rl; g.stroke();
+    g.restore();
+    g.restore();
+    g.beginPath(); g.arc(cx - R * 0.5, cy - R * 0.52, R * 0.1, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,1)'; g.fill();
+    g.beginPath(); g.arc(cx - R * 0.27, cy - R * 0.68, R * 0.045, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+  }
   // 液態玻璃糖果：有厚度的側邊、中間亮邊緣濃的玻璃面、底部透光、內圈亮邊（玩具上面再蓋一層反光，見 paintGlassOverlay）
   function paintTileBody(g, cx, cy, S, col, special) {
     const T = S * TILE, x = cx - T / 2, y = cy - T / 2, rad = T * 0.3;
@@ -395,7 +511,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, col = kindColor(kind);
     const base = makeCanvas(P, P), bg = base.getContext('2d');
     if (special === 'wrap') paintWrapEnds(bg, cx, cy, S, col);
-    paintTileBody(bg, cx, cy, S, col, special);
+    paintCandy(bg, kind, cx, cy, S, col, special);
     let top = null;
     if (special === 'h' || special === 'v' || special === 'wrap') {
       top = makeCanvas(P, P);
@@ -405,7 +521,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     const full = makeCanvas(P, P), fg = full.getContext('2d');
     fg.drawImage(base, 0, 0);
-    const box = Math.round(S * (special === 'wrap' ? SPR_WRAP : SPR));
+    const narrow = { heart: 0.72, egg: 0.72, bean: 0.74 }[shapeOf(kind)] || 0.8;
+    const box = Math.round(S * (special === 'wrap' ? 0.66 : narrow));   // 玩具在糖果裡面，看得到糖果的形狀
     if (special === 'h' || special === 'v') {
       // 玩具本身也印上條紋
       const tmp = makeCanvas(box, box), tg = tmp.getContext('2d');
@@ -421,7 +538,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     // 玻璃反光蓋在玩具上面；選取時（轉圈 / 彈跳）也要蓋，所以合併進 top
     const gloss = makeCanvas(P, P);
-    paintGlassOverlay(gloss.getContext('2d'), cx, cy, S);
+    paintCandyGloss(gloss.getContext('2d'), kind, cx, cy, S);
     if (top) top.getContext('2d').drawImage(gloss, 0, 0);
     else top = gloss;
     fg.drawImage(top, 0, 0);
@@ -1038,11 +1155,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
     // --- 好幾組消除時一組接一組爆（36ms），音高一組比一組高 ---
     const matchT = new Map();
+    const seqCells = g => g.cells.slice().sort((a, b) => (a.r - b.r) || (a.c - b.c));   // 沿著那一排的順序
     groups.forEach((g, i) => {
-      for (const q of g.cells) {
-        const k = key(q.r, q.c), tm = i * GROUP_STAGGER;
+      seqCells(g).forEach((q, j) => {
+        const k = key(q.r, q.c), tm = i * GROUP_STAGGER + j * POP_SEQ;
         if (!matchT.has(k) || matchT.get(k) > tm) matchT.set(k, tm);
-      }
+      });
     });
 
     // --- 效果的啟動時間：被別的效果波及的特殊方塊，等波及到了才發動 ---
@@ -1155,12 +1273,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     if (removed.some(r => r.cause === 'combo')) cue('combo', 0);
 
-    // --- 消除音效：每組一聲，跟著畫面 ---
+    // --- 消除音效：每一顆都「啵」一聲，跟著畫面一顆接一顆，音一顆比一顆高 ---
     groups.forEach((g, i) => {
-      let tm = Infinity;
-      for (const q of g.cells) if (remT.has(key(q.r, q.c))) tm = Math.min(tm, tOf(q.r, q.c));
-      if (tm === Infinity) tm = i * GROUP_STAGGER * f;
-      cue('pop', tm, { cascade, group: i, size: g.cells.length, shape: g.shape });
+      seqCells(g).forEach((q, j) => {
+        const tm = remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f;
+        cue('pop', tm, { cascade, group: i, idx: j, size: g.cells.length, shape: g.shape });
+      });
     });
 
     // --- 新的特殊方塊：狀態馬上放好（下一次掉落可能就要移動它），畫面到時間才變身 ---

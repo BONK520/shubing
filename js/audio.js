@@ -26,6 +26,7 @@ let master = null, sfxBus = null, musicBus = null, revIn = null, noiseBuf = null
 let unlocked = false, muted = false, musicOn = false;
 let voices = 0;
 let gestureHooked = false;
+let stale = false;         // 頁面曾經被切到背景：下一次手勢時整個重建音訊（手機瀏覽器恢復後常常會沒聲音）
 const lastPlayed = Object.create(null);   // name -> 最近排定的幾個時間點（AudioContext 秒）
 
 // 同一個音效最短間隔（秒，用「排定要響的時間」比），避免同時疊太多變得很吵
@@ -129,22 +130,50 @@ function tryResume() {
   } catch (e) { /* ignore */ }
 }
 
+// 切回來後的第一次手勢：關掉舊的 AudioContext，整個重建（比 resume 可靠：iOS Safari 常常 resume 了卻沒聲音）
+let rebuilds = 0;
+function rebuild() {
+  stale = false;
+  rebuilds++;
+  try { stopMusic(true); } catch (e) { /* ignore */ }
+  const old = ctx;
+  try { if (voiceSrc) voiceSrc.stop(); } catch (e) { /* ignore */ }
+  voiceSrc = null;
+  const c = makeContext();
+  if (!c) return;
+  ctx = c;
+  for (const k in lastPlayed) delete lastPlayed[k];
+  for (const k in voiceBuf) delete voiceBuf[k];
+  voiceLoading = false;
+  voices = 0;
+  try { if (old && old.state !== 'closed') old.close().catch(() => {}); } catch (e) { /* ignore */ }
+  tryResume();
+  playSilent();
+  loadVoices();
+  if (musicOn) startMusic();
+}
+
 // iOS 被中斷（來電、切 App）後要靠下一次手勢才能恢復，所以一直留著一個輕量的監聽
 function hookGestures() {
   if (gestureHooked || typeof document === 'undefined') return;
   gestureHooked = true;
   const onGesture = () => {
     if (!ctx || document.hidden) return;
+    if (stale) { rebuild(); return; }
     if (ctx.state !== 'running') { tryResume(); playSilent(); }
   };
-  ['pointerdown', 'touchend', 'keydown', 'mousedown'].forEach(t => {
+  ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown', 'mousedown'].forEach(t => {
     try { document.addEventListener(t, onGesture, { passive: true, capture: true }); } catch (e) { /* ignore */ }
   });
+  // 從背景 / 上一頁回來（bfcache）也一樣：下一次手勢時重建
+  window.addEventListener('pageshow', e => { if (e.persisted) stale = true; });
+  window.addEventListener('pagehide', () => { stale = true; });
   document.addEventListener('visibilitychange', () => {
     try {
       if (!ctx) return;
       if (document.hidden) {
         stopMusic(true);
+        stale = true;
         if (ctx.state === 'running') ctx.suspend().catch(() => {});
       } else {
         tryResume();
@@ -304,18 +333,16 @@ const SFX = {
   },
   // 消除：連鎖每多一層、同一步每多一組，音就往五聲音階上走（像 Candy Crush 越連越高）
   pop(t, o) {
-    const c = clamp(Math.round(o.cascade || 1), 1, 12), g = clamp(Math.round(o.group || 0), 0, 8);
-    const step = (c - 1) * 2 + g;
-    const m = penta(74, Math.min(step, 13));
-    const big = (o.size || 3) >= 4;
-    noise(t, { dur: 0.018, attack: 0.001, gain: 0.07, type: 'highpass', f0: 3000, q: 0.7 });
-    tone(190 + step * 6, t, { dur: 0.07, attack: 0.002, gain: 0.08, to: 95, glide: 0.06 });
-    // 糖果碎開：短短的「喀啦」+ 幾顆很小的高音玻璃聲（和畫面上的碎片同時）
-    noise(t + 0.03, { dur: 0.07, attack: 0.001, gain: 0.07, type: 'bandpass', f0: 5200, f1: 2600, q: 2.6 });
-    for (let i = 0; i < 3; i++) tone(rnd(2800, 5200), t + 0.035 + i * rnd(0.012, 0.028), { dur: 0.05, attack: 0.001, gain: 0.025, type: 'sine' });
-    bubble(m, t, big ? 0.19 : 0.17, clamp((g - 1) * 0.25, -0.5, 0.5));
-    if (big) { marimba(m + 12, t + 0.02, 0.09, 0.3); bell(m + 12, t + 0.03, 0.04, 0.5); }
-    if (c >= 3 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.026, 91 + Math.min(c, 6));
+    // 療癒的「啵」：圓圓的泡泡聲（音高快速往上滑）+ 一點點木琴般的音色；同一組一顆比一顆高、連鎖越多越高
+    const c = clamp(Math.round(o.cascade || 1), 1, 12), g = clamp(Math.round(o.group || 0), 0, 8), j = clamp(Math.round(o.idx || 0), 0, 8);
+    const step = (c - 1) * 2 + g + j;
+    const m = penta(67, Math.min(step, 16));
+    const f = mtof(m);
+    const pan = clamp((j - 2) * 0.18, -0.5, 0.5);
+    tone(f * 0.5, t, { dur: 0.11, attack: 0.003, gain: 0.2, type: 'sine', to: f * 1.15, glide: 0.06, pan });
+    tone(f, t + 0.012, { dur: 0.16, attack: 0.004, gain: 0.05, type: 'triangle', pan });
+    noise(t, { dur: 0.01, attack: 0.001, gain: 0.025, type: 'lowpass', f0: 1800, q: 0.7 });
+    if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.022, 91 + Math.min(c, 6));
   },
   match(t, o) { SFX.pop(t, o); },
   // 做出特殊方塊：亮晶晶往上爬
@@ -545,6 +572,8 @@ SFX.voice = (t, o) => {
 };
 
 export const audio = {
+  get state() { return ctx ? ctx.state : 'none'; },      // 除錯用
+  get rebuilds() { return rebuilds; },
   unlock() {
     try {
       if (!ctx) {
