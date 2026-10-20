@@ -34,18 +34,18 @@ const MAX_PARTS = 900;
 const SWAP_MS = 140;      // 成功交換（主動的那顆有一點點回彈）
 const SWAP_BAD_MS = 100;  // 不成立的交換：過去
 const SWAP_BACK_MS = 120; //                 彈回來
-const POP_MS = 190;       // 消除：放大 + 白光 → 縮小消失
-const POP_LEAD = 100;     // 最後一顆開始爆之後多久就開始掉落（爆的動畫還在收尾）
+const POP_MS = 340;       // 消除：放大 + 白光 → 碎開
+const POP_LEAD = 260;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
 const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
-const LAND_MS = 230;      // 落地壓扁回彈
-const LAND_HOLD = 30;     // 下一輪連鎖：方塊落地後多久爆
-const G_FALL = 0.00018;   // 掉落重力（格 / ms²）
-const V0_FALL = 0.005;    // 掉落初速（格 / ms）
-const STAGGER_ROW = 7, STAGGER_MAX = 35, COL_JITTER = 12;
+const LAND_MS = 270;      // 落地壓扁回彈
+const LAND_HOLD = 70;     // 下一輪連鎖：方塊落地後多久爆
+const G_FALL = 0.000085;  // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.38 秒
+const V0_FALL = 0.003;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 14, STAGGER_MAX = 70, COL_JITTER = 20;
 // 特效傳到某格要多久
-const LINE_MS = 21, BLAST_MS = 42, BOARD_MS = 30, CHAIN_MS = 30, BOMB_FIRST = 90, CLEAR_CAP = 650;
+const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
 
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112];
 const now = () => performance.now();
@@ -503,9 +503,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const sh = getShards(kind, special);
     if (!sh) return;
     for (const d of sh) {
-      const v = (2.6 + Math.random() * 2.4) * power;
-      emit({ type: 3, img: d.c, x: x + d.ox, y: y + d.oy, vx: d.dx * v + (Math.random() - 0.5) * 1.2, vy: d.dy * v - 2.6 * power,
-        g: 15, drag: 0.9, t0: t, life: 560 + Math.random() * 240, w: d.w, h: d.h, rot: 0, vr: (Math.random() - 0.5) * 16 });
+      const v = (1.7 + Math.random() * 1.6) * power;
+      emit({ type: 3, img: d.c, x: x + d.ox, y: y + d.oy, vx: d.dx * v + (Math.random() - 0.5) * 0.9, vy: d.dy * v - 2.0 * power,
+        g: 8.5, drag: 0.8, t0: t, life: 820 + Math.random() * 300, w: d.w, h: d.h, rot: 0, vr: (Math.random() - 0.5) * 10 });
     }
   }
   function getGlow() {
@@ -1753,8 +1753,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
         if (g.to) sparkle(g.x + 0.5, g.y + 0.5, 1, g.t0, 0.2);
         else {
-          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 5 : 9, g.t0, { stars: g.heavy ? 2 : 5, speed: g.special !== 'none' ? 5 : 4 });
-          g.shatterAt = g.t0 + g.dur * 0.16;
+          g.shatterAt = g.t0 + g.dur * 0.3;
+          burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 5 : 9, g.shatterAt, { stars: g.heavy ? 2 : 5, speed: g.special !== 'none' ? 3.8 : 3 });
           shatter(g.x + 0.5, g.y + 0.5, g.kind, g.special, g.shatterAt, g.special !== 'none' ? 1.3 : 1);
           fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
           if (!g.heavy) fx.push({ type: 'pring', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 230, col, R: 0.7 });
@@ -1768,7 +1768,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       } else {
         // 一下子放大 + 變白（「啵」），接著整顆碎開（碎片粒子接手）
         if (g.shatterAt && t >= g.shatterAt && g.kind >= 0) continue;
-        const q = 0.2;
+        const q = 0.3;
         if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.8 * u; }
         else { const u = (p - q) / (1 - q); s = 1.2 * (1 - u * u * (3 - 2 * u)); wh = 0.8 * (1 - u) * (1 - u); }
         a = p < 0.55 ? 1 : 1 - (p - 0.55) / 0.45;
