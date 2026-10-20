@@ -1,7 +1,10 @@
+/* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
 
 :root {
-  --font: "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font: "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   --ink: #5a2a6c;
   --ink-soft: #8d5fa3;
   --panel: rgba(255, 255, 255, .9);
@@ -1066,7 +1069,7 @@ svg use { pointer-events: none; }
 
 /* ---------- 遊戲感的字：粗圓體 + 厚描邊 + 立體陰影；面板上緣高光、下緣厚度 ---------- */
 :root {
-  --font-num: "Arial Rounded MT Bold", "Baloo 2", "Varela Round", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "GenSenRounded", "Arial Rounded MT Bold", "Baloo 2", "Varela Round", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
 }
 .hud-moves b, .score-line b, .gi .cnt, .game-top .level-pill b, .bst .bc {
   font-family: var(--font-num); font-weight: 900; letter-spacing: .01em;

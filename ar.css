@@ -1,3 +1,6 @@
+/* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 毛絨消消樂 — 3D 看看頁 */
 :root {
   --pink: #ff6fb1;
@@ -10,7 +13,7 @@
   --line: rgba(255, 255, 255, 0.92);
   --shadow: 0 14px 34px rgba(138, 64, 168, 0.25);
   --toy: #ffb3d1;
-  --font: "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font: "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   color-scheme: light;
 }
 

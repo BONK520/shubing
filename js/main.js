@@ -1411,7 +1411,11 @@ async function boot() {
   setProgress(0.03);
   const modP = loadModules();
   const imgP = loadImages(f => setProgress(0.08 + f * 0.9));
-  const [fail] = await Promise.all([modP, imgP]);
+  // 圓體字先載好（畫布上的口號、分數會快取成圖，太晚載入就會用到備用字型）；最多等 3 秒
+  const fontP = (document.fonts && document.fonts.load)
+    ? Promise.race([Promise.all(['700 20px GenSenRounded', '900 20px GenSenRounded'].map(f => document.fonts.load(f, '薯餅0'))).catch(() => {}), sleep(3000)])
+    : Promise.resolve();
+  const [fail] = await Promise.all([modP, imgP, fontP]);
   if (fail.length) {
     $('#load-text').innerHTML = `載入失敗了 QQ<br><small>${fail.join('、')} 有問題，請重新整理再試一次。</small>`;
     document.documentElement.classList.add('load-failed');
