@@ -1157,7 +1157,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     } else if (isCombo) {
       showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
     }
-    if (cascade >= 3) cue('chime', 40, { level: cascade });
+    if (cascade >= 2) cue('chime', 40, { level: cascade + 1 });   // 每次跳口號都叮咚一下
     if (cascade >= 4) shake(1.8 + 0.4 * Math.min(4, cascade - 4), 220, t0 + 40);
     // 最後一顆開始爆之後一下下就讓上面的方塊開始掉（爆的動畫在背景收尾）
     await wait(t0 + lastPop + POP_LEAD - now());

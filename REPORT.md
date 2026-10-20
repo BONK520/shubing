@@ -7,24 +7,26 @@
 
 ---
 
-## 0. 目前狀態（2026-10-18）
+## 0. 目前狀態（2026-10-20）
 
-遊戲已經可以玩了。
+遊戲可以玩了，網址：**https://bonk520.github.io/shubing/** （GitHub Pages，每次 push 自動更新）。
 
-- **怎麼玩**：在專案根目錄跑 `python -m http.server 8000`，瀏覽器打開 `http://localhost:8000`。手機在同一個 Wi-Fi 下用電腦的 IP 開。
-- **方塊 6 種**：皮蛋、薯餅、蛋黃哥（AR 掃描）＋ 兔兔、呱呱、小鯨（程式做的暫代玩具，之後換成自己的掃描）。
-  只用 3 種會一直自己連鎖消除，所以每關用 4–6 種，再加上防連鎖補位。
-- **換掉暫代玩具**：把新的掃描改名成 `bunny.usdz`／`frog.usdz`／`whale.usdz` 放進 `tools/source/`，
-  把 `tools/assets.json` 那隻的 `source` 改成 `"scan"`，跑 `python tools/build_assets.py`，再改 `js/pieces.js` 的名字和 `scan: true`。
-  詳細步驟見 [tools/README.md](tools/README.md)。
-- **已完成**：盤面邏輯（配對、掉落、防連鎖補位、洗牌、條紋／包裝／彩色炸彈與全部組合技、果凍、Sugar Crush 收尾）、
-  15 關（分數、收集、異形盤面、果凍）、關卡地圖與存檔、Canvas 動畫與粒子特效、Web Audio 合成音效與背景音樂、
-  3D / AR 看看頁（model-viewer，iPhone 用 USDZ 開 AR Quick Look）、一鍵素材流程。
-- **檔案**：`index.html`、`style.css`、`js/`（engine、renderer、main、levels、audio、pieces）、`ar.html`、`assets/`、`tools/`、`tests/`。
+- **本地玩**：在專案根目錄跑 `python -m http.server 8000`，瀏覽器打開 `http://localhost:8000`。
+- **方塊 7 種**（每關用 4–6 種）：
+  - 皮蛋、薯餅、蛋黃哥：Object Capture 掃描，選到會轉圈
+  - 小恐龍、貓咪老師、彈跳豬（Moo Deng）、史努比：主人拍的照片去背，選到會彈跳
+- **計分和星星（照 Candy Crush）**：三連 60、四連 120、L/T 200、五連 200，被特殊方塊炸到每顆 60，連鎖倍率 ×1、×2、×3…，果凍每層 1,000。
+  分數關一定玩完全部步數；目標關一達成就結束，分數不夠 1 星先補到 1 星，剩下每一步 +3,000 並變成條紋方塊引爆（薯餅狂歡時間）。
+  星星門檻用模擬玩家校準過：認真玩的人每關 88–100% 拿三星，隨便玩的人 53–85%。
+- **口號**：連鎖時跳出「薯餅衝刺！」「皮蛋出動！」「蛋黃哥醒了！」「三寶合體！」，旁邊是那隻玩具（每次不同角度）；
+  組合技「蛋黃哥不躺了！」；偶爾有照片驚喜「薯餅頂橘子！」「小豬搭便車！」。全部在 `js/slogans.js`，想改字直接改那裡。
+- **裝飾**：標題、地圖、過關 / 失敗畫面有主人照片去背的貼紙（`assets/deco/`）。
+- **3D 看看**：轉動、放大看三隻掃描玩具；照片玩具顯示貼紙（彈跳豬還有兩張照片）。沒有 AR 相機功能。
+- **存檔**：進度、星星、最高分存在那台裝置的瀏覽器裡（localStorage），換裝置或清除瀏覽器資料會重新開始。
+- **素材流程**：`python tools/build_assets.py` 一鍵重建；換玩具、加照片玩具見 [tools/README.md](tools/README.md)。原始照片放 `tools/source/photos/`，不進 git。
+- **檔案**：`index.html`、`style.css`、`js/`（engine、renderer、main、levels、audio、pieces、slogans）、`ar.html`、`assets/`、`tools/`、`tests/`。
   各模組的介面寫在 [docs/SPEC.md](docs/SPEC.md)。
-- **測試**：`python tests/run_tests.py`（盤面邏輯，含隨機走幾千步的壓力測試）。
-- **手機橫放**也能玩（狀態列在左、盤面在右）。
-- **分享給別人**：GitHub repo 設定 → Pages → Deploy from a branch → 選這個分支、`/ (root)`，網址是 `https://bonk520.github.io/shubing/`。
+- **測試**：`python tests/run_tests.py`（盤面邏輯）、`python tests/run_tests.py --sim`（每關平衡模擬）。
 
 ---
 

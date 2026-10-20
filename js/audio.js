@@ -17,7 +17,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 const MASTER_VOL = 0.9;
-const SFX_VOL = 0.9;
+const SFX_VOL = 1.0;
 const MUSIC_VOL = 0.3;
 const MAX_VOICES = 150;              // 以振盪器數量計（一個鈴聲 = 4 個）
 
@@ -293,8 +293,9 @@ const SFX = {
   },
   // 交換：輕輕的「咻」
   swap(t, o) {
-    noise(t, { dur: 0.13, attack: 0.012, gain: o.bad ? 0.045 : 0.06, type: 'bandpass', f0: 650, f1: 2600, q: 1.3 });
-    tone(300, t, { dur: 0.1, attack: 0.01, gain: 0.05, to: 470, glide: 0.09, type: 'triangle', lp: 1600 });
+    noise(t, { dur: 0.16, attack: 0.01, gain: o.bad ? 0.07 : 0.11, type: 'bandpass', f0: 500, f1: 3600, q: 1.4 });
+    noise(t + 0.02, { dur: 0.12, attack: 0.01, gain: o.bad ? 0.03 : 0.05, type: 'highpass', f0: 3500, f1: 7000, q: 0.7 });
+    tone(280, t, { dur: 0.11, attack: 0.008, gain: 0.07, to: 520, glide: 0.1, type: 'triangle', lp: 1800 });
   },
   // 換不了：「啵啵」往下彈回去
   invalid(t) {
@@ -307,8 +308,10 @@ const SFX = {
     const step = (c - 1) * 2 + g;
     const m = penta(74, Math.min(step, 13));
     const big = (o.size || 3) >= 4;
-    bubble(m, t, big ? 0.15 : 0.13, clamp((g - 1) * 0.25, -0.5, 0.5));
-    if (big) marimba(m + 12, t + 0.02, 0.06, 0.25);
+    noise(t, { dur: 0.018, attack: 0.001, gain: 0.07, type: 'highpass', f0: 3000, q: 0.7 });
+    tone(190 + step * 6, t, { dur: 0.07, attack: 0.002, gain: 0.08, to: 95, glide: 0.06 });
+    bubble(m, t, big ? 0.19 : 0.17, clamp((g - 1) * 0.25, -0.5, 0.5));
+    if (big) { marimba(m + 12, t + 0.02, 0.09, 0.3); bell(m + 12, t + 0.03, 0.04, 0.5); }
     if (c >= 3 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.026, 91 + Math.min(c, 6));
   },
   match(t, o) { SFX.pop(t, o); },
@@ -322,17 +325,19 @@ const SFX = {
   },
   // 條紋：「咻——滋」掃過去
   stripe(t) {
-    tone(320, t, { dur: 0.16, attack: 0.004, gain: 0.09, to: 2400, glide: 0.15, type: 'sawtooth', lp: 2600, q: 1.2 });
-    tone(480, t + 0.01, { dur: 0.15, attack: 0.004, gain: 0.04, to: 3000, glide: 0.14 });
-    noise(t, { dur: 0.22, attack: 0.004, gain: 0.08, type: 'bandpass', f0: 1200, f1: 7000, q: 0.9 });
+    tone(320, t, { dur: 0.18, attack: 0.004, gain: 0.13, to: 2600, glide: 0.16, type: 'sawtooth', lp: 3000, q: 1.2 });
+    tone(480, t + 0.01, { dur: 0.16, attack: 0.004, gain: 0.06, to: 3200, glide: 0.15 });
+    tone(110, t, { dur: 0.2, attack: 0.003, gain: 0.12, to: 55, glide: 0.18 });
+    noise(t, { dur: 0.26, attack: 0.004, gain: 0.13, type: 'bandpass', f0: 1200, f1: 8000, q: 0.9 });
     pop(t, 900, 300, 0.05, 0.05);
     sparkle(t + 0.12, 3, 0.026, 98);
   },
   // 包裝：低沉的「碰」
   wrap(t, o) {
     const big = (o.radius || 1) > 1;
-    tone(big ? 140 : 170, t, { dur: big ? 0.45 : 0.32, attack: 0.003, gain: big ? 0.3 : 0.25, to: 42, glide: big ? 0.4 : 0.28 });
-    noise(t, { dur: big ? 0.38 : 0.26, attack: 0.002, gain: 0.12, type: 'lowpass', f0: 1400, f1: 160, q: 0.6 });
+    tone(big ? 140 : 170, t, { dur: big ? 0.5 : 0.36, attack: 0.003, gain: big ? 0.4 : 0.34, to: 38, glide: big ? 0.45 : 0.3 });
+    noise(t, { dur: big ? 0.42 : 0.3, attack: 0.002, gain: 0.18, type: 'lowpass', f0: 1800, f1: 160, q: 0.6 });
+    noise(t + 0.01, { dur: 0.12, attack: 0.001, gain: 0.07, type: 'highpass', f0: 2500, q: 0.6 });
     pop(t + 0.04, 520, 200, 0.06, 0.08);
     bell(penta(72, 0), t + 0.02, 0.04, 0.5);
   },
@@ -347,7 +352,9 @@ const SFX = {
       bell(penta(74, i), at, 0.05, 0.35, sfxBus, -0.6 + (1.2 * i) / Math.max(1, k - 1));
       noise(at, { dur: 0.03, attack: 0.001, gain: 0.03, type: 'highpass', f0: 5000, q: 0.6 });
     }
-    sparkle(t + 0.12 + n * stg, 6, 0.035, 96, 0.03);
+    noise(t, { dur: 0.3 + n * stg, attack: 0.15, gain: 0.06, type: 'bandpass', f0: 400, f1: 6000, q: 1.1 });
+    tone(150, t + 0.12 + n * stg, { dur: 0.4, attack: 0.003, gain: 0.26, to: 40, glide: 0.35 });
+    sparkle(t + 0.12 + n * stg, 8, 0.045, 96, 0.03);
   },
   // 炸彈 + 炸彈：整個盤面
   board(t) {
@@ -366,8 +373,8 @@ const SFX = {
   // 長連鎖：「好棒！」「太甜了！」跳出來時的和弦叮咚，越長越高
   chime(t, o) {
     const lv = clamp(Math.round(o.level || 3), 3, 8), base = 76 + (lv - 3) * 2;
-    [0, 4, 7, 12].forEach((d, i) => bell(base + d, t + i * 0.045, 0.06, 0.9, sfxBus, -0.3 + i * 0.2));
-    marimba(base - 12, t, 0.07, 0.4);
+    [0, 4, 7, 12].forEach((d, i) => bell(base + d, t + i * 0.045, 0.085, 0.9, sfxBus, -0.3 + i * 0.2));
+    marimba(base - 12, t, 0.1, 0.4);
     sparkle(t + 0.15, 4 + lv, 0.03, 96, 0.03);
   },
   // 落地：很輕的「咚」
