@@ -1,6 +1,8 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
 @font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
 @font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2") format("woff2"); font-weight: 801 1000; font-display: swap; }
+/* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
+@font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
 
 :root {
@@ -411,12 +413,11 @@ svg use { pointer-events: none; }
 #scr-map .topbar { padding: 0 calc(12px + var(--safe-r)) 6px calc(12px + var(--safe-l)); justify-content: space-between; position: relative; z-index: 2; }
 .star-pill .pill-star { width: 26px; height: 26px; overflow: visible; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.6; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 2px 0 #c46d00) drop-shadow(0 0 3px rgba(255, 196, 50, .6)); }
 .star-pill { box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(255, 111, 179, .24), 0 0 0 2.5px #ff6fb3, 0 6px 0 2.5px #c41f74, 0 10px 12px 2px rgba(150, 40, 100, .3); }
-.star-pill b, .star-pill span {
-  --o: #4a1a8c; --w: 2.4px; font-family: var(--font-num, inherit); font-weight: 900;
-  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o), 0 calc(var(--w) + 2.5px) 0 #2a0c5e;
+.star-pill b, .star-pill span {   /* 描邊和往右下的厚度在「遊戲感的字」那段 */
+  --o: #4a1a8c; --w: 2.4px; --x: #2a0c5e; --d: 1.1px; font-family: var(--font-num, inherit); font-weight: 900;
 }
 .star-pill b { color: #ff4f9a; }
-.star-pill span { font-size: 15px; color: #fff; --w: 1.8px; }
+.star-pill span { font-size: 15px; color: #fff; --w: 1.8px; --d: .8px; }
 .map-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -500,11 +501,9 @@ svg use { pointer-events: none; }
   transition: transform .1s;
 }
 .node:active { transform: translate(-50%, calc(-50% + 4px)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .6), inset 0 -4px 0 rgba(0, 0, 0, .14), 0 0 0 2px var(--nsh), 0 2px 0 2px var(--nsh), 0 4px 0 2px var(--nsh2), 0 8px 10px 2px rgba(60, 15, 90, .3); }
-.node .num { /* 數字：白字 + 按鈕顏色的深色粗描邊 + 兩層厚度 */
-  --o: var(--nsh2); --w: 2.2px;
+.node .num { /* 數字：白色胖數字 + 按鈕顏色的深色粗描邊 + 往右下的厚度（描邊和厚度在「遊戲感的字」那段） */
+  --o: var(--nsh2); --w: 2.2px; --x: var(--nx, #5c0a35); --d: 1.2px;
   font-size: 28px; font-weight: 900; color: #fff; line-height: 1; margin-top: 2px; font-family: var(--font-num, inherit);
-  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o),
-    0 calc(var(--w) + 1.5px) 0 var(--o), 0 calc(var(--w) + 3px) 0 var(--o), 0 calc(var(--w) + 5px) 4px rgba(30, 10, 60, .3);
 }
 .node .nstars { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); display: flex; gap: 0; align-items: flex-end; }
 /* 星星：圓角、金色漸層、底下一層厚度、亮的會發光，左上一點反光（像金質獎章） */
@@ -535,10 +534,10 @@ svg.on .hi { opacity: .9; }
 .node .badge.score { background: linear-gradient(180deg, #fff3a0, #ffbb2a); }
 .node .badge.score svg { width: 18px; height: 18px; fill: #fff; }
 .node .badge .toy-fallback { width: 100%; height: 100%; border-width: 0; --fs: 12px; }
-.node.done { --nc1: #86dbff; --nc2: #3aa4f5; --nsh: #1f6fbf; --nsh2: #12488a; }
+.node.done { --nc1: #86dbff; --nc2: #3aa4f5; --nsh: #1f6fbf; --nsh2: #12488a; --nx: #08295a; }
 .node.current { width: 80px; height: 80px; --nc1: #ffa6d6; --nc2: #ff4f9e; --nsh: #c42a74; --nsh2: #8e1452; animation: nodePulse 1.6s ease-in-out infinite; }
-.node.current .num { font-size: 34px; --w: 2.6px; }
-.node.locked { --nc1: #ece5f6; --nc2: #c9bbe0; --nsh: #a08ec0; --nsh2: #7d6aa3; cursor: default; }
+.node.current .num { font-size: 34px; --w: 2.6px; --d: 1.4px; }
+.node.locked { --nc1: #ece5f6; --nc2: #c9bbe0; --nsh: #a08ec0; --nsh2: #7d6aa3; --nx: #5e4c86; cursor: default; }
 .node.locked .num { color: #f7f3fc; --o: #8d78b6; }
 .node.locked .lock-badge { /* 鎖頭：右下角小徽章（位置同 .badge） */
   position: absolute; right: -7px; bottom: -5px; width: 27px; height: 27px; border-radius: 50%;
@@ -624,6 +623,28 @@ svg.on .hi { opacity: .9; }
 .gi .ic { width: 46px; height: 46px; flex: none; display: grid; place-items: center; position: relative; }
 .gi .ic img, .gi .ic .toy-fallback { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(80, 30, 110, .2)); }
 .gi .ic .toy-fallback { --fs: 20px; border-width: 3px; }
+/* 收集目標：玩具站在自己糖果色的立體泡泡上（跟盤面上那顆糖果同色），頭探出泡泡；main.js 設 --pc 這組顏色
+   圖示框是直的（寬 × 1.24）：泡泡是底下那個正圓，玩具貼著框頂、比泡泡高一截 */
+.gi.toy .ic { height: auto; aspect-ratio: 1 / 1.24; display: block; }
+.gi.toy .ic::before { left: 0; right: 0; }
+/* 開始卡的目標也站在泡泡上（那裡的框是正方形：泡泡小一點，玩具的頭一樣探出泡泡） */
+.goal-big .gb.toy .ic { position: relative; }
+.goal-big .gb.toy .ic::before { left: 11%; right: 11%; }
+.goal-big .gb.toy .ic img, .goal-big .gb.toy .ic .toy-fallback { position: relative; z-index: 1; filter: drop-shadow(0 0 2px rgba(255, 255, 255, .9)) drop-shadow(1.5px 3px 2px rgba(40, 10, 80, .4)); }
+.gi.toy .ic::before, .goal-big .gb.toy .ic::before {
+  content: ''; position: absolute; bottom: 0; aspect-ratio: 1; border-radius: 50%;
+  background:
+    radial-gradient(circle at 33% 27%, rgba(255, 255, 255, .95) 0 8%, rgba(255, 255, 255, 0) 24%),
+    radial-gradient(circle at 46% 38%, var(--pc-ll, #fff) 0%, var(--pc-l, #ffd0e6) 36%, var(--pc, #ff6fb0) 76%, var(--pc-d, #c42a74) 100%);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), inset 0 2px 1px rgba(255, 255, 255, .8),
+    0 0 0 2px #fff, 0 2.5px 0 2px var(--pc-d, #c42a74), 1.5px 5px 6px 2px rgba(50, 15, 90, .32);
+}
+.gi.toy .ic img, .gi.toy .ic .toy-fallback {
+  position: absolute; z-index: 1; left: -2%; top: 0; width: 104%; height: 88%; object-fit: contain; object-position: 50% 0;
+  filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, .9)) drop-shadow(1px 2px 1.5px rgba(40, 10, 80, .4));
+}
+.gi.toy .ic .toy-fallback { left: 8%; width: 84%; height: auto; aspect-ratio: 1; }
+.gi .cnt, .gi .check { position: relative; z-index: 2; }
 .gi .cnt { font-size: 24px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
 .gi .cnt small { font-size: 14px; color: var(--ink-soft); font-weight: 800; }
 .gi.done .cnt { display: none; }
@@ -761,13 +782,13 @@ svg.on .hi { opacity: .9; }
 .goal-big .gb .ic .toy-fallback { --fs: 30px; }
 .goal-big .gb .ic svg { width: 64px; height: 64px; fill: url(#g-gold); stroke: #fff; stroke-width: 1.6; paint-order: stroke; filter: drop-shadow(0 3px 3px rgba(150, 90, 0, .3)); }
 .goal-big .gb .ic .jelly-ic { width: 58px; height: 58px; border-radius: 14px; }
-.goal-big .gb b { font-size: 24px; font-weight: 900; color: var(--ink); }
+.goal-big .gb b { font-size: 24px; font-weight: 900; color: #fff; }   /* 描邊和厚度在「遊戲感的字」那段 */
 .goal-text { /* 「收集 皮蛋 ×17、薯餅 ×17…」：只在空格和「、」後面換行（名字和數量之間是不斷行空格） */
   font-weight: 800; font-size: 17px; color: var(--ink); text-align: center; text-wrap: balance;
   word-break: keep-all; overflow-wrap: break-word; line-break: strict;
 }
 .moves-line { font-weight: 800; font-size: 17px; color: var(--ink-soft); }
-.moves-line b { font-size: 26px; color: #7a4ae6; margin: 0 2px; }
+.moves-line b { font-size: 28px; color: #fff; margin: 0 4px; }
 .hint-bubble {
   width: 100%; display: flex; align-items: center; gap: 10px;
 }
@@ -794,7 +815,7 @@ svg.on .hi { opacity: .9; }
 @keyframes bigStarMid { 0% { transform: translateY(-12px) scale(2.6) rotate(-90deg); opacity: 0; } 100% { transform: translateY(-12px) scale(1) rotate(0); opacity: 1; } }
 .score-box { display: flex; flex-direction: column; align-items: center; gap: 0; position: relative; }
 .score-box .lbl { font-weight: 800; font-size: 14px; color: var(--ink-soft); letter-spacing: .3em; }
-.score-box b { font-size: 46px; font-weight: 900; color: #e83e8c; line-height: 1.1; font-variant-numeric: tabular-nums; text-shadow: 0 3px 0 rgba(232, 62, 140, .18); }
+.score-box b { font-size: 46px; font-weight: 900; color: #ff4f9a; line-height: 1.1; font-variant-numeric: tabular-nums; }   /* 描邊和厚度在「遊戲感的字」那段 */
 .score-box em {
   position: absolute; right: -76px; top: 20px; font-style: normal; font-weight: 900; font-size: 15px; color: #fff;
   padding: 4px 10px; border-radius: 12px; background: linear-gradient(180deg, #ffcf4a, #ff9a1f); border: 2px solid #fff;
@@ -958,6 +979,7 @@ svg.on .hi { opacity: .9; }
   .goal-items { justify-content: space-evenly; gap: 4px; }
   .gi { flex-direction: column; gap: 0; }   /* 數字放圖示下面，三種目標排得下 */
   .gi .ic { width: 38px; height: 38px; }
+  .gi.toy .ic { width: 34px; }               /* 站在泡泡上的玩具框是直的（34 × 42），跟原本差不多高 */
   .gi .cnt { font-size: 20px; }
   .gi .check { width: 24px; height: 24px; }
   .gi.score-goal .ic svg { width: 34px; height: 34px; }
@@ -1098,28 +1120,46 @@ svg.on .hi { opacity: .9; }
   #scr-game { gap: 10px; padding-left: calc(4px + var(--safe-l)); padding-right: calc(4px + var(--safe-r)); }
   .game-top { min-height: 40px; }
   .game-top .icon-btn { width: 42px; height: 42px; }
-  .game-top .level-pill { font-size: 16px; padding: 4px 14px; }
+  .game-top .level-pill { font-size: 17px; padding: 4px 16px 5px; }
+  .game-top .level-pill b { font-size: 25px; }
   .hud {
-    grid-template-columns: 60px minmax(0, 1.5fr) minmax(0, 1fr); grid-template-rows: auto;
-    gap: 8px; padding: 6px 6px 12px; border-radius: 18px; border-width: 2px;   /* 下面多留一點給面板的厚度 */
+    grid-template-columns: 60px minmax(0, 1.62fr) minmax(0, 1fr); grid-template-rows: auto;
+    gap: 8px; padding: 9px 6px 12px; border-radius: 18px; border-width: 2px;   /* 上面留給壓在面板上緣的標籤和探頭的玩具、下面留給面板的厚度 */
   }
-  .hud-moves { grid-row: auto; border-radius: 14px; border-width: 2px; padding: 3px 0 4px; }
-  .hud-moves .lbl { font-size: 11px; letter-spacing: .08em; }
-  .hud-moves b { font-size: 30px; text-shadow: 0 2px 0 rgba(60, 20, 120, .35); }
-  .hud-goal { min-height: 0; padding: 4px 6px; gap: 4px; }
+  /* 「步數」「分數」小標籤壓在面板的上緣（像貼紙），面板裡整個空間都給數字；目標玩具也從面板上緣探出來 */
+  .hud .hud-moves, .hud .hud-score, .hud .hud-goal { overflow: visible; }   /* 蓋過後面「面板加反光」的 overflow: hidden */
+  .hud-moves { grid-row: auto; border-radius: 14px; border-width: 2px; padding: 7px 0 3px; }
+  .hud-moves .lbl { position: absolute; top: -10px; left: 50%; translate: -50% 0; font-size: 12px; letter-spacing: .08em; line-height: 1.2; white-space: nowrap; }
+  .hud-moves b { font-size: 35px; }
+  .hud-goal { min-height: 0; padding: 4px 4px; gap: 4px; }
   .hud-goal > .lbl { display: none; }
   .goal-items { gap: 2px; }
-  .gi { gap: 2px; }
-  .gi .ic { width: 30px; height: 30px; }
-  .gi .cnt { font-size: 17px; }
-  .gi .cnt small { font-size: 11px; }
-  .gi .check { width: 22px; height: 22px; border-width: 2px; }
-  .gi.score-goal .ic svg { width: 26px; height: 26px; }
-  .gi.score-goal .cnt { font-size: 16px; }
-  .jelly-ic { width: 26px; height: 26px; border-radius: 7px; border-width: 2px; }
-  .hud-score { padding: 3px 8px 5px; gap: 0; }
-  .score-line .lbl { font-size: 11px; }
-  .score-line b { font-size: 17px; }
+  /* 目標：玩具放大約 50%（30 → 46px 寬）、站在泡泡上，頭探出白色面板的上緣；數量疊在泡泡的右下角 */
+  .gi { gap: 0; align-items: flex-end; }
+  .gi .ic { width: 40px; height: 40px; }                                   /* 果凍 / 分數目標 */
+  .gi.toy .ic { width: 46px; margin: -22px 0 -2px; }                        /* 46 × 57：頭探出面板上緣 */
+  .gi .cnt { font-size: 21px; margin: 0 0 -3px -11px; }
+  .gi .cnt small { font-size: 12px; }
+  .gi .check { width: 24px; height: 24px; border-width: 2px; margin: 0 0 -2px -12px; }
+  .goal-items[data-n="3"] .gi.toy .ic { width: 39px; margin: -18px 0 -2px; }
+  .goal-items[data-n="3"] .gi .cnt { font-size: 18px; margin-left: -12px; }
+  .gi.score-goal .ic svg { width: 32px; height: 32px; }
+  .gi.score-goal .cnt { font-size: 17px; margin-left: -2px; }
+  .jelly-ic { width: 36px; height: 36px; border-radius: 9px; border-width: 2px; }
+  .hud-score { padding: 7px 8px 5px; gap: 1px; }
+  .score-line { justify-content: center; }
+  .score-line .lbl { position: absolute; top: -19px; left: 2px; font-size: 12px; line-height: 1.2; }
+  .score-line b { font-size: 21px; line-height: 1.05; }
+  .score-line b[data-len="7"] { font-size: 18px; }                           /* 105,000 */
+  .score-line b[data-len="8"], .score-line b[data-len="9"] { font-size: 15px; }
+  /* 窄手機（寬 370 以下）：三種目標和分數的字再小一點才排得下 */
+  @media (max-width: 370px) {
+    .goal-items[data-n="3"] .gi.toy .ic { width: 34px; margin-top: -15px; }
+    .goal-items[data-n="3"] .gi .cnt { font-size: 15px; margin-left: -10px; }
+    .score-line b { font-size: 18px; }
+    .score-line b[data-len="7"] { font-size: 15px; }
+    .score-line b[data-len="8"], .score-line b[data-len="9"] { font-size: 13px; }
+  }
   .starbar { height: 18px; margin-right: 8px; }
   .starbar-track { top: 5px; height: 8px; }
   .sb-star { width: 19px; height: 19px; stroke-width: 2; }
@@ -1195,39 +1235,50 @@ svg.on .hi { opacity: .9; }
 }
 @media (prefers-reduced-motion: reduce) { .board-sparkles { display: none; } }
 
-/* ---------- 遊戲感的字：粗圓體 + 厚描邊 + 立體陰影；面板上緣高光、下緣厚度 ---------- */
+/* ---------- 遊戲感的字：胖圓數字 + 厚描邊 + 往右下擠出來的立體厚度；面板上緣高光、下緣厚度 ---------- */
+/* 立體字三層（光從左上來，跟盤面的糖果一樣，所以厚度和影子都在右下）：
+   1. 字面：數字用胖數字 PlushNum（源泉圓體 Heavy 再膨脹一圈），中文字照用源泉圓體
+   2. 描邊：12 個方向的 text-shadow 疊出圓滑的深色描邊（--o 顏色、--w 粗細）
+   3. 厚度：filter 把「字 + 描邊」整個往右下複製三次（--x 顏色、每次 --d），最後一層柔和的落影
+      （text-shadow 只能複製字本身、複製不到描邊；filter 是整個畫好的字一起複製，厚度才會跟描邊一樣圓、連成一塊）
+   有底色的元素（例如道具的數量徽章）不能用 filter（底色也會被複製），改用 text-shadow 做厚度。
+   這裡只用變數、不宣告變數（預設值寫在 var() 裡），每個元素在檔案任何地方設的 --o / --w / --x / --d 才不會被這裡蓋掉。 */
 :root {
-  --font-num: "GenSenRounded", "Arial Rounded MT Bold", "Baloo 2", "Varela Round", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-num: "PlushNum", "GenSenRounded", "Arial Rounded MT Bold", "Baloo 2", "Varela Round", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
 }
-.hud-moves b, .score-line b, .gi .cnt, .game-top .level-pill b, .bst .bc {
-  font-family: var(--font-num); font-weight: 900; letter-spacing: .01em;
+.hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .bst .bc, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
+  font-family: var(--font-num); font-weight: 900; letter-spacing: .01em; font-synthesis: none;
 }
-/* 步數：白字 + 深紫粗描邊 + 下方立體影 */
-.hud-moves b {
-  --w: 2.6px; color: #fff;
-  text-shadow: var(--w) 0 0 #4b1ca8, calc(var(--w) * -1) 0 0 #4b1ca8, 0 var(--w) 0 #4b1ca8, 0 calc(var(--w) * -1) 0 #4b1ca8, calc(var(--w) * .87) calc(var(--w) * .5) 0 #4b1ca8, calc(var(--w) * -.87) calc(var(--w) * .5) 0 #4b1ca8, calc(var(--w) * .87) calc(var(--w) * -.5) 0 #4b1ca8, calc(var(--w) * -.87) calc(var(--w) * -.5) 0 #4b1ca8, calc(var(--w) * .5) calc(var(--w) * .87) 0 #4b1ca8, calc(var(--w) * -.5) calc(var(--w) * .87) 0 #4b1ca8, calc(var(--w) * .5) calc(var(--w) * -.87) 0 #4b1ca8, calc(var(--w) * -.5) calc(var(--w) * -.87) 0 #4b1ca8,
-    0 calc(var(--w) + 1.4px) 0 #2e0f75, 0 calc(var(--w) + 2.8px) 0 #2e0f75, 0 calc(var(--w) + 4.2px) 0 #2e0f75,
-    0 calc(var(--w) + 7px) 6px rgba(30, 10, 80, .4);
-}
-/* 白色面板上的數字（分數、關卡、目標）：深紫粗描邊 + 下方厚影，字才「站」得起來（白描邊會跟白底糊在一起）
-   --o 描邊色、--o2 厚影色、--w 描邊粗細（12 個方向疊出圓滑的描邊） */
-.score-line b, .gi .cnt, .game-top .level-pill b, .game-top .level-pill {
-  --o: #4a1a8c; --o2: #2a0c5e; --w: 2.2px;
+.hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .game-top .lv b, .hud-moves .lbl, .score-line .lbl, .bst .bn,
+.star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
+  --ow: var(--w, 2.2px); --oc: var(--o, #4a1a8c);
   text-shadow:
-    var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o),
-    calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o),
-    calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o),
-    calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o),
-    calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o),
-    0 calc(var(--w) + 1.3px) 0 var(--o2), 0 calc(var(--w) + 2.6px) 0 var(--o2), 0 calc(var(--w) + 3.9px) 0 var(--o2),
-    calc(var(--w) * .6) calc(var(--w) + 3px) 0 var(--o2), calc(var(--w) * -.6) calc(var(--w) + 3px) 0 var(--o2),
-    0 calc(var(--w) + 6.5px) 5px rgba(30, 10, 80, .32);
+    var(--ow) 0 0 var(--oc), calc(var(--ow) * -1) 0 0 var(--oc), 0 var(--ow) 0 var(--oc), 0 calc(var(--ow) * -1) 0 var(--oc),
+    calc(var(--ow) * .87) calc(var(--ow) * .5) 0 var(--oc), calc(var(--ow) * -.87) calc(var(--ow) * .5) 0 var(--oc),
+    calc(var(--ow) * .87) calc(var(--ow) * -.5) 0 var(--oc), calc(var(--ow) * -.87) calc(var(--ow) * -.5) 0 var(--oc),
+    calc(var(--ow) * .5) calc(var(--ow) * .87) 0 var(--oc), calc(var(--ow) * -.5) calc(var(--ow) * .87) 0 var(--oc),
+    calc(var(--ow) * .5) calc(var(--ow) * -.87) 0 var(--oc), calc(var(--ow) * -.5) calc(var(--ow) * -.87) 0 var(--oc);
 }
+.hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .hud-moves .lbl, .score-line .lbl, .bst .bn,
+.star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
+  --xd: var(--d, 1.1px); --xc: var(--x, #2a0c5e);
+  filter: drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc))
+    drop-shadow(calc(var(--xd) * .9) calc(var(--xd) * 2.4) calc(var(--xd) * 2) rgba(30, 6, 70, .38));
+}
+/* 步數：白字 + 深紫粗描邊 + 深一點的厚度（數字最大，厚度也最厚） */
+.hud-moves b { color: #fff; --o: #4b1ca8; --w: 2.6px; --x: #2a0b6e; --d: 1.35px; }
+/* 白色面板上的數字（分數、關卡、目標）：白描邊會跟白底糊在一起，所以描邊用深紫 */
 .score-line b { color: #ff4f9a; }
 .gi .cnt { color: #fff; }
-.game-top .level-pill { color: #fff; --w: 2px; }
-.game-top .level-pill b { color: #ff4f9a; --w: 2.6px; }
+.game-top .lv { color: #fff; --w: 2px; }
+.game-top .lv b { color: #ff4f9a; --w: 2.6px; }
 .hud .lbl { font-weight: 900; }
+/* 對話框裡的字：關卡緞帶（粉紅底 → 深桃紅描邊）、目標數量、步數、過關分數 */
+.ribbon span { display: inline-block; --o: #a3125c; --w: 2.4px; --x: #5c0a35; --d: 1.2px; }
+.ribbon.sad span { --o: #4b2c8f; --x: #2b1660; }
+.goal-big .gb b { --w: 2.2px; }
+.moves-line b { --o: #5a2fc2; --w: 2.4px; --x: #2e0f75; }
+.score-box b { --w: 3px; --d: 1.7px; }
 /* 面板：實體的糖果板 — 上面一道亮邊、外面一圈糖衣、底下一層深色的厚度、再往下的投影 */
 .hud {
   background: linear-gradient(180deg, rgba(255, 255, 255, .84), rgba(236, 224, 255, .76));
@@ -1251,7 +1302,13 @@ svg.on .hi { opacity: .9; }
   box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(255, 111, 179, .24),
     0 0 0 2.5px #ff6fb3, 0 6px 0 2.5px #c41f74, 0 10px 12px 2px rgba(150, 40, 100, .3);
 }
-.bst .bn { font-weight: 900; color: #fff; font-size: 12px; text-shadow: 1.7px 0 0 #a3307a, calc(1.7px * -1) 0 0 #a3307a, 0 1.7px 0 #a3307a, 0 calc(1.7px * -1) 0 #a3307a, calc(1.7px * .87) calc(1.7px * .5) 0 #a3307a, calc(1.7px * -.87) calc(1.7px * .5) 0 #a3307a, calc(1.7px * .87) calc(1.7px * -.5) 0 #a3307a, calc(1.7px * -.87) calc(1.7px * -.5) 0 #a3307a, calc(1.7px * .5) calc(1.7px * .87) 0 #a3307a, calc(1.7px * -.5) calc(1.7px * .87) 0 #a3307a, calc(1.7px * .5) calc(1.7px * -.87) 0 #a3307a, calc(1.7px * -.5) calc(1.7px * -.87) 0 #a3307a, 0 3.2px 0 #6e1d52; }
+.bst .bn { font-weight: 900; color: #fff; font-size: 12px; --o: #a3307a; --w: 1.7px; --x: #6e1d52; --d: .8px; }
+/* 道具數量：徽章有底色，厚度用 text-shadow（描邊 + 往右下兩層） */
+.bst .bc {
+  text-shadow: 1.3px 0 0 #a3125c, -1.3px 0 0 #a3125c, 0 1.3px 0 #a3125c, 0 -1.3px 0 #a3125c,
+    .92px .92px 0 #a3125c, -.92px .92px 0 #a3125c, .92px -.92px 0 #a3125c, -.92px -.92px 0 #a3125c,
+    1.2px 2px 0 #6e0a3c, 1.8px 2.6px 0 #6e0a3c;
+}
 
 /* ---------- 氛圍：盤面柔光、背景散景、閃爍星光 ---------- */
 .board-wrap::before {
@@ -1301,10 +1358,10 @@ svg.on .hi { opacity: .9; }
   background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--c1) 100%);
   -webkit-background-clip: text; background-clip: text;
 }
-/* 小標籤（步數、分數）也是遊戲字：白字、深紫描邊、底下一層厚度 */
-.hud-moves .lbl, .score-line .lbl { color: #fff; text-shadow: 1.6px 0 0 #4b1ca8, calc(1.6px * -1) 0 0 #4b1ca8, 0 1.6px 0 #4b1ca8, 0 calc(1.6px * -1) 0 #4b1ca8, calc(1.6px * .87) calc(1.6px * .5) 0 #4b1ca8, calc(1.6px * -.87) calc(1.6px * .5) 0 #4b1ca8, calc(1.6px * .87) calc(1.6px * -.5) 0 #4b1ca8, calc(1.6px * -.87) calc(1.6px * -.5) 0 #4b1ca8, calc(1.6px * .5) calc(1.6px * .87) 0 #4b1ca8, calc(1.6px * -.5) calc(1.6px * .87) 0 #4b1ca8, calc(1.6px * .5) calc(1.6px * -.87) 0 #4b1ca8, calc(1.6px * -.5) calc(1.6px * -.87) 0 #4b1ca8, 0 3px 0 #2e0f75; }
+/* 小標籤（步數、分數）也是遊戲字：白字、深紫描邊、往右下的厚度（描邊和厚度在「遊戲感的字」那段） */
+.hud-moves .lbl, .score-line .lbl { color: #fff; --o: #4b1ca8; --w: 1.6px; --x: #2e0f75; --d: .75px; }
 .game-top .level-pill { font-weight: 900; }
-.ribbon span, .modal h2, .card h2 { text-shadow: 0 2px 0 rgba(120, 20, 80, .55), 2px 0 0 rgba(120, 20, 80, .55), 0 -2px 0 rgba(120, 20, 80, .55), -2px 0 0 rgba(120, 20, 80, .55), 0 4px 0 rgba(80, 10, 50, .45); }
+.modal h2, .card h2 { text-shadow: 0 2px 0 rgba(120, 20, 80, .55), 2px 0 0 rgba(120, 20, 80, .55), 0 -2px 0 rgba(120, 20, 80, .55), -2px 0 0 rgba(120, 20, 80, .55), 0 4px 0 rgba(80, 10, 50, .45); }
 
 /* ---------- 面板加厚、加反光 ---------- */
 .hud-goal, .hud-score, .hud-moves { position: relative; overflow: hidden; }

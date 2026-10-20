@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>糖果放大看 · 毛絨消消樂</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  /* 開發用：把每種糖果畫得很大，檢查邊緣、反光、影子
+     ?size=120 格子大小、?rows=h,v,wrap 加特殊糖果、?only=snoopy,dog 只看幾種、?rep=3 每種重複幾格（看相鄰時的影子） */
+  html, body { height: auto; overflow: auto; }
+  body { margin: 0; padding: 12px; background: #6cc4ff; }
+  #board { display: block; }
+</style>
+</head>
+<body>
+<canvas id="board"></canvas>
+<script type="module">
+  import { PIECES } from '../js/pieces.js';
+  import { createRenderer } from '../js/renderer.js';
+  const q = new URLSearchParams(location.search);
+  const cell = +q.get('size') || 110;
+  const extra = (q.get('rows') || '').split(',').filter(Boolean);
+  const load = src => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+  const images = new Map();
+  await Promise.all(PIECES.map(async p => {
+    const [sprite, clean] = await Promise.all([load(`../assets/sprites/${p.id}.png`), load(`../assets/sprites/${p.id}_n.png`)]);
+    images.set(p.id, { sprite, clean });
+  }));
+  await document.fonts.load('900 20px GenSenRounded', '0');
+  const specials = ['none', ...extra];
+  const only = (q.get('only') || '').split(',').filter(Boolean);
+  const rep = Math.max(1, +q.get('rep') || 1);
+  const kinds = PIECES.map((p, k) => k).filter(k => !only.length || only.includes(PIECES[k].id)).flatMap(k => Array(rep).fill(k));
+  const rows = specials.length, cols = kinds.length;
+  const canvas = document.getElementById('board');
+  // 跟遊戲一樣：盤面四周留 0.25 格、下面多 0.34 格
+  canvas.style.width = cell * (cols + 0.5) + 'px';
+  canvas.style.height = cell * (rows + 0.84) + 'px';
+  const R = createRenderer(canvas, { pieces: PIECES, images });
+  let id = 1;
+  const grid = specials.map(sp => kinds.map(k => ({ id: id++, kind: k, special: sp })));
+  R.setBoard({ rows, cols, mask: grid.map(r => r.map(() => true)), grid, jelly: grid.map(r => r.map(() => 0)) });
+  R.layout();
+</script>
+</body>
+</html>

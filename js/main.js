@@ -499,7 +499,8 @@ function openStartCard(i) {
     for (const [id, n] of Object.entries(goal.items || {})) {
       const p = pieceById(id);
       if (!p) continue;
-      const gb = el('div', 'gb');
+      const gb = el('div', 'gb toy');          // 跟上方的目標一樣站在糖果色的泡泡上（CSS）
+      setToyColors(gb, p.color);
       const ic = el('span', 'ic'); ic.appendChild(toyEl(p, 30));
       gb.appendChild(ic); gb.appendChild(el('b', '', '×' + n));
       g.appendChild(gb);
@@ -723,6 +724,8 @@ function buildGoal() {
       if (!p) continue;
       const r = mkItem(toyEl(p, 20), 'collect');
       r.k = kindOf(id); r.need = n;
+      r.gi.classList.add('toy');            // 站在自己糖果色的泡泡上（CSS）
+      setToyColors(r.gi, p.color);
       r.gi.setAttribute('aria-label', `${p.name} 還差 ${n}`);
     }
   } else if (g.type === 'jelly') {
@@ -731,6 +734,7 @@ function buildGoal() {
     const r = mkItem(starSvg(), 'score');
     r.gi.classList.add('score-goal');
   }
+  box.dataset.n = goalRefs.length;          // 三種目標時圖示小一點才排得下
   // 星星門檻位置
   const s = level.stars || [1, 2, 3];
   const top = s[2] || s[s.length - 1] || 1;
@@ -793,7 +797,7 @@ function renderScore(instant = false) {
 function paintScore() {
   const h = hudEls();
   const txt = fmt(shownScore);
-  if (txt !== h.text && h.score) { h.score.textContent = txt; h.text = txt; }
+  if (txt !== h.text && h.score) { h.score.textContent = txt; h.score.dataset.len = txt.length; h.text = txt; }   // 位數多的時候 CSS 把字縮小
   const s = level ? level.stars || [] : [];
   h.stars.forEach((st, i) => {
     const on = s[i] != null && shownScore >= s[i];
@@ -1468,9 +1472,9 @@ async function boot() {
   setProgress(0.03);
   const modP = loadModules();
   const imgP = loadImages(f => setProgress(0.08 + f * 0.9));
-  // 圓體字先載好（畫布上的口號、分數會快取成圖，太晚載入就會用到備用字型）；最多等 3 秒
+  // 圓體字和胖數字先載好（畫布上的口號、分數會快取成圖，太晚載入就會用到備用字型）；最多等 3 秒
   const fontP = (document.fonts && document.fonts.load)
-    ? Promise.race([Promise.all(['700 20px GenSenRounded', '900 20px GenSenRounded'].map(f => document.fonts.load(f, '薯餅0'))).catch(() => {}), sleep(3000)])
+    ? Promise.race([Promise.all(['700 20px GenSenRounded', '900 20px GenSenRounded', '900 20px PlushNum'].map(f => document.fonts.load(f, '薯餅0'))).catch(() => {}), sleep(3000)])
     : Promise.resolve();
   const [fail] = await Promise.all([modP, imgP, fontP]);
   if (fail.length) {

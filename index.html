@@ -118,7 +118,8 @@
   <section id="scr-game" class="screen" aria-label="遊戲">
     <div class="topbar game-top">
       <button class="icon-btn" id="btn-pause" aria-label="暫停"><svg><use href="#i-pause"/></svg></button>
-      <div class="pill level-pill">第 <b id="hud-level">1</b> 關</div>
+      <!-- .lv：字的立體厚度用 filter 做，包一層才不會連牌子的底色一起複製 -->
+      <div class="pill level-pill"><span class="lv">第 <b id="hud-level">1</b> 關</span></div>
       <button class="icon-btn dbg" id="btn-dbg-win" aria-label="測試：直接過關" hidden>⚡</button>
     </div>
     <div class="hud">
