@@ -348,7 +348,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     c = makeCanvas(W, W);
     const g = c.getContext('2d'), col = kindColor(kind);
     // 外圍柔光：糖果色的亮色版（不是白色、也不是一條硬線），兩圈位置疊出往外淡掉的光（淡淡的就好，太亮玩具會像浮在糖果上）
-    const glow = silhouette(src, css(mixc(saturate(col, 0.7), WHITE, 0.32)));
+    const glow = silhouette(src, css(mixc(saturate(col, 0.35), WHITE, 0.4)));
     for (const [rr2, a] of [[box * 0.045, 0.05], [box * 0.024, 0.1]]) {
       g.globalAlpha = a;
       for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(glow, pad + Math.cos(t) * rr2, pad + Math.sin(t) * rr2); }
@@ -368,10 +368,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     lg.drawImage(src, 0, 0);
     // 環境光：越暗的地方越帶糖果的顏色（不會有死灰）
     try {
-      const d = lg.getImageData(0, 0, lit.width, lit.height), a = d.data, tc = mixc(saturate(col, 0.6), BLACK, 0.1);
+      const d = lg.getImageData(0, 0, lit.width, lit.height), a = d.data, tc = mixc(saturate(col, 0.3), BLACK, 0.1);
       for (let i = 0; i < a.length; i += 4) {
         if (!a[i + 3]) continue;
-        const l = (0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]) / 255, k = 0.32 * (1 - l) * (1 - l);
+        const l = (0.299 * a[i] + 0.587 * a[i + 1] + 0.114 * a[i + 2]) / 255, k = 0.2 * (1 - l) * (1 - l);
         a[i] += (tc[0] - a[i]) * k; a[i + 1] += (tc[1] - a[i + 1]) * k; a[i + 2] += (tc[2] - a[i + 2]) * k;
       }
       lg.putImageData(d, 0, 0);
@@ -525,15 +525,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   // 立體糖果（像 Candy Crush）：光從左上來 → 左上亮、右下暗；壓在盤面上的落影；玩具在裡面，上面再蓋反光
   function paintCandy(g, kind, cx, cy, S, col, special) {
     const shape = shapeOf(kind), R = S * CANDY_R;
-    const sat = saturate(col, 0.45), dark = saturate(col, 0.65);
+    const sat = saturate(col, 0.12), dark = saturate(col, 0.3);
     const deep = mixc(dark, BLACK, 0.55), deeper = mixc(dark, [26, 10, 64], 0.7);
-    // 落影：深藍紫、半透明，往右下壓在格子的凹槽裡（範圍大、很柔）；再一圈貼著底部的接觸陰影，糖果才有重量、不像浮在上面
+    // 落影：很深的藍黑色、半透明，往右下壓在格子的凹槽裡（範圍大、很柔）；再一圈貼著底部的接觸陰影，糖果才有重量、不像浮在上面
     g.save();
-    g.shadowColor = 'rgba(34,22,112,0.5)'; g.shadowBlur = S * 0.1; g.shadowOffsetX = S * 0.055; g.shadowOffsetY = S * 0.09;
+    g.shadowColor = 'rgba(6,6,32,0.6)'; g.shadowBlur = S * 0.1; g.shadowOffsetX = S * 0.055; g.shadowOffsetY = S * 0.09;
     candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
     g.restore();
     g.save();
-    g.shadowColor = 'rgba(26,12,84,0.55)'; g.shadowBlur = S * 0.03; g.shadowOffsetX = S * 0.018; g.shadowOffsetY = S * 0.04;
+    g.shadowColor = 'rgba(4,4,24,0.6)'; g.shadowBlur = S * 0.03; g.shadowOffsetX = S * 0.018; g.shadowOffsetY = S * 0.04;
     candyPath(g, shape, cx, cy, R * 1.05); g.fillStyle = css(deep); g.fill();
     g.restore();
     // 外框：左上受光的地方淺一點、右下背光的地方深
@@ -1090,85 +1090,56 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const top = Y0 - S * FO, btm = Y0 + rows * S + S * FO;
     const vgrad = (stops, y0 = top, y1 = btm) => q => { const gr = q.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, col]) => gr.addColorStop(o, col)); return gr; };
     const thick = Math.max(2, Math.round(S * 0.1));
-    // 整個盤子壓在背景上的投影（深藍紫）
+    // 整個盤子壓在背景上的投影（暖暖的深玫瑰色，不是灰黑）
     g.save();
-    g.shadowColor = 'rgba(44,22,120,0.42)'; g.shadowBlur = S * 0.16; g.shadowOffsetY = S * 0.08;
-    g.drawImage(paint(outer, '#5b51b8', thick), 0, 0);
+    g.shadowColor = 'rgba(96,40,62,0.3)'; g.shadowBlur = S * 0.16; g.shadowOffsetY = S * 0.08;
+    g.drawImage(paint(outer, '#c98f86', thick), 0, 0);
     g.restore();
-    // 盤子的厚度：管身下面露出一圈深藍紫的側面，越往下越深
-    g.drawImage(paint(outer, vgrad([[0, '#8f8ce2'], [0.55, '#6a5fcb'], [1, '#3f348f']], btm - S * 0.4, btm + thick), thick), 0, 0);
+    // 盤子的厚度：下緣露出一圈焦糖玫瑰色的側面（實心色塊，只有一點點上下明暗）
+    g.drawImage(paint(outer, vgrad([[0, '#ecc3b4'], [0.6, '#dba597'], [1, '#c4877d']], btm - S * 0.4, btm + thick), thick), 0, 0);
     g.save(); g.globalCompositeOperation = 'destination-out'; g.drawImage(inner, 0, 0); g.restore();
-    // 管身（糖果色的塑膠）：頂部受光很亮 → 下面背光變成深一點的紫
-    const mid = (FO + FI) / 2;
-    g.drawImage(paint(ring(outer, inner), vgrad([[0, '#f1ecff'], [0.22, '#d6cbff'], [0.62, '#a795f2'], [1, '#7a66dd']])), 0, 0);
-    // 管子外緣的圓弧暗一點（越下面越暗）；內緣上面背光暗、下面受光亮
-    g.drawImage(paint(ring(outer, shape(S * (FO - 0.032), S * 0.34)), vgrad([[0, 'rgba(96,84,190,0.3)'], [1, 'rgba(58,40,150,0.8)']])), 0, 0);
-    g.drawImage(paint(ring(shape(S * (FI + 0.032), S * 0.26), inner), vgrad([[0, 'rgba(70,56,170,0.6)'], [1, 'rgba(96,84,190,0.25)']])), 0, 0);
-    // 管身下緣的暗部（厚度）
-    g.drawImage(paint(ring(outer, shape(S * (FO - 0.1), S * 0.3)), vgrad([[0, 'rgba(52,36,140,0)'], [0.76, 'rgba(52,36,140,0)'], [1, 'rgba(52,36,140,0.55)']])), 0, 0);
-    // 頂部一條極亮、連續、發白的反光（轉角跟著圓過去）：上緣最亮，兩側慢慢淡掉，下緣沒有
-    const spec = paint(ring(shape(S * (mid + 0.024), S * 0.32), shape(S * (mid - 0.022), S * 0.29)),
-      vgrad([[0, 'rgba(255,255,255,1)'], [0.22, 'rgba(255,255,255,0.95)'], [0.5, 'rgba(255,255,255,0.3)'], [0.68, 'rgba(255,255,255,0)']]));
-    g.save(); g.shadowColor = 'rgba(255,255,255,1)'; g.shadowBlur = S * 0.07; g.drawImage(spec, 0, 0); g.drawImage(spec, 0, 0); g.restore();
-    g.drawImage(paint(ring(outer, shape(S * (FO - 0.018), S * 0.35)), vgrad([[0, 'rgba(255,255,255,1)'], [0.12, 'rgba(255,255,255,0.75)'], [0.35, 'rgba(255,255,255,0)']])), 0, 0);
-    // 盤面：淺色半透明毛玻璃（帶一點藍紫），中間一團柔光、兩道斜斜的淡光帶（玻璃的質感，不是一片死平的底色）
-    g.drawImage(paint(inner, vgrad([[0, 'rgba(222,232,255,0.7)'], [1, 'rgba(194,204,250,0.78)']])), 0, 0);
+    // 外框：乾淨的奶油色實心塊面 —— 上緣一條很細的亮邊、下緣淡淡的暗（不再是發光的塑膠管）
+    g.drawImage(paint(ring(outer, inner), vgrad([[0, '#fff7ec'], [0.5, '#fcecdc'], [1, '#f2d8c4']])), 0, 0);
+    g.drawImage(paint(ring(outer, shape(S * (FO - 0.016), S * 0.35)), vgrad([[0, 'rgba(255,255,255,0.9)'], [0.08, 'rgba(255,255,255,0)']])), 0, 0);
+    g.drawImage(paint(ring(outer, shape(S * (FO - 0.05), S * 0.32)), vgrad([[0, 'rgba(190,120,110,0)'], [0.8, 'rgba(190,120,110,0)'], [1, 'rgba(190,120,110,0.35)']])), 0, 0);
+    // 內緣一圈細細的暗邊：盤面看起來是嵌進外框裡
+    g.drawImage(paint(ring(shape(S * (FI + 0.022), S * 0.26), inner), 'rgba(150,96,90,0.35)'), 0, 0);
+    // 盤面：安靜的深藍色半透明玻璃（像 Candy Crush 的深色凹槽），亮色的糖果放上去才會像寶石一樣跳出來；中間一點點柔光
+    g.drawImage(paint(inner, vgrad([[0, 'rgba(42,48,108,0.9)'], [1, 'rgba(30,34,84,0.93)']])), 0, 0);
     const glass = makeCanvas(Wd, Hd), gq = glass.getContext('2d');
-    const gx = X0 + cols * S / 2, gy = Y0 + rows * S * 0.45, gR = Math.max(cols, rows) * S * 0.62;
+    const gx = X0 + cols * S / 2, gy = Y0 + rows * S * 0.42, gR = Math.max(cols, rows) * S * 0.6;
     const cg = gq.createRadialGradient(gx, gy, 0, gx, gy, gR);
-    cg.addColorStop(0, 'rgba(255,255,255,0.3)'); cg.addColorStop(0.6, 'rgba(255,255,255,0.08)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
+    cg.addColorStop(0, 'rgba(150,170,255,0.12)'); cg.addColorStop(1, 'rgba(150,170,255,0)');
     gq.fillStyle = cg; gq.fillRect(0, 0, Wd, Hd);
-    gq.save();
-    gq.translate(gx, gy); gq.rotate(-0.62);
-    for (const [o, w, a] of [[-0.9, 0.5, 0.11], [0.15, 0.22, 0.08]]) {
-      const bx = o * cols * S, bw = w * cols * S, lg2 = gq.createLinearGradient(bx, 0, bx + bw, 0);
-      lg2.addColorStop(0, 'rgba(255,255,255,0)'); lg2.addColorStop(0.5, `rgba(255,255,255,${a})`); lg2.addColorStop(1, 'rgba(255,255,255,0)');
-      gq.fillStyle = lg2; gq.fillRect(bx, -Hd * 2, bw, Hd * 4);
-    }
-    gq.restore();
     gq.globalCompositeOperation = 'destination-in'; gq.drawImage(inner, 0, 0);
     g.drawImage(glass, 0, 0);
-    // 格子：每格是一個淺淺的圓角凹槽（不畫白色框線）。槽底是淡淡的棋盤格；光從左上來，所以左上的內壁有影子、右下的內壁受光；
-    // 槽和槽之間露出盤面的玻璃，交會處有小星光。糖果往右下的落影就落在槽底，看起來是壓在格子裡
+    // 格子：一格一格淺淺的圓角凹槽，深色上面再深一點 / 亮一點的棋盤格；沒有框線、也沒有星光（不要在縫裡搶戲）。
+    // 光從左上來：左上的內壁有影子、右下的內壁受一點光；糖果往右下的落影就落在槽底
     const cells = makeCanvas(Wd, Hd), q = cells.getContext('2d');
     const gap = S * 0.03, crad = S * 0.17, cw = S - gap * 2, big = S * 0.4;
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
       const x = X0 + c2 * S + gap, y = Y0 + r * S + gap;
       rr(q, x, y, cw, cw, crad);
-      q.fillStyle = (r + c2) % 2 ? 'rgba(255,255,255,0.22)' : 'rgba(150,152,238,0.17)';
+      q.fillStyle = (r + c2) % 2 ? 'rgba(255,255,255,0.06)' : 'rgba(150,160,255,0.035)';
       q.fill();
       // 內壁：比槽大一圈、中間挖空的框，往右下 / 左上投影 —— 框本身在槽外面被裁掉，只有影子落進槽裡
       q.save();
       rr(q, x, y, cw, cw, crad); q.clip();
       q.beginPath(); q.rect(x - big, y - big, cw + big * 2, cw + big * 2); rrSub(q, x, y, cw, cw, crad);
       q.fillStyle = '#000';
-      q.shadowColor = 'rgba(62,50,156,0.42)'; q.shadowBlur = S * 0.07; q.shadowOffsetX = S * 0.026; q.shadowOffsetY = S * 0.04;
+      q.shadowColor = 'rgba(6,8,36,0.6)'; q.shadowBlur = S * 0.07; q.shadowOffsetX = S * 0.026; q.shadowOffsetY = S * 0.04;
       q.fill('evenodd');
-      q.shadowColor = 'rgba(255,255,255,0.7)'; q.shadowBlur = S * 0.05; q.shadowOffsetX = -S * 0.018; q.shadowOffsetY = -S * 0.026;
+      q.shadowColor = 'rgba(190,200,255,0.14)'; q.shadowBlur = S * 0.05; q.shadowOffsetX = -S * 0.018; q.shadowOffsetY = -S * 0.026;
       q.fill('evenodd');
       q.restore();
     }
     // 外框投在盤面上緣的影子：盤面像凹進盤子裡
-    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.12)), 'rgba(54,44,140,0.16)'), 0, 0);
-    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.05)), 'rgba(54,44,140,0.16)'), 0, 0);
+    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.12)), 'rgba(8,6,36,0.22)'), 0, 0);
+    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.05)), 'rgba(8,6,36,0.22)'), 0, 0);
     q.globalCompositeOperation = 'destination-in';
     q.drawImage(inner, 0, 0);
     q.globalCompositeOperation = 'source-over';
-    // 格線交會處的星光（大小、亮度每顆不太一樣，看起來在閃）
-    const rnd = mulberry(rows * 977 + cols * 131);
-    for (let r = 1; r < rows; r++) for (let c2 = 1; c2 < cols; c2++) {
-      const k = rnd(), k2 = rnd();
-      if (!(on(r - 1, c2 - 1) && on(r - 1, c2) && on(r, c2 - 1) && on(r, c2))) continue;
-      const x = X0 + c2 * S, y = Y0 + r * S, z = S * (0.075 + 0.05 * k), a = 0.6 + 0.4 * k2;
-      const gl = q.createRadialGradient(x, y, 0, x, y, z * 1.25);
-      gl.addColorStop(0, `rgba(255,255,255,${0.9 * a})`); gl.addColorStop(0.35, `rgba(196,186,255,${0.45 * a})`); gl.addColorStop(1, 'rgba(196,186,255,0)');
-      q.fillStyle = gl; q.fillRect(x - z * 1.3, y - z * 1.3, z * 2.6, z * 2.6);
-      q.beginPath();
-      q.moveTo(x, y - z); q.quadraticCurveTo(x, y, x + z, y); q.quadraticCurveTo(x, y, x, y + z);
-      q.quadraticCurveTo(x, y, x - z, y); q.quadraticCurveTo(x, y, x, y - z);
-      q.fillStyle = `rgba(255,255,255,${a})`; q.fill();
-    }
     g.drawImage(cells, 0, 0);
     // 橫幅出現時用的暗色遮罩：和盤面外框同形狀（不會在盤面外畫出一個方框）
     const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');
@@ -1660,10 +1631,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     if (removed.some(r => r.cause === 'combo')) cue('combo', 0);
 
-    // --- 消除音效：每一顆都「啵」一聲，跟著畫面一顆接一顆，音一顆比一顆高 ---
+    // --- 消除音效：每一顆碎開的那一刻「咔啦」一聲（殘影放大變白之後才碎：POP_MS 的 30%），音一顆比一顆高 ---
     groups.forEach((g, i) => {
       seqCells(g).forEach((q, j) => {
-        const tm = remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f;
+        const tm = (remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f) + POP_MS * 0.3;
         cue('pop', tm, { cascade, group: i, idx: j, size: g.cells.length, shape: g.shape });
       });
     });
@@ -1856,6 +1827,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
 
   async function animShuffle(ev) {
+    // 先講清楚為什麼要洗牌（整個盤面都沒有可以消的了），橫幅留著，漩渦接著轉
+    const sl = SLOGANS.shuffle || {};
+    if (sl.text) { banner(sl.text, { sub: sl.sub || '', duration: 1500 }); await wait(650); }
     const t = now(), dur = 620, cx = (cols - 1) / 2, cy = (rows - 1) / 2;
     for (const m of ev.moves || []) {
       if (!m || !m.from || !m.to) continue;

@@ -10,7 +10,7 @@
 import { createEngine } from '../js/engine.js';
 import { LEVELS, validateLevels } from '../js/levels.js';
 import { PIECES } from '../js/pieces.js';
-import { mulberry, runsIn } from './util.js';
+import { mulberry, matchesIn } from './util.js';
 import { playLevel } from './sim.bots.js';
 
 const params = new URLSearchParams(location.search);
@@ -174,7 +174,7 @@ function randomValidMove(e, rnd) {
     let valid = (p.special !== 'none' && q.special !== 'none') || p.special === 'bomb' || q.special === 'bomb';
     if (!valid) {
       s.grid[r][c] = q; s.grid[r2][c2] = p;
-      valid = runsIn(s.grid).length > 0;
+      valid = matchesIn(s.grid).length > 0;
       s.grid[r][c] = p; s.grid[r2][c2] = q;
     }
     if (valid) moves.push({ a: { r, c }, b: { r: r2, c: c2 } });

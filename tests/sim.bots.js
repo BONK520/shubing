@@ -63,6 +63,21 @@ export const PROFILES = {
   decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5 },
 };
 
+// top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
+const SQ = [[0, 0], [0, -1], [-1, 0], [-1, -1]];
+// the cells (y * C + x) of a 2×2 square of one kind that (r,c) is part of, or null
+function squareCells(g, R, C, mask, r, c) {
+  const p = g[r][c];
+  if (!p || p.kind < 0) return null;
+  const k = p.kind;
+  const is = (y, x) => y >= 0 && y < R && x >= 0 && x < C && mask[y][x] && g[y][x] && g[y][x].kind === k;
+  for (const [dy, dx] of SQ) {
+    const y = r + dy, x = c + dx;
+    if (is(y, x) && is(y, x + 1) && is(y + 1, x) && is(y + 1, x + 1)) return [y * C + x, y * C + x + 1, (y + 1) * C + x, (y + 1) * C + x + 1];
+  }
+  return null;
+}
+
 function validMoves(s) {
   const { rows: R, cols: C, mask, grid: g } = s;
   const out = [];
@@ -77,7 +92,7 @@ function validMoves(s) {
     if (h >= 3) return true;
     for (let y = r - 1; is(y, c); y--) v++;
     for (let y = r + 1; is(y, c); y++) v++;
-    return v >= 3;
+    return v >= 3 || !!squareCells(g, R, C, mask, r, c);
   };
   for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
     if (!mask[r][c]) continue;
@@ -134,12 +149,15 @@ function bestMove(s, moves, level, e, W, rnd) {
     while (is(r0 - 1, c)) r0--;
     while (is(r1 + 1, c)) r1++;
     const h = c1 - c0 + 1, v = r1 - r0 + 1;
-    if (h < 3 && v < 3) return null;
+    const sq = squareCells(g, R, C, mask, r, c);
+    // a 2×2 square on its own clears 4 (no special); next to a line it adds its other cells
+    if (h < 3 && v < 3) return sq ? { cells: sq, shape: '', low: Math.floor(Math.max(...sq) / C) } : null;
     const cells = [];
     if (h >= 3) for (let x = c0; x <= c1; x++) cells.push(r * C + x);
     if (v >= 3) for (let y = r0; y <= r1; y++) if (!(h >= 3 && y === r)) cells.push(y * C + c);
+    if (sq) for (const k of sq) if (!cells.includes(k)) cells.push(k);
     const shape = h >= 5 || v >= 5 ? 'bomb' : h >= 3 && v >= 3 ? 'wrap' : h === 4 || v === 4 ? 'stripe' : '';
-    return { cells, shape, low: Math.max(r1, r) };
+    return { cells, shape, low: Math.max(r1, r, ...cells.map(k => Math.floor(k / C))) };
   };
 
   let best = null, bestV = -Infinity;

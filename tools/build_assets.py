@@ -9,7 +9,7 @@
 #      否則 source = placeholder 的用 make_placeholders.py 程式產生 GLB + USDZ
 #      （assets/models/<id>.glb 已經是掃描模型的話會沿用它並警告，不會被暫代玩具蓋掉）
 #   2. 渲染：靜態圖、24 格轉盤、三寶合照與標題圖的每一隻（tools/render，無頭 Chromium + three.js）
-#   3. 後製：貼紙白邊 + 陰影（postprocess.py）-> assets/sprites/
+#   3. 後製：貼紙白邊 + 陰影（postprocess.py）-> assets/sprites/；再統一色溫和黑白點（grade_toys.py）
 #   4. 複製模型到 assets/models/，寫 assets/manifest.json
 #   5. 總覽圖 tools/out/contact.png（contact_sheet.py）
 import argparse, hashlib, io, json, os, shutil, struct, sys, time
@@ -318,6 +318,7 @@ def main():
     print('1/5 模型'); kinds = build_models(cfg, a.force)
     print('2/5 渲染'); render_all(cfg, a.force)
     print('3/5 後製'); info = postprocess(cfg)
+    import grade_toys; grade_toys.grade_all(cfg)   # 統一色溫和黑白點（只調新做出來的圖，沿用的不會再調一次）
     print('4/5 複製模型、寫 manifest'); finish(cfg, kinds, info)
     if not a.no_contact:
         print('5/5 總覽圖')

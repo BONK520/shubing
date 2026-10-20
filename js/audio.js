@@ -22,7 +22,8 @@ const MUSIC_VOL = 0.3;
 const MAX_VOICES = 150;              // 以振盪器數量計（一個鈴聲 = 4 個）
 
 let ctx = null;
-let master = null, sfxBus = null, musicBus = null, revIn = null, noiseBuf = null;
+let master = null, sfxBus = null, crispBus = null, musicBus = null, revIn = null, noiseBuf = null;
+let crunchBufs = null;     // 糖果碎掉的聲音（makeCrunches 離線算好的幾種）
 let unlocked = false, muted = false, musicOn = false;
 let voices = 0;
 let gestureHooked = false;
@@ -68,7 +69,11 @@ function makeContext() {
     revIn.gain.value = 0.22;
     revIn.connect(rev);
     rev.connect(master);
-    const addRev = () => { try { rev.buffer = makeImpulse(c, 1.1, 2.6); } catch (e) { /* 沒有殘響也能玩 */ } };
+    // 糖果碎掉的聲音也是空閒時才算（第一次消除前通常就算好了；還沒好的話第一次用到時才算）
+    const addRev = () => {
+      try { rev.buffer = makeImpulse(c, 1.1, 2.6); } catch (e) { /* 沒有殘響也能玩 */ }
+      try { if (!crunchBufs) crunchBufs = makeCrunches(c); } catch (e) { /* 用到時再算 */ }
+    };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(addRev, { timeout: 4000 });
     else setTimeout(addRev, 1500);
 
@@ -81,6 +86,17 @@ function makeContext() {
     shelf.type = 'highshelf'; shelf.frequency.value = 2800; shelf.gain.value = -5;
     sfxBus.connect(shelf); shelf.connect(warm); warm.connect(master);
     sfxBus.connect(revIn);
+    // 清脆的那條路（糖果碎掉的「咔」）：不經過上面的柔化低通，高頻的脆裂才留得住；只切掉很低的悶聲和最刺的頂端
+    crispBus = c.createGain();
+    crispBus.gain.value = muted ? 0 : SFX_VOL;
+    const tight = c.createBiquadFilter();
+    tight.type = 'highpass'; tight.frequency.value = 280; tight.Q.value = 0.5;
+    const air = c.createBiquadFilter();
+    air.type = 'lowpass'; air.frequency.value = 11500; air.Q.value = 0.5;
+    crispBus.connect(tight); tight.connect(air); air.connect(master);
+    const crispRev = c.createGain();
+    crispRev.gain.value = 0.3;
+    crispBus.connect(crispRev); crispRev.connect(revIn);
 
     musicBus = c.createGain();
     musicBus.gain.value = 0;
@@ -115,6 +131,51 @@ function makeImpulse(c, seconds, decay) {
   return buf;
 }
 
+// 硬糖碎掉的聲音（像咬碎糖果那種「咔啦」）：一聲主要的脆裂（中頻的身體 + 很亮的頂），緊接著幾聲很快的小裂，
+// 一點點糖玻璃的「叮」，最後是碎片掉下來的細碎聲。離線先算好 n 種（每顆糖果隨機挑一種、播放時只改音高），很省
+function makeCrunches(c, n = 6) {
+  const sr = c.sampleRate, out = [];
+  for (let v = 0; v < n; v++) {
+    const len = Math.floor(sr * 0.22), buf = c.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    // 一聲短促、有共鳴的裂：雜訊 × 很快衰減的包絡，經過帶通（RBJ 二階），音色在 f 附近；q 越大越像「叮」
+    const crack = (at, amp, f, q, ms) => {
+      const i0 = Math.floor(at * sr), n0 = Math.max(4, Math.floor(sr * ms / 1000)), ring = Math.floor(sr * 0.01);
+      const w = 2 * Math.PI * Math.min(f, sr * 0.45) / sr, al = Math.sin(w) / (2 * q), a0 = 1 + al;
+      const b0 = al / a0, b2 = -al / a0, a1 = -2 * Math.cos(w) / a0, a2 = (1 - al) / a0;
+      let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+      for (let k = 0; k < n0 + ring && i0 + k < len; k++) {
+        const x0 = k < n0 ? (Math.random() * 2 - 1) * Math.exp(-k / (n0 * 0.3)) : 0;
+        const y0 = b0 * x0 + b2 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = x0; y2 = y1; y1 = y0;
+        d[i0 + k] += y0 * amp;
+      }
+    };
+    const tink = (at, amp, f, tau) => {
+      const i0 = Math.floor(at * sr), n0 = Math.floor(sr * tau * 6);
+      for (let k = 0; k < n0 && i0 + k < len; k++) d[i0 + k] += amp * Math.sin(2 * Math.PI * f * k / sr) * Math.exp(-k / (sr * tau));
+    };
+    crack(0, 1.4, 1700 + Math.random() * 700, 0.8, 5);                      // 「咔」的身體
+    crack(0.0006, 1.3, 4300 + Math.random() * 1800, 2.2, 4);                 // 很亮的頂
+    let t = 0.007 + Math.random() * 0.006;
+    for (let i = 0, m = 3 + Math.floor(Math.random() * 3); i < m; i++) {     // 緊接著的小裂（kr-kr-k）
+      crack(t, (0.85 + Math.random() * 0.6) * Math.pow(0.8, i), 2400 + Math.random() * 4600, 2 + Math.random() * 4, 2 + Math.random() * 3);
+      t += 0.006 + Math.random() * 0.012;
+    }
+    const tf = 2900 + Math.random() * 1200;                                  // 糖玻璃的「叮」（很短）
+    tink(0.0015, 0.12, tf, 0.016);
+    tink(0.0015, 0.05, tf * 2.71, 0.008);
+    for (let i = 0, tc = t + 0.012; i < 9 && tc < 0.2; i++) {                // 碎片掉下來
+      crack(tc, 0.32 * Math.pow(0.82, i) * (0.5 + Math.random()), 3200 + Math.random() * 5000, 3 + Math.random() * 5, 1 + Math.random() * 1.5);
+      tc += 0.007 + Math.random() * 0.018;
+    }
+    let peak = 0;
+    for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i]));
+    if (peak > 0) for (let i = 0; i < len; i++) d[i] *= 0.95 / peak;
+    out.push(buf);
+  }
+  return out;
+}
+
 function playSilent() {
   try {
     const b = ctx.createBuffer(1, 1, 22050);
@@ -144,6 +205,7 @@ function rebuild() {
   const old = ctx;
   try { if (voiceSrc) voiceSrc.stop(); } catch (e) { /* ignore */ }
   voiceSrc = null;
+  crunchBufs = null;          // 新的 AudioContext 重算一次（makeContext 空閒時會算）
   const c = makeContext();
   if (!c) return;
   ctx = c;
@@ -297,6 +359,23 @@ function pop(t, f0 = 700, f1 = 260, gain = 0.12, dur = 0.08) {
   tone(f0, t, { dur, attack: 0.003, gain, to: f1, glide: dur * 0.8 });
 }
 
+// 糖果碎掉：挑一種算好的「咔啦」，rate 改音高（也會跟著變短 / 變長），走清脆的那條路
+function crunch(t, rate = 1, gain = 0.3, pan = 0) {
+  if (!crunchBufs) crunchBufs = makeCrunches(ctx);
+  const src = ctx.createBufferSource();
+  src.buffer = crunchBufs[Math.floor(Math.random() * crunchBufs.length)];
+  src.playbackRate.value = rate;
+  const g = ctx.createGain();
+  g.gain.value = gain;
+  src.connect(g);
+  const out = panNode(pan, crispBus);
+  g.connect(out);
+  const nodes = [src, g];
+  if (out !== crispBus) nodes.push(out);
+  src.start(t);
+  track(src, nodes);
+}
+
 // 亮晶晶：一串高音小鈴
 function sparkle(t, n = 5, gain = 0.05, base = 96, spread = 0.045) {
   base = Math.min(base, 96) - 12; gain *= 0.6;          // 低一個八度、小聲一點，不刺耳
@@ -336,15 +415,16 @@ const SFX = {
   },
   // 消除：連鎖每多一層、同一步每多一組，音就往五聲音階上走（像 Candy Crush 越連越高）
   pop(t, o) {
-    // 療癒的「啵」：圓圓的泡泡聲（音高快速往上滑）+ 一點點木琴般的音色；同一組一顆比一顆高、連鎖越多越高
+    // 硬糖碎掉的「咔啦」（renderer 在糖果碎開的那一刻叫）：清脆的裂聲 + 一點點跟著五聲音階往上的「叮」+ 很輕的身體；
+    // 同一組一顆比一顆高、連鎖越多越高（裂聲的音高只跟著走一半，太高會變尖）
     const c = clamp(Math.round(o.cascade || 1), 1, 12), g = clamp(Math.round(o.group || 0), 0, 8), j = clamp(Math.round(o.idx || 0), 0, 8);
     const step = (c - 1) * 2 + g + j;
     const m = penta(60, Math.min(step, 14));
     const f = mtof(m);
     const pan = clamp((j - 2) * 0.18, -0.5, 0.5);
-    tone(f * 0.5, t, { dur: 0.11, attack: 0.003, gain: 0.2, type: 'sine', to: f * 1.15, glide: 0.06, pan });
-    tone(f, t + 0.012, { dur: 0.16, attack: 0.004, gain: 0.05, type: 'triangle', pan });
-    noise(t, { dur: 0.01, attack: 0.001, gain: 0.02, type: 'lowpass', f0: 1200, q: 0.7 });
+    crunch(t, 0.92 * Math.pow(2, (m - 60) / 30), 0.32, pan);
+    tone(f * 2, t + 0.002, { dur: 0.06, attack: 0.001, gain: 0.035, type: 'sine', pan });
+    tone(190, t, { dur: 0.03, attack: 0.001, gain: 0.07, to: 120, glide: 0.03 });
     if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 5), 0.02, 88);
   },
   match(t, o) { SFX.pop(t, o); },
@@ -619,9 +699,12 @@ export const audio = {
     try {
       if (ctx && sfxBus) {
         const now = ctx.currentTime;
-        sfxBus.gain.cancelScheduledValues(now);
-        sfxBus.gain.setValueAtTime(sfxBus.gain.value, now);
-        sfxBus.gain.linearRampToValueAtTime(muted ? 0 : SFX_VOL, now + 0.05);
+        for (const bus of [sfxBus, crispBus]) {
+          if (!bus) continue;
+          bus.gain.cancelScheduledValues(now);
+          bus.gain.setValueAtTime(bus.gain.value, now);
+          bus.gain.linearRampToValueAtTime(muted ? 0 : SFX_VOL, now + 0.05);
+        }
       }
     } catch (e) { /* ignore */ }
   },

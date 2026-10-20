@@ -31,8 +31,13 @@
 //   bomb's own cell. Causes in `removed`: 'match' (in a match group), 'h' | 'v' | 'wrap' | 'bomb'
 //   (hit by that special's effect, including bomb targets), 'combo' (the swapped specials consumed by
 //   a combo, and cells hit by a striped/wrapped combo or bomb+bomb).
+// * 2×2 squares of one kind also match. A square on its own is a group of its own (shape 'square', no special).
+//   A square that touches a line group (3+ in a row) adds its other cells to that group; the line decides the
+//   shape and the special as before. Swaps that only make a square are valid moves; refills, the first board and
+//   shuffles avoid squares just like 3-in-a-rows.
 // * Scoring = Candy Crush (exported as SCORE):
 //     match group   3 in a row 60 · 4 in a row 120 · L / T (wrapped) 200 · 5 in a row (colour bomb) 200
+//                   2×2 square on its own 120 · each square that adds cells to a line group +60
 //     each piece removed by a special effect or a combo (not part of a match group) 60
 //     both of the above × the step's cascade multiplier (1 for the move itself, 2 for the first free cascade, …)
 //     each jelly layer removed 1,000 (no multiplier)
@@ -62,13 +67,17 @@
 
 // Candy Crush scoring (see the header). main.js / tests read the numbers from here.
 export const SCORE = Object.freeze({
-  match: Object.freeze({ '3': 60, '4': 120, L: 200, T: 200, '5': 200 }),
+  match: Object.freeze({ '3': 60, '4': 120, L: 200, T: 200, '5': 200, square: 120 }),
+  squareExtra: 60,   // a 2×2 square that adds cells to a line group, × cascade multiplier
   effect: 60,        // each piece removed by a special effect / combo, × cascade multiplier
   jelly: 1000,       // each jelly layer
   sugarMove: 3000,   // each move left in sugarCrush
 });
 const SHAPE_POINTS = SCORE.match;
+const SQUARE_EXTRA_POINTS = SCORE.squareExtra;
 const EFFECT_POINTS = SCORE.effect;
+// top-left corners of the four 2×2 squares a cell can be part of (offsets from the cell)
+const SQ = [[0, 0], [0, -1], [-1, 0], [-1, -1]];
 const JELLY_POINTS = SCORE.jelly;
 const SUGAR_MOVE_POINTS = SCORE.sugarMove;
 const SUGAR_WAVE = 5;      // sugarCrush converts up to this many moves, fires them, then the next wave
@@ -159,13 +168,30 @@ export function createEngine(opts = {}) {
     for (let y = r + 1; kAt(y, c) === k; y++) v++;
     return { h, v };
   }
-  function matchAt(r, c) { const L = lineLens(r, c); return L.h >= 3 || L.v >= 3; }
+  // the 2×2 square of one kind that (r,c) is part of (its top-left corner), or null
+  function squareOf(r, c) {
+    const k = kAt(r, c);
+    if (k < 0) return null;
+    for (const [dy, dx] of SQ) {
+      const y = r + dy, x = c + dx;
+      if (kAt(y, x) === k && kAt(y, x + 1) === k && kAt(y + 1, x) === k && kAt(y + 1, x + 1) === k) return { r: y, c: x };
+    }
+    return null;
+  }
+  function matchAt(r, c) { const L = lineLens(r, c); return L.h >= 3 || L.v >= 3 || !!squareOf(r, c); }
 
-  // would kind k at (r,c) make a 3-in-a-row with already-filled neighbours?
+  // would kind k at (r,c) make a 3-in-a-row or a 2×2 square with already-filled neighbours?
   function wouldMatch(r, c, k) {
     const a = (y, x) => kAt(y, x) === k;
-    return (a(r, c - 1) && (a(r, c - 2) || a(r, c + 1))) || (a(r, c + 1) && a(r, c + 2)) ||
-      (a(r - 1, c) && (a(r - 2, c) || a(r + 1, c))) || (a(r + 1, c) && a(r + 2, c));
+    if ((a(r, c - 1) && (a(r, c - 2) || a(r, c + 1))) || (a(r, c + 1) && a(r, c + 2)) ||
+      (a(r - 1, c) && (a(r - 2, c) || a(r + 1, c))) || (a(r + 1, c) && a(r + 2, c))) return true;
+    for (const [dy, dx] of SQ) {
+      const y = r + dy, x = c + dx;
+      let n = 0;
+      for (const [yy, xx] of [[y, x], [y, x + 1], [y + 1, x], [y + 1, x + 1]]) if ((yy !== r || xx !== c) && a(yy, xx)) n++;
+      if (n === 3) return true;
+    }
+    return false;
   }
 
   function findRuns() {
@@ -198,6 +224,15 @@ export function createEngine(opts = {}) {
     }
     return runs;
   }
+  function findSquares() {
+    const out = [];
+    for (let r = 0; r + 1 < rows; r++) for (let c = 0; c + 1 < cols; c++) {
+      const k = kAt(r, c);
+      if (k >= 0 && kAt(r, c + 1) === k && kAt(r + 1, c) === k && kAt(r + 1, c + 1) === k)
+        out.push({ kind: k, r, c, cells: [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]] });
+    }
+    return out;
+  }
 
   function findGroups() {
     const runs = findRuns();
@@ -223,11 +258,24 @@ export function createEngine(opts = {}) {
       }
     });
     const groups = [...byRoot.values()];
+    // 2×2 squares: cells not in any line group are added to a line group the square touches (+60 each),
+    // or become a square group of their own (squares never overlap without also making a 3-in-a-row)
+    const ownerG = new Map();
+    for (const g of groups) for (const k of g.keys) ownerG.set(k, g);
+    for (const sq of findSquares()) {
+      const free = sq.cells.filter(([r, c]) => !ownerG.has(key(r, c)));
+      if (!free.length) continue;
+      const touch = sq.cells.map(([r, c]) => ownerG.get(key(r, c))).find(Boolean);
+      const g = touch || { kind: sq.kind, runs: [], cells: [], keys: new Set() };
+      if (touch) g.squares = (g.squares || 0) + 1; else groups.push(g);
+      for (const [r, c] of free) { const k = key(r, c); g.keys.add(k); g.cells.push([r, c]); ownerG.set(k, g); }
+    }
     for (const g of groups) g.cells.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
     return groups;
   }
 
   function classify(g) {
+    if (!g.runs.length) return { shape: 'square', special: NONE, longest: null };
     const hs = g.runs.filter(x => x.dir === 'h');
     const vs = g.runs.filter(x => x.dir === 'v');
     const longest = g.runs.reduce((m, x) => (x.len > m.len ? x : m), g.runs[0]);
@@ -359,7 +407,7 @@ export function createEngine(opts = {}) {
     for (const { g, cls, at } of plans) {
       st.groups.push({ kind: g.kind, shape: cls.shape, cells: g.cells.map(([r, c]) => ({ r, c })) });
       const label = at || { r: g.cells[g.cells.length >> 1][0], c: g.cells[g.cells.length >> 1][1] };
-      addPts(st, label.r, label.c, SHAPE_POINTS[cls.shape] * st.mult);
+      addPts(st, label.r, label.c, (SHAPE_POINTS[cls.shape] + (g.squares || 0) * SQUARE_EXTRA_POINTS) * st.mult);
       if (at) st.prot.add(key(at.r, at.c));
     }
     for (const { g, at } of plans)
@@ -515,12 +563,19 @@ export function createEngine(opts = {}) {
     'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600 };
   function cellValue(r, c) {
     const { h, v } = lineLens(r, c);
-    if (h < 3 && v < 3) return 0;
-    let s = h >= 5 || v >= 5 ? 300 : h >= 3 && v >= 3 ? 200 : h === 4 || v === 4 ? 150 : 100;
-    s += (h >= 3 ? h : 0) + (v >= 3 ? v : 0);
-    const k = kAt(r, c);
+    const sq = squareOf(r, c);
     // specials in the match fire (+40); cells on jelly help the jelly goal (+35)
     const sp = (y, x) => (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+    const sqPart = () => {           // the square's other three cells
+      let s = 0;
+      for (const [y, x] of [[sq.r, sq.c], [sq.r, sq.c + 1], [sq.r + 1, sq.c], [sq.r + 1, sq.c + 1]]) if (y !== r || x !== c) s += sp(y, x);
+      return s;
+    };
+    if (h < 3 && v < 3) return sq ? 110 + sqPart() + sp(r, c) : 0;    // 2×2 on its own: between a 3 and a 4
+    let s = h >= 5 || v >= 5 ? 300 : h >= 3 && v >= 3 ? 200 : h === 4 || v === 4 ? 150 : 100;
+    s += (h >= 3 ? h : 0) + (v >= 3 ? v : 0);
+    if (sq) s += 20;
+    const k = kAt(r, c);
     if (h >= 3) {
       for (let x = c - 1; kAt(r, x) === k; x--) s += sp(r, x);
       for (let x = c + 1; kAt(r, x) === k; x++) s += sp(r, x);
@@ -560,7 +615,7 @@ export function createEngine(opts = {}) {
     return best;
   }
 
-  function stableAndPlayable() { return !findRuns().length && hasValidMove(); }
+  function stableAndPlayable() { return !findRuns().length && !findSquares().length && hasValidMove(); }
 
   function shuffleInternal() {
     const cells = [];

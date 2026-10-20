@@ -1,0 +1,243 @@
+{
+ "files": {
+  "assets/deco/group.webp": "5932dc89c5f04ab1107090e3f282a738b0f07cdb",
+  "assets/deco/pig.webp": "24e279ce4bb95e9637b69f0c2151c10f23306a0b",
+  "assets/deco/sloth_bed.webp": "0d813b3edf3173fe883618dc2fc6fda874f71307",
+  "assets/deco/sloth_orange.webp": "19d2d54e0a5b171c0ee7018fb6388a7099d2fc1b",
+  "assets/deco/sloth_pig.webp": "5027ea48cf3a1a7b509b98fbd5d8bbb8cf6c0b8b",
+  "assets/deco/snoopy_sloth.webp": "260842e0342b9bc09791e729b58cf034bed708cb",
+  "assets/sprites/dino.png": "33b2b645b5fba4033be1ebdc9167142d2f061d34",
+  "assets/sprites/dino_n.png": "44b1de032da0551efb8fcf0ca6b5c07a82fad5c7",
+  "assets/sprites/dog.png": "712ddf6e27adb2315fb9d6636acc431a531cbba8",
+  "assets/sprites/dog_n.png": "39f9d9b41ea035b0218fab12e008670b803a5044",
+  "assets/sprites/dog_spin.webp": "57d9c97ea1ff9cdb6a3f5c707dc3c2c67baee492",
+  "assets/sprites/dog_spin_n.webp": "2f292e8b2a9412d7143c76acde687e2690996825",
+  "assets/sprites/egg.png": "ec4384d4dda628daffa18e6e571c967cb11a0595",
+  "assets/sprites/egg_n.png": "f9fbedd20cfdf9e53a55264247ed22d2589842b9",
+  "assets/sprites/egg_spin.webp": "fb7e140ec808f64b15b19344dfd9ff429eb8970b",
+  "assets/sprites/egg_spin_n.webp": "e7228dea2476a29db20fba81f247311be9b1bd82",
+  "assets/sprites/moodeng.png": "f0003645549e5514e6677cf9b813f8ec65e6c202",
+  "assets/sprites/moodeng_n.png": "465de47a56d0704500a7288703af49b40d4de9be",
+  "assets/sprites/nyanko.png": "1f1d21269d08aaed03459387d5be03b0ac137a7e",
+  "assets/sprites/nyanko_n.png": "a0708d21eafe275c36a5b7c78d848ee4abdf3048",
+  "assets/sprites/sloth.png": "a3645b8b5c5402a0ef5d23c883b3655e2b207515",
+  "assets/sprites/sloth_n.png": "3b193874b9267b9102374241737b70af45e16329",
+  "assets/sprites/sloth_spin.webp": "76a8b2df390e8111c6f8250a3f4ef2e1a36a1e7c",
+  "assets/sprites/sloth_spin_n.webp": "5e0ef30243548180286e2db6543f3aa4b90449a4",
+  "assets/sprites/snoopy.png": "a51e013d931b09fdd40bb47f3ce5a2373599bde1",
+  "assets/sprites/snoopy_n.png": "0ef0cf148e064ad99e5c76979d117075ae36a833",
+  "assets/sprites/trio.png": "e09a0d4b7147d25034ccf8aa397ce9531f005aa4"
+ },
+ "params": {
+  "assets/deco/group.webp": {
+   "gain": [
+    1.0463,
+    0.9919,
+    0.9449
+   ],
+   "k": 1.0677,
+   "lo": 0.1546,
+   "lo_t": 0.0978,
+   "shadow": [
+    0.0172,
+    -0.0039,
+    -0.0118
+   ]
+  },
+  "assets/deco/pig.webp": {
+   "gain": [
+    1.017,
+    1.0032,
+    0.92
+   ],
+   "k": 1.12,
+   "lo": 0.3315,
+   "lo_t": 0.2518,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "assets/deco/sloth_bed.webp": {
+   "gain": [
+    1.0337,
+    0.9965,
+    0.9355
+   ],
+   "k": 1.12,
+   "lo": 0.2579,
+   "lo_t": 0.1693,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "assets/deco/sloth_orange.webp": {
+   "gain": [
+    1.022,
+    0.9916,
+    1.022
+   ],
+   "k": 1.0522,
+   "lo": 0.1341,
+   "lo_t": 0.0896,
+   "shadow": [
+    -0.0012,
+    0.0002,
+    0.0011
+   ]
+  },
+  "assets/deco/sloth_pig.webp": {
+   "gain": [
+    1.0166,
+    0.9982,
+    0.9675
+   ],
+   "k": 1.12,
+   "lo": 0.2647,
+   "lo_t": 0.1766,
+   "shadow": [
+    -0.0072,
+    0.0013,
+    0.0079
+   ]
+  },
+  "assets/deco/snoopy_sloth.webp": {
+   "gain": [
+    1.0138,
+    0.9948,
+    1.0138
+   ],
+   "k": 1.12,
+   "lo": 0.2546,
+   "lo_t": 0.1669,
+   "shadow": [
+    0.0036,
+    -0.0007,
+    -0.0039
+   ]
+  },
+  "dino": {
+   "gain": [
+    1.0476,
+    0.9929,
+    0.932
+   ],
+   "k": 1.0511,
+   "lo": 0.1335,
+   "lo_t": 0.0894,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "dog": {
+   "gain": [
+    1.0457,
+    0.9964,
+    0.92
+   ],
+   "k": 1.0419,
+   "lo": 0.1209,
+   "lo_t": 0.0844,
+   "shadow": [
+    -0.0129,
+    0.0044,
+    -0.0056
+   ]
+  },
+  "egg": {
+   "gain": [
+    0.9995,
+    1.0002,
+    0.9995
+   ],
+   "k": 1.12,
+   "lo": 0.469,
+   "lo_t": 0.4124,
+   "shadow": [
+    -0.0089,
+    0.0014,
+    0.012
+   ]
+  },
+  "moodeng": {
+   "gain": [
+    1.028,
+    0.9957,
+    0.9586
+   ],
+   "k": 1.1019,
+   "lo": 0.1961,
+   "lo_t": 0.1145,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "nyanko": {
+   "gain": [
+    1.08,
+    0.9722,
+    0.9208
+   ],
+   "k": 1.1049,
+   "lo": 0.1973,
+   "lo_t": 0.1149,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "sloth": {
+   "gain": [
+    1.0294,
+    0.9924,
+    0.9883
+   ],
+   "k": 1.12,
+   "lo": 0.2595,
+   "lo_t": 0.1715,
+   "shadow": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "snoopy": {
+   "gain": [
+    1.08,
+    0.9852,
+    0.92
+   ],
+   "k": 1.0931,
+   "lo": 0.1849,
+   "lo_t": 0.11,
+   "shadow": [
+    0.0149,
+    -0.0036,
+    -0.0077
+   ]
+  },
+  "trio": {
+   "gain": [
+    1.0337,
+    0.9965,
+    0.9355
+   ],
+   "k": 1.0262,
+   "lo": 0.0992,
+   "lo_t": 0.0757,
+   "shadow": [
+    -0.0066,
+    0.0024,
+    -0.004
+   ]
+  }
+ }
+}

@@ -7,7 +7,7 @@ export const SLOGANS = {
   surprise: [ { text: '薯餅頂橘子！', img: 'assets/deco/sloth_orange.webp', voice: 's1' }, { text: '小豬搭便車！', img: 'assets/deco/sloth_pig.webp', voice: 's2' } ],  // occasional on very big moves
   start:    { text: '薯餅準備好了！', toy: 'sloth', voice: 'start' },
   sugar:    { text: '薯餅狂歡時間！', toy: 'sloth', voice: 'sugar' },                      // end-of-level bonus banner
-  shuffle:  { text: '蛋黃哥翻個身～', toy: 'egg' },
+  shuffle:  { text: '沒有可以消的了！', sub: '蛋黃哥幫你重新洗牌～', toy: 'egg' },   // renderer 洗牌前的橫幅
   lose:     { text: '薯餅趴趴睡…再試一次？', img: 'assets/deco/sloth_bed.webp' },
   win:      { text: '過關！' }, win3: { text: '三寶都愛你！', voice: 'win3' },
 };

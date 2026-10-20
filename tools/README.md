@@ -31,6 +31,11 @@ python tools/build_assets.py --force   # 全部重做
    磨皮、暗部拉亮加對比、髒灰變乾淨、面向光的邊緣加暖白色邊緣光、左上一片光澤、邊緣柔化。參數在 `postprocess.py` 的 `TOY`；
    個別玩具可以在 `assets.json` 那一筆加 `"toy": {...}` 覆蓋（皮蛋：`"toonify": false`，黑色的玩具做了 toonify 會整片發灰）。
    發光邊（糖果色）和影子不做在圖裡，由遊戲依場景加。
+   **調色**（`grade_toys.py`）：掃描渲染和手機照片的色溫不一樣（史努比、貓咪老師偏冷偏青，薯餅、蛋黃哥偏暖），
+   所以每隻玩具量一次 `<id>_n.png`，同一套參數套到那隻的所有圖：低彩度的亮部對齊同一個暖白、亮點和暗點拉到差不多的位置、
+   暗部帶一點暖（不偏藍紫）。只往暖的方向修，每個色版最多改 8%，對比最多加 12%；裝飾貼紙每張自己量。
+   調過的圖記在 `tools/graded.json`（調完的 sha1 + 參數），重跑只調新做出來的圖。沒有原始檔、想重調現成的圖：
+   `python tools/grade_toys.py`；只想看效果不改檔：`python tools/grade_toys.py --check`（輸出 `tools/out/grade.png`）。
 4. 複製到 `assets/sprites/`、`assets/models/`、`assets/deco/`、`assets/photos/`，寫 `assets/manifest.json`。
 5. 輸出檢查用總覽圖 `tools/out/contact.png`，跑完打開看一下每隻是否清楚。
 

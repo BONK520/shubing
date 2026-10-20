@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#8fcfff">
+<meta name="theme-color" content="#86b4d8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,9 +26,9 @@
       <stop offset="1" stop-color="#f39508"/>
     </linearGradient>
     <linearGradient id="g-star-off" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f1ecff"/>
-      <stop offset=".45" stop-color="#bdb0e4"/>
-      <stop offset="1" stop-color="#7a69b8"/>
+      <stop offset="0" stop-color="#fbeee9"/>
+      <stop offset=".45" stop-color="#e3c3c3"/>
+      <stop offset="1" stop-color="#b98b92"/>
     </linearGradient>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.13L12 16.68l-5.5 2.9 1.05-6.13L3.1 9.1l6.15-.9z"/></symbol>
     <symbol id="i-star-hi" viewBox="0 0 24 24"><ellipse cx="9.6" cy="9.9" rx="2.5" ry="1.15" transform="rotate(-32 9.6 9.9)"/><circle cx="12.3" cy="6.9" r=".85"/></symbol>
@@ -84,7 +84,7 @@
         <div class="title-toys" id="title-toys"></div>
         <div class="title-btns">
           <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg><span class="bt" data-t="開始遊戲">開始遊戲</span></button>
-          <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg><span class="bt" data-t="3D 看看">3D 看看</span></a>
+          <a class="btn pink" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg><span class="bt" data-t="3D 看看">3D 看看</span></a>
         </div>
       </div>
     </div>
@@ -151,7 +151,6 @@
     </div>
     <div class="board-wrap" id="board-wrap">
       <canvas id="board" aria-label="遊戲盤面：按住方塊拖向旁邊，或先後點兩個相鄰方塊來交換"></canvas>
-      <div class="board-sparkles" aria-hidden="true"><i style="--x:8%;--y:20%;--d:7s;--k:0s"></i><i style="--x:22%;--y:70%;--d:9s;--k:-2s"></i><i style="--x:35%;--y:35%;--d:8s;--k:-5s"></i><i style="--x:48%;--y:85%;--d:10s;--k:-1s"></i><i style="--x:58%;--y:15%;--d:7.5s;--k:-3s"></i><i style="--x:67%;--y:55%;--d:9.5s;--k:-6s"></i><i style="--x:78%;--y:30%;--d:8.5s;--k:-4s"></i><i style="--x:88%;--y:75%;--d:11s;--k:-7s"></i><i style="--x:15%;--y:48%;--d:12s;--k:-8s"></i><i style="--x:93%;--y:10%;--d:9s;--k:-2.5s"></i><i style="--x:42%;--y:60%;--d:13s;--k:-9s"></i><i style="--x:72%;--y:92%;--d:10.5s;--k:-5.5s"></i><b style="--x:12%;--y:8%;--d:3.2s;--k:0s">✦</b><b style="--x:86%;--y:22%;--d:4.1s;--k:-1.2s">✦</b><b style="--x:50%;--y:4%;--d:3.7s;--k:-2.4s">✦</b><b style="--x:6%;--y:62%;--d:4.6s;--k:-0.6s">✦</b><b style="--x:94%;--y:70%;--d:3.4s;--k:-1.8s">✦</b><b style="--x:30%;--y:96%;--d:4.3s;--k:-3s">✦</b></div>
     </div>
     <div class="cheer" id="cheer" aria-hidden="true"></div>
     <!-- 道具列（像 Candy Crush 下面那排）：都不算步數 -->
@@ -208,7 +207,7 @@
       <button class="btn green xl" id="mw-next"><span class="bt" data-t="下一關">下一關</span></button>
       <div class="btn-row">
         <button class="btn blue" id="mw-retry">再玩一次</button>
-        <button class="btn purple" id="mw-map">地圖</button>
+        <button class="btn pink" id="mw-map">地圖</button>
       </div>
     </div>
   </div>
@@ -225,7 +224,7 @@
     <div class="btn-col">
       <button class="btn orange" id="ml-more" hidden>＋5 步繼續（剩 <b id="ml-more-n">0</b> 個）</button>
       <button class="btn green xl" id="ml-retry"><span class="bt" data-t="再試一次">再試一次</span></button>
-      <button class="btn purple" id="ml-map">地圖</button>
+      <button class="btn pink" id="ml-map">地圖</button>
     </div>
   </div>
 </div>

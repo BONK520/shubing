@@ -69,6 +69,10 @@ may hard-code piece ids, except `levels.js`.
 | `assets/models/<id>.usdz` | Slimmed for iPhone AR Quick Look, ≤ ~2 MB. |
 | `assets/manifest.json` | `{ "pieces": [{ "id", "sprite", "spin", "glb", "usdz", "placeholder": bool }], "trio", "hero", "spin": {frames, cols, rows, size} }` |
 
+Every toy image (sprites, spin sheets, `trio.png`, `assets/deco/`) is color graded by `tools/grade_toys.py` after post-processing:
+one shared warm white for low-saturation highlights, aligned black / white points, warm (not blue-purple) shadows.
+`tools/graded.json` records the graded files (sha1 + parameters) so a rebuild never grades a file twice.
+
 ### 2.3 Missing-asset fallback
 
 If a sprite fails to load, draw a circle in the piece color with the first character of `name`.
@@ -115,7 +119,7 @@ The initial board has no matches and at least one valid move.
 
 ### 3.3 Valid swaps
 
-A swap of two adjacent cells is valid if it creates a match at either cell, or both pieces are specials
+A swap of two adjacent cells is valid if it creates a match (a 3-in-a-row or a 2×2 square) at either cell, or both pieces are specials
 (any two specials = combo), or either piece is a color bomb. Otherwise it returns
 `{ ok: false, events: [swap, swapBack] }` and the board is unchanged.
 
@@ -123,8 +127,10 @@ A swap of two adjacent cells is valid if it creates a match at either cell, or b
 
 1. Swap. If it is a combo (two specials / bomb + anything), resolve the combo first (3.5).
 2. Find matches: runs of ≥3 same kind horizontally or vertically. Runs of the same kind that share a
-   cell form one group.
-3. Special creation per group:
+   cell form one group. **2×2 squares** of one kind also match: a square that touches a line group adds its
+   other cells to that group (the line still decides shape and special); a square on its own is a group of
+   its own (`shape: 'square'`, no special).
+3. Special creation per group (squares never create one):
    - straight run of ≥5 → color bomb
    - else the group has both a horizontal and a vertical run (L / T / +) → wrapped
    - else straight run of 4 → striped. **Horizontal 4 → `'v'`** (clears column); **vertical 4 → `'h'`** (clears row). (Same as Candy Crush.)
@@ -137,11 +143,12 @@ A swap of two adjacent cells is valid if it creates a match at either cell, or b
 5. Gravity: pieces fall straight down; holes are passed through (a piece never stops in a hole).
    New pieces spawn above the top of each column and fall in.
 6. Refill with anti-cascade: process spawn cells bottom-up; with probability `antiCascade`, pick uniformly
-   from kinds that would not form a 3-in-a-row with already-filled neighbours; otherwise (or if none are safe)
-   pick uniformly from all kinds.
+   from kinds that would not form a 3-in-a-row or a 2×2 square with already-filled neighbours; otherwise
+   (or if none are safe) pick uniformly from all kinds. The first board and shuffles avoid squares too.
 7. Repeat 2–6 with `cascade + 1` until stable.
 8. If no valid move remains, shuffle (append a `'shuffle'` event); the shuffle keeps the same pieces,
-   leaves no matches and guarantees a valid move (regenerate kinds as a last resort).
+   leaves no matches and guarantees a valid move (regenerate kinds as a last resort). The renderer shows the
+   「沒有可以消的了！」 banner (`SLOGANS.shuffle`) before the pieces fly to their new cells.
 
 ### 3.5 Special combos (both swapped specials are consumed; centered on the cell the moved piece lands on)
 
@@ -157,10 +164,11 @@ A swap of two adjacent cells is valid if it creates a match at either cell, or b
 
 ### 3.6 Scoring
 
-- Match group: 3 → 60, 4 → 120, L/T → 150, 5+ → 200, each × cascade multiplier (1 for the swap's own
+- Match group (`SCORE.match`): 3 → 60, 4 → 120, L/T → 200, 5+ → 200, lone 2×2 square → 120; each square
+  that adds cells to a line group +60 (`SCORE.squareExtra`); all × cascade multiplier (1 for the swap's own
   matches, 2 for the first cascade, …).
-- Each piece removed by a special effect / combo (not part of a match group): 20 × multiplier.
-- Each jelly layer removed: 100.
+- Each piece removed by a special effect / combo (not part of a match group): 60 × multiplier.
+- Each jelly layer removed: 1,000.
 - `sugarCrush(movesLeft)`: for each remaining move, turn a random normal piece into a random striped piece
   (`transform` event), then activate all specials on the board and resolve normally; scores as usual.
 
@@ -173,7 +181,7 @@ Every event carries the board **after** the step: `board` (= `snapshot().grid`) 
 { t: 'swapBack', a, b }
 { t: 'transform', cells: [{ r, c, piece }] }
 { t: 'clear', cascade,
-  groups:   [{ kind, shape: '3'|'4'|'5'|'L'|'T', cells: [{ r, c }] }],
+  groups:   [{ kind, shape: '3'|'4'|'5'|'L'|'T'|'square', cells: [{ r, c }] }],
   removed:  [{ r, c, piece, cause: 'match'|'h'|'v'|'wrap'|'bomb'|'combo' }],
   effects:  [{ fx: 'line', dir: 'h'|'v', r, c } | { fx: 'blast', r, c, radius } |
              { fx: 'bomb', r, c, targets: [{ r, c }] } | { fx: 'board' }],

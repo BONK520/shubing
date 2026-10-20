@@ -47,6 +47,19 @@ export function runsIn(board) {
   }
   return runs;
 }
+// 2×2 squares of the same kind (kind >= 0), by top-left corner
+export function squaresIn(board) {
+  const R = board.length, C = board[0].length;
+  const k = (r, c) => (r >= 0 && r < R && c >= 0 && c < C && board[r][c] && board[r][c].kind >= 0 ? board[r][c].kind : null);
+  const out = [];
+  for (let r = 0; r + 1 < R; r++) for (let c = 0; c + 1 < C; c++) {
+    const v = k(r, c);
+    if (v !== null && k(r, c + 1) === v && k(r + 1, c) === v && k(r + 1, c + 1) === v) out.push({ r, c, dir: 'square', kind: v });
+  }
+  return out;
+}
+// everything that would clear: runs of 3+ and 2×2 squares
+export const matchesIn = board => [...runsIn(board), ...squaresIn(board)];
 
 export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}` : '-');
 export const boardStr = b => b.map(row => row.map(pieceStr).join(' ')).join('\n');
@@ -120,7 +133,7 @@ export function replayEvents(board0, jelly0, events) {
 }
 
 const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo']);
-const SHAPES = new Set(['3', '4', '5', 'L', 'T']);
+const SHAPES = new Set(['3', '4', '5', 'L', 'T', 'square']);
 const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb']);
 
 // Check one engine.swap() / sugarCrush() result against everything the contract promises.
@@ -246,7 +259,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     if (p) { if (ids.has(p.id)) fail('final board: duplicate id'); ids.add(p.id); }
   }
   if (!sugar) {
-    const runs = runsIn(after.grid);
+    const runs = matchesIn(after.grid);
     if (runs.length) fail(`final board still has a match ${JSON.stringify(runs[0])}\n${kindStr(after.grid)}`);
     if (!engine.hasValidMove()) fail('final board has no valid move');
   }

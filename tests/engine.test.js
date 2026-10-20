@@ -1,7 +1,7 @@
 // Engine tests. Open tests/engine.test.html (served over HTTP) or run: python tests/run_tests.py
 // Query params: ?fuzz=N (games per mask/kinds config, default 6), ?only=substring,
 //               ?engine=/path/to/engine.js (test another build, e.g. a mutated copy)
-import { lay, BG_KINDS, MASKS, maskSize, mulberry, runsIn, replayEvents, sameBoard, kindStr, newCtx, checkResult } from './util.js';
+import { lay, BG_KINDS, MASKS, maskSize, mulberry, matchesIn, replayEvents, sameBoard, kindStr, newCtx, checkResult } from './util.js';
 
 const params = new URLSearchParams(location.search);
 const engineMod = await import(params.get('engine') || '../js/engine.js');
@@ -86,7 +86,7 @@ test('initial board: no match, a valid move, all cells filled (300 seeds x masks
     const kinds = [0, 1, 2, 3, 4, 5].slice(0, nk);
     const e = createEngine({ kinds, mask, seed: seed * 31 + nk, ...maskSize(mask) });
     const s = e.snapshot();
-    const runs = runsIn(s.grid);
+    const runs = matchesIn(s.grid);
     ok(!runs.length, `${name} k${nk} s${seed}: initial match\n${kindStr(s.grid)}`);
     ok(e.hasValidMove(), `${name} k${nk} s${seed}: no valid move`);
     ok(e.findHint(), `${name} k${nk} s${seed}: no hint`);
@@ -119,6 +119,37 @@ test('invalid swaps leave the board unchanged (non-adjacent, diagonal, hole, out
   ok(sameBoard(e.snapshot().grid, before.grid), 'board unchanged');
   eq(e.score, 0);
   replayEvents(before.grid, before.jelly, res.events);
+});
+
+// ---------------------------------------------------------------- 2×2 squares
+test('a 2x2 square clears on its own: shape "square", 120 points, no special; hint finds it', () => {
+  const rowsA = ['______', '_00___', '_0_0__', '______'];
+  const h = mk(rowsA).findHint();
+  deq(cellSet([h.a, h.b]), cellSet([P(2, 2), P(2, 3)]), 'the only move makes the square');
+  const e = mk(rowsA);
+  const res = play(e, P(2, 3), P(2, 2));
+  const c = firstClear(res);
+  deq(c.groups.map(g => `${g.kind}:${g.shape}:${g.cells.length}`), ['0:square:4']);
+  deq(cellSet(c.removed), cellSet([P(1, 1), P(1, 2), P(2, 1), P(2, 2)]));
+  eq(c.created.length, 0, 'no special');
+  eq(c.gained, 120);
+});
+
+test('a square touching a 3-in-a-row adds its other cells to that group (+60)', () => {
+  // the 0 from (0,1) lands on (1,1): row 1 becomes 0 0 0 and (1,0) (1,1) (2,0) (2,1) a square
+  const e = mk(['_0____', '0_0___', '00____', '______']);
+  const c = firstClear(play(e, P(0, 1), P(1, 1)));
+  deq(c.groups.map(g => `${g.kind}:${g.shape}:${g.cells.length}`), ['0:3:5']);
+  eq(c.gained, 60 + 60);
+});
+
+test('squares do not change line specials: a 4 in a row with a square still makes a stripe', () => {
+  // 0 0 _ 0 on row 1, 0 0 under the first two: the 0 from (0,2) completes the 4 and the square
+  const e = mk(['__0___', '00_0__', '00____', '______']);
+  const c = firstClear(play(e, P(0, 2), P(1, 2)));
+  deq(c.groups.map(g => `${g.kind}:${g.shape}`), ['0:4']);
+  eq(c.created.length, 1); eq(c.created[0].piece.special, 'v');
+  eq(c.gained, 120 + 60);
 });
 
 // ---------------------------------------------------------------- special creation
@@ -412,8 +443,8 @@ test('scoring (Candy Crush): 3 = 60, 4 = 120, L/T = 200, 5 = 200, effect pieces 
   eq(firstClear(res).gained, 60 + 6 * 60);
   // the numbers are exported for the app / simulator
   const { SCORE } = engineMod;
-  deq(SCORE.match, { '3': 60, '4': 120, L: 200, T: 200, '5': 200 });
-  eq(SCORE.effect, 60); eq(SCORE.jelly, 1000); eq(SCORE.sugarMove, 3000);
+  deq(SCORE.match, { '3': 60, '4': 120, L: 200, T: 200, '5': 200, square: 120 });
+  eq(SCORE.squareExtra, 60); eq(SCORE.effect, 60); eq(SCORE.jelly, 1000); eq(SCORE.sugarMove, 3000);
   // multiplier x1, x2, x3: the 0s match (move), the 1 falls into a row of 1s (cascade 2), then the 2s line up (cascade 3)
   const e3 = mk(['_____', '__2__', '__1__', '__2__', '__2__', '_101_', '__0__', '_0___']);
   const cs = clears(play(e3, P(7, 1), P(7, 2)));
@@ -439,7 +470,7 @@ test('shuffle keeps the same pieces, leaves no match and a valid move', () => {
     const after = e.snapshot();
     const ms = g => g.flat().filter(Boolean).map(p => `${p.id}:${p.kind}:${p.special}`).sort().join();
     eq(ms(after.grid), ms(before.grid), 'same multiset of pieces');
-    ok(!runsIn(after.grid).length, 'no match');
+    ok(!matchesIn(after.grid).length, 'no match');
     ok(e.hasValidMove(), 'has move');
     replayEvents(before.grid, before.jelly, evs);
     eq(evs[0].moves.length, after.grid.flat().filter(Boolean).length, 'a move entry per piece');
@@ -452,7 +483,7 @@ test('dead board: hasValidMove false, findHint null, shuffle fixes it', () => {
   eq(e.hasValidMove(), false); eq(e.findHint(), null);
   const before = e.snapshot();
   e.shuffle();
-  ok(e.hasValidMove() && !runsIn(e.snapshot().grid).length, 'playable after shuffle');
+  ok(e.hasValidMove() && !matchesIn(e.snapshot().grid).length, 'playable after shuffle');
   const ms = g => g.flat().map(p => `${p.id}:${p.kind}`).sort().join();
   eq(ms(e.snapshot().grid), ms(before.grid));
 });
@@ -463,7 +494,7 @@ test('last-resort shuffle (kinds re-rolled) is still replayable from its event',
   eq(e.hasValidMove(), false);
   const before = e.snapshot();
   const evs = e.shuffle();
-  ok(e.hasValidMove() && !runsIn(e.snapshot().grid).length, 'playable after shuffle');
+  ok(e.hasValidMove() && !matchesIn(e.snapshot().grid).length, 'playable after shuffle');
   ok(evs[0].moves.every(m => m.piece && m.piece.id === m.id), 'every move carries its piece');
   replayEvents(before.grid, before.jelly, evs);
 });
@@ -484,7 +515,7 @@ test('boosters: smash / freeSwap / airDrop keep every invariant and replay exact
       replayEvents(before.grid, before.jelly, res.events);
       const g = e.snapshot().grid;
       ok(g.every(row => row.every(p => p)), `${kind}: board full`);
-      ok(!runsIn(g).length, `${kind}: no match left`);
+      ok(!matchesIn(g).length, `${kind}: no match left`);
       ok(e.hasValidMove(), `${kind}: a move exists`);
       const ids = g.flat().map(p => p.id);
       eq(new Set(ids).size, ids.length, `${kind}: ids unique`);
@@ -581,7 +612,9 @@ test('anti-cascade: far fewer free cascades at 0.9 than at 0', () => {
   };
   const r0 = rate(0), r9 = rate(0.9);
   note(`moves with a free cascade: antiCascade 0 -> ${(r0 * 100).toFixed(1)}%, 0.9 -> ${(r9 * 100).toFixed(1)}%`);
-  ok(r9 < r0 * 0.6, `expected far fewer cascades (${r0.toFixed(3)} vs ${r9.toFixed(3)})`);
+  // anti-cascade only picks the kinds of new pieces; 2×2 squares also form from pieces that were already on the
+  // board falling together, so with squares the drop is about ×0.65 (it was ×0.55 with lines only)
+  ok(r9 < r0 * 0.72, `expected far fewer cascades (${r0.toFixed(3)} vs ${r9.toFixed(3)})`);
 });
 
 // ---------------------------------------------------------------- fuzz + perf

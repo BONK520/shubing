@@ -904,7 +904,7 @@ function onEvent(ev, token) {
       if (cascade >= 2 || fx.size || (ev.created && ev.created.length)) cheer();
       break;
     }
-    case 'shuffle': toast(SLOGANS.shuffle.text); break;
+    case 'shuffle': break;   // 「沒有可以消的了！」橫幅由 renderer 的洗牌動畫顯示
   }
 }
 

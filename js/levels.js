@@ -302,7 +302,7 @@ export const LEVELS = [
   {
     id: 4, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.72,
     goal: { type: 'collect', items: { dog: 20, sloth: 20 } }, stars: [16000, 32000, 48000],
-    mask: null, jelly: null, seed: 404,
+    mask: null, jelly: null, seed: 411,   // 加了 2×2 正方形之後重挑：第一次玩看到的盤面跟平常的盤面差不多
     hint: '排成\u00a0L\u00a0形或\u00a0T\u00a0形，會變出會爆炸的包裝糖！',   // 不斷行空格：只在逗號後換行
   },
   {
@@ -585,7 +585,7 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 2735,
+    seed: 2740,   // 加了 2×2 正方形之後重挑（第一次玩的盤面三星太難）
     hint: '愛心裡面藏著一顆果凍小愛心！',
   },
   {
