@@ -1230,7 +1230,7 @@ async function winFlow() {
 
 let winTimers = [];
 let sugarBonus = 0;
-const WIN_PHOTOS = ['assets/deco/sloth_orange.webp', 'assets/deco/sloth_pig.webp', 'assets/deco/group.webp'];
+const WIN_PHOTOS = ['assets/deco/sloth_orange.webp', 'assets/deco/snoopy_sloth.webp', 'assets/deco/sloth_pig.webp', 'assets/deco/group.webp'];
 function setPhoto(id, src) {
   const im = document.getElementById(id);
   if (!im) return;

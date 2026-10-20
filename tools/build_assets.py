@@ -274,6 +274,8 @@ def photo_deco(e):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     if e.get('kind') == 'photo':       # 不去背，只縮小（例如 3D 看看頁的照片卡片）
         im = pc.resize_photo(os.path.join(pc.PHOTOS, e['photo']), e.get('max', 900))
+    elif e.get('style') == 'toy':      # 沒白邊、遊戲光（發光和影子由遊戲加）
+        im = pc.toy_rect(pc.cut(e), e.get('max', 512), g=e.get('grade'), toon=e.get('toon', False), **e.get('toy', {}))
     else:
         im = pc.sticker_rect(pc.cut(e), e.get('max', 512), g=e.get('grade'))
     pc.save_webp(im, out, e.get('quality', 82))

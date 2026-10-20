@@ -57,12 +57,43 @@ python tools/build_assets.py --force   # 全部重做
    - `fg` / `bg`：`[x, y, 半徑]` 圓點，一定是玩具 / 一定是背景
    - `bgRect`：一定是背景的方框（例如右下角的 PicPet 浮水印）
    - `crop`：最後只留這個範圍
+   - `patch`：`[x, y, 半徑]` 圓圈裡先用周圍的顏色補掉再去背（夾在玩具中間的手指、擋在玩具前面的把手）
+   - `cap`：照片上緣切到玩具（頭頂被切平）時往上補一個圓頂，數字 = 圓頂高度 / 切口寬度（例如 `0.3`）
    - 純色背景可以用 `"method": "chroma"` + `"key": [r, g, b]`
 3. 跑 `python tools/photo_cut.py <id>`，看 `tools/out/pc/<id>_check.png`（`<id>_hints.jpg` 會把提示畫在原圖上），不乾淨就加 `fg` / `bg` 點再跑。
 4. 跑 `python tools/build_assets.py`。
 5. 改 `js/pieces.js` 那一行：`name`、`color`（方塊底色），照片玩具加 `photo: true`。
 
-裝飾貼紙（標題、地圖、過關畫面的 `assets/deco/*.webp`）設定在 `assets.json` 的 `deco`，做法一樣。
+## 裝飾貼紙（`assets/deco/*.webp`）
+
+標題、載入畫面、地圖、過關 / 失敗卡、連鎖口號旁邊的照片貼紙，設定在 `assets.json` 的 `deco`，去背做法和照片玩具一樣
+（`python tools/photo_cut.py <名字>` 看結果，例如 `python tools/photo_cut.py snoopy_sloth`）。
+
+- `"style": "toy"`：沒有白邊和陰影，跟盤面上的玩具一樣的「遊戲光」。手機照片本來就比掃描渲染圖亮、飽和，
+  所以只做 `toyify`、飽和度加重一點（`photo_cut.py` 的 `DECO_TOY`），臉上的灰色眼罩和毛的細節會留著。
+  個別貼紙可以用 `"toy": { "sat": 1.3 }` 覆蓋參數，`"toon": true` 會先做 `toonify`（更亮、更平滑，臉容易發白）。
+  發光和影子不做在圖裡：標題 / 地圖 / 載入畫面 / 結算卡用 CSS 的 `drop-shadow`，口號旁的照片由 `renderer.js` 的 `photoSprite` 加。
+- 沒有 `style` 的是舊樣式（白邊 + 陰影，`photo_cut.sticker_rect`）。
+
+| 貼紙 | 照片 | 用在 |
+|---|---|---|
+| `snoopy_sloth` | `pp08_snoopy_sloth.jpg`（史努比坐在薯餅頭上） | 標題右上、地圖、過關卡 |
+| `sloth_pig` | `pp07_sloth_pig.jpg`（小豬趴在薯餅頭上） | 地圖、過關卡、口號「小豬搭便車！」 |
+| `sloth_bed` | `pp03_stack.jpg`（薯餅趴在最上面） | 地圖、失敗卡「薯餅趴趴睡」 |
+| `pig` | `pp12_pig.jpg` | 標題左上、地圖 |
+| `group` | `pp10_snoopy_group.jpg` | 過關卡 |
+| `sloth_orange` | `p6_sloth_orange.jpg` | 載入畫面、地圖、過關卡、口號「薯餅頂橘子！」 |
+
+`pp01`…`pp12` 是 PicPet App 的截圖切出來的照片：`python tools/picpet_crop.py <截圖.jpg> tools/source/photos/pp08_snoopy_sloth.jpg`
+（自動找出截圖中間那張照片；四角的頭像、時間、Instagram 按鈕還在，`cut` 裡用 `bgRect` 標成背景）。
+原照片不在的時候 `build_assets.py` 會沿用現成的貼紙。
+
+`sloth_orange.webp` 這次是用 `strip_outline.py` 從舊的白邊貼紙轉的（雲端環境裡沒有 `p6_sloth_orange.jpg`）。
+本機有原照片的話，`build_assets.py` 會改用原照片重新去背：先跑 `python tools/photo_cut.py sloth_orange` 看一下，
+舊的去背在薯餅左手後面帶進一塊淡黃色的背景（這次轉檔時另外去掉了），需要的話在那裡加 `bg` 點。
+
+**手邊沒有原照片的舊貼紙**：`python tools/strip_outline.py assets/deco/<名字>.webp`（去掉白邊和陰影、換成 toy 樣式；
+`--light 0.62,0.5` 會順便去掉碰到邊緣的淡色背景殘塊）。白色的玩具（史努比）會跟白邊黏在一起被吃掉，只能用原照片重新去背。
 
 ## 把照片玩具換成 3D 掃描
 
@@ -86,6 +117,8 @@ python tools/build_assets.py --force   # 全部重做
 | `usd_to_glb.py` | USDZ → GLB（貼圖縮到 1024） |
 | `slim_usdz.py` | 縮小版 USDZ（3D 看看頁只用 GLB；USDZ 留著，方便之後在 Mac / iPhone 上直接打開看） |
 | `photo_cut.py` | 照片去背（照片玩具、裝飾貼紙）；`python tools/photo_cut.py <名字>` 看去背結果 |
+| `picpet_crop.py` | PicPet App 的截圖 → 只留中間那張照片 |
+| `strip_outline.py` | 舊的白邊裝飾貼紙 → toy 樣式（沒有原照片時用） |
 | `make_placeholders.py` | 程式產生暫代玩具（目前沒有用到，留著備用） |
 | `postprocess.py` | 貼紙描邊、陰影、旋轉圖拼成一張；`toyify`（遊戲光）；`retoy` 給沒有原照片的現成 `_n.png` 補上遊戲光（只能做一次） |
 | `contact_sheet.py` | 檢查用總覽圖 |

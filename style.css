@@ -253,7 +253,7 @@ svg use { pointer-events: none; }
 }
 .load-deco img {
   position: relative; z-index: 1; height: 100%; width: auto; max-width: 70%; object-fit: contain;
-  transform-origin: 50% 100%; filter: var(--stk-shadow);
+  transform-origin: 50% 100%; filter: drop-shadow(0 0 5px rgba(255, 240, 252, .95)) var(--stk-shadow);
   animation: stkHop .95s cubic-bezier(.45, 0, .55, 1) infinite;
 }
 .load-deco::after { /* 地上的影子 */
@@ -1036,9 +1036,9 @@ svg.on .hi { opacity: .9; }
   background: radial-gradient(ellipse at 50% 50%, rgba(50, 20, 100, .5) 0%, rgba(50, 20, 100, .22) 45%, rgba(50, 20, 100, 0) 72%);
 }
 @keyframes isleFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
-.stk-pig { --r: -12deg; width: clamp(62px, 17vw, 108px); left: calc(4px + var(--safe-l)); top: calc(70px + var(--safe-t)); }
-.stk-orange { --r: 9deg; width: clamp(92px, 25vw, 150px); right: calc(-14px + var(--safe-r)); top: calc(96px + var(--safe-t)); animation-delay: -2.1s; }
-@media (max-height: 700px) { .stk-orange { width: clamp(80px, 21vw, 120px); top: calc(64px + var(--safe-t)); } }
+.stk-pig { --r: -12deg; width: clamp(58px, 15vw, 96px); left: calc(4px + var(--safe-l)); top: calc(70px + var(--safe-t)); }
+.stk-snoopy { --r: 9deg; width: clamp(72px, 19vw, 116px); right: calc(0px + var(--safe-r)); top: calc(70px + var(--safe-t)); animation-delay: -2.1s; }
+@media (max-height: 700px) { .stk-snoopy { width: clamp(60px, 15vw, 92px); top: calc(54px + var(--safe-t)); } }
 
 /* 地圖：高度 0 的一層接在地圖最底下，用 bottom 往上量（MAP_BOTTOM 110px、每關 MAP_GAP 116px） */
 .map-inner { z-index: 1; }
@@ -1061,13 +1061,14 @@ svg.on .hi { opacity: .9; }
   content: ''; position: absolute; left: 24%; right: 14%; bottom: -3%; height: 9%; border-radius: 50%;
   background: radial-gradient(ellipse at 50% 50%, rgba(50, 20, 100, .5) 0%, rgba(50, 20, 100, .22) 45%, rgba(50, 20, 100, 0) 72%);
 }
-.md-s { width: 58px; } .md-m { width: 96px; } .md-l { width: 112px; }
+.md-s { width: 58px; } .md-m { width: 96px; } .md-l { width: 112px; } .md-t { width: 72px; }   /* md-t：直的（Snoopy 疊在薯餅上） */
 
 /* 過關卡：貼紙照片從右上角探出來；失敗卡：照片取代那排難過的玩具 */
-.modal-photo { display: block; height: auto; pointer-events: none; filter: drop-shadow(0 8px 14px rgba(60, 20, 100, .28)); }
+.modal-photo { display: block; height: auto; pointer-events: none; filter: drop-shadow(0 0 5px rgba(255, 240, 252, .95)) drop-shadow(0 8px 14px rgba(60, 20, 100, .28)); }
 .modal-photo.broken, .modal-photo:not([src]) { display: none; }
-.win-card .modal-photo {
-  position: absolute; z-index: 3; width: clamp(92px, 26vw, 124px); top: -64px; right: -18px;
+.win-card .modal-photo { /* 方框裡 contain：直的（Snoopy 疊薯餅）、橫的照片都不會太大，底部對齊 */
+  position: absolute; z-index: 3; width: clamp(92px, 26vw, 124px); height: clamp(92px, 26vw, 124px); top: -64px; right: -18px;
+  object-fit: contain; object-position: 50% 100%;
   --r: 10deg; transform: rotate(var(--r));
 }
 .modal.open .win-card .modal-photo { animation: photo-pop .55s .35s cubic-bezier(.3, 1.6, .5, 1) both, stk-wobble 4s 1s ease-in-out infinite; }

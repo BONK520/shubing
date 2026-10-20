@@ -4,7 +4,7 @@
 #   python tools/photo_cut.py sloth_orange pig     # 一次看好幾筆
 #   python tools/photo_cut.py --all
 # 每筆會在 tools/out/pc/ 輸出 <名字>_hints.jpg（提示畫在原圖上：綠 = 一定是玩具、紅 = 一定是背景、
-# 黃框 = rect、藍框 = crop、紫框 = 浮水印修補範圍）和 <名字>_check.png（去背結果放在棋盤格和方塊底色上）。
+# 黃框 = rect、藍框 = crop、紫框 / 紫圈 = 浮水印 / patch 修補範圍）和 <名字>_check.png（去背結果放在棋盤格和方塊底色上）。
 #
 # 設定（tools/assets.json 的 "cut"，座標都是原照片的像素）:
 #   method   "grabcut"（預設）或 "chroma"（純色背景，例如 moodeng_face.png 的粉紅底）
@@ -13,6 +13,8 @@
 #   fgRect / bgRect  [[x0, y0, x1, y1], ...]  同上，但用方框（例如右下角的 PicPet 浮水印 → bgRect）
 #   crop     [x0, y0, x1, y1]  最後只留這個範圍（切掉照片邊緣、手指、浮水印）
 #   inpaint  [[x0, y0, x1, y1], ...]  浮水印壓在玩具身上時：框裡比周圍亮的字跡先修補掉再去背
+#   patch    [[x, y, r], ...]  圓圈裡整塊用周圍的顏色補掉再去背（夾在玩具中間的手指、擋在玩具前面的把手）
+#   cap      照片上緣切到玩具（頭頂被切平）時往上補一個圓頂：圓頂高度 = 切口寬度 × cap（例如 0.3），顏色沿用最上面幾排
 #   keep     只留最大的一塊（預設 1）；> 1 = 留最大的幾塊；0 = 全部留
 #   close    補小縫的閉運算直徑（px，預設 15）；open = 去掉細毛邊的開運算直徑（預設 0）
 #   shrink   邊緣往內縮幾 px（預設 1，去掉背景色的邊）；feather = 柔邊（高斯 sigma，預設 1.6）
@@ -52,6 +54,16 @@ def inpaint_overlay(rgb, rects, thr=14):
         mask[y0:y1, x0:x1] |= m.astype(np.uint8)
     mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
     return cv2.inpaint(rgb, mask * 255, 9, cv2.INPAINT_TELEA)
+
+
+def patch(rgb, circles):
+    """圓圈裡整塊用周圍的顏色補掉（cv2.inpaint），例如夾在兩隻手中間的手指"""
+    if not circles:
+        return rgb
+    mask = np.zeros(rgb.shape[:2], np.uint8)
+    for x, y, r in circles:
+        cv2.circle(mask, (int(x), int(y)), int(r), 255, -1)
+    return cv2.inpaint(rgb, mask, 15, cv2.INPAINT_TELEA)
 
 
 # ---------------------------------------------------------------- 去背
@@ -148,7 +160,7 @@ def cut(entry, photos=PHOTOS):
             d = ndimage.distance_transform_edt(alpha > 0.5)
             alpha = np.minimum(alpha, np.clip((d - sh) / s, 0, 1)).astype(np.float32)
     else:
-        rgb = inpaint_overlay(rgb, c.get('inpaint', []))
+        rgb = patch(inpaint_overlay(rgb, c.get('inpaint', [])), c.get('patch', []))
         alpha = clean(grabcut(rgb, c), c)
         fg, s = rgb.astype(np.float32) / 255, 1
     fg = defringe(fg, alpha, float(c.get('defringe', 2)) * s)
@@ -160,8 +172,35 @@ def cut(entry, photos=PHOTOS):
         a = rgba[..., 3]
         e = np.ones_like(a); e[0, :] = e[-1, :] = e[:, 0] = e[:, -1] = 0
         rgba[..., 3] = a * np.clip(ndimage.distance_transform_edt(e) / (1.5 * s), 0, 1)
+    if c.get('cap'):
+        rgba = cap_top(rgba, float(c['cap']), s)
     rgba[..., 3] = np.where(rgba[..., 3] < 0.02, 0, rgba[..., 3])
     return rgba
+
+
+def cap_top(rgba, k, s=1):
+    """上緣被照片邊切平的玩具（例如頭頂超出照片）：往上補一個半橢圓的圓頂，顏色用最上面幾排往上延伸"""
+    a = rgba[..., 3]
+    row = np.concatenate([[False], a[0] > 0.5, [False]])
+    edges = np.flatnonzero(row[1:] != row[:-1]).reshape(-1, 2)    # 每一段 [開始, 結束)
+    if not len(edges):
+        return rgba
+    xa, xb = max(edges, key=lambda e: e[1] - e[0])
+    w = xb - xa
+    P = int(round(k * w))
+    H, W = a.shape
+    out = np.zeros((H + P, W, 4), np.float32)
+    out[P:] = rgba
+    n = min(int(6 * s), H)
+    wt = a[:n, xa:xb, None]
+    col = (rgba[:n, xa:xb, :3] * wt).sum(0) / np.maximum(wt.sum(0), 1e-4)
+    col = cv2.GaussianBlur(col[None], (0, 0), sigmaX=3 * s, sigmaY=0.1)[0]   # 只橫向模糊，去掉一條一條的紋
+    out[:P, xa:xb, :3] = col[None]
+    t = (np.arange(xa, xb) + 0.5 - (xa + xb) / 2) / (w / 2)
+    h = P * np.sqrt(np.clip(1 - t * t, 0, 1))
+    y = np.arange(P)[:, None] + 0.5
+    out[:P, xa:xb, 3] = np.clip(y - (P - h)[None] + 0.5, 0, 1)
+    return out
 
 
 # ---------------------------------------------------------------- 調色 + 貼紙
@@ -202,6 +241,31 @@ def sticker_rect(rgba, max_side=512, g=None, K=2):
     return pp.to_im(pp.downsample(pp.stickerize(big, unit), W // K, H // K))
 
 
+# 裝飾貼紙的「遊戲光」：手機照片本來就比掃描渲染圖亮、飽和，再做 toonify 會整片發白、臉上的灰色眼罩不見；
+# 所以只做 toyify，飽和度加重一點（顏色接近盤面上的玩具，細節留著）
+DECO_TOY = dict(sat=1.5, vib=0.7, gamma=0.9)
+
+
+def toy_rect(rgba, max_side=512, g=None, K=2, toon=False, **toy):
+    """裝飾貼紙（新樣式 "style": "toy"）：沒有白邊和陰影，和盤面玩具一樣的「遊戲光」；發光和落地的影子由遊戲（CSS）
+    依場景加。長邊 = max_side。toon=True 先做 toonify；toy = 覆蓋 DECO_TOY / pp.TOY 的參數"""
+    toy = {**DECO_TOY, **toy}
+    a = enhance(rgba, g)
+    if toon:
+        a = pp.toonify(a)
+    bb = pp.bbox(a)
+    bw, bh = bb[2] - bb[0], bb[3] - bb[1]
+    unit = max_side / 256 * K
+    m = 3.0 * unit                                         # 只留柔邊的空間
+    s = (max_side * K - 2 * m) / max(bw, bh)
+    W = int(round((bw * s + 2 * m) / K)) * K
+    H = int(round((bh * s + 2 * m) / K)) * K
+    ox = W / 2 - (bb[0] + bb[2]) / 2 * s
+    oy = H / 2 - (bb[1] + bb[3]) / 2 * s
+    big = pp.resample(a, s, ox, oy, W, H)
+    return pp.to_im(pp.downsample(pp.toyify(big, unit, **toy), W // K, H // K))
+
+
 def resize_photo(src, max_side=900):
     im = Image.open(src).convert('RGB')
     k = max_side / max(im.size)
@@ -233,6 +297,8 @@ def debug(entry, name, color='#cccccc'):
     for k, col in (('fgRect', (0, 230, 0)), ('bgRect', (255, 0, 0)), ('inpaint', (200, 0, 255))):
         for r in c.get(k, []):
             d.rectangle(r, outline=col, width=4)
+    for x, y, r in c.get('patch', []):
+        d.ellipse((x - r, y - r, x + r, y + r), outline=(200, 0, 255), width=4)
     if 'rect' in c:
         d.rectangle(c['rect'], outline=(255, 220, 0), width=4)
     if 'crop' in c:
@@ -242,6 +308,8 @@ def debug(entry, name, color='#cccccc'):
     raw = pp.to_im(rgba)
     if 'id' in entry:
         st = sticker_piece(rgba, 256, entry.get('fill', pp.FILL), entry.get('grade'))
+    elif entry.get('style') == 'toy':
+        st = toy_rect(rgba, 512, entry.get('grade'), toon=entry.get('toon', False), **entry.get('toy', {}))
     else:
         st = sticker_rect(rgba, 512, entry.get('grade'))
     # 原始去背（棋盤格，最長邊 640）+ 貼紙放在方塊底色 / 深色底上

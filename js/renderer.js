@@ -1884,6 +1884,30 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (sl.toy !== 'trio' && usable(e.spin)) return { img: e.spin, frame: (19 + Math.floor(Math.random() * 11)) % 24 };
     return e.sprite ? { img: e.sprite, frame: -1 } : null;
   }
+  // 照片貼紙沒有白邊：先做一張帶淡粉光暈和右下影子的小圖（每張照片、每種大小做一次），疊在盤面上才分得出來
+  const photoCache = new Map();
+  function photoSprite(img, d) {
+    const key = img.src + '|' + Math.round(d) + '|' + dpr;
+    let sp = photoCache.get(key);
+    if (sp) return sp;
+    const ar = natW(img) / Math.max(1, natH(img));
+    const w = ar >= 1 ? d : d * ar, h = ar >= 1 ? d / ar : d, pad = d * 0.12, k = dpr;
+    const c = makeCanvas((w + pad * 2) * k, (h + pad * 2) * k), g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high';
+    // shadowBlur / shadowOffset 不跟著 scale 走，自己乘 k。順序：右下的影子 → 外圈粉紅光 → 貼著輪廓的白光（疊兩次比較實）
+    const pass = (col, blur, dx, dy) => {
+      g.shadowColor = col; g.shadowBlur = d * blur * k; g.shadowOffsetX = d * dx * k; g.shadowOffsetY = d * dy * k;
+      g.drawImage(img, pad * k, pad * k, w * k, h * k);
+    };
+    pass('rgba(44,16,96,0.45)', 0.05, 0.02, 0.045);
+    pass('rgba(255,150,220,0.8)', 0.1, 0, 0);
+    pass('rgba(255,246,253,1)', 0.03, 0, 0);
+    pass('rgba(255,246,253,1)', 0.03, 0, 0);
+    sp = { c, w: w + pad * 2, h: h + pad * 2 };
+    if (photoCache.size > 8) photoCache.clear();
+    photoCache.set(key, sp);
+    return sp;
+  }
   function showWord(text, level, sl) {
     if (!text) return;
     word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
@@ -2523,9 +2547,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const fw = natW(img) / 6, fh = natH(img) / 4, i = pic.frame;
         if (d > 0) ctx.drawImage(img, (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, -d / 2, -d / 2, d, d);
       } else if (d > 0) {
-        const ar = natW(img) / Math.max(1, natH(img));
-        const w = ar >= 1 ? d : d * ar, h = ar >= 1 ? d / ar : d;
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        drawSprite(photoSprite(img, iw * fit), 0, 0, d / (iw * fit));
       }
       ctx.restore();
     }
@@ -2746,6 +2768,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     fits: Object.fromEntries([...fitCache].map(([k, f]) => [pieceInfo(k).id, { box: +f.box.toFixed(3), dx: +f.dx.toFixed(3), dy: +f.dy.toFixed(3) }])),
     offCell: [...visuals.values()].filter(v => { const st = evalVisual(v, now()); return Math.abs(st.x - v.c) > 0.02 || Math.abs(st.y - v.r) > 0.02; }).length,
   }) });
+  // 測試用：直接跳一個口號（截圖檢查口號旁的照片）
+  Object.defineProperty(R, '_word', { enumerable: false, value: (text, level, sl) => showWord(text, level, sl) });
   layout();
   return R;
 }
