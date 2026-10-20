@@ -178,12 +178,12 @@ def toonify(a):
     sm = cv2.bilateralFilter(sm, d, 35, d)
     hsv = cv2.cvtColor(sm, cv2.COLOR_RGB2HSV).astype(np.float32)
     v = hsv[..., 2] / 255.0
-    v = np.power(v, 0.78)                                   # 暗部拉亮
+    v = np.power(v, 0.66)                                   # 暗部拉亮（整體亮約 25%）
     clahe = cv2.createCLAHE(clipLimit=1.6, tileGridSize=(4, 4))
     v8 = clahe.apply((v * 255).astype(np.uint8)).astype(np.float32) / 255.0
     v = 0.6 * v + 0.4 * v8                                  # 一點局部對比
-    hsv[..., 2] = np.clip(v * 255, 0, 255)
-    hsv[..., 1] = np.clip(hsv[..., 1] * 1.32 + 6, 0, 255)  # 飽和度
+    hsv[..., 2] = np.clip(v * 255 * 1.05, 0, 255)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.48 + 8, 0, 255)  # 飽和度
     out = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB).astype(np.float32) / 255.0
     return np.concatenate([out, al], -1)
 
