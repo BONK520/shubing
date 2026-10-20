@@ -858,7 +858,7 @@ function goalMet() {
   const g = level.goal || {};
   if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (engine.stats.cleared[kindOf(id)] || 0) >= n);
   if (g.type === 'jelly') return engine.stats.jellyLeft <= 0;
-  return false;       // 分數關：到了目標也不停，步數用完才結算（afterMove）
+  return engine.score >= scoreTarget(level);     // 分數關：到了目標就過關，剩下的步數變成超級糖果
 }
 
 // ---------- 交換 ----------
@@ -901,7 +901,7 @@ async function doSwap(a, b) {
 function afterMove() {
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
-  if (movesLeft <= 0) { if (isScoreLevel(level)) endScoreLevel(); else loseFlow(); return; }
+  if (movesLeft <= 0) { loseFlow(); return; }
   if (movesLeft === 5 && !lowWarned) { lowWarned = true; toast('只剩 5 步了！', 1300); }
   scheduleHint();
 }

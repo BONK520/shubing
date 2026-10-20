@@ -168,7 +168,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       // a sugar-crush move: one random normal piece becomes striped (or none if no normal piece is left)
       if (e.sugar !== true) fail('sugar transform without sugar: true');
       if (e.cells.length > 1) fail('sugar transform converts more than one piece');
-      for (const x of e.cells) if (!(x.piece.special === 'h' || x.piece.special === 'v') || x.piece.kind < 0) fail(`sugar transform makes ${pieceStr(x.piece)}`);
+      for (const x of e.cells) if (!(x.piece.special === 'h' || x.piece.special === 'v' || x.piece.special === 'wrap') || x.piece.kind < 0) fail(`sugar transform makes ${pieceStr(x.piece)}`);
       expectCascade = 1;
     } else fail(`unexpected event ${e.t} at #${i}`);
   }

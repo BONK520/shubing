@@ -478,14 +478,14 @@ test('findHint prefers bigger matches', () => {
   deq(cellSet([h3.a, h3.b]), cellSet([P(1, 3), P(1, 4)]));
 });
 
-test('sugarCrush: every move left = 3,000 + a random striped piece that fires (waves of 5), then leftovers fire', () => {
+test('sugarCrush: every move left = 3,000 + a random striped / wrapped piece that fires (waves of 5), then leftovers fire', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 11, jelly: Array(8).fill('11111111') });
   const before = e.snapshot();
   const ctx = newCtx(e);
   const res = e.sugarCrush(7);
   const trs = res.events.filter(x => x.t === 'transform');
   eq(trs.length, 7, 'one transform per move');
-  ok(trs.every(t => t.sugar === true && t.gained === 3000 && t.cells.length === 1 && 'hv'.includes(t.cells[0].piece.special)), 'random striped, 3,000 each');
+  ok(trs.every(t => t.sugar === true && t.gained === 3000 && t.cells.length === 1 && ['h', 'v', 'wrap'].includes(t.cells[0].piece.special)), 'random striped / wrapped, 3,000 each');
   ok(trs.every(t => t.points.length === 1 && t.points[0].value === 3000 && t.points[0].r === t.cells[0].r && t.points[0].c === t.cells[0].c), 'label on the piece');
   // waves: 5 transforms, the clear that fires them, …, then 2 transforms and their clear
   const kinds = res.events.map(x => x.t);

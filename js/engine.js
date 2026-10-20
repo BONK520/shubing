@@ -43,7 +43,7 @@
 //   findHint prefers combos, then bigger matches, matches that fire specials, and matches on jelly.
 // * sugarCrush(n) — the end-of-level bonus (Candy Crush "Sugar Crush"), in waves of up to SUGAR_WAVE moves:
 //     for each move of the wave: one `transform` event { cells: [{ r, c, piece }] (a random normal piece became
-//       striped h / v; [] if no normal piece is left), sugar: true, gained: 3000, points: [{ r, c, value: 3000 }] }
+//       striped h / v, or wrapped about 1 in 4; [] if no normal piece is left), sugar: true, gained: 3000, points: [{ r, c, value: 3000 }] }
 //     then one clear (cascade 1) that fires exactly the pieces this wave converted (their effects may set off
 //       other specials), gravity, free cascades (cascade 2, 3, …);
 //   after the last wave: rounds of "fire every special still on the board" (clear, cascade 1) + gravity /
@@ -686,7 +686,8 @@ export function createEngine(opts = {}) {
             continue;
           }
           const { r, c } = normals[rand(normals.length)];
-          grid[r][c].special = rng() < 0.5 ? 'h' : 'v';
+          const roll = rng();
+          grid[r][c].special = roll < 0.25 ? 'wrap' : roll < 0.625 ? 'h' : 'v';   // 超級糖果：條紋為主，約 1/4 是包裝
           lit.push({ r, c });
           events.push(ev({ t: 'transform', cells: [{ r, c, piece: cp(grid[r][c]) }], sugar: true,
             gained: SUGAR_MOVE_POINTS, points: [{ r, c, value: SUGAR_MOVE_POINTS }] }));

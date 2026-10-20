@@ -53,7 +53,7 @@ export function goalMet(level, e) {
   const g = level.goal || {};
   if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (e.stats.cleared[kindOf(id)] || 0) >= n);
   if (g.type === 'jelly') return e.stats.jellyLeft <= 0;
-  return false;
+  return e.score >= passScore(level);          // 分數關：到了目標就結束
 }
 
 // ---------- players ----------
@@ -214,28 +214,22 @@ export function pickMove(e, level, profile, rnd) {
 export function playLevel(level, profile, attempt, salt = 0) {
   const e = makeEngine(level, attempt);
   const rnd = mulberry((((level.id || 1) * 7919) ^ (attempt * 104729) ^ (salt * 15485863) ^ (profile === 'decent' ? 0x5bd1e995 : 0x1b873593)) >>> 0);
-  const scoreLevel = isScoreLevel(level);
-  let movesLeft = level.moves, done = !scoreLevel && goalMet(level, e);
+  let movesLeft = level.moves, done = goalMet(level, e);
   while (!done && movesLeft > 0) {
     const mv = pickMove(e, level, profile, rnd);
     if (!mv) throw new Error(`L${level.id}: no valid move`);
     const res = e.swap(mv.a, mv.b);
     if (!res.ok) throw new Error(`L${level.id}: bot made an invalid move`);
     movesLeft--;
-    if (!scoreLevel) done = goalMet(level, e);
+    done = goalMet(level, e);
   }
   const atGoal = e.score;
   let won, left = 0;
-  if (scoreLevel) {
-    e.sugarCrush(0);                                   // leftover specials fire
-    won = e.score >= passScore(level);
-  } else {
-    won = done;
-    if (won) {
-      left = movesLeft;
-      if (e.score < passScore(level)) e.addScore(passScore(level) - e.score);
-      e.sugarCrush(left);
-    }
+  won = done;
+  if (won) {
+    left = movesLeft;
+    if (e.score < passScore(level)) e.addScore(passScore(level) - e.score);
+    e.sugarCrush(left);
   }
   const final = e.score;
   return { won, used: level.moves - movesLeft, left, atGoal, final, stars: won ? starsFor(level, final) : 0 };
