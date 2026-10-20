@@ -125,6 +125,9 @@ const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb']);
 
 // Check one engine.swap() / sugarCrush() result against everything the contract promises.
 // ctx carries state across calls: { score, maxId, gone:Set, cleared:{}, specialsMade, shuffles }
+// Sugar crush: transforms (one per move left, each worth SUGAR_MOVE flat) may come before any clear,
+// but never between a clear and its fall.
+export const SUGAR_MOVE = 3000;
 export function newCtx(engine) {
   const snap = engine.snapshot();
   let maxId = 0;
@@ -146,7 +149,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
   // grammar
   let i = 0;
   if (!sugar) { if (!evs.length || evs[0].t !== 'swap') fail('first event must be swap'); i = 1; }
-  while (i < evs.length && evs[i].t === 'transform') i++;
+  if (!sugar) while (i < evs.length && evs[i].t === 'transform') i++;
   let expectCascade = 1, sawClear = false;
   for (; i < evs.length; i++) {
     const e = evs[i];
@@ -162,8 +165,11 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       if (sugar || i !== evs.length - 1) fail('shuffle must be the last event of a move');
       ctx.shuffles++;
     } else if (e.t === 'transform' && sugar) {
-      // sugar crush transforms come first; handled above
-      fail('transform after clears');
+      // a sugar-crush move: one random normal piece becomes striped (or none if no normal piece is left)
+      if (e.sugar !== true) fail('sugar transform without sugar: true');
+      if (e.cells.length > 1) fail('sugar transform converts more than one piece');
+      for (const x of e.cells) if (!(x.piece.special === 'h' || x.piece.special === 'v') || x.piece.kind < 0) fail(`sugar transform makes ${pieceStr(x.piece)}`);
+      expectCascade = 1;
     } else fail(`unexpected event ${e.t} at #${i}`);
   }
   if (!sugar && !sawClear) fail('valid swap without a clear');
@@ -206,6 +212,13 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       if (pts !== e.gained) fail(`points ${pts} != gained ${e.gained}`);
       gainedSum += e.gained;
       ctx.clears++;
+    } else if (e.t === 'transform' && sugar) {
+      if (e.gained !== SUGAR_MOVE) fail(`sugar transform gained ${e.gained}, expected ${SUGAR_MOVE}`);
+      if (!Array.isArray(e.points)) fail('sugar transform points missing');
+      const pts = e.points.reduce((s, p) => s + p.value, 0);
+      if (e.cells.length ? pts !== e.gained : pts !== 0) fail(`sugar transform points ${pts} != gained ${e.gained}`);
+      for (const p of e.points) if (!e.cells.some(x => x.r === p.r && x.c === p.c)) fail('sugar transform point label not on the converted cell');
+      gainedSum += e.gained;
     } else if (e.gained !== undefined) fail(`${e.t} has gained`);
     if (e.t === 'fall') {
       const byCol = {};
@@ -220,7 +233,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     }
     for (const row of e.board) for (const p of row) if (p) ctx.maxId = Math.max(ctx.maxId, p.id);
   }
-  if (gainedSum !== res.gained) fail(`gained ${res.gained} != sum of clears ${gainedSum}`);
+  if (gainedSum !== res.gained) fail(`gained ${res.gained} != sum of event gains ${gainedSum}`);
   // replay
   const rep = replayEvents(before.grid, before.jelly, evs);
   if (!sameBoard(rep.board, after.grid)) fail('replay does not reach the final board');

@@ -59,6 +59,12 @@
       <div slot="progress-bar" class="progress" id="progress" aria-hidden="true"><span></span></div>
     </model-viewer>
 
+    <!-- 照片方塊（沒有 3D 模型）：大張貼紙 + 照片卡片 -->
+    <div class="photo-stage" id="photoStage" hidden>
+      <img id="photoBig" alt="" decoding="async">
+      <div class="photo-cards" id="photoCards"></div>
+    </div>
+
     <div class="chip" id="chip">
       <span class="dot" id="chipDot"></span>
       <span id="chipName">毛絨</span>
@@ -126,8 +132,10 @@ const VIEWER_TEXT = {
 const viewerBroken = () => viewer === 'net' || viewer === 'js';
 // 依檢視器狀態畫舞台：打不開就一直顯示說明（切換毛絨也一樣），不然就照 loading 顯示載入中
 function paintStage(loading) {
-  const broken = viewerBroken();
-  $('stage').classList.toggle('is-loading', !!loading && !broken);
+  let isPhoto = false;   // 照片方塊不用 3D 檢視器（current 在下面才宣告，太早被呼叫時當作不是）
+  try { isPhoto = !!(PIECES[current] && PIECES[current].photo); } catch (e) { /* 還沒宣告 */ }
+  const broken = viewerBroken() && !isPhoto;
+  $('stage').classList.toggle('is-loading', !!loading && !broken && !isPhoto);
   $('fail').hidden = !broken;
   if (broken) {
     $('failText').textContent = VIEWER_TEXT[viewer];
@@ -200,7 +208,7 @@ const cards = PIECES.map((p, i) => {
   b.appendChild(n);
   const t = document.createElement('span');
   t.className = 'toy-tag' + (p.scan ? '' : ' temp');
-  t.textContent = p.scan ? '掃描' : '暫代';
+  t.textContent = p.scan ? '掃描' : p.photo ? '照片' : '暫代';
   b.appendChild(t);
   b.addEventListener('click', () => select(i, true));
   picker.appendChild(b);
@@ -229,12 +237,14 @@ function select(i, user) {
   document.documentElement.style.setProperty('--toy', p.color);
   $('chipDot').style.background = p.color;
   $('chipName').textContent = p.name;
-  $('chipTag').textContent = p.scan ? '真實掃描' : '暫代模型';
+  const tag = p.scan ? '真實掃描' : p.photo ? '照片貼紙' : '暫代模型';
+  $('chipTag').textContent = tag;
   $('chipTag').classList.toggle('temp', !p.scan);
   $('name').textContent = p.name;
-  $('badge').textContent = p.scan ? '真實掃描' : '暫代模型';
+  $('badge').textContent = tag;
   $('badge').classList.toggle('temp', !p.scan);
   $('placeholderNote').hidden = p.scan;
+  $('placeholderNote').textContent = p.photo ? '這隻是用照片做的，還沒有 3D 模型' : '這是暫代模型，之後會換成真的掃描';
   $('scanNote').hidden = !p.scan;
   $('size').textContent = '量尺寸中…';
   setFaces(p);
@@ -243,15 +253,37 @@ function select(i, user) {
   setTimeout(() => $('stage').classList.remove('switching'), 450);
   try { history.replaceState(null, '', location.pathname + location.search + '#' + p.id); } catch (e) { /* ignore */ }
 
+  // 照片方塊：不載 3D，顯示貼紙（彈跳豬再加兩張照片）
+  const ps = $('photoStage');
+  ps.hidden = !p.photo;
+  mv.style.visibility = p.photo ? 'hidden' : '';
+  if (p.photo) {
+    $('photoBig').src = spritePath(p.id);
+    $('photoBig').alt = p.name;
+    const cards = $('photoCards');
+    cards.replaceChildren();
+    for (const src of PHOTOS[p.id] || []) {
+      const im = document.createElement('img');
+      im.src = src; im.alt = `${p.name}的照片`; im.decoding = 'async';
+      im.onerror = () => im.remove();
+      cards.appendChild(im);
+    }
+    $('stage').classList.remove('is-loading');
+    $('fail').hidden = true;
+    $('size').textContent = '';
+    return;
+  }
   // 用屬性設定：檢視器還沒載好（元素還沒升級）時也一定有效，載好後會照著讀
   mv.setAttribute('alt', `${p.name}的 3D 模型，可以旋轉和放大`);
   mv.setAttribute('exposure', String(viewOf(p.id).exposure));
   mv.setAttribute('src', glbOf(p.id));
 }
 
+const PHOTOS = { moodeng: ['assets/photos/moodeng_1.webp', 'assets/photos/moodeng_2.webp'] };
 function fmt(m) { return Math.max(1, Math.round(m * 100)); }
 
 mv.addEventListener('load', () => {
+  if (PIECES[current] && PIECES[current].photo) return;   // 已經切到照片方塊：舊模型晚到就不管它
   $('stage').classList.remove('is-loading');
   $('fail').hidden = true;
   try {

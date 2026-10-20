@@ -1,5 +1,6 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
 import { PIECES, TRIO, spritePath, spinPath } from './pieces.js';
+import { SLOGANS } from './slogans.js';
 
 window.__plushBooted = true;
 
@@ -41,7 +42,7 @@ function writeSave() {
 }
 
 // ---------- 模組 ----------
-let createEngine, createRenderer, LEVELS, audio;
+let createEngine, createRenderer, LEVELS, audio, levMod = {};
 const silentAudio = { unlock() {}, play() {}, setMuted() {}, setMusic() {}, get muted() { return true; }, get music() { return false; } };
 
 async function loadModules() {
@@ -55,6 +56,7 @@ async function loadModules() {
   createEngine = eng && eng.createEngine;
   createRenderer = ren && ren.createRenderer;
   LEVELS = lev && lev.LEVELS;
+  levMod = lev || {};
   audio = (aud && (aud.audio || aud.default)) || silentAudio;
   if (eng && typeof createEngine !== 'function') fail.push('engine.js（沒有 createEngine）');
   if (ren && typeof createRenderer !== 'function') fail.push('renderer.js（沒有 createRenderer）');
@@ -79,13 +81,13 @@ function loadImg(src, timeout = 12000) {
 async function loadImages(onProgress) {
   const jobs = [];
   let done = 0;
-  const total = PIECES.length * 2 + 1;
+  const total = PIECES.length + PIECES.filter(p => !p.photo).length + 1;
   const track = p => p.then(v => { done++; onProgress(done / total); return v; });
   for (const p of PIECES) {
     const entry = { sprite: null, spin: null };
     images.set(p.id, entry);
     jobs.push(track(loadImg(spritePath(p.id))).then(im => { entry.sprite = im; }));
-    jobs.push(track(loadImg(spinPath(p.id))).then(im => { entry.spin = im; }));
+    if (!p.photo) jobs.push(track(loadImg(spinPath(p.id))).then(im => { entry.spin = im; }));   // 照片方塊沒有旋轉序列
   }
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);
@@ -380,6 +382,10 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
 
 // ---------- 目標文字 ----------
 function scoreTarget(lvl) { return (lvl.goal && lvl.goal.target) || (lvl.stars && lvl.stars[0]) || 0; }
+// Candy Crush 規則（levels.js 的 isScoreLevel / passScore / starsFor；這裡只是備用）
+const isScoreLevel = lvl => (levMod.isScoreLevel ? levMod.isScoreLevel(lvl) : !['collect', 'jelly'].includes(lvl && lvl.goal && lvl.goal.type));
+const passScore = lvl => (levMod.passScore ? levMod.passScore(lvl) : scoreTarget(lvl));
+const starsFor = (lvl, score) => (levMod.starsFor ? levMod.starsFor(lvl, score) : clamp(((lvl && lvl.stars) || []).filter(t => score >= t).length, 1, 3));
 function goalText(lvl) {
   const g = lvl.goal || {};
   if (g.type === 'collect') {
@@ -503,6 +509,7 @@ function sumJelly(j, layers) {
 }
 
 async function startLevel(idx) {
+  sugarBonus = 0;
   closeAllModals();
   session++;
   const token = session;
@@ -805,6 +812,7 @@ function onEvent(ev, token) {
   if (token !== session || !ev) return;
   switch (ev.t) {
     case 'transform':
+      if (ev.gained) { dispScore += ev.gained; renderScore(); }
       if (sugarMode) {
         audio.play('sugar');
         dispMoves = Math.max(0, dispMoves - ((ev.cells && ev.cells.length) || 1));
@@ -829,7 +837,7 @@ function onEvent(ev, token) {
       if (cascade >= 2 || fx.size || (ev.created && ev.created.length)) cheer();
       break;
     }
-    case 'shuffle': toast('沒有步可以走了，洗牌！'); break;
+    case 'shuffle': toast(SLOGANS.shuffle.text); break;
   }
 }
 
@@ -850,7 +858,7 @@ function goalMet() {
   const g = level.goal || {};
   if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (engine.stats.cleared[kindOf(id)] || 0) >= n);
   if (g.type === 'jelly') return engine.stats.jellyLeft <= 0;
-  return engine.score >= scoreTarget(level);
+  return false;       // 分數關：到了目標也不停，步數用完才結算（afterMove）
 }
 
 // ---------- 交換 ----------
@@ -893,7 +901,7 @@ async function doSwap(a, b) {
 function afterMove() {
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
-  if (movesLeft <= 0) { loseFlow(); return; }
+  if (movesLeft <= 0) { if (isScoreLevel(level)) endScoreLevel(); else loseFlow(); return; }
   if (movesLeft === 5 && !lowWarned) { lowWarned = true; toast('只剩 5 步了！', 1300); }
   scheduleHint();
 }
@@ -975,11 +983,31 @@ canvas.addEventListener('lostpointercapture', e => endPointer(e, true));
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- 過關 / 失敗 ----------
+// 分數關步數用完：盤面上剩下的特殊方塊全部引爆（Candy Crush 也是這樣），夠分就過關
+async function endScoreLevel() {
+  const token = session;
+  state = 'ending';
+  closeModal('m-settings');
+  clearHint();
+  selected = null;
+  R.select(null);
+  try {
+    const res = engine.sugarCrush(0);
+    if (res && res.events && res.events.length) {
+      sugarMode = true;
+      await R.play(res.events, { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
+      sugarMode = false;
+    }
+  } catch (e) { console.error(e); sugarMode = false; }
+  if (token !== session) return;
+  syncFromEngine();
+  state = 'play';
+  if (engine.score >= passScore(level)) winFlow(); else loseFlow();
+}
 // 過關紀錄：目標一達成就先存（之後就算中途離開也不會白過關），Sugar Crush 結束後再用最終分數更新一次
 function recordWin(score) {
   const id = level.id;
-  const thr = level.stars || [];
-  const stars = clamp(thr.filter(s => score >= s).length, 1, 3);
+  const stars = starsFor(level, score);
   if (score > (Number(save.best[id]) || 0)) save.best[id] = score;
   save.stars[id] = Math.max(Number(save.stars[id]) || 0, stars);
   save.unlocked = Math.max(save.unlocked, Math.min(levelIdx + 2, LEVELS.length + 1));
@@ -997,12 +1025,19 @@ async function winFlow() {
   $('#btn-pause').disabled = true;
   const prevBest = Number(save.best[level.id]) || 0;
   const firstClear = save.unlocked < levelIdx + 2;
+  // 目標關：完成目標至少 1 顆星（分數不夠就先補到 1 星門檻，Candy Crush 也是這樣）
+  if (!isScoreLevel(level) && engine.score < passScore(level) && typeof engine.addScore === 'function') {
+    engine.addScore(passScore(level) - engine.score);
+    syncFromEngine();
+  }
   recordWin(engine.score);
   renderMoves();
   audio.play('win');
   $('#cheer').classList.add('party');
   const left = movesLeft;
-  await R.banner('毛絨狂歡！', left > 0 ? { sub: '剩下的步數變成條紋方塊！', duration: 1700 } : { duration: 1500 });
+  sugarBonus = left * 3000;
+  await R.banner(left > 0 ? SLOGANS.sugar.text : SLOGANS.win.text,
+    left > 0 ? { sub: `剩下 ${left} 步 × 3,000 分！`, duration: 1700 } : { duration: 1300 });
   if (token !== session) return;
   if (left > 0) {
     sugarMode = true;
@@ -1026,17 +1061,27 @@ async function winFlow() {
 }
 
 let winTimers = [];
+let sugarBonus = 0;
+const WIN_PHOTOS = ['assets/deco/sloth_orange.webp', 'assets/deco/sloth_pig.webp', 'assets/deco/group.webp'];
+function setPhoto(id, src) {
+  const im = document.getElementById(id);
+  if (!im) return;
+  im.classList.remove('broken');
+  im.src = src;
+}
 function showWin(stars, score, newBest, best, firstClear) {
   winTimers.forEach(clearTimeout);
   winTimers = [];
   const last = levelIdx >= LEVELS.length - 1;
-  $('#mw-title').textContent = stars === 3 ? '太完美了！' : '過關！';
+  $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
+  setPhoto('mw-photo', WIN_PHOTOS[Math.floor(Math.random() * WIN_PHOTOS.length)]);
   const bs = $$('#mw-stars .bs');
   bs.forEach(s => s.classList.remove('on'));
   $('#mw-stars').setAttribute('aria-label', `得到 ${stars} 顆星`);
   $('#mw-score').textContent = '0';
   $('#mw-best').hidden = !newBest;
-  $('#mw-best-line').textContent = !newBest && best > 0 ? `最高分 ${fmt(Math.max(best, score))}` : '';
+  const bonusLine = sugarBonus > 0 ? `剩餘步數獎勵 +${fmt(sugarBonus)}` : '';
+  $('#mw-best-line').textContent = [bonusLine, !newBest && best > 0 ? `最高分 ${fmt(Math.max(best, score))}` : ''].filter(Boolean).join('　');
   $('#mw-next').hidden = last;
   $('#mw-next').dataset.first = firstClear ? '1' : '';
   const toys = $('#mw-toys');
@@ -1083,6 +1128,8 @@ async function loseFlow() {
   R.select(null);
   $('#cheer').classList.add('sad');
   audio.play('lose');
+  $('#ml-title').textContent = '步數用完了';
+  setPhoto('ml-photo', SLOGANS.lose.img);
   await sleep(650);
   if (token !== session) return;
   const txt = $('#ml-text');
@@ -1105,6 +1152,10 @@ async function loseFlow() {
   } else {
     txt.textContent = `還差 ${fmt(Math.max(0, scoreTarget(level) - engine.score))} 分就過關了！`;
   }
+  const sl = el('span', 'lose-slogan');
+  sl.textContent = SLOGANS.lose.text;
+  txt.appendChild(document.createElement('br'));
+  txt.appendChild(sl);
   const toys = $('#ml-toys');
   toys.innerHTML = '';
   TITLE_TOYS.forEach((p, k) => { const d = el('span', 'mt'); d.style.setProperty('--k', k); d.appendChild(toyEl(p, 26)); toys.appendChild(d); });

@@ -4,7 +4,8 @@
 import { lay, BG_KINDS, MASKS, maskSize, mulberry, runsIn, replayEvents, sameBoard, kindStr, newCtx, checkResult } from './util.js';
 
 const params = new URLSearchParams(location.search);
-const { createEngine } = await import(params.get('engine') || '../js/engine.js');
+const engineMod = await import(params.get('engine') || '../js/engine.js');
+const { createEngine } = engineMod;
 const FUZZ = parseInt(params.get('fuzz') || '6', 10);
 const ONLY = params.get('only');
 
@@ -157,7 +158,7 @@ test('L -> wrapped at the swapped corner', () => {
   deq(cl.groups.map(g => [g.kind, g.shape, g.cells.length]), [[0, 'L', 5]]);
   deq(cl.created.map(x => [x.r, x.c, x.piece.kind, x.piece.special]), [[3, 2, 0, 'wrap']]);
   eq(cl.removed.length, 4);
-  eq(cl.gained, 150);
+  eq(cl.gained, 200, 'L = 200');
 });
 
 test('T -> wrapped at the swapped cell', () => {
@@ -166,7 +167,7 @@ test('T -> wrapped at the swapped cell', () => {
   const cl = firstClear(res);
   deq(cl.groups.map(g => [g.shape, g.cells.length]), [['T', 5]]);
   deq(cl.created.map(x => [x.r, x.c, x.piece.special]), [[3, 2, 'wrap']]);
-  eq(cl.gained, 150);
+  eq(cl.gained, 200, 'T = 200');
 });
 
 test('5 in a row -> colour bomb (kind -1) at the swapped cell', () => {
@@ -191,13 +192,13 @@ test('cascade: special goes to the middle of the run; cascade multiplier x2; jel
   eq(cs.length, 2, 'one cascade');
   deq(cs[0].groups.map(g => [g.kind, g.shape]), [[0, '3']]);
   deq(cs[0].jellyHits, [{ r: 4, c: 2, left: 1 }]);
-  eq(cs[0].gained, 60 + 100);
+  eq(cs[0].gained, 60 + 1000);
   eq(cs[1].cascade, 2);
   deq(cs[1].groups.map(g => [g.kind, g.shape]), [[1, '4']]);
   deq(cs[1].created, [{ r: 4, c: 1, piece: { id: id41, kind: 1, special: 'v' } }]);
   deq(cs[1].jellyHits, [{ r: 4, c: 2, left: 0 }]);
-  eq(cs[1].gained, 120 * 2 + 100);
-  eq(res.gained, 160 + 340);
+  eq(cs[1].gained, 120 * 2 + 1000);
+  eq(res.gained, 1060 + 1240);
   eq(e.stats.cascadesMax, 2);
   eq(e.stats.jellyLeft, 0);
   eq(e.stats.cleared[0], 3); eq(e.stats.cleared[1], 3);
@@ -225,8 +226,8 @@ test('cascade with a stripe: special avoids the striped cell, effect points use 
   deq(c2.groups.map(g => [g.shape, g.cells.length]), [['4', 4]]);
   deq(c2.created.map(x => [x.r, x.c, x.piece.kind, x.piece.special]), [[4, 2, 1, 'v']]);
   deq(c2.effects, [{ fx: 'line', dir: 'h', r: 4, c: 1 }]);
-  deq(c2.points, [{ r: 4, c: 2, value: 240 }, { r: 4, c: 1, value: 2 * 20 * 2 }]);
-  eq(c2.gained, 320);
+  deq(c2.points, [{ r: 4, c: 2, value: 240 }, { r: 4, c: 1, value: 2 * 60 * 2 }]);
+  eq(c2.gained, 480);
 });
 
 test('"+" shape (cascade / pre-existing) -> wrapped at the intersection, shape "T"', () => {
@@ -236,7 +237,7 @@ test('"+" shape (cascade / pre-existing) -> wrapped at the intersection, shape "
   const g1 = cl.groups.find(g => g.kind === 1), g0 = cl.groups.find(g => g.kind === 0);
   eq(g1.shape, 'T'); eq(g1.cells.length, 5); eq(g0.shape, '3');
   deq(cl.created.map(x => [x.r, x.c, x.piece.kind, x.piece.special]), [[2, 1, 1, 'wrap']]);
-  eq(cl.gained, 60 + 150);
+  eq(cl.gained, 60 + 200);
 });
 
 // ---------------------------------------------------------------- activation
@@ -253,8 +254,8 @@ test('activation chain: stripe hits wrap hits stripe', () => {
   for (const r of [0, 1, 5, 6]) expect[`${r},4`] = 'v';
   deq(Object.keys(cause).sort(), Object.keys(expect).sort(), 'removed cells');
   for (const k of Object.keys(expect)) eq(cause[k], expect[k], `cause at ${k}`);
-  deq(cl.points, [{ r: 3, c: 1, value: 60 + 4 * 20 }, { r: 3, c: 3, value: 6 * 20 }, { r: 4, c: 4, value: 4 * 20 }]);
-  eq(cl.gained, 340);
+  deq(cl.points, [{ r: 3, c: 1, value: 60 + 4 * 60 }, { r: 3, c: 3, value: 6 * 60 }, { r: 4, c: 4, value: 4 * 60 }]);
+  eq(cl.gained, 900);
   eq(e.stats.cleared[0], 3); eq(e.stats.cleared[2], 1); eq(e.stats.cleared[3], 1);
 });
 
@@ -287,7 +288,7 @@ test('combo striped + striped = row + column through the landing cell', () => {
   for (let i = 0; i < 7; i++) ok(cells.has(`3,${i}`) && cells.has(`${i},4`), 'row 3 and column 4');
   ok(cl.removed.every(x => x.cause === 'combo'), 'cause combo');
   eq(cl.jellyHits.length, 13);
-  eq(cl.gained, 13 * 20 + 13 * 100);
+  eq(cl.gained, 13 * 60 + 13 * 1000);
   eq(e.stats.jellyLeft, 49 - 13);
 });
 
@@ -357,7 +358,7 @@ test('combo bomb + bomb = whole board', () => {
   deq(cl.effects, [{ fx: 'board' }]);
   eq(cl.removed.length, 49);
   ok(cl.board.every(row => row.every(p => p === null)), 'board empty after the clear');
-  eq(cl.gained, 49 * 20);
+  eq(cl.gained, 49 * 60);
 });
 
 test('two specials always combo even without a match; bomb swaps are always valid', () => {
@@ -390,25 +391,41 @@ test('column with holes on top still refills from above; multiple spawns stack -
   deq(col1.map(s => [s.from.r, s.to.r]), [[-1, 4], [-2, 3], [-3, 2]]);
 });
 
-test('jelly: matched cells (incl. the new special) lose one layer, 100 points each, jellyLeft', () => {
+test('jelly: matched cells (incl. the new special) lose one layer, 1,000 points each, jellyLeft', () => {
   const e = mk(['______', '__0___', '00_0__', '______', '______'], { jelly: ['......', '......', '1221..', '......', '......'] });
   eq(e.stats.jellyLeft, 6);
   const res = play(e, P(1, 2), P(2, 2));
   const cl = firstClear(res);
   deq(cl.jellyHits.map(x => [x.r, x.c, x.left]).sort(), [[2, 0, 0], [2, 1, 1], [2, 2, 1], [2, 3, 0]]);
-  eq(cl.gained, 120 + 400);
+  eq(cl.gained, 120 + 4000);
   eq(e.stats.jellyLeft, 2);
   eq(e.jellyAt(2, 1), 1); eq(e.jellyAt(2, 2), 1); eq(e.jellyAt(2, 0), 0);
 });
 
 // ---------------------------------------------------------------- scoring
-test('scoring: 3 = 60, 4 = 120, L/T = 150, 5 = 200, effect pieces 20 x multiplier', () => {
+test('scoring (Candy Crush): 3 = 60, 4 = 120, L/T = 200, 5 = 200, effect pieces 60 x multiplier, jelly 1,000', () => {
   const e = mk(['______', '__0___', '00____', '______']);
   eq(play(e, P(1, 2), P(2, 2)).gained, 60);
   const e2 = mk(['_______', '_ _ 0 _ _ _ _', '_ 0h _ _ _ _ _', '_ 0 _ _ _ _ _', '_______']);
-  // vertical 3 with an "h" stripe inside: 60 + 6 other pieces of the row x 20
+  // vertical 3 with an "h" stripe inside: 60 + 6 other pieces of the row x 60
   const res = play(e2, P(1, 2), P(1, 1));
-  eq(firstClear(res).gained, 60 + 6 * 20);
+  eq(firstClear(res).gained, 60 + 6 * 60);
+  // the numbers are exported for the app / simulator
+  const { SCORE } = engineMod;
+  deq(SCORE.match, { '3': 60, '4': 120, L: 200, T: 200, '5': 200 });
+  eq(SCORE.effect, 60); eq(SCORE.jelly, 1000); eq(SCORE.sugarMove, 3000);
+  // multiplier x1, x2, x3: the 0s match (move), the 1 falls into a row of 1s (cascade 2), then the 2s line up (cascade 3)
+  const e3 = mk(['_____', '__2__', '__1__', '__2__', '__2__', '_101_', '__0__', '_0___']);
+  const cs = clears(play(e3, P(7, 1), P(7, 2)));
+  deq(cs.map(c => [c.cascade, c.groups.map(g => `${g.kind}:${g.shape}`).join(), c.gained]),
+    [[1, '0:3', 60], [2, '1:3', 120], [3, '2:3', 180]]);
+});
+
+test('addScore adds flat bonus points (main.js: completed goal level lifted to 1 star)', () => {
+  const e = mk(['______', '__0___', '00____', '______']);
+  eq(e.addScore(2500), 2500); eq(e.score, 2500);
+  eq(e.addScore(-50), 2500, 'never negative'); eq(e.addScore('x'), 2500);
+  eq(play(e, P(1, 2), P(2, 2)).gained, 60); eq(e.score, 2560);
 });
 
 // ---------------------------------------------------------------- shuffle, hint, sugar crush
@@ -461,31 +478,54 @@ test('findHint prefers bigger matches', () => {
   deq(cellSet([h3.a, h3.b]), cellSet([P(1, 3), P(1, 4)]));
 });
 
-test('sugarCrush: each move becomes a striped piece, then everything fires and scores', () => {
+test('sugarCrush: every move left = 3,000 + a random striped piece that fires (waves of 5), then leftovers fire', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 11, jelly: Array(8).fill('11111111') });
   const before = e.snapshot();
   const ctx = newCtx(e);
-  const res = e.sugarCrush(6);
+  const res = e.sugarCrush(7);
   const trs = res.events.filter(x => x.t === 'transform');
-  eq(trs.length, 6);
-  ok(trs.every(t => t.cells.length === 1 && 'hv'.includes(t.cells[0].piece.special)), 'random striped');
-  eq(new Set(trs.map(t => t.cells[0].piece.id)).size, 6, 'six different pieces');
-  ok(res.gained > 6 * 7 * 20, `gained ${res.gained}`);
+  eq(trs.length, 7, 'one transform per move');
+  ok(trs.every(t => t.sugar === true && t.gained === 3000 && t.cells.length === 1 && 'hv'.includes(t.cells[0].piece.special)), 'random striped, 3,000 each');
+  ok(trs.every(t => t.points.length === 1 && t.points[0].value === 3000 && t.points[0].r === t.cells[0].r && t.points[0].c === t.cells[0].c), 'label on the piece');
+  // waves: 5 transforms, the clear that fires them, …, then 2 transforms and their clear
+  const kinds = res.events.map(x => x.t);
+  deq(kinds.slice(0, 6), ['transform', 'transform', 'transform', 'transform', 'transform', 'clear']);
+  const firstWave = res.events[5];
+  for (const t of trs.slice(0, 5)) ok(firstWave.removed.some(x => x.piece.id === t.cells[0].piece.id), 'each converted piece fires in its wave');
+  const w2 = kinds.indexOf('transform', 6);
+  ok(w2 > 6 && kinds.slice(w2, w2 + 3).join() === 'transform,transform,clear', `second wave of 2 (${kinds.join()})`);
+  ok(res.gained > 7 * 3000 + 7 * 7 * 60, `gained ${res.gained}`);
   eq(e.score, res.gained);
   checkResult(e, before, { ok: true, ...res }, ctx, { sugar: true });
   ok(!e.snapshot().grid.flat().some(p => p && p.special !== 'none'), 'no special left');
   deq(e.sugarCrush(0).events, [], 'sugarCrush(0) does nothing on a board without specials');
+  // sugarCrush(0) on a board with specials: they fire (a score level ran out of moves), no bonus
+  const e0 = mk(['_ _ _ _ _ _', '_ 0h _ _ _ _', '_ _ _ _ _ _', '_ _ _ 1w _ _', '_ _ _ _ _ _']);
+  const b0 = e0.snapshot(), c0 = newCtx(e0);
+  const r0 = e0.sugarCrush(0);
+  checkResult(e0, b0, { ok: true, ...r0 }, c0, { sugar: true });
+  ok(!r0.events.some(x => x.t === 'transform'), 'no transform for 0 moves');
+  eq(r0.events[0].t, 'clear');
+  eq(r0.events[0].removed.length, 6 + 9, 'row 1 + the 3x3 around (3,3)');
+  eq(r0.events[0].gained, 15 * 60, 'effect pieces 60 each');
   // specials made by sugar-crush cascades are fired too, until none is left
   let rounds = 0;
   for (let seed = 1; seed <= 40; seed++) {
     const e2 = createEngine({ kinds: [0, 1, 2, 3], seed, antiCascade: 0 });
     const b2 = e2.snapshot(), c2 = newCtx(e2);
-    const r2 = e2.sugarCrush(10);
+    const r2 = e2.sugarCrush(12);
     checkResult(e2, b2, { ok: true, ...r2 }, c2, { sugar: true });
     ok(!e2.snapshot().grid.flat().some(p => p && p.special !== 'none'), `seed ${seed}: special left after sugarCrush`);
+    eq(r2.events.filter(x => x.t === 'transform').length, 12, 'one transform per move');
     rounds += r2.events.filter(x => x.t === 'clear' && x.cascade === 1).length;
   }
-  ok(rounds > 40, 'some sugar crushes needed more than one round');
+  ok(rounds > 40 * 3, 'three waves (5 + 5 + 2) and some leftover rounds');
+  // a board with no normal piece left still pays 3,000 per move
+  const eb = createEngine({ kinds: [0, 1, 2], layout: ['B B B', 'B B B'], seed: 2 });
+  const bb = eb.snapshot(), cb = newCtx(eb);
+  const rb = eb.sugarCrush(2);
+  checkResult(eb, bb, { ok: true, ...rb }, cb, { sugar: true });
+  ok(rb.events.slice(0, 2).every(x => x.t === 'transform' && x.cells.length === 0 && x.gained === 3000), 'empty transforms still pay');
 });
 
 // ---------------------------------------------------------------- statistics

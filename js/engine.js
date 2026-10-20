@@ -31,13 +31,26 @@
 //   bomb's own cell. Causes in `removed`: 'match' (in a match group), 'h' | 'v' | 'wrap' | 'bomb'
 //   (hit by that special's effect, including bomb targets), 'combo' (the swapped specials consumed by
 //   a combo, and cells hit by a striped/wrapped combo or bomb+bomb).
-// * points[] labels: one per match group, one per firing special / combo (sum of its 20 × mult),
-//   one per jelly layer (100); labels on the same cell are merged. sum(points) === gained.
+// * Scoring = Candy Crush (exported as SCORE):
+//     match group   3 in a row 60 · 4 in a row 120 · L / T (wrapped) 200 · 5 in a row (colour bomb) 200
+//     each piece removed by a special effect or a combo (not part of a match group) 60
+//     both of the above × the step's cascade multiplier (1 for the move itself, 2 for the first free cascade, …)
+//     each jelly layer removed 1,000 (no multiplier)
+//     sugarCrush: each move left 3,000 (flat)
+// * points[] labels: one per match group, one per firing special / combo (sum of its 60 × mult),
+//   one per jelly layer (1,000); labels on the same cell are merged. sum(points) === gained.
 // * findHint() / hasValidMove() never touch the PRNG, so calling them does not change the game.
 //   findHint prefers combos, then bigger matches, matches that fire specials, and matches on jelly.
-// * sugarCrush(n): one `transform` event per converted piece, then repeated rounds of
-//   "fire every special on the board" (clear, cascade 1) + gravity/cascades until no special is left.
+// * sugarCrush(n) — the end-of-level bonus (Candy Crush "Sugar Crush"), in waves of up to SUGAR_WAVE moves:
+//     for each move of the wave: one `transform` event { cells: [{ r, c, piece }] (a random normal piece became
+//       striped h / v; [] if no normal piece is left), sugar: true, gained: 3000, points: [{ r, c, value: 3000 }] }
+//     then one clear (cascade 1) that fires exactly the pieces this wave converted (their effects may set off
+//       other specials), gravity, free cascades (cascade 2, 3, …);
+//   after the last wave: rounds of "fire every special still on the board" (clear, cascade 1) + gravity /
+//   cascades until no special is left. sugarCrush(0) only does that last part (used when a score level runs out
+//   of moves). Sugar-crush transforms are the only events besides `clear` that carry `gained` / `points`.
 //   No shuffle is appended at the end of sugarCrush.
+// * addScore(n): adds n bonus points to the score (main.js lifts a completed goal level to 1 star with it).
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
@@ -47,9 +60,18 @@
 //   rows/cols default to the layout size. The layout is used as-is (it may contain matches).
 // ---------------------------------------------------------------------------------------------
 
-const SHAPE_POINTS = { '3': 60, '4': 120, L: 150, T: 150, '5': 200 };
-const EFFECT_POINTS = 20;
-const JELLY_POINTS = 100;
+// Candy Crush scoring (see the header). main.js / tests read the numbers from here.
+export const SCORE = Object.freeze({
+  match: Object.freeze({ '3': 60, '4': 120, L: 200, T: 200, '5': 200 }),
+  effect: 60,        // each piece removed by a special effect / combo, × cascade multiplier
+  jelly: 1000,       // each jelly layer
+  sugarMove: 3000,   // each move left in sugarCrush
+});
+const SHAPE_POINTS = SCORE.match;
+const EFFECT_POINTS = SCORE.effect;
+const JELLY_POINTS = SCORE.jelly;
+const SUGAR_MOVE_POINTS = SCORE.sugarMove;
+const SUGAR_WAVE = 5;      // sugarCrush converts up to this many moves, fires them, then the next wave
 const NONE = 'none';
 
 export function mulberry32(seed) {
@@ -642,17 +664,42 @@ export function createEngine(opts = {}) {
     hasValidMove,
     shuffle: () => [shuffleInternal()],
 
+    addScore(points) {
+      const v = Math.max(0, Math.round(Number(points) || 0));
+      score += v;
+      return score;
+    },
+
     sugarCrush(movesLeft) {
       const events = [];
-      const n = Math.max(0, Math.floor(movesLeft || 0));
-      for (let i = 0; i < n; i++) {
-        const normals = [];
-        forCells((r, c) => { const p = grid[r][c]; if (p && p.kind >= 0 && p.special === NONE) normals.push({ r, c }); });
-        if (!normals.length) break;
-        const { r, c } = normals[rand(normals.length)];
-        grid[r][c].special = rng() < 0.5 ? 'h' : 'v';
-        events.push(ev({ t: 'transform', cells: [{ r, c, piece: cp(grid[r][c]) }] }));
+      let left = Math.max(0, Math.floor(movesLeft || 0));
+      // waves: convert up to SUGAR_WAVE moves into striped pieces (3,000 each), fire exactly those, let it settle
+      while (left > 0) {
+        const wave = Math.min(SUGAR_WAVE, left);
+        left -= wave;
+        const lit = [];
+        for (let i = 0; i < wave; i++) {
+          const normals = [];
+          forCells((r, c) => { const p = grid[r][c]; if (p && p.kind >= 0 && p.special === NONE) normals.push({ r, c }); });
+          if (!normals.length) {
+            events.push(ev({ t: 'transform', cells: [], sugar: true, gained: SUGAR_MOVE_POINTS, points: [] }));
+            continue;
+          }
+          const { r, c } = normals[rand(normals.length)];
+          grid[r][c].special = rng() < 0.5 ? 'h' : 'v';
+          lit.push({ r, c });
+          events.push(ev({ t: 'transform', cells: [{ r, c, piece: cp(grid[r][c]) }], sugar: true,
+            gained: SUGAR_MOVE_POINTS, points: [{ r, c, value: SUGAR_MOVE_POINTS }] }));
+        }
+        if (!lit.length) continue;
+        const st = newStep(1);
+        for (const { r, c } of lit) { const p = grid[r][c]; if (p && p.special !== NONE) hit(st, r, c, p.special, { r, c }); }
+        runQueue(st);
+        events.push(finishStep(st));
+        fall(events);
+        settle(events, 2, null);
       }
+      // then every special still on the board (left by the player or made by cascades) fires, until none is left
       for (let round = 0; round < 30; round++) {
         const st = newStep(1);
         forCells((r, c) => { const p = grid[r][c]; if (p && p.special !== NONE) hit(st, r, c, p.special, { r, c }); });

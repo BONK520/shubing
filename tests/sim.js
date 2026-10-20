@@ -1,8 +1,9 @@
 // Balance simulation. Open tests/sim.html or run: python tests/run_tests.py --sim [--games 300]
 //
 // 預設（?mode=levels）：每一關讓兩種玩家各玩 N 局（tests/sim.bots.js：casual / decent），
-//   流程和 js/main.js 一模一樣（目標一達成就結束 → Sugar Crush → 星星），每局是不同的「第 n 次玩」盤面。
-//   印出過關率、1/2/3 星比例和最終分數，並對照平衡目標（下面的 TARGETS）。
+//   流程和 js/main.js 一模一樣（Candy Crush 規則：分數關用完步數 → 剩下的特殊方塊引爆 → 分數 ≥ stars[0] 過關；
+//   目標關一達成就結束 → 補到 stars[0] → 薯餅狂歡（每剩 1 步 3,000 + 條紋方塊）→ 星星），每局是不同的「第 n 次玩」盤面。
+//   印出過關率、1/2/3 星比例和最終分數，並對照平衡目標（targetsFor）。
 //   ?games=300  ?profiles=casual,decent  ?only=1,5,12
 // ?mode=api  ：不自動跑，給工具呼叫 window.simLevels(levels, { games, profiles, start })。
 // ?mode=kinds：舊的「種類數 × 防連鎖」表（greedy / random 機器人，?games=60&moves=20）。
@@ -18,11 +19,12 @@ const pad = (s, n) => String(s).padStart(n);
 const pct = x => `${Math.round(100 * x)}%`;
 
 // ---------- balance targets (per level) ----------
-// decent: pass ≥ 97%, 3★ ≥ 70%.  casual: pass ≥ 85% (≥ 75% on 12–15), 2+★ ≥ 60%, 3★ ≥ 35% (≥ 50% on 1–5).
+// 三星要是「照著玩就拿得到」的標準：
+// decent: pass ≥ 97%, 3★ ≥ 80%.  casual: pass ≥ 88%, 3★ ≥ 45% (≥ 60% on 1–5).
 export function targetsFor(id) {
   return {
-    decent: { pass: 0.97, s3: 0.70 },
-    casual: { pass: id >= 12 ? 0.75 : 0.85, s2: 0.60, s3: id <= 5 ? 0.50 : 0.35 },
+    decent: { pass: 0.97, s3: 0.80 },
+    casual: { pass: 0.88, s3: id <= 5 ? 0.60 : 0.45 },
   };
 }
 
@@ -117,8 +119,8 @@ async function levelsMain() {
   const head = ' 關 步數 ' + wpad('目標', 29) + wpad('星星門檻', 19) + '| ' +
     profiles.map(p => `${p.padEnd(6)}  過關  ★2+   ★3 剩步 最終分數 p25/p50/p75`).join(' | ');
   const lines = [
-    `毛絨消消樂 關卡模擬 — 每關每種玩家 ${games} 局，流程同 main.js：達成目標就結束 → 毛絨狂歡（sugarCrush）→ 星星（過關至少 1 顆）`,
-    'casual = 60% 亂走 + 40% 眼前最好的一步；decent = 每步挑最好的（會找特殊方塊和組合技）。★2+ / ★3 = 拿到至少 2 / 3 顆星的局數比例（沒過關算 0 顆）',
+    `毛絨消消樂 關卡模擬 — 每關每種玩家 ${games} 局，流程同 main.js（Candy Crush 規則）：分數關用完步數 → 剩下的特殊方塊引爆 → ≥ stars[0] 過關；目標關達成就結束 → 補到 stars[0] → 薯餅狂歡（每剩 1 步 3,000）→ 星星`,
+    'casual = 60% 亂走 + 40% 眼前最好的一步；decent = 每步挑最好的（會找特殊方塊和組合技）。★2+ / ★3 = 拿到至少 2 / 3 顆星的局數比例（沒過關算 0 顆）。剩步 = 目標關達成時剩下的步數（中位數；分數關一定是 0）',
     `validateLevels: ${problems.length ? problems.join('; ') : 'OK'}`,
   ];
   const misses = [];

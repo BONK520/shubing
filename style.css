@@ -8,6 +8,9 @@
   --panel-edge: #ffffff;
   --shadow: 0 10px 26px rgba(92, 38, 128, .22);
   --gold: #ffc928;
+  --pink-rim: #d42a80;     /* 糖果外框（深粉） */
+  --bounce: cubic-bezier(.3, 1.8, .45, 1);   /* 彈一下的緩動 */
+  --stk-shadow: drop-shadow(0 6px 7px rgba(70, 20, 110, .3));   /* 照片貼紙的影子 */
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
@@ -27,7 +30,7 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
 body {
   font-family: var(--font);
   color: var(--ink);
-  background: #9cd4ff;
+  background: #6cc4ff;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
@@ -46,14 +49,14 @@ svg use { pointer-events: none; }
 .sky {
   position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
   background:
-    radial-gradient(120% 60% at 50% -10%, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 60%),
-    radial-gradient(70% 40% at 0% 100%, rgba(255, 150, 210, .55), rgba(255, 150, 210, 0) 70%),
-    radial-gradient(70% 40% at 100% 85%, rgba(190, 150, 255, .55), rgba(190, 150, 255, 0) 70%),
-    linear-gradient(176deg, #7fd0ff 0%, #9fc4ff 34%, #c7a9ff 66%, #ffa9d4 100%);
+    radial-gradient(120% 55% at 50% -12%, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(75% 42% at 0% 100%, rgba(255, 95, 185, .62), rgba(255, 95, 185, 0) 70%),
+    radial-gradient(75% 42% at 100% 82%, rgba(160, 95, 255, .6), rgba(160, 95, 255, 0) 70%),
+    linear-gradient(176deg, #3fc0ff 0%, #6eaaff 30%, #a97cff 62%, #ff7cc4 100%);
 }
 .sky::after { /* 糖果圓點 */
   content: ''; position: absolute; inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, .22) 2.2px, transparent 2.8px);
+  background-image: radial-gradient(rgba(255, 255, 255, .26) 2.2px, transparent 2.8px);
   background-size: 34px 34px;
   mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 100%);
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 30%, #000 100%);
@@ -101,72 +104,91 @@ svg use { pointer-events: none; }
   display: flex; flex-direction: column;
   padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l));
   opacity: 0; visibility: hidden; pointer-events: none;
-  transform: scale(1.03);
-  transition: opacity .35s ease, transform .35s ease, visibility 0s linear .35s;
+  transform: scale(.96) translateY(10px);
+  transition: opacity .3s ease, transform .3s ease-in, visibility 0s linear .3s;
 }
-.screen.active {
+.screen.active {   /* 進場：從小一點彈到原大小（過頭一點再回來） */
   opacity: 1; visibility: visible; pointer-events: auto; transform: none;
-  transition: opacity .35s ease, transform .35s ease, visibility 0s;
+  transition: opacity .3s ease, transform .5s cubic-bezier(.3, 1.5, .5, 1), visibility 0s;
 }
 
 .topbar { display: flex; align-items: center; gap: 10px; min-height: 50px; flex: none; }
 .spacer { flex: 1; }
 
 /* ---------- 按鈕 ---------- */
+/* 糖果按鈕：深色細外框、上半部亮面＋小亮點、底下一條深色厚邊；按下去會壓扁、放開彈回來 */
 .btn {
-  --c1: #ff86c4; --c2: #ff4f9e; --sh: #c42a74;
+  --c1: #ffa8d6; --c2: #ff52a6; --c3: #e8288a; --sh: #a3125c; --rim: #c41f74;
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 52px; padding: 10px 28px;
-  border: 0; border-radius: 999px; cursor: pointer;
-  font-weight: 800; font-size: 20px; letter-spacing: .04em; line-height: 1.1;
+  border: 2.5px solid var(--rim); border-radius: 999px; cursor: pointer;
+  font-weight: 900; font-size: 20px; letter-spacing: .04em; line-height: 1.1;
   color: #fff; text-decoration: none; white-space: nowrap;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, .16);
-  background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 100%);
-  box-shadow: 0 6px 0 var(--sh), 0 12px 18px rgba(80, 20, 90, .28), inset 0 -4px 0 rgba(0, 0, 0, .08), inset 0 2px 0 rgba(255, 255, 255, .55);
-  transition: transform .09s ease, box-shadow .09s ease, filter .15s;
+  text-shadow: 0 2px 0 var(--rim), 0 0 4px rgba(0, 0, 0, .12);
+  background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 50%, var(--c3) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, .8),
+    inset 0 -6px 0 rgba(0, 0, 0, .14),
+    0 6px 0 var(--sh),
+    0 13px 18px rgba(70, 15, 95, .34);
+  transition: transform .34s var(--bounce), box-shadow .12s ease, filter .15s;
   overflow: hidden;
   isolation: isolate;
 }
-.btn::before { /* 上方亮面 */
-  content: ''; position: absolute; left: 12%; right: 12%; top: 4px; height: 44%;
-  border-radius: 999px; z-index: -1;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .05));
+.btn::before { /* 上方亮面（像糖果的反光） */
+  content: ''; position: absolute; left: 6%; right: 6%; top: 2px; height: 50%;
+  border-radius: 999px 999px 50% 50% / 999px 999px 30% 30%; z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .95) 0%, rgba(255, 255, 255, .5) 55%, rgba(255, 255, 255, .18) 100%);
 }
-.btn:hover { filter: brightness(1.05) saturate(1.05); }
+.btn::after { /* 左上角的小亮點 */
+  content: ''; position: absolute; left: max(14px, 8%); top: 17%; width: 13px; height: 7px; border-radius: 50%;
+  background: #fff; transform: rotate(-22deg); z-index: -1;
+}
 .btn:active, .btn.pressed {
-  transform: translateY(5px);
-  box-shadow: 0 1px 0 var(--sh), 0 4px 8px rgba(80, 20, 90, .25), inset 0 -3px 0 rgba(0, 0, 0, .08), inset 0 2px 0 rgba(255, 255, 255, .5);
+  transform: translateY(5px) scale(1.05, .9);
+  transition-duration: .07s;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, .75),
+    inset 0 -3px 0 rgba(0, 0, 0, .14),
+    0 1px 0 var(--sh),
+    0 4px 8px rgba(70, 15, 95, .3);
 }
 .btn[disabled] { filter: grayscale(.8) brightness(.95); cursor: default; }
-.btn.green  { --c1: #8eea64; --c2: #3fc54e; --sh: #23903a; }
-.btn.blue   { --c1: #6fd0ff; --c2: #2f9bf0; --sh: #1b6cb8; }
-.btn.purple { --c1: #c49bff; --c2: #8e5cf2; --sh: #6436c0; }
-.btn.orange { --c1: #ffc65a; --c2: #ff8f2a; --sh: #cc6410; }
+.btn.green  { --c1: #b8f97c; --c2: #5ad44a; --c3: #2bab3a; --sh: #157427; --rim: #1f8a33; }
+.btn.blue   { --c1: #8fe6ff; --c2: #38aef8; --c3: #1c80e6; --sh: #0d52a3; --rim: #1665c2; }
+.btn.purple { --c1: #dfb8ff; --c2: #a26cff; --c3: #7a3cf0; --sh: #4b1ca8; --rim: #5c28c4; }
+.btn.orange { --c1: #ffe27e; --c2: #ffa22e; --c3: #f5700e; --sh: #ad4506; --rim: #cf560a; }
 .btn.xl { font-size: 26px; min-height: 64px; padding: 12px 40px; }
-.btn .bi { width: 1.05em; height: 1.05em; fill: currentColor; flex: none; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .15)); }
+.btn.xl:not([disabled]) { animation: ctaPulse 1.8s ease-in-out infinite; }   /* 主要按鈕輕輕「呼吸」 */
+@keyframes ctaPulse { 0%, 100% { scale: 1; } 50% { scale: 1.045; } }
+.btn .bi { width: 1.05em; height: 1.05em; fill: currentColor; flex: none; filter: drop-shadow(0 2px 0 var(--rim)); }
 
 .icon-btn {
+  --c1: #dcbcff; --c2: #9c62ff; --c3: #7336ea; --sh: #4a1ca6; --rim: #5a28c4;
   position: relative; flex: none;
   width: 48px; height: 48px; border-radius: 50%; border: 3px solid #fff; cursor: pointer;
   display: grid; place-items: center; padding: 0;
   color: #fff;
-  background: linear-gradient(180deg, #c8a6ff, #8f5ff0);
-  box-shadow: 0 4px 0 #6638c4, 0 8px 14px rgba(70, 20, 110, .3), inset 0 2px 0 rgba(255, 255, 255, .5);
-  transition: transform .09s, box-shadow .09s;
+  background:
+    radial-gradient(70% 45% at 50% 18%, rgba(255, 255, 255, .8), rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, var(--c1), var(--c2) 55%, var(--c3));
+  box-shadow: 0 0 0 2px var(--rim), 0 5px 0 2px var(--sh), 0 10px 14px 2px rgba(60, 15, 100, .3), inset 0 -4px 0 rgba(0, 0, 0, .14);
+  transition: transform .32s var(--bounce), box-shadow .1s;
 }
-.icon-btn svg { width: 24px; height: 24px; fill: currentColor; filter: drop-shadow(0 1.5px 0 rgba(0, 0, 0, .18)); }
-.icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #6638c4, 0 3px 6px rgba(70, 20, 110, .3), inset 0 2px 0 rgba(255, 255, 255, .5); }
-.icon-btn.dbg { background: linear-gradient(180deg, #ffe17a, #ffad1f); box-shadow: 0 4px 0 #c97c00; font-size: 22px; }
+.icon-btn svg { width: 24px; height: 24px; fill: currentColor; filter: drop-shadow(0 1.5px 0 var(--rim)); }
+.icon-btn:active { transform: translateY(4px) scale(1.08, .9); transition-duration: .07s; box-shadow: 0 0 0 2px var(--rim), 0 1px 0 2px var(--sh), 0 3px 6px 2px rgba(60, 15, 100, .3), inset 0 -3px 0 rgba(0, 0, 0, .14); }
+.icon-btn.dbg { --c1: #fff2a0; --c2: #ffc43a; --c3: #ff9a12; --sh: #a85f00; --rim: #c27400; font-size: 22px; }
 
-.pill {
+.pill { /* 白色糖果牌：白邊外面一圈粉紅糖衣＋底下厚邊 */
   display: inline-flex; align-items: center; gap: 6px;
   height: 40px; padding: 0 18px; border-radius: 999px;
-  background: var(--panel); border: 3px solid #fff;
-  box-shadow: 0 6px 14px rgba(92, 38, 128, .18);
+  background: linear-gradient(180deg, #fff 0%, #fff7fc 50%, #ffe5f3 100%);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2.5px #ff6fb3, 0 4px 0 2.5px var(--pink-rim), 0 10px 14px rgba(92, 38, 128, .24), inset 0 -3px 0 rgba(255, 111, 179, .16);
   font-weight: 800; font-size: 18px; color: var(--ink);
   white-space: nowrap;
 }
-.pill b { font-size: 22px; color: #e83e8c; }
+.pill b { font-size: 22px; color: #e8287f; }
 
 /* ---------- 大字 Logo ---------- */
 .logo {
@@ -221,22 +243,44 @@ svg use { pointer-events: none; }
 /* ---------- 載入畫面 ---------- */
 #scr-loading { justify-content: center; align-items: center; }
 .load-wrap { width: min(86%, 360px); display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.load-deco { /* 進度條上面跳跳的貼紙（薯餅頂橘子） */
+  position: relative; height: clamp(92px, 17vh, 140px); width: 100%;
+  display: flex; justify-content: center; align-items: flex-end;
+  margin: -8px 0 -12px;
+}
+.load-deco img {
+  position: relative; z-index: 1; height: 100%; width: auto; max-width: 70%; object-fit: contain;
+  transform-origin: 50% 100%; filter: var(--stk-shadow);
+  animation: stkHop .95s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+.load-deco::after { /* 地上的影子 */
+  content: ''; position: absolute; left: 50%; bottom: -4px; width: 46%; max-width: 110px; height: 12px; margin-left: min(-23%, -55px);
+  border-radius: 50%; background: rgba(90, 30, 140, .2);
+  animation: shadowPulse .95s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+@keyframes stkHop {
+  0%, 100% { transform: translateY(0) scale(1.1, .88); }
+  14%      { transform: translateY(-6%) scale(.94, 1.07); }
+  48%      { transform: translateY(-24%) scale(1, 1) rotate(-4deg); }
+  82%      { transform: translateY(-3%) scale(.97, 1.04) rotate(2deg); }
+}
 .loadbar {
-  width: 100%; height: 26px; border-radius: 999px; padding: 4px;
-  background: rgba(255, 255, 255, .85); border: 3px solid #fff;
-  box-shadow: var(--shadow), inset 0 2px 4px rgba(90, 40, 120, .15);
+  width: 100%; height: 28px; border-radius: 999px; padding: 4px;
+  background: linear-gradient(180deg, #f3e8ff, #fff); border: 3px solid #fff;
+  box-shadow: 0 0 0 2.5px #ff6fb3, 0 4px 0 2.5px var(--pink-rim), var(--shadow), inset 0 2px 4px rgba(90, 40, 120, .2);
 }
 .loadbar-fill {
   height: 100%; width: 0%; border-radius: 999px;
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, .55) 0 40%, rgba(255, 255, 255, 0) 41%),
     repeating-linear-gradient(-45deg, rgba(255, 255, 255, .35) 0 10px, rgba(255, 255, 255, 0) 10px 20px),
-    linear-gradient(180deg, #ff9fd0, #ff4f9e);
-  background-size: 28px 28px, 100% 100%;
+    linear-gradient(180deg, #ffa8d6, #ff4fa3 60%, #e8288a);
+  background-size: 100% 100%, 28px 28px, 100% 100%;
   animation: stripes .8s linear infinite;
   transition: width .25s ease;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .55);
+  box-shadow: inset 0 -2px 0 rgba(160, 20, 90, .25);
 }
-@keyframes stripes { to { background-position: 28px 0, 0 0; } }
+@keyframes stripes { to { background-position: 0 0, 28px 0, 0 0; } }
 .load-text { margin: 0; font-weight: 800; font-size: 18px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(120, 50, 150, .45); line-height: 1.5; }
 .load-text small { font-size: 14px; font-weight: 700; }
 
@@ -880,3 +924,42 @@ svg use { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- 照片貼紙裝飾（assets/deco/，主人的玩具照片去背） ---------- */
+@keyframes stk-wobble {
+  0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); }
+  50% { transform: rotate(calc(var(--r, 0deg) * -0.5)) translateY(-7px); }
+}
+/* 標題畫面：角落探頭的貼紙，在標題和按鈕後面 */
+.title-main { position: relative; z-index: 1; }
+.title-stk {
+  position: absolute; z-index: 0; pointer-events: none; user-select: none;
+  height: auto; filter: drop-shadow(0 6px 10px rgba(70, 20, 110, .22));
+  animation: stk-wobble 4.6s ease-in-out infinite;
+}
+.stk-pig { --r: -12deg; width: clamp(62px, 17vw, 108px); left: calc(4px + var(--safe-l)); top: calc(70px + var(--safe-t)); }
+.stk-orange { --r: 9deg; width: clamp(92px, 25vw, 150px); right: calc(-14px + var(--safe-r)); top: calc(96px + var(--safe-t)); animation-delay: -2.1s; }
+@media (max-height: 700px) { .stk-orange { width: clamp(80px, 21vw, 120px); top: calc(64px + var(--safe-t)); } }
+
+/* 地圖：高度 0 的一層接在地圖最底下，用 bottom 往上量（MAP_BOTTOM 110px、每關 MAP_GAP 116px） */
+.map-inner { z-index: 1; }
+.map-deco { position: relative; height: 0; z-index: 0; pointer-events: none; }
+.md {
+  position: absolute; left: var(--x); bottom: calc(110px + var(--u) * 116px);
+  height: auto; transform: translate(-50%, 50%) rotate(var(--r, 0deg));
+  filter: drop-shadow(0 6px 10px rgba(70, 20, 110, .2)); opacity: .96;
+}
+.md-s { width: 58px; } .md-m { width: 98px; } .md-l { width: 128px; }
+
+/* 過關卡：貼紙照片從右上角探出來；失敗卡：照片取代那排難過的玩具 */
+.modal-photo { display: block; height: auto; pointer-events: none; filter: drop-shadow(0 8px 14px rgba(60, 20, 100, .28)); }
+.modal-photo.broken, .modal-photo:not([src]) { display: none; }
+.win-card .modal-photo {
+  position: absolute; z-index: 3; width: clamp(92px, 26vw, 124px); top: -64px; right: -18px;
+  --r: 10deg; transform: rotate(var(--r));
+}
+.modal.open .win-card .modal-photo { animation: photo-pop .55s .35s cubic-bezier(.3, 1.6, .5, 1) both, stk-wobble 4s 1s ease-in-out infinite; }
+@keyframes photo-pop { from { transform: scale(.2) rotate(-20deg); opacity: 0; } to { transform: rotate(var(--r)); opacity: 1; } }
+.lose-card .modal-photo { width: clamp(140px, 44vw, 190px); margin: -4px auto 0; }
+.lose-card .modal-photo:not(.broken)[src] ~ .modal-toys { display: none; }
+.lose-slogan { display: inline-block; margin-top: 6px; font-weight: 800; color: #b0568f; }

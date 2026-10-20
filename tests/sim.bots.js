@@ -1,10 +1,13 @@
 // 關卡平衡模擬的核心：照 js/main.js 的流程玩一整關（tests/sim.js、tests/sim.worker.js 都用這份）。
 //
-// 跟真的遊戲一樣的地方（main.js startLevel / afterMove / goalMet / winFlow / recordWin）：
+// 跟真的遊戲一樣的地方（main.js startLevel / afterMove / goalMet / winFlow / scoreLevelEnd / recordWin，
+// 規則本身在 js/levels.js 的 isScoreLevel / passScore / starsFor，兩邊共用）：
 //   * 盤面：同樣的 kinds、mask、jelly、antiCascade；第 n 次玩（attempt n）用 main.js 同一條 seed 公式，
 //     attempt 0 = level.seed（第一次打開大家看到的盤面），之後每次「再玩一次」換一個盤面。
-//   * 每走一步就檢查目標；一達成就結束（分數關 = 分數 ≥ goal.target），剩下的步數 → engine.sugarCrush(left)。
-//   * 星星 = 最終分數超過幾個門檻，但只要過關至少 1 顆（clamp 1–3）；沒過關 = 0 顆。
+//   * 分數關：步數全部用完（到了目標也繼續）→ engine.sugarCrush(0)（剩下的特殊方塊引爆）→ 分數 ≥ stars[0] 過關。
+//   * 目標關：每走一步就檢查目標，一達成就結束 → 分數不到 stars[0] 先 addScore 補到 stars[0]
+//     → engine.sugarCrush(剩下步數)（每步 3,000 + 條紋方塊）。
+//   * 星星 = starsFor(最終分數)（過關至少 1 顆）；沒過關 = 0 顆。
 //
 // 兩種「像真人」的玩家（都不往後看，只看這一步交換後馬上連成的線）：
 //   casual = 60% 隨便挑一個能走的步，40% 挑眼前最好的一步（會看目標：果凍格 / 還要收集的毛絨）
@@ -12,6 +15,9 @@
 //            稍微偏好在下面消（比較容易連鎖）
 import { createEngine } from '../js/engine.js';
 import { PIECES } from '../js/pieces.js';
+import { isScoreLevel, passScore, starsFor } from '../js/levels.js';
+
+export { isScoreLevel, passScore, starsFor };
 
 export const kindOf = id => PIECES.findIndex(p => p.id === id);
 
@@ -42,18 +48,12 @@ export function makeEngine(level, attempt) {
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
   return createEngine(opts);
 }
-// main.js goalMet() / scoreTarget()
+// main.js goalMet()（目標關；分數關沒有「提早達成」）
 export function goalMet(level, e) {
   const g = level.goal || {};
   if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (e.stats.cleared[kindOf(id)] || 0) >= n);
   if (g.type === 'jelly') return e.stats.jellyLeft <= 0;
-  const target = g.target || (level.stars && level.stars[0]) || 0;
-  return e.score >= target;
-}
-// main.js recordWin()
-export function starsFor(level, score) {
-  const thr = level.stars || [];
-  return Math.max(1, Math.min(3, thr.filter(s => score >= s).length));
+  return false;
 }
 
 // ---------- players ----------
@@ -210,20 +210,33 @@ export function pickMove(e, level, profile, rnd) {
 
 // One full level, exactly like the game ends it. Returns a compact record.
 // salt varies only the player's choices (same board), e.g. to replay attempt 0 many times.
+//   atGoal = score when the playing part ended (goal met / moves used up), before the bump and sugarCrush
 export function playLevel(level, profile, attempt, salt = 0) {
   const e = makeEngine(level, attempt);
   const rnd = mulberry((((level.id || 1) * 7919) ^ (attempt * 104729) ^ (salt * 15485863) ^ (profile === 'decent' ? 0x5bd1e995 : 0x1b873593)) >>> 0);
-  let movesLeft = level.moves, won = goalMet(level, e);
-  while (!won && movesLeft > 0) {
+  const scoreLevel = isScoreLevel(level);
+  let movesLeft = level.moves, done = !scoreLevel && goalMet(level, e);
+  while (!done && movesLeft > 0) {
     const mv = pickMove(e, level, profile, rnd);
     if (!mv) throw new Error(`L${level.id}: no valid move`);
     const res = e.swap(mv.a, mv.b);
     if (!res.ok) throw new Error(`L${level.id}: bot made an invalid move`);
     movesLeft--;
-    won = goalMet(level, e);
+    if (!scoreLevel) done = goalMet(level, e);
   }
   const atGoal = e.score;
-  if (won && movesLeft > 0) e.sugarCrush(movesLeft);
+  let won, left = 0;
+  if (scoreLevel) {
+    e.sugarCrush(0);                                   // leftover specials fire
+    won = e.score >= passScore(level);
+  } else {
+    won = done;
+    if (won) {
+      left = movesLeft;
+      if (e.score < passScore(level)) e.addScore(passScore(level) - e.score);
+      e.sugarCrush(left);
+    }
+  }
   const final = e.score;
-  return { won, used: level.moves - movesLeft, left: won ? movesLeft : 0, atGoal, final, stars: won ? starsFor(level, final) : 0 };
+  return { won, used: level.moves - movesLeft, left, atGoal, final, stars: won ? starsFor(level, final) : 0 };
 }

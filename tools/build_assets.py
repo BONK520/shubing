@@ -62,6 +62,11 @@ def glb_generator(path):
 
 
 # ---------------------------------------------------------------- 1. 模型
+def is_photo(p):
+    """照片方塊：assets.json 是 "source": "photo"，而且沒有放掃描檔（放了 tools/source/<id>.usdz 就改用掃描）"""
+    return p.get('source') == 'photo' and not os.path.exists(os.path.join(SRC, p['id'] + '.usdz'))
+
+
 def build_models(cfg, force):
     from usd_to_glb import convert
     from slim_usdz import slim
@@ -102,6 +107,9 @@ def build_models(cfg, force):
             continue
         # 輸出不是（或不再是）這台電腦上的掃描原檔轉的：清掉紀錄，之後放回同一個掃描檔也一定會重轉
         stamps.pop(i + '.glb', None); stamps.pop(i + '.usdz', None)
+        if p.get('source') == 'photo':          # 照片方塊沒有 3D 模型
+            kinds[i] = 'photo'
+            continue
         ag, au = os.path.join(A_MOD, i + '.glb'), os.path.join(A_MOD, i + '.usdz')
         if p.get('source') == 'placeholder':
             gen = glb_generator(ag)
@@ -143,6 +151,8 @@ def render_jobs(cfg):
     S, F = cfg['sprite'], cfg['spin']
     jobs = []
     for p in cfg['pieces']:
+        if is_photo(p):
+            continue
         url = f"/out/models/{p['id']}.glb"
         jobs.append((p['id'], [{'url': url}], merged_view(cfg, p, {'w': S['render'], 'h': S['render']})))
         sv = merged_view(cfg, p, p.get('spin', {}), {'w': F['render'], 'h': F['render']})
@@ -205,6 +215,10 @@ def postprocess(cfg):
     info = {}
     for p in cfg['pieces']:
         i, g = p['id'], p.get('grade')
+        if is_photo(p):
+            photo_piece(p)
+            info[i] = {}
+            continue
         static = rimg(i)
         pp.save_png(pp.sprite(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '.png'))
         frames = [rimg(f'{i}_s{k:02d}') for k in range(F['frames'])]
@@ -214,6 +228,8 @@ def postprocess(cfg):
                      F.get('webpQuality', 85))
         info[i] = dict(spinScale=round(float(ratio), 3))
         print(f'  {i}: sprite + spin（第 0 格大小 = 靜態圖的 {ratio:.2f} 倍）')
+    for e in cfg.get('deco', []):
+        photo_deco(e)
     for comp in ('trio', 'hero'):
         c = cfg[comp]
         layers = [dict(img=rimg(f"{comp}_{L['id']}"), h=L['h'], cx=L['cx'], by=L['by'], rot=L.get('rot', 0),
@@ -226,6 +242,35 @@ def postprocess(cfg):
     return info
 
 
+def photo_piece(p):
+    """照片方塊的貼紙。原照片（tools/source/photos/，不進 git）不在的話就沿用 assets/sprites 裡做好的"""
+    import photo_cut as pc
+    i, out = p['id'], os.path.join(A_SPR, p['id'] + '.png')
+    if not os.path.exists(os.path.join(pc.PHOTOS, p['photo'])):
+        if not os.path.exists(out):
+            raise SystemExit(f'找不到 {i} 的照片 tools/source/photos/{p["photo"]}，也沒有 assets/sprites/{i}.png')
+        print(f'  {i}: 沒有原照片，沿用 assets/sprites/{i}.png')
+        return
+    pp.save_png(pc.sticker_piece(pc.cut(p), 256, fill=p.get('fill', pp.FILL), g=p.get('grade')), out)
+    print(f'  {i}: 照片貼紙')
+
+
+def photo_deco(e):
+    """裝飾貼紙 / 照片（assets.json 的 deco）。原照片不在就沿用現成的檔案"""
+    import photo_cut as pc
+    out = os.path.join(ROOT, e['out'])
+    if not os.path.exists(os.path.join(pc.PHOTOS, e['photo'])):
+        print(f'  {e["out"]}: 沒有原照片，沿用現成的檔案' if os.path.exists(out) else f'  警告：{e["out"]} 沒有原照片也沒有檔案')
+        return
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    if e.get('kind') == 'photo':       # 不去背，只縮小（例如 3D 看看頁的照片卡片）
+        im = pc.resize_photo(os.path.join(pc.PHOTOS, e['photo']), e.get('max', 900))
+    else:
+        im = pc.sticker_rect(pc.cut(e), e.get('max', 512), g=e.get('grade'))
+    pc.save_webp(im, out, e.get('quality', 82))
+    print(f'  {e["out"]}: {im.size[0]}x{im.size[1]}')
+
+
 # ---------------------------------------------------------------- 4. 模型複製 + manifest
 def finish(cfg, kinds, info):
     import trimesh
@@ -234,6 +279,9 @@ def finish(cfg, kinds, info):
     pieces = []
     for p in cfg['pieces']:
         i = p['id']
+        if kinds[i] == 'photo':
+            pieces.append(dict(id=i, sprite=f'assets/sprites/{i}.png', photo=True))
+            continue
         for ext in ('glb', 'usdz'):
             copy_if_changed(os.path.join(MODELS, f'{i}.{ext}'), os.path.join(A_MOD, f'{i}.{ext}'))
         ext = trimesh.load(os.path.join(A_MOD, i + '.glb'), force='mesh').extents

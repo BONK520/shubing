@@ -49,6 +49,8 @@
   <section id="scr-loading" class="screen active" aria-label="載入中">
     <div class="load-wrap">
       <h1 class="logo logo-sm" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+      <!-- 貼紙照片（assets/deco/）：檔案不在就整個拿掉，不留空位 -->
+      <div class="load-deco" aria-hidden="true"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></div>
       <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
       <p class="load-text" id="load-text">毛絨玩具準備中…</p>
     </div>
@@ -56,6 +58,9 @@
 
   <!-- 標題 -->
   <section id="scr-title" class="screen" aria-label="標題畫面">
+    <!-- 角落的貼紙（主人的玩具照片去背）：在內容後面輕輕搖；圖不在就拿掉 -->
+    <img class="title-stk stk-pig" src="assets/deco/pig.webp" alt="" aria-hidden="true" decoding="async" onerror="this.remove()">
+    <img class="title-stk stk-orange" src="assets/deco/sloth_orange.webp" alt="" aria-hidden="true" decoding="async" onerror="this.remove()">
     <div class="topbar">
       <span class="spacer"></span>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
@@ -87,6 +92,18 @@
     </div>
     <div class="map-scroll" id="map-scroll">
       <div class="map-inner" id="map-inner"></div>
+      <!-- 地圖貼紙：高度 0 的一層貼在地圖最底下，用 bottom 往上量（第 1 關固定在離底 110px、每關 116px，跟 main.js 的 MAP_BOTTOM / MAP_GAP 一樣）。
+           --u = 第幾關的高度（0 = 第 1 關）、--x = 橫向位置；都放在路的旁邊空地，畫在路上面、關卡按鈕下面 -->
+      <div class="map-deco" aria-hidden="true">
+        <img class="md md-s" style="--u:.12;--x:86%;--r:8deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-l" style="--u:1.45;--x:19%;--r:-6deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-m" style="--u:3.9;--x:82%;--r:7deg" src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-s" style="--u:5.5;--x:12%;--r:-9deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-l" style="--u:7.45;--x:19%;--r:5deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-m" style="--u:9.9;--x:82%;--r:-7deg" src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-s" style="--u:11.5;--x:12%;--r:9deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
+        <img class="md md-l" style="--u:13.45;--x:19%;--r:-5deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
+      </div>
     </div>
   </section>
 
@@ -147,6 +164,8 @@
 <div class="modal" id="m-win" role="dialog" aria-modal="true" aria-labelledby="mw-title" aria-hidden="true">
   <div class="confetti" id="confetti" aria-hidden="true"></div>
   <div class="card win-card">
+    <!-- main.js 設 src（隨機一張貼紙照片）；沒有 src 或載入失敗就不顯示（不能 remove，下一關還要用） -->
+    <img id="mw-photo" class="modal-photo" alt="" decoding="async" onload="this.classList.remove('broken')" onerror="this.classList.add('broken')">
     <div class="ribbon"><span id="mw-title">過關！</span></div>
     <div class="big-stars" id="mw-stars" aria-label="得到星星">
       <svg class="bs" style="--k:0"><use href="#i-star"/></svg>
@@ -174,6 +193,8 @@
 <div class="modal" id="m-lose" role="dialog" aria-modal="true" aria-labelledby="ml-title" aria-hidden="true">
   <div class="card lose-card">
     <div class="ribbon sad"><span id="ml-title">步數用完了</span></div>
+    <!-- main.js 設 src（薯餅趴趴睡）；有照片時就不顯示下面那排難過的玩具 -->
+    <img id="ml-photo" class="modal-photo" alt="" decoding="async" onload="this.classList.remove('broken')" onerror="this.classList.add('broken')">
     <div class="modal-toys sad" id="ml-toys"></div>
     <p class="lose-text" id="ml-text"></p>
     <div class="btn-col">

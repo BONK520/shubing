@@ -6,8 +6,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TOOLS)
 # 和 js/pieces.js（SPEC §2.1）一樣的底色
-COLORS = {'dog': '#8fd3ff', 'sloth': '#9be8c8', 'egg': '#ffb3d1', 'bunny': '#c9b6ff', 'frog': '#ffe08a', 'moodeng': '#ffc49b'}
-NAMES = {'dog': '皮蛋', 'sloth': '薯餅', 'egg': '蛋黃哥', 'bunny': '兔兔', 'frog': '呱呱', 'moodeng': '彈跳豬'}
+COLORS = {'dog': '#8fd3ff', 'sloth': '#9be8c8', 'egg': '#ffb3d1', 'dino': '#c9b6ff', 'nyanko': '#ffe08a', 'moodeng': '#ffc49b', 'snoopy': '#ff8a80'}
+NAMES = {'dog': '皮蛋', 'sloth': '薯餅', 'egg': '蛋黃哥', 'dino': '小恐龍', 'nyanko': '貓咪老師', 'moodeng': '彈跳豬', 'snoopy': '史努比'}
 BOARD = (43, 22, 74)
 
 
@@ -48,11 +48,12 @@ def main(out=None):
     man = json.load(open(os.path.join(ROOT, 'assets', 'manifest.json'), encoding='utf-8'))
     ids = [p['id'] for p in man['pieces']]
     spr = {i: Image.open(os.path.join(ROOT, f'assets/sprites/{i}.png')).convert('RGBA') for i in ids}
-    spin = {i: Image.open(os.path.join(ROOT, f'assets/sprites/{i}_spin.webp')).convert('RGBA') for i in ids}
+    info = {p['id']: p for p in man['pieces']}
+    spin = {i: Image.open(os.path.join(ROOT, f'assets/sprites/{i}_spin.webp')).convert('RGBA') for i in ids if not info[i].get('photo')}
     trio = Image.open(os.path.join(ROOT, man['trio'])).convert('RGBA')
     hero = Image.open(os.path.join(ROOT, man['hero'])).convert('RGBA')
     S = man['spin']['size']; cols = man['spin']['cols']
-    W = 40 + 6 * 290
+    W = 40 + len(ids) * 290
     H = 2200
     C = Image.new('RGBA', (W, H), BOARD + (255,))
     # 背景：深紫漸層 + 淡淡的圓點
@@ -69,7 +70,8 @@ def main(out=None):
         x = 40 + k * 290
         C.alpha_composite(tile(256, COLORS.get(i, '#cccccc')), (x, y0))
         put(C, spr[i], x, y0, 256)
-        tag = ('暫代 ' if next(p for p in man['pieces'] if p['id'] == i)['placeholder'] else '掃描 ') + NAMES.get(i, i)
+        pi = info[i]
+        tag = ('照片 ' if pi.get('photo') else '暫代 ' if pi.get('placeholder') else '掃描 ') + NAMES.get(i, i)
         d.text((x, y0 + 262), f'{tag}  ({i})', font=f2, fill='white')
         C.alpha_composite(tile(64, COLORS.get(i, '#ccc')), (x, y0 + 300)); put(C, spr[i], x, y0 + 300, 64)
         C.alpha_composite(tile(48, COLORS.get(i, '#ccc')), (x + 80, y0 + 308)); put(C, spr[i], x + 80, y0 + 308, 48)
@@ -77,7 +79,7 @@ def main(out=None):
     # 轉盤：每隻 6 格（0, 3, 6, 12, 18, 21）
     y1 = y0 + 400
     d.text((40, y1 - 40), '轉盤序列（第 0 / 3 / 6 / 12 / 18 / 21 格，96px）', font=f2, fill='white')
-    for k, i in enumerate(ids):
+    for k, i in enumerate([i for i in ids if i in spin]):
         for j, fr in enumerate((0, 3, 6, 12, 18, 21)):
             cell = spin[i].crop(((fr % cols) * S, (fr // cols) * S, (fr % cols + 1) * S, (fr // cols + 1) * S))
             x = 40 + j * 102 + (k % 2) * 870; y = y1 + (k // 2) * 108

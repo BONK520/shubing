@@ -43,46 +43,24 @@
       ]
     },
     {
-      "id": "bunny",
-      "sprite": "assets/sprites/bunny.png",
-      "spin": "assets/sprites/bunny_spin.webp",
-      "glb": "assets/models/bunny.glb",
-      "usdz": "assets/models/bunny.usdz",
-      "placeholder": true,
-      "spinScale": 1.0,
-      "sizeCm": [
-        9.8,
-        19.2,
-        10.1
-      ]
+      "id": "dino",
+      "sprite": "assets/sprites/dino.png",
+      "photo": true
     },
     {
-      "id": "frog",
-      "sprite": "assets/sprites/frog.png",
-      "spin": "assets/sprites/frog_spin.webp",
-      "glb": "assets/models/frog.glb",
-      "usdz": "assets/models/frog.usdz",
-      "placeholder": true,
-      "spinScale": 1.0,
-      "sizeCm": [
-        15.4,
-        11.8,
-        12.5
-      ]
+      "id": "nyanko",
+      "sprite": "assets/sprites/nyanko.png",
+      "photo": true
     },
     {
       "id": "moodeng",
       "sprite": "assets/sprites/moodeng.png",
-      "spin": "assets/sprites/moodeng_spin.webp",
-      "glb": "assets/models/moodeng.glb",
-      "usdz": "assets/models/moodeng.usdz",
-      "placeholder": true,
-      "spinScale": 0.952,
-      "sizeCm": [
-        10.4,
-        15.9,
-        19.9
-      ]
+      "photo": true
+    },
+    {
+      "id": "snoopy",
+      "sprite": "assets/sprites/snoopy.png",
+      "photo": true
     }
   ],
   "trio": "assets/sprites/trio.png",

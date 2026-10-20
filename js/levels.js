@@ -10,7 +10,7 @@
 // 分數關一到目標就結束，二、三星只差在最後一步多拿的分數和剩下步數的毛絨狂歡（每步約 +100，剩 10 步左右就封頂），
 // 所以分數關的星星門檻會離目標很近。
 
-const ALL_IDS = ['dog', 'sloth', 'egg', 'bunny', 'frog', 'moodeng'];
+const ALL_IDS = ['dog', 'sloth', 'egg', 'dino', 'nyanko', 'moodeng', 'snoopy'];
 const SCANNED = ['dog', 'sloth', 'egg'];
 
 const HEART = [
@@ -114,44 +114,44 @@ const DIAMOND = [
 
 export const LEVELS = [
   {
-    id: 1, moves: 22, kinds: ['dog', 'sloth', 'egg', 'bunny'], antiCascade: 0.7,
-    goal: { type: 'score', target: 5500 }, stars: [5500, 6500, 7000],
+    id: 1, moves: 22, kinds: ['dog', 'sloth', 'egg', 'snoopy'], antiCascade: 0.7,
+    goal: { type: 'score', target: 8500 }, stars: [8500, 10000, 13500],
     mask: null, jelly: null, seed: 101,
     hint: '把三個一樣的毛絨連成一排！',
   },
   {
-    id: 2, moves: 24, kinds: ['dog', 'sloth', 'egg', 'frog', 'bunny'], antiCascade: 0.7,
-    goal: { type: 'score', target: 3000 }, stars: [3000, 3500, 4000],
+    id: 2, moves: 24, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.7,
+    goal: { type: 'score', target: 4700 }, stars: [4700, 5500, 6500],
     mask: null, jelly: null, seed: 202,
     hint: '一次連四個，會變出條紋方塊喔！',
   },
   {
-    id: 3, moves: 24, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'bunny'], antiCascade: 0.72,
-    goal: { type: 'collect', items: { egg: 20 } }, stars: [1500, 2000, 2500],
+    id: 3, moves: 24, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'], antiCascade: 0.72,
+    goal: { type: 'collect', items: { egg: 20 } }, stars: [11000, 22000, 33000],
     mask: null, jelly: null, seed: 303,
     hint: '把蛋黃哥都收集起來！',
   },
   {
-    id: 4, moves: 26, kinds: ['dog', 'sloth', 'egg', 'frog', 'moodeng'], antiCascade: 0.72,
-    goal: { type: 'collect', items: { dog: 20, sloth: 20 } }, stars: [3000, 3500, 4000],
+    id: 4, moves: 26, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.72,
+    goal: { type: 'collect', items: { dog: 20, sloth: 20 } }, stars: [7000, 14000, 24000],
     mask: null, jelly: null, seed: 404,
     hint: '排成\u00a0L\u00a0形或\u00a0T\u00a0形，會變出會爆炸的包裝糖！',   // 不斷行空格：只在逗號後換行
   },
   {
-    id: 5, moves: 28, kinds: ['dog', 'sloth', 'egg', 'bunny'], antiCascade: 0.72,
-    goal: { type: 'score', target: 5500 }, stars: [5500, 6000, 6500],
+    id: 5, moves: 28, kinds: ['dog', 'sloth', 'egg', 'dino'], antiCascade: 0.72,
+    goal: { type: 'score', target: 8000 }, stars: [8000, 9500, 11500],
     mask: HEART, jelly: null, seed: 505,
     hint: '愛心盤面！五個連成一排會變出彩色炸彈～',
   },
   {
-    id: 6, moves: 25, kinds: ['dog', 'sloth', 'egg', 'bunny', 'moodeng'], antiCascade: 0.72,
-    goal: { type: 'collect', items: { sloth: 20, egg: 20 } }, stars: [2500, 3000, 3500],
+    id: 6, moves: 25, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.72,
+    goal: { type: 'collect', items: { sloth: 20, egg: 20 } }, stars: [7000, 14000, 27000],
     mask: COOKIE, jelly: null, seed: 606,
     hint: '把彩色炸彈和毛絨交換，全場同款一次消光！',
   },
   {
-    id: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'frog', 'bunny'], antiCascade: 0.72,
-    goal: { type: 'jelly' }, stars: [3000, 3500, 4000],
+    id: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.72,
+    goal: { type: 'jelly' }, stars: [19500, 39000, 57000],
     mask: null,
     jelly: [
       '........',
@@ -167,8 +167,8 @@ export const LEVELS = [
     hint: '在粉紅果凍上消除，果凍就會融化！',
   },
   {
-    id: 8, moves: 35, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'frog'], antiCascade: 0.72,
-    goal: { type: 'jelly' }, stars: [3500, 4000, 4500],
+    id: 8, moves: 36, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'], antiCascade: 0.72,
+    goal: { type: 'jelly' }, stars: [16500, 33000, 56000],
     mask: DONUT,
     jelly: [
       '........',
@@ -184,8 +184,8 @@ export const LEVELS = [
     hint: '果凍圍著甜甜圈的洞，一圈一圈消掉吧！',
   },
   {
-    id: 9, moves: 22, kinds: ['dog', 'sloth', 'egg', 'bunny', 'frog'], antiCascade: 0.72,
-    goal: { type: 'jelly' }, stars: [3000, 3500, 4000],
+    id: 9, moves: 22, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko'], antiCascade: 0.72,
+    goal: { type: 'jelly' }, stars: [19000, 38000, 52000],
     mask: PLUS,
     jelly: [
       '........',
@@ -201,14 +201,14 @@ export const LEVELS = [
     hint: '深粉紅的果凍有兩層，要消兩次喔！',
   },
   {
-    id: 10, moves: 29, kinds: ['dog', 'sloth', 'egg', 'bunny', 'moodeng'], antiCascade: 0.74,
-    goal: { type: 'collect', items: { dog: 17, sloth: 17, egg: 17 } }, stars: [2000, 2500, 3000],
+    id: 10, moves: 29, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.74,
+    goal: { type: 'collect', items: { dog: 17, sloth: 17, egg: 17 } }, stars: [5000, 10000, 23000],
     mask: BUTTERFLY, jelly: null, seed: 1010,
     hint: '蝴蝶盤面！皮蛋、薯餅、蛋黃哥一起收集～',
   },
   {
-    id: 11, moves: 38, kinds: ['dog', 'sloth', 'egg', 'frog', 'moodeng'], antiCascade: 0.74,
-    goal: { type: 'jelly' }, stars: [3000, 3500, 4000],
+    id: 11, moves: 38, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.74,
+    goal: { type: 'jelly' }, stars: [21000, 43000, 75000],
     mask: HOURGLASS,
     jelly: [
       '........',
@@ -224,20 +224,20 @@ export const LEVELS = [
     hint: '沙漏中間的果凍，用直的一排消最快！',
   },
   {
-    id: 12, moves: 32, kinds: ['dog', 'sloth', 'egg', 'bunny', 'frog'], antiCascade: 0.74,
-    goal: { type: 'score', target: 3000 }, stars: [3000, 3250, 3500],
+    id: 12, moves: 32, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko'], antiCascade: 0.74,
+    goal: { type: 'score', target: 3400 }, stars: [3400, 3700, 4600],
     mask: STAIRS, jelly: null, seed: 1212,
     hint: '階梯盤面，多做特殊方塊拿高分！',
   },
   {
-    id: 13, moves: 36, kinds: ['dog', 'sloth', 'egg', 'bunny', 'frog', 'moodeng'], antiCascade: 0.76,
-    goal: { type: 'collect', items: { dog: 17, sloth: 17, egg: 17 } }, stars: [3000, 3500, 4000],
+    id: 13, moves: 36, kinds: ['dog', 'sloth', 'egg', 'dino', 'snoopy', 'moodeng'], antiCascade: 0.76,
+    goal: { type: 'collect', items: { dog: 17, sloth: 17, egg: 17 } }, stars: [5000, 10500, 24000],
     mask: ROUNDED, jelly: null, seed: 1313,
-    hint: '六種毛絨全員到齊，眼睛要放亮！',
+    hint: '六種毛絨一起上場，眼睛要放亮！',
   },
   {
-    id: 14, moves: 34, kinds: ['dog', 'sloth', 'egg', 'bunny', 'frog', 'moodeng'], antiCascade: 0.76,
-    goal: { type: 'jelly' }, stars: [3500, 4000, 4500],
+    id: 14, moves: 38, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko', 'snoopy'], antiCascade: 0.76,
+    goal: { type: 'jelly' }, stars: [20000, 41000, 62000],
     mask: DIAMOND,
     jelly: [
       '........',
@@ -253,8 +253,8 @@ export const LEVELS = [
     hint: '鑽石果凍，正中間有兩層！',
   },
   {
-    id: 15, moves: 36, kinds: ['dog', 'sloth', 'egg', 'frog', 'moodeng'], antiCascade: 0.76,
-    goal: { type: 'jelly' }, stars: [6500, 7000, 7500],
+    id: 15, moves: 38, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.76,
+    goal: { type: 'jelly' }, stars: [25000, 51000, 81000],
     mask: null,
     jelly: [
       '........',
@@ -270,6 +270,26 @@ export const LEVELS = [
     hint: '最後一關！把愛心果凍通通融化～',
   },
 ];
+
+// ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
+// Candy Crush 的過關和星星：
+//   分數關（goal.type 'score'）：到了目標也不會停，步數一定用完 → 盤面上剩下的特殊方塊全部引爆（engine.sugarCrush(0)）
+//     → 最終分數 ≥ stars[0] 才過關。
+//   目標關（'collect' / 'jelly'）：目標一達成就結束 → 分數還不到 stars[0] 就先補到 stars[0]（完成目標至少 1 顆星）
+//     → 薯餅狂歡（engine.sugarCrush(剩下步數)）：每剩 1 步 +3,000 分，並把一顆隨機方塊變成條紋方塊引爆 → 剩下的特殊方塊引爆。
+//   星星 = 最終分數到了幾個門檻（過關至少 1 顆、最多 3 顆）。
+export function isScoreLevel(L) {
+  const t = L && L.goal && L.goal.type;
+  return t !== 'collect' && t !== 'jelly';
+}
+// 過關分數（分數關）/ 完成目標時保底的分數（目標關）
+export function passScore(L) {
+  return (L && Array.isArray(L.stars) && L.stars[0]) || (L && L.goal && L.goal.target) || 0;
+}
+export function starsFor(L, score) {
+  const thr = (L && L.stars) || [];
+  return Math.max(1, Math.min(3, thr.filter(s => score >= s).length));
+}
 
 // ---------- 檢查 ----------
 // 回傳問題清單（空陣列 = 沒問題）。pieceIds 可以傳 PIECES.map(p => p.id)，預設是目前的六隻。
