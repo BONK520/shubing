@@ -23,7 +23,7 @@ import { SLOGANS, cascadeSlogan } from './slogans.js';
 
 const FONT = '"Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
 const MAX_DPR = 2;        // 手機上限：再高肉眼幾乎看不出差別，填色量卻多很多
-const MARGIN = 0.3;       // 盤面四周保留（格）
+const MARGIN = 0.2;       // 盤面四周保留（格）
 const PAD = 1.42;         // 方塊快取畫布邊長 / 格（留給陰影、糖果紙兩端）
 const TILE = 0.88;        // 圓角方塊邊長 / 格
 const SPR = 0.95;         // 貼紙圖框 / 格（貼紙本身約占 84%）
@@ -1270,6 +1270,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       l.push(it);
     }
     let endAll = t + 30, firstLand = Infinity;
+    const lands = [];
     for (const [c, list] of byCol) {
       list.sort((a, b) => b.to.r - a.to.r);
       const jit = ((c * 7919 + seq * 104729) % 97) / 97 * COL_JITTER;
@@ -1295,9 +1296,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         v.landAmp = clamp((vel + G_FALL * dur) * 2.4, 0.07, 0.2);
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
+        lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
       });
     }
-    if (firstLand < Infinity) cue('land', firstLand - t);
+    // 每顆落地都「喀」一聲（像糖果敲在一起，脆脆的）；同一時間落地的合成一聲，最多 16 聲
+    lands.sort((a, b) => a.t - b.t);
+    let lastT = -1, nLand = 0;
+    for (const L of lands) {
+      if (L.t - lastT < 22) continue;
+      lastT = L.t;
+      cue('land', L.t - t, { r: L.r, c: L.c, k: nLand });
+      if (++nLand >= 16) break;
+    }
     // 還在掉（上一次掉落沒被這次接手）的方塊也算進去
     for (const v of visuals.values()) if (v.mv && v.mv.fall && v.landT > endAll) endAll = v.landT;
     let end = endAll;

@@ -29,7 +29,7 @@ let gestureHooked = false;
 const lastPlayed = Object.create(null);   // name -> 最近排定的幾個時間點（AudioContext 秒）
 
 // 同一個音效最短間隔（秒，用「排定要響的時間」比），避免同時疊太多變得很吵
-const GAP = { land: 0.08, tap: 0.04, match: 0.03, pop: 0.022, special: 0.05, star: 0.05, stripe: 0.035, wrap: 0.05,
+const GAP = { land: 0.016, tap: 0.04, match: 0.03, pop: 0.022, special: 0.05, star: 0.05, stripe: 0.035, wrap: 0.05,
   bomb: 0.12, chime: 0.3, swap: 0.05, invalid: 0.1, combo: 0.15, board: 0.3 };
 
 // ---------- 建立音訊圖 ----------
@@ -380,10 +380,14 @@ const SFX = {
     marimba(base - 12, t, 0.1, 0.4);
     sparkle(t + 0.15, 4 + lv, 0.03, 96, 0.03);
   },
-  // 落地：很輕的「咚」
-  land(t) {
-    tone(210, t, { dur: 0.05, attack: 0.002, gain: 0.05, to: 130, glide: 0.045 });
-    noise(t, { dur: 0.02, attack: 0.001, gain: 0.015, type: 'lowpass', f0: 1800, q: 0.7 });
+  // 落地：脆脆的「喀」— 很短的敲擊聲 + 一點點糖果共鳴；音高依位置稍微不同，一串落下來像糖果互相敲到
+  land(t, o) {
+    const r = o.r || 0, c = o.c || 0, k = o.k || 0;
+    const f = 1650 + ((r * 37 + c * 53 + k * 29) % 9) * 95;
+    noise(t, { dur: 0.012, attack: 0.0005, gain: 0.05, type: 'bandpass', f0: 3600, q: 1.6 });
+    tone(f, t, { dur: 0.05, attack: 0.001, gain: 0.05, type: 'sine', to: f * 0.93, glide: 0.045 });
+    tone(f * 2.7, t, { dur: 0.026, attack: 0.001, gain: 0.016, type: 'sine' });
+    tone(260, t, { dur: 0.03, attack: 0.001, gain: 0.025, to: 180, glide: 0.03 });     // 很輕的底，聽起來有重量
   },
   shuffle(t) {
     noise(t, { dur: 0.5, attack: 0.05, gain: 0.06, type: 'bandpass', f0: 900, mid: 3200, f1: 700, q: 1.2 });

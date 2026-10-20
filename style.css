@@ -963,3 +963,37 @@ svg use { pointer-events: none; }
 .lose-card .modal-photo { width: clamp(140px, 44vw, 190px); margin: -4px auto 0; }
 .lose-card .modal-photo:not(.broken)[src] ~ .modal-toys { display: none; }
 .lose-slogan { display: inline-block; margin-top: 6px; font-weight: 800; color: #b0568f; }
+
+/* ---------- 精簡 HUD：步數、目標、分數排成一排，讓盤面越大越好（手機橫放有自己的版面，不套用） ---------- */
+@media (orientation: portrait), (min-height: 521px) {
+  #app { max-width: min(720px, calc(100dvh - 130px)); }
+  #scr-game { gap: 6px; padding-left: calc(4px + var(--safe-l)); padding-right: calc(4px + var(--safe-r)); }
+  .game-top { min-height: 40px; }
+  .game-top .icon-btn { width: 42px; height: 42px; }
+  .game-top .level-pill { font-size: 16px; padding: 4px 14px; }
+  .hud {
+    grid-template-columns: 60px minmax(0, 1.5fr) minmax(0, 1fr); grid-template-rows: auto;
+    gap: 6px; padding: 6px; border-radius: 18px; border-width: 2px;
+  }
+  .hud-moves { grid-row: auto; border-radius: 14px; border-width: 2px; padding: 3px 0 4px; }
+  .hud-moves .lbl { font-size: 11px; letter-spacing: .08em; }
+  .hud-moves b { font-size: 30px; text-shadow: 0 2px 0 rgba(60, 20, 120, .35); }
+  .hud-goal { min-height: 0; padding: 4px 6px; gap: 4px; }
+  .hud-goal > .lbl { display: none; }
+  .goal-items { gap: 2px; }
+  .gi { gap: 2px; }
+  .gi .ic { width: 30px; height: 30px; }
+  .gi .cnt { font-size: 17px; }
+  .gi .cnt small { font-size: 11px; }
+  .gi .check { width: 22px; height: 22px; border-width: 2px; }
+  .gi.score-goal .ic svg { width: 26px; height: 26px; }
+  .gi.score-goal .cnt { font-size: 16px; }
+  .jelly-ic { width: 26px; height: 26px; border-radius: 7px; border-width: 2px; }
+  .hud-score { padding: 3px 8px 5px; gap: 0; }
+  .score-line .lbl { font-size: 11px; }
+  .score-line b { font-size: 17px; }
+  .starbar { height: 18px; margin-right: 8px; }
+  .starbar-track { top: 5px; height: 8px; }
+  .sb-star { width: 19px; height: 19px; stroke-width: 2; }
+  .cheer { display: none; }
+}

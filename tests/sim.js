@@ -22,9 +22,11 @@ const pct = x => `${Math.round(100 * x)}%`;
 // 三星要是「照著玩就拿得到」的標準：
 // decent: pass ≥ 97%, 3★ ≥ 80%.  casual: pass ≥ 88%, 3★ ≥ 45% (≥ 60% on 1–5).
 export function targetsFor(id) {
+  // 難度曲線：第 1 關幾乎都過、認真玩八成三星；越後面越難，第 15 關認真玩約三成三星（容許 4 個百分點誤差）
+  const t = Math.max(0, Math.min(1, (id - 1) / 14)), tol = 0.04;
   return {
-    decent: { pass: 0.97, s3: 0.80 },
-    casual: { pass: 0.88, s3: id <= 5 ? 0.60 : 0.45 },
+    decent: { pass: 0.995 - 0.115 * t - tol, s3: 0.82 - 0.5 * t - tol - 0.04 },
+    casual: { pass: 0.97 - 0.37 * t - tol, s3: 0 },
   };
 }
 
