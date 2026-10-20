@@ -242,6 +242,9 @@ def postprocess(cfg):
         im = pp.compose(layers, W, H, K=2, unit_px=c.get('unit'), outline=c.get('outline', pp.OUTLINE),
                         group=c.get('group', True), fill=c.get('fill'))
         pp.save_png(im, os.path.join(A_SPR, comp + '.png'))
+        if comp == 'trio':      # 彩色炸彈用的沒白邊版本（和盤面玩具一樣的遊戲光）
+            pp.save_png(pp.compose(layers, W, H, K=2, unit_px=c.get('unit'), fill=c.get('fill'), sticker=False),
+                        os.path.join(A_SPR, 'trio_n.png'))
         print(f'  {comp}: {W}x{H}')
     return info
 

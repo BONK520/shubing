@@ -83,7 +83,7 @@ function loadImg(src, timeout = 12000) {
 async function loadImages(onProgress) {
   const jobs = [];
   let done = 0;
-  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 1;
+  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 2;
   const track = p => p.then(v => { done++; onProgress(done / total); return v; });
   for (const p of PIECES) {
     const entry = { sprite: null, spin: null };
@@ -97,6 +97,7 @@ async function loadImages(onProgress) {
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);
   jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));
+  jobs.push(track(loadImg('assets/sprites/trio_n.png')).then(im => { trio.clean = im; }));   // 沒白邊的版本（彩色炸彈用）
   // manifest 的 spinScale = 旋轉序列第 0 格相對靜態圖的大小；畫旋轉時放大回來，選取時才不會突然變小
   // manifest 可有可無：跟圖片一樣有時限（8 秒就放棄），請求卡住也不會讓載入畫面停在 98%
   const mac = typeof AbortController === 'function' ? new AbortController() : null;
@@ -112,9 +113,13 @@ async function loadImages(onProgress) {
   await Promise.all(jobs);
 }
 
-// 玩具小圖（DOM）：有圖用圖，沒有就畫圓形＋名字第一個字
+// 玩具小圖（DOM）：有圖用圖（沒白邊的「遊戲光」版本，發光和影子由 CSS 依場景加），沒有就畫圓形＋名字第一個字
+function toyImg(p) {
+  const e = images.get(p.id);
+  return e ? e.clean || e.sprite : null;
+}
 function toyEl(p, fs) {
-  const im = images.get(p.id) && images.get(p.id).sprite;
+  const im = toyImg(p);
   if (im) {
     const img = document.createElement('img');
     img.src = im.src; img.alt = ''; img.draggable = false;
@@ -127,6 +132,39 @@ function toyEl(p, fs) {
   d.textContent = p.name[0];
   return d;
 }
+// 圖裡玩具底下空了多少（0–1）：讓玩具的腳剛好踩在展示台 / 關卡上，不會浮在半空
+const footCache = new Map();
+function toyFoot(im) {
+  if (!im) return 0;
+  let f = footCache.get(im.src);
+  if (f != null) return f;
+  f = 0;
+  try {
+    const n = 64, c = document.createElement('canvas');
+    c.width = c.height = n;
+    const g = c.getContext('2d');
+    g.drawImage(im, 0, 0, n, n);
+    const a = g.getImageData(0, 0, n, n).data;
+    let y1 = -1;
+    for (let y = n - 1; y >= 0 && y1 < 0; y--) for (let x = 0; x < n; x++) if (a[(y * n + x) * 4 + 3] > 60) { y1 = y; break; }
+    if (y1 >= 0) f = (n - 1 - y1) / n;
+  } catch (e) { /* 讀不到像素就當作沒有空白 */ }
+  footCache.set(im.src, f);
+  return f;
+}
+// 玩具的代表色（pieces.js）調亮 / 調暗，給展示台、發光用
+function tint(hex, t) {
+  const n = parseInt(String(hex).replace('#', ''), 16) || 0xcccccc;
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255], m = t > 0 ? 255 : 0, k = Math.abs(t);
+  return `rgb(${c.map(v => Math.round(v + (m - v) * k)).join(',')})`;
+}
+function setToyColors(elm, hex) {
+  elm.style.setProperty('--pc', hex);
+  elm.style.setProperty('--pc-ll', tint(hex, 0.8));
+  elm.style.setProperty('--pc-l', tint(hex, 0.45));
+  elm.style.setProperty('--pc-d', tint(hex, -0.28));
+  elm.style.setProperty('--pc-dd', tint(hex, -0.52));
+}
 const pieceById = id => PIECES.find(p => p.id === id);
 const kindOf = id => PIECES.findIndex(p => p.id === id);
 function starSvg(cls = '') {
@@ -135,6 +173,9 @@ function starSvg(cls = '') {
   const u = document.createElementNS(SVGNS, 'use');
   u.setAttribute('href', '#i-star');
   s.appendChild(u);
+  const hi = document.createElementNS(SVGNS, 'use');     // 金色星星左上的反光（CSS 只在亮起來的星星上顯示）
+  hi.setAttribute('href', '#i-star-hi'); hi.setAttribute('class', 'hi');
+  s.appendChild(hi);
   return s;
 }
 function jellyIcon(sm) { const d = document.createElement('span'); d.className = 'jelly-ic' + (sm ? ' sm' : ''); return d; }
@@ -210,19 +251,24 @@ function buildTitle() {
   TITLE_TOYS.forEach((p, k) => {
     const b = el('button', 'ttoy');
     b.style.setProperty('--k', k);
+    setToyColors(b, p.color);              // 展示台用玩具的代表色（跟盤面上的糖果同色）
     b.setAttribute('aria-label', p.name);
-    b.appendChild(el('span', 'shadow'));
+    b.appendChild(el('span', 'ped'));      // 3D 展示台（不跟著跳）
+    b.appendChild(el('span', 'shadow'));   // 腳下的接觸陰影
+    const lift = el('span', 'lift');       // 跳的是這一層
+    lift.style.setProperty('--foot', toyFoot(toyImg(p)).toFixed(3));
     const face = el('span', 'face');
     face.appendChild(toyEl(p, 48));
-    b.appendChild(face);
-    const spin = images.get(p.id) && images.get(p.id).spin;
+    lift.appendChild(face);
+    const e = images.get(p.id) || {}, spin = e.spinClean || e.spin;
     if (spin) {
       const sp = el('span', 'spinner');
       sp.style.backgroundImage = `url("${spin.src}")`;
-      const ss = images.get(p.id).spinScale;
+      const ss = e.spinScale;
       if (ss && ss !== 1) sp.style.transform = `scale(${(1 / ss).toFixed(3)})`;
-      b.appendChild(sp);
+      lift.appendChild(sp);
     }
+    b.appendChild(lift);
     b.addEventListener('click', () => {
       audio.play('select');
       restartAnim(b, 'boing');
@@ -263,7 +309,13 @@ function goalBadge(lvl) {
   if (g.type === 'collect') {
     const id = Object.keys(g.items || {})[0];
     const p = pieceById(id);
-    if (p) b.appendChild(toyEl(p, 12));
+    if (p) {
+      // 要收集的玩具站在關卡按鈕的肩膀上（有腳下的影子），不是縮在小圓圈裡
+      b.classList.add('toy');
+      setToyColors(b, p.color);
+      b.style.setProperty('--foot', toyFoot(toyImg(p)).toFixed(3));
+      b.appendChild(toyEl(p, 12));
+    }
   } else if (g.type === 'jelly') {
     b.classList.add('jelly');
   } else {
@@ -294,10 +346,16 @@ function buildMap(popIndex = -1) {
     if (dy) p.setAttribute('transform', `translate(0 ${dy})`);
     svg.appendChild(p);
   };
-  mk('road-shadow', full, 5);
+  // 立體的糖果軌道：投影 → 側面厚度 → 路面 → 上緣受光的亮面 → 一顆顆有反光的糖珠
+  mk('road-shadow', full, 12);
+  mk('road-side', full, 7);
+  mk('road-edge', full);
   mk('road', full);
+  mk('road-hi', full, -5);
+  if (cur > 0) { mk('road-done-side', done, 7); mk('road-done', done); mk('road-done-hi', done, -4); }
   mk('road-dots', full);
-  if (cur > 0) { mk('road-done', done); mk('road-dots-done', done); }
+  mk('road-dots-hi', full, -1.6);
+  if (cur > 0) { mk('road-dots-done', done); mk('road-dots-done-hi', done, -1.6); }
   inner.appendChild(svg);
 
   // 裝飾

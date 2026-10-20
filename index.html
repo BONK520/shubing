@@ -20,11 +20,13 @@
 <svg class="defs" aria-hidden="true" focusable="false">
   <defs>
     <linearGradient id="g-gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff6a8"/>
-      <stop offset=".45" stop-color="#ffd23f"/>
-      <stop offset="1" stop-color="#ff9d1c"/>
+      <stop offset="0" stop-color="#fffbd2"/>
+      <stop offset=".34" stop-color="#ffe066"/>
+      <stop offset=".66" stop-color="#ffc21f"/>
+      <stop offset="1" stop-color="#f39508"/>
     </linearGradient>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.13L12 16.68l-5.5 2.9 1.05-6.13L3.1 9.1l6.15-.9z"/></symbol>
+    <symbol id="i-star-hi" viewBox="0 0 24 24"><ellipse cx="9.6" cy="9.9" rx="2.5" ry="1.15" transform="rotate(-32 9.6 9.9)"/><circle cx="12.3" cy="6.9" r=".85"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-dasharray="2.98 2.99"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="3.4"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -59,8 +61,8 @@
   <!-- 標題 -->
   <section id="scr-title" class="screen" aria-label="標題畫面">
     <!-- 角落的貼紙（主人的玩具照片去背）：在內容後面輕輕搖；圖不在就拿掉 -->
-    <img class="title-stk stk-pig" src="assets/deco/pig.webp" alt="" aria-hidden="true" decoding="async" onerror="this.remove()">
-    <img class="title-stk stk-orange" src="assets/deco/sloth_orange.webp" alt="" aria-hidden="true" decoding="async" onerror="this.remove()">
+    <span class="title-stk stk-pig" aria-hidden="true"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+    <span class="title-stk stk-orange" aria-hidden="true"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
     <div class="topbar">
       <span class="spacer"></span>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
@@ -76,8 +78,8 @@
       <div class="title-play">
         <div class="title-toys" id="title-toys"></div>
         <div class="title-btns">
-          <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg>開始遊戲</button>
-          <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg>3D 看看</a>
+          <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg><span class="bt" data-t="開始遊戲">開始遊戲</span></button>
+          <a class="btn purple" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg><span class="bt" data-t="3D 看看">3D 看看</span></a>
         </div>
       </div>
     </div>
@@ -93,16 +95,16 @@
     <div class="map-scroll" id="map-scroll">
       <div class="map-inner" id="map-inner"></div>
       <!-- 地圖貼紙：高度 0 的一層貼在地圖最底下，用 bottom 往上量（第 1 關固定在離底 110px、每關 116px，跟 main.js 的 MAP_BOTTOM / MAP_GAP 一樣）。
-           --u = 第幾關的高度（0 = 第 1 關）、--x = 橫向位置；都放在路的旁邊空地，畫在路上面、關卡按鈕下面 -->
+           --u = 第幾關的高度（0 = 第 1 關）、--x = 橫向位置；都放在路的旁邊空地，站在小雲台上（有往右下的影子），畫在路上面、關卡按鈕下面 -->
       <div class="map-deco" aria-hidden="true">
-        <img class="md md-s" style="--u:.12;--x:86%;--r:8deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-l" style="--u:1.45;--x:19%;--r:-6deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-m" style="--u:3.9;--x:82%;--r:7deg" src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-s" style="--u:5.5;--x:12%;--r:-9deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-l" style="--u:7.45;--x:19%;--r:5deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-m" style="--u:9.9;--x:82%;--r:-7deg" src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-s" style="--u:11.5;--x:12%;--r:9deg" src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.remove()">
-        <img class="md md-l" style="--u:13.45;--x:19%;--r:-5deg" src="assets/deco/group.webp" alt="" decoding="async" onerror="this.remove()">
+        <span class="md md-s" style="--u:.12;--x:86%;--k:0"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-l" style="--u:1.45;--x:19%;--k:1"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-m" style="--u:3.9;--x:82%;--k:2"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-s" style="--u:5.5;--x:12%;--k:3"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-m" style="--u:7.45;--x:18%;--k:4"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-m" style="--u:9.9;--x:82%;--k:5"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-s" style="--u:11.5;--x:12%;--k:6"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+        <span class="md md-l" style="--u:13.45;--x:19%;--k:7"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
       </div>
     </div>
   </section>
@@ -164,7 +166,7 @@
       <span class="hint-avatar" id="ms-avatar"></span>
       <p id="ms-hint"></p>
     </div>
-    <button class="btn green xl" id="ms-play"><svg class="bi"><use href="#i-play"/></svg>開始！</button>
+    <button class="btn green xl" id="ms-play"><svg class="bi"><use href="#i-play"/></svg><span class="bt" data-t="開始！">開始！</span></button>
   </div>
 </div>
 
@@ -189,7 +191,7 @@
     <div class="mw-reward" id="mw-reward" hidden></div>
     <div class="modal-toys" id="mw-toys"></div>
     <div class="btn-col">
-      <button class="btn green xl" id="mw-next">下一關</button>
+      <button class="btn green xl" id="mw-next"><span class="bt" data-t="下一關">下一關</span></button>
       <div class="btn-row">
         <button class="btn blue" id="mw-retry">再玩一次</button>
         <button class="btn purple" id="mw-map">地圖</button>
@@ -208,7 +210,7 @@
     <p class="lose-text" id="ml-text"></p>
     <div class="btn-col">
       <button class="btn orange" id="ml-more" hidden>＋5 步繼續（剩 <b id="ml-more-n">0</b> 個）</button>
-      <button class="btn green xl" id="ml-retry">再試一次</button>
+      <button class="btn green xl" id="ml-retry"><span class="bt" data-t="再試一次">再試一次</span></button>
       <button class="btn purple" id="ml-map">地圖</button>
     </div>
   </div>

@@ -207,20 +207,20 @@ svg use { pointer-events: none; }
   animation: logoBob 2.6s ease-in-out infinite;
   animation-delay: calc(var(--i) * -.32s);
 }
-.ch:nth-child(1) { --a: #ffe2f2; --b: #ff7cbf; --c: #e8358f; --rot: -7deg; }
-.ch:nth-child(2) { --a: #fff7b8; --b: #ffcf3a; --c: #ff8f1f; --rot: 4deg; }
-.ch:nth-child(3) { --a: #e3fff0; --b: #6fe39a; --c: #22b268; --rot: -3deg; }
-.ch:nth-child(4) { --a: #e3f6ff; --b: #6cc8ff; --c: #2d8ee8; --rot: 5deg; }
-.ch:nth-child(5) { --a: #f1e6ff; --b: #b98cff; --c: #7a4ae6; --rot: -4deg; }
+.ch:nth-child(1) { --a: #ffe2f2; --b: #ff7cbf; --c: #e8358f; --rot: -7deg; --edge: #d42a80; --edge2: #9c1459; --glow: rgba(255, 92, 176, .75); }
+.ch:nth-child(2) { --a: #fff7b8; --b: #ffcf3a; --c: #ff8f1f; --rot: 4deg; --edge: #ec7a12; --edge2: #b14f05; --glow: rgba(255, 190, 60, .75); }
+.ch:nth-child(3) { --a: #e3fff0; --b: #6fe39a; --c: #22b268; --rot: -3deg; --edge: #1fa35c; --edge2: #0d6e3a; --glow: rgba(80, 230, 150, .7); }
+.ch:nth-child(4) { --a: #e3f6ff; --b: #6cc8ff; --c: #2d8ee8; --rot: 5deg; --edge: #2479d6; --edge2: #124c99; --glow: rgba(90, 190, 255, .75); }
+.ch:nth-child(5) { --a: #f1e6ff; --b: #b98cff; --c: #7a4ae6; --rot: -4deg; --edge: #6f3fd8; --edge2: #42209c; --glow: rgba(170, 120, 255, .75); }
 .ch::before, .ch::after {
   content: attr(data-ch); position: absolute; left: 0; top: 0;
   padding: inherit;
 }
-.ch::before { /* 外層深色描邊＋立體厚度 */
+.ch::before { /* 外層：自己顏色的描邊 → 兩層深一點的厚度（膨脹的立體字）→ 一圈半透明的同色光 */
   color: var(--edge);
-  -webkit-text-stroke: .23em var(--edge);
-  transform: translateY(.07em);
-  filter: drop-shadow(0 .06em .06em rgba(70, 10, 70, .35));
+  -webkit-text-stroke: .21em var(--edge);
+  transform: translateY(.03em);
+  filter: drop-shadow(0 .035em 0 var(--edge2)) drop-shadow(0 .035em 0 var(--edge2)) drop-shadow(0 0 .14em var(--glow));
 }
 .ch::after { /* 白色描邊 */
   color: #fff;
@@ -304,46 +304,80 @@ svg use { pointer-events: none; }
     0 4px 0 #b4357b, 0 6px 6px rgba(70, 10, 70, .3);
 }
 .logo-sub i { font-style: normal; color: #ffd23f; }
-.tagline {
-  margin: -6px 0 0; padding: 5px 16px; border-radius: 999px;
-  background: rgba(255, 255, 255, .78); border: 2px solid #fff;
-  font-weight: 800; font-size: 15px; color: var(--ink-soft); letter-spacing: .06em;
-  box-shadow: 0 4px 10px rgba(92, 38, 128, .14);
+.tagline { /* 實體的糖果牌：亮邊 + 外圈 + 底下深紫的厚度 */
+  margin: -2px 0 6px; padding: 6px 18px 7px; border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f0ff 58%, #e9dcff 100%); border: 3px solid #fff;
+  font-weight: 900; font-size: 15px; color: #6b3fc4; letter-spacing: .06em;
+  text-shadow: 0 1.5px 0 #fff;
+  box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(150, 110, 210, .22),
+    0 0 0 2px #c7a8ff, 0 5px 0 2px #8a62d8, 0 10px 12px 2px rgba(70, 30, 140, .28);
 }
 .title-toys {
   position: relative; width: 100%; max-width: 440px;
-  height: clamp(150px, 29vh, 250px);
+  height: clamp(150px, 29vh, 250px); padding-bottom: clamp(18px, 3.4vh, 30px); box-sizing: content-box;
   display: flex; justify-content: center; align-items: flex-end; gap: 2%;
 }
-.title-toys::before { /* 雲朵舞台 */
-  content: ''; position: absolute; left: 4%; right: 4%; bottom: -6px; height: 34%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 35%, #fff 0%, rgba(255, 255, 255, .92) 45%, rgba(255, 255, 255, 0) 72%);
+.title-toys::before { /* 展示台後面一片柔光（舞台的燈） */
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 70%;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, .55) 0%, rgba(255, 236, 250, .28) 40%, rgba(255, 255, 255, 0) 70%);
 }
 .ttoy {
   --sz: clamp(84px, min(31vw, 19vh), 160px);
   position: relative; width: var(--sz); height: var(--sz);
   border: 0; padding: 0; background: none; cursor: pointer;
-  animation: hop 1.5s cubic-bezier(.45, 0, .55, 1) infinite;
-  animation-delay: calc(var(--k) * -.5s);
-  transform-origin: 50% 100%;
 }
 .ttoy:nth-child(2) { --sz: clamp(100px, min(37vw, 23vh), 190px); z-index: 1; margin: 0 -2%; }
+/* 3D 展示台：玩具代表色的圓盤，上面亮、側面一圈深色的厚度、底下壓在地上的影子 */
+.ttoy .ped {
+  position: absolute; left: 50%; bottom: 0; width: 94%; height: 28%;
+  transform: translate(-50%, 46%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(ellipse 72% 85% at 50% 30%, #fff 0%, var(--pc-ll) 28%, var(--pc-l) 62%, var(--pc) 100%);
+  box-shadow:
+    inset 0 3px 1px rgba(255, 255, 255, .95), inset 0 -5px 7px var(--pc-d),
+    0 6px 0 var(--pc-d), 0 10px 0 var(--pc-dd), 0 17px 16px rgba(50, 15, 95, .38);
+}
+.ttoy .ped::after { /* 側面正前方一道反光 */
+  content: ''; position: absolute; left: 22%; right: 22%; bottom: -7px; height: 3px; border-radius: 3px;
+  background: rgba(255, 255, 255, .55); filter: blur(.5px);
+}
+/* 腳下的接觸陰影：貼著玩具最暗、往外淡掉（玩具跳起來時變小變淡） */
 .ttoy .shadow {
-  position: absolute; left: 22%; right: 22%; bottom: 2%; height: 9%; border-radius: 50%;
-  background: rgba(90, 40, 140, .22); animation: shadowPulse 1.5s cubic-bezier(.45, 0, .55, 1) infinite; animation-delay: inherit;
+  position: absolute; left: 24%; right: 24%; bottom: -3%; height: 11%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(36, 8, 66, .62) 0%, rgba(36, 8, 66, .32) 45%, rgba(36, 8, 66, 0) 72%);
+  animation: titleShadow 2.4s ease-in-out infinite; animation-delay: calc(var(--k) * -.8s);
+}
+.ttoy .lift {
+  position: absolute; inset: 0; transform-origin: 50% 100%;
+  translate: 0 calc(var(--foot, 0) * 100% + 7%);    /* 圖裡腳底下的空白扣掉、再往下一點：腳踩在展示台的台面上 */
+  animation: titleHop 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--k) * -.8s);
+}
+/* 大部分時間站在展示台上，偶爾蹲一下、小跳一下、落地壓扁 */
+@keyframes titleHop {
+  0%, 52%, 100% { transform: translateY(0) scale(1, 1); }
+  60% { transform: translateY(0) scale(1.06, .93); }
+  72% { transform: translateY(-11%) scale(.97, 1.04); }
+  84% { transform: translateY(0) scale(1.05, .94); }
+  92% { transform: translateY(0) scale(.99, 1.01); }
+}
+@keyframes titleShadow {
+  0%, 52%, 100% { transform: scale(1); opacity: 1; }
+  60% { transform: scale(1.06); opacity: 1; }
+  72% { transform: scale(.72); opacity: .55; }
+  84% { transform: scale(1.06); opacity: 1; }
 }
 .ttoy .face { position: absolute; inset: 0; display: grid; place-items: center; }
-.ttoy .face img { width: 100%; height: 100%; object-fit: contain; }
+.ttoy .face img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 7px var(--pc-l)); }
 .ttoy .face .toy-fallback { width: 74%; height: 74%; margin-top: 18%; }
 .ttoy .spinner {
   position: absolute; inset: 0; display: none;
   background-repeat: no-repeat; background-size: 600% 400%;
 }
-.ttoy.spinning .spinner { display: block; animation: spinX .25s steps(6) 4, spinY 1s steps(4) 1; }
+.ttoy.spinning .spinner { display: block; animation: spinX .25s steps(6) 4, spinY 1s steps(4) 1; filter: drop-shadow(0 0 6px var(--pc-l)); }
 .ttoy.spinning .face { visibility: hidden; }
 .ttoy.wobble .face { animation: wobble .7s ease; }
-.ttoy.boing { animation: boing .7s ease; }
+.ttoy.boing .lift { animation: boing .7s ease; }
 @keyframes spinX { from { background-position-x: 0%; } to { background-position-x: 120%; } }
 @keyframes spinY { from { background-position-y: 0%; } to { background-position-y: 133.333%; } }
 @keyframes hop {
@@ -377,8 +411,14 @@ svg use { pointer-events: none; }
 /* ---------- 關卡地圖 ---------- */
 #scr-map { padding-left: 0; padding-right: 0; padding-bottom: 0; }
 #scr-map .topbar { padding: 0 calc(12px + var(--safe-r)) 6px calc(12px + var(--safe-l)); justify-content: space-between; position: relative; z-index: 2; }
-.star-pill .pill-star { width: 24px; height: 24px; fill: url(#g-gold); stroke: #e38a00; stroke-width: 1.2; }
-.star-pill span { font-size: 15px; color: var(--ink-soft); }
+.star-pill .pill-star { width: 26px; height: 26px; overflow: visible; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.6; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 2px 0 #c46d00) drop-shadow(0 0 3px rgba(255, 196, 50, .6)); }
+.star-pill { box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(255, 111, 179, .24), 0 0 0 2.5px #ff6fb3, 0 6px 0 2.5px #c41f74, 0 10px 12px 2px rgba(150, 40, 100, .3); }
+.star-pill b, .star-pill span {
+  --o: #4a1a8c; --w: 2.4px; font-family: var(--font-num, inherit); font-weight: 900;
+  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o), 0 calc(var(--w) + 2.5px) 0 #2a0c5e;
+}
+.star-pill b { color: #ff4f9a; }
+.star-pill span { font-size: 15px; color: #fff; --w: 1.8px; }
 .map-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -391,11 +431,19 @@ svg use { pointer-events: none; }
 .map-inner { position: relative; width: 100%; }
 .map-path { position: absolute; left: 0; top: 0; width: 100%; overflow: visible; }
 .map-path path { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
-.road-shadow { stroke: rgba(110, 50, 160, .16); stroke-width: 46; }
-.road { stroke: rgba(255, 255, 255, .78); stroke-width: 38; }
-.road-done { stroke: #ffd3ea; stroke-width: 26; }
-.road-dots { stroke: #fff; stroke-width: 7; stroke-dasharray: 0 20; }
-.road-dots-done { stroke: #ff6fb0; stroke-width: 8; stroke-dasharray: 0 20; }
+/* 立體糖果軌道（像充氣滑梯 / 玩具軌道）：往下的投影、深紫的側面厚度、淡紫外框、淺色路面、上緣受光的亮面、有反光的糖珠 */
+.road-shadow { stroke: rgba(70, 25, 130, .22); stroke-width: 46; filter: blur(5px); }
+.road-side { stroke: #a37ae4; stroke-width: 42; }
+.road-edge { stroke: #cdb8f6; stroke-width: 44; }
+.road { stroke: #fbf6ff; stroke-width: 39; }
+.road-hi { stroke: #fff; stroke-width: 13; opacity: .85; }
+.road-done-side { stroke: #e0569f; stroke-width: 29; }
+.road-done { stroke: #ffc4e3; stroke-width: 27; }
+.road-done-hi { stroke: #fff; stroke-width: 8; opacity: .7; }
+.road-dots { stroke: #c9b2fb; stroke-width: 10; stroke-dasharray: 0 22; }
+.road-dots-hi { stroke: #fff; stroke-width: 3.6; stroke-dasharray: 0 22; }
+.road-dots-done { stroke: #ff5fa8; stroke-width: 11; stroke-dasharray: 0 22; }
+.road-dots-done-hi { stroke: #ffe8f4; stroke-width: 4; stroke-dasharray: 0 22; }
 
 .map-island { /* 地圖裝飾 */
   position: absolute; pointer-events: none; transform: translate(-50%, -50%);
@@ -411,7 +459,7 @@ svg use { pointer-events: none; }
   border: 3px solid #fff; box-shadow: 0 4px 8px rgba(90, 40, 120, .2);
 }
 .map-island.lolly::after { content: ''; position: absolute; left: 15px; top: 32px; width: 5px; height: 36px; border-radius: 3px; background: #fff; box-shadow: 0 2px 4px rgba(90, 40, 120, .15); }
-.map-island.toy { width: 62px; height: 62px; opacity: .92; filter: drop-shadow(0 6px 6px rgba(90, 40, 120, .2)); animation: sway 3.4s ease-in-out infinite; }
+.map-island.toy { width: 62px; height: 62px; filter: drop-shadow(0 0 5px rgba(255, 210, 245, .8)) drop-shadow(5px 9px 5px rgba(60, 20, 110, .3)); animation: sway 3.4s ease-in-out infinite; }
 .map-island.toy img, .map-island.toy .toy-fallback { width: 100%; height: 100%; object-fit: contain; }
 .map-island.sweet { width: 40px; height: 26px; border-radius: 13px; background: linear-gradient(90deg, #8fd3ff, #c9b6ff); border: 3px solid #fff; box-shadow: 0 4px 8px rgba(90, 40, 120, .18); }
 .map-island.sweet::before, .map-island.sweet::after { content: ''; position: absolute; top: 3px; width: 0; height: 0; border: 7px solid transparent; }
@@ -419,38 +467,64 @@ svg use { pointer-events: none; }
 .map-island.sweet::after { right: -15px; border-left-color: #fff; }
 @keyframes sway { 0%, 100% { rotate: -6deg; } 50% { rotate: 6deg; } }
 
-.node {
-  --nc1: #ff9ccf; --nc2: #ff4f9e; --nsh: #c42a74;
+.node { /* 有厚度的糖果按鈕：亮面、外圈、兩層側面、投影 */
+  --nc1: #ff9ccf; --nc2: #ff4f9e; --nsh: #c42a74; --nsh2: #8e1452;
+  --nshadow: inset 0 3px 0 rgba(255, 255, 255, .6), inset 0 -6px 0 rgba(0, 0, 0, .14), 0 0 0 2px var(--nsh), 0 5px 0 2px var(--nsh), 0 9px 0 2px var(--nsh2), 0 16px 16px 2px rgba(60, 15, 90, .32);
   position: absolute; transform: translate(-50%, -50%);
   width: 66px; height: 66px; border-radius: 50%; padding: 0; cursor: pointer;
   border: 4px solid #fff;
-  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .7) 0 14%, rgba(255, 255, 255, 0) 34%), linear-gradient(180deg, var(--nc1), var(--nc2));
-  box-shadow: 0 6px 0 var(--nsh), 0 12px 16px rgba(80, 20, 90, .3);
+  background:
+    radial-gradient(circle at 35% 26%, rgba(255, 255, 255, .85) 0 12%, rgba(255, 255, 255, 0) 32%),
+    radial-gradient(ellipse 60% 40% at 50% 108%, rgba(255, 255, 255, .45), rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, var(--nc1), var(--nc2));
+  box-shadow: var(--nshadow);
   display: grid; place-items: center; z-index: 1;
   transition: transform .1s;
 }
-.node:active { transform: translate(-50%, calc(-50% + 4px)); box-shadow: 0 2px 0 var(--nsh), 0 6px 10px rgba(80, 20, 90, .3); }
-.node .num { font-size: 28px; font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .2); line-height: 1; margin-top: 2px; }
+.node:active { transform: translate(-50%, calc(-50% + 4px)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .6), inset 0 -4px 0 rgba(0, 0, 0, .14), 0 0 0 2px var(--nsh), 0 2px 0 2px var(--nsh), 0 4px 0 2px var(--nsh2), 0 8px 10px 2px rgba(60, 15, 90, .3); }
+.node .num { /* 數字：白字 + 按鈕顏色的深色粗描邊 + 兩層厚度 */
+  --o: var(--nsh2); --w: 2.2px;
+  font-size: 28px; font-weight: 900; color: #fff; line-height: 1; margin-top: 2px; font-family: var(--font-num, inherit);
+  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o),
+    0 calc(var(--w) + 1.5px) 0 var(--o), 0 calc(var(--w) + 3px) 0 var(--o), 0 calc(var(--w) + 5px) 4px rgba(30, 10, 60, .3);
+}
 .node .nstars { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); display: flex; gap: 0; align-items: flex-end; }
-.node .nstars svg { width: 24px; height: 24px; fill: #e9dcf5; stroke: #fff; stroke-width: 2.4; paint-order: stroke; filter: drop-shadow(0 2px 2px rgba(90, 40, 120, .25)); }
+/* 星星：圓角、金色漸層、底下一層厚度、亮的會發光，左上一點反光（像金質獎章） */
+.node .nstars svg { width: 24px; height: 24px; overflow: visible; fill: #eadff7; stroke: #fff; stroke-width: 2.4; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 2px 0 #b8a4d8) drop-shadow(0 3px 3px rgba(90, 40, 120, .22)); }
 .node .nstars svg:nth-child(2) { width: 28px; height: 28px; transform: translateY(-5px); }
-.node .nstars svg.on { fill: url(#g-gold); }
+.node .nstars svg.on { fill: url(#g-gold); stroke: #fff7cc; filter: drop-shadow(0 2px 0 #c46d00) drop-shadow(0 0 4px rgba(255, 196, 50, .7)) drop-shadow(0 3px 3px rgba(120, 60, 0, .3)); }
+svg .hi { fill: #fff; stroke: none; opacity: 0; }
+svg.on .hi { opacity: .9; }
 .node .badge {
   position: absolute; right: -8px; bottom: -6px; width: 28px; height: 28px; border-radius: 50%;
   border: 3px solid #fff; background: #fff; overflow: hidden; display: grid; place-items: center;
   box-shadow: 0 3px 6px rgba(90, 40, 120, .25);
 }
 .node .badge img { width: 120%; height: 120%; object-fit: contain; }
+/* 要收集的玩具：站在關卡按鈕的右肩上（壓在按鈕邊上、有腳下的影子） */
+.node .badge.toy {
+  right: -34px; bottom: 10px; width: 44px; height: 44px; z-index: 2;
+  border: 0; border-radius: 0; background: none; overflow: visible; box-shadow: none;
+}
+.node .badge.toy img {
+  position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain;
+  translate: 0 calc(var(--foot, 0) * 100% + 4%);
+  filter: drop-shadow(0 0 4px var(--pc-l, #fff));
+}
+.node .badge.toy::after {
+  content: ''; position: absolute; left: 14%; right: 10%; bottom: -5%; height: 18%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(40, 10, 70, .55) 0%, rgba(40, 10, 70, .25) 45%, rgba(40, 10, 70, 0) 72%);
+}
 .node .badge.jelly { background: linear-gradient(180deg, #ffc1df, #ff75b5); }
 .node .badge.jelly::after { content: ''; width: 9px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .9); transform: translate(-3px, -4px); }
 .node .badge.score { background: linear-gradient(180deg, #fff3a0, #ffbb2a); }
 .node .badge.score svg { width: 18px; height: 18px; fill: #fff; }
 .node .badge .toy-fallback { width: 100%; height: 100%; border-width: 0; --fs: 12px; }
-.node.done { --nc1: #86dbff; --nc2: #3aa4f5; --nsh: #1f6fbf; }
-.node.current { width: 80px; height: 80px; --nc1: #ffa6d6; --nc2: #ff4f9e; --nsh: #c42a74; animation: nodePulse 1.6s ease-in-out infinite; }
-.node.current .num { font-size: 34px; }
-.node.locked { --nc1: #e9e1f4; --nc2: #c7b8de; --nsh: #9d8bbd; cursor: default; }
-.node.locked .num { color: #7f6aa8; text-shadow: 0 1.5px 0 rgba(255, 255, 255, .7); }
+.node.done { --nc1: #86dbff; --nc2: #3aa4f5; --nsh: #1f6fbf; --nsh2: #12488a; }
+.node.current { width: 80px; height: 80px; --nc1: #ffa6d6; --nc2: #ff4f9e; --nsh: #c42a74; --nsh2: #8e1452; animation: nodePulse 1.6s ease-in-out infinite; }
+.node.current .num { font-size: 34px; --w: 2.6px; }
+.node.locked { --nc1: #ece5f6; --nc2: #c9bbe0; --nsh: #a08ec0; --nsh2: #7d6aa3; cursor: default; }
+.node.locked .num { color: #f7f3fc; --o: #8d78b6; }
 .node.locked .lock-badge { /* 鎖頭：右下角小徽章（位置同 .badge） */
   position: absolute; right: -7px; bottom: -5px; width: 27px; height: 27px; border-radius: 50%;
   display: grid; place-items: center;
@@ -460,15 +534,15 @@ svg use { pointer-events: none; }
 .node.locked .lock { width: 14px; height: 14px; fill: #fff; color: #fff; }
 .node.unlock-pop { animation: unlockPop .8s cubic-bezier(.3, 1.6, .5, 1) both, nodePulse 1.6s ease-in-out .8s infinite; }
 @keyframes nodePulse {
-  0%, 100% { box-shadow: 0 6px 0 var(--nsh), 0 12px 16px rgba(80, 20, 90, .3), 0 0 0 0 rgba(255, 255, 255, .9); }
-  50% { box-shadow: 0 6px 0 var(--nsh), 0 12px 16px rgba(80, 20, 90, .3), 0 0 0 12px rgba(255, 255, 255, 0); }
+  0%, 100% { box-shadow: var(--nshadow), 0 0 0 2px rgba(255, 255, 255, .9); }
+  50% { box-shadow: var(--nshadow), 0 0 0 14px rgba(255, 255, 255, 0); }
 }
 @keyframes unlockPop { 0% { transform: translate(-50%, -50%) scale(.3); } 100% { transform: translate(-50%, -50%) scale(1); } }
-.map-marker { /* 頭像：站在目前關卡旁邊（main.js 加 .on-right / .on-left），箭頭橫向指著關卡 */
+.map-marker { /* 頭像：站在目前關卡旁邊（main.js 加 .on-right / .on-left），箭頭橫向指著關卡；玩具探出圓框 */
   position: absolute; width: 64px; height: 64px; transform: translate(-50%, -50%);
   pointer-events: none; z-index: 2;
-  border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff, #ffeef7); border: 4px solid #fff;
-  box-shadow: 0 0 0 3px #ff6fb0, 0 8px 14px rgba(80, 30, 110, .3);
+  border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff, #ffe3f2); border: 4px solid #fff;
+  box-shadow: inset 0 3px 0 #fff, inset 0 -5px 0 rgba(255, 111, 176, .25), 0 0 0 3px #ff6fb0, 0 6px 0 3px #c42a74, 0 13px 14px 3px rgba(80, 30, 110, .3);
   animation: markerBob 1.1s ease-in-out infinite;
 }
 .map-marker::after {
@@ -479,13 +553,18 @@ svg use { pointer-events: none; }
 .map-marker.on-right::after { left: -15px; border-right: 10px solid #ff6fb0; border-left: 0; }
 .map-marker.on-left { --nudge: 7px; }
 .map-marker.on-left::after { right: -15px; border-left: 10px solid #ff6fb0; border-right: 0; }
-.map-marker img, .map-marker .toy-fallback { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); object-fit: contain; }
+.map-marker img, .map-marker .toy-fallback { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); object-fit: contain; }
+.map-marker img { filter: drop-shadow(0 0 5px rgba(255, 150, 210, .85)) drop-shadow(2px 4px 3px rgba(80, 20, 90, .3)); }
 @keyframes markerBob { 0%, 100% { translate: 0 0; } 50% { translate: var(--nudge, 0px) 0; } }   /* 朝關卡點一點 */
-.map-end {
+.map-end { /* 「更多關卡製作中」的立牌：實體的糖果板 + 白字深紫粗描邊 */
+  --o: #6f3fd0; --w: 2px;
   position: absolute; left: 50%; transform: translate(-50%, -50%);
-  padding: 8px 18px; border-radius: 999px; background: rgba(255, 255, 255, .85); border: 3px solid #fff;
-  font-weight: 800; color: var(--ink-soft); font-size: 15px; white-space: nowrap;
-  box-shadow: 0 6px 14px rgba(92, 38, 128, .16);
+  padding: 9px 20px 10px; border-radius: 18px; border: 3px solid #fff;
+  background: linear-gradient(180deg, #dcc8ff 0%, #b996ff 55%, #9a6cf5 100%);
+  font-weight: 900; color: #fff; font-size: 16px; letter-spacing: .04em; white-space: nowrap;
+  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o), 0 calc(var(--w) + 2px) 0 #4a1f9e;
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .7), inset 0 -5px 0 rgba(60, 20, 140, .25),
+    0 0 0 2px #7c4fe0, 0 6px 0 2px #4f25a8, 0 13px 14px 2px rgba(60, 20, 120, .32);
 }
 
 /* ---------- 遊戲畫面 ---------- */
@@ -936,11 +1015,27 @@ svg use { pointer-events: none; }
 }
 /* 標題畫面：角落探頭的貼紙，在標題和按鈕後面 */
 .title-main { position: relative; z-index: 1; }
+/* 角落的玩具站在一朵小小的浮空雲台上（有接觸陰影），跟中間的展示台是同一個空間 */
 .title-stk {
   position: absolute; z-index: 0; pointer-events: none; user-select: none;
-  height: auto; filter: drop-shadow(0 6px 10px rgba(70, 20, 110, .22));
-  animation: stk-wobble 4.6s ease-in-out infinite;
+  animation: isleFloat 5.2s ease-in-out infinite;
 }
+.title-stk img {
+  position: relative; z-index: 1; display: block; width: 100%; height: auto; transform-origin: 50% 100%;
+  animation: stk-sway 4.6s ease-in-out infinite; animation-delay: inherit;
+  filter: drop-shadow(0 0 7px rgba(255, 196, 240, .75));
+}
+@keyframes stk-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.title-stk::before { /* 雲台：上面亮、底下一圈淡紫的厚度、再往下的投影 */
+  content: ''; position: absolute; left: -10%; right: -10%; bottom: -12%; height: 26%; border-radius: 50%;
+  background: radial-gradient(ellipse 70% 80% at 50% 30%, #fff 0%, #f6f1ff 45%, #ded1ff 100%);
+  box-shadow: inset 0 2px 0 #fff, inset 0 -4px 6px rgba(150, 120, 230, .35), 0 5px 0 #c4b2f4, 0 8px 0 #9e86e2, 7px 15px 14px rgba(60, 25, 130, .28);
+}
+.title-stk::after { /* 腳下的接觸陰影 */
+  content: ''; position: absolute; left: 20%; right: 20%; bottom: -3%; height: 9%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(50, 20, 100, .5) 0%, rgba(50, 20, 100, .22) 45%, rgba(50, 20, 100, 0) 72%);
+}
+@keyframes isleFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
 .stk-pig { --r: -12deg; width: clamp(62px, 17vw, 108px); left: calc(4px + var(--safe-l)); top: calc(70px + var(--safe-t)); }
 .stk-orange { --r: 9deg; width: clamp(92px, 25vw, 150px); right: calc(-14px + var(--safe-r)); top: calc(96px + var(--safe-t)); animation-delay: -2.1s; }
 @media (max-height: 700px) { .stk-orange { width: clamp(80px, 21vw, 120px); top: calc(64px + var(--safe-t)); } }
@@ -948,12 +1043,25 @@ svg use { pointer-events: none; }
 /* 地圖：高度 0 的一層接在地圖最底下，用 bottom 往上量（MAP_BOTTOM 110px、每關 MAP_GAP 116px） */
 .map-inner { z-index: 1; }
 .map-deco { position: relative; height: 0; z-index: 0; pointer-events: none; }
-.md {
+.md { /* 地圖旁的玩具站在小雲台上：雲台有厚度、影子往右下（跟遊戲裡的光同一個方向） */
   position: absolute; left: var(--x); bottom: calc(110px + var(--u) * 116px);
-  height: auto; transform: translate(-50%, 50%) rotate(var(--r, 0deg));
-  filter: drop-shadow(0 6px 10px rgba(70, 20, 110, .2)); opacity: .96;
+  transform: translate(-50%, 50%);
 }
-.md-s { width: 58px; } .md-m { width: 98px; } .md-l { width: 128px; }
+.md img {
+  position: relative; z-index: 1; display: block; width: 100%; height: auto; transform-origin: 50% 100%;
+  animation: stk-sway 4.6s ease-in-out infinite; animation-delay: calc(var(--k, 0) * -.7s);
+  filter: drop-shadow(0 0 6px rgba(255, 200, 240, .7));
+}
+.md::before {
+  content: ''; position: absolute; left: -10%; right: -10%; bottom: -12%; height: 24%; border-radius: 50%;
+  background: radial-gradient(ellipse 70% 80% at 50% 30%, #fff 0%, #f6f1ff 45%, #ded1ff 100%);
+  box-shadow: inset 0 2px 0 #fff, inset 0 -4px 6px rgba(150, 120, 230, .35), 0 5px 0 #c4b2f4, 0 8px 0 #9e86e2, 7px 15px 14px rgba(60, 25, 130, .3);
+}
+.md::after {
+  content: ''; position: absolute; left: 24%; right: 14%; bottom: -3%; height: 9%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(50, 20, 100, .5) 0%, rgba(50, 20, 100, .22) 45%, rgba(50, 20, 100, 0) 72%);
+}
+.md-s { width: 58px; } .md-m { width: 96px; } .md-l { width: 112px; }
 
 /* 過關卡：貼紙照片從右上角探出來；失敗卡：照片取代那排難過的玩具 */
 .modal-photo { display: block; height: auto; pointer-events: none; filter: drop-shadow(0 8px 14px rgba(60, 20, 100, .28)); }
@@ -1080,11 +1188,10 @@ svg use { pointer-events: none; }
 }
 /* 步數：白字 + 深紫粗描邊 + 下方立體影 */
 .hud-moves b {
-  color: #fff;
-  text-shadow:
-    0 2.5px 0 #4b1ca8, 2.5px 0 0 #4b1ca8, 0 -2.5px 0 #4b1ca8, -2.5px 0 0 #4b1ca8,
-    1.8px 1.8px 0 #4b1ca8, -1.8px 1.8px 0 #4b1ca8, 1.8px -1.8px 0 #4b1ca8, -1.8px -1.8px 0 #4b1ca8,
-    0 5px 0 #2e0f75, 0 7px 6px rgba(30, 10, 80, .4);
+  --w: 2.6px; color: #fff;
+  text-shadow: var(--w) 0 0 #4b1ca8, calc(var(--w) * -1) 0 0 #4b1ca8, 0 var(--w) 0 #4b1ca8, 0 calc(var(--w) * -1) 0 #4b1ca8, calc(var(--w) * .87) calc(var(--w) * .5) 0 #4b1ca8, calc(var(--w) * -.87) calc(var(--w) * .5) 0 #4b1ca8, calc(var(--w) * .87) calc(var(--w) * -.5) 0 #4b1ca8, calc(var(--w) * -.87) calc(var(--w) * -.5) 0 #4b1ca8, calc(var(--w) * .5) calc(var(--w) * .87) 0 #4b1ca8, calc(var(--w) * -.5) calc(var(--w) * .87) 0 #4b1ca8, calc(var(--w) * .5) calc(var(--w) * -.87) 0 #4b1ca8, calc(var(--w) * -.5) calc(var(--w) * -.87) 0 #4b1ca8,
+    0 calc(var(--w) + 1.4px) 0 #2e0f75, 0 calc(var(--w) + 2.8px) 0 #2e0f75, 0 calc(var(--w) + 4.2px) 0 #2e0f75,
+    0 calc(var(--w) + 7px) 6px rgba(30, 10, 80, .4);
 }
 /* 白色面板上的數字（分數、關卡、目標）：深紫粗描邊 + 下方厚影，字才「站」得起來（白描邊會跟白底糊在一起）
    --o 描邊色、--o2 厚影色、--w 描邊粗細（12 個方向疊出圓滑的描邊） */
@@ -1096,8 +1203,9 @@ svg use { pointer-events: none; }
     calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o),
     calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o),
     calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o),
-    0 calc(var(--w) + 2.5px) 0 var(--o2), calc(var(--w) * .6) calc(var(--w) + 2px) 0 var(--o2), calc(var(--w) * -.6) calc(var(--w) + 2px) 0 var(--o2),
-    0 calc(var(--w) + 5px) 5px rgba(30, 10, 80, .3);
+    0 calc(var(--w) + 1.3px) 0 var(--o2), 0 calc(var(--w) + 2.6px) 0 var(--o2), 0 calc(var(--w) + 3.9px) 0 var(--o2),
+    calc(var(--w) * .6) calc(var(--w) + 3px) 0 var(--o2), calc(var(--w) * -.6) calc(var(--w) + 3px) 0 var(--o2),
+    0 calc(var(--w) + 6.5px) 5px rgba(30, 10, 80, .32);
 }
 .score-line b { color: #ff4f9a; }
 .gi .cnt { color: #fff; }
@@ -1127,7 +1235,7 @@ svg use { pointer-events: none; }
   box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(255, 111, 179, .24),
     0 0 0 2.5px #ff6fb3, 0 6px 0 2.5px #c41f74, 0 10px 12px 2px rgba(150, 40, 100, .3);
 }
-.bst .bn { font-weight: 900; color: #fff; text-shadow: 0 1.5px 0 #b0568f, 1.5px 0 0 #b0568f, 0 -1.5px 0 #b0568f, -1.5px 0 0 #b0568f, 0 2.5px 0 #7d2d63; }
+.bst .bn { font-weight: 900; color: #fff; font-size: 12px; text-shadow: 1.7px 0 0 #a3307a, calc(1.7px * -1) 0 0 #a3307a, 0 1.7px 0 #a3307a, 0 calc(1.7px * -1) 0 #a3307a, calc(1.7px * .87) calc(1.7px * .5) 0 #a3307a, calc(1.7px * -.87) calc(1.7px * .5) 0 #a3307a, calc(1.7px * .87) calc(1.7px * -.5) 0 #a3307a, calc(1.7px * -.87) calc(1.7px * -.5) 0 #a3307a, calc(1.7px * .5) calc(1.7px * .87) 0 #a3307a, calc(1.7px * -.5) calc(1.7px * .87) 0 #a3307a, calc(1.7px * .5) calc(1.7px * -.87) 0 #a3307a, calc(1.7px * -.5) calc(1.7px * -.87) 0 #a3307a, 0 3.2px 0 #6e1d52; }
 
 /* ---------- 氛圍：盤面柔光、背景散景、閃爍星光 ---------- */
 .board-wrap::before {
@@ -1160,11 +1268,25 @@ svg use { pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .sky::before { animation: none; } .board-sparkles b { display: none; } }
 
 /* ---------- 卡通立體字：按鈕、標籤、標題 ---------- */
-.btn { font-weight: 900; color: #fff;
-  text-shadow: 0 2px 0 var(--sh), 2px 0 0 var(--sh), 0 -2px 0 var(--sh), -2px 0 0 var(--sh),
-    1.5px 1.5px 0 var(--sh), -1.5px 1.5px 0 var(--sh), 1.5px -1.5px 0 var(--sh), -1.5px -1.5px 0 var(--sh), 0 4px 0 rgba(30, 10, 60, .28); }
-.hud-moves .lbl { color: #fff; text-shadow: 0 1.5px 0 #4b1ca8, 1.5px 0 0 #4b1ca8, 0 -1.5px 0 #4b1ca8, -1.5px 0 0 #4b1ca8, 0 2.5px 0 #2e0f75; }
-.score-line .lbl { color: #8a4fd1; text-shadow: 0 1.5px 0 #fff, 1.5px 0 0 #fff, 0 -1.5px 0 #fff, -1.5px 0 0 #fff, 0 2.5px 0 rgba(120, 60, 180, .35); }
+/* 按鈕字：膨脹的立體字 — 深色粗描邊、往下三層厚度、再一層柔影；.bt 的 ::after 再疊一層上亮下暗的漸層字 */
+.btn { --w: 2.2px; font-weight: 900; color: #fff;
+  text-shadow:
+    var(--w) 0 0 var(--sh), calc(var(--w) * -1) 0 0 var(--sh), 0 var(--w) 0 var(--sh), 0 calc(var(--w) * -1) 0 var(--sh),
+    calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--sh), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--sh),
+    calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--sh), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--sh),
+    calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--sh), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--sh),
+    calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--sh), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--sh),
+    0 calc(var(--w) + 1.5px) 0 var(--sh), 0 calc(var(--w) + 3px) 0 var(--sh), 0 calc(var(--w) + 4.5px) 0 var(--sh),
+    0 calc(var(--w) + 7px) 6px rgba(30, 10, 60, .3); }
+.btn .bt { position: relative; display: inline-block; white-space: nowrap; }
+.btn .bt::after {
+  content: attr(data-t); position: absolute; left: 0; top: 0; white-space: nowrap;
+  color: transparent; text-shadow: none;
+  background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--c1) 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+/* 小標籤（步數、分數）也是遊戲字：白字、深紫描邊、底下一層厚度 */
+.hud-moves .lbl, .score-line .lbl { color: #fff; text-shadow: 1.6px 0 0 #4b1ca8, calc(1.6px * -1) 0 0 #4b1ca8, 0 1.6px 0 #4b1ca8, 0 calc(1.6px * -1) 0 #4b1ca8, calc(1.6px * .87) calc(1.6px * .5) 0 #4b1ca8, calc(1.6px * -.87) calc(1.6px * .5) 0 #4b1ca8, calc(1.6px * .87) calc(1.6px * -.5) 0 #4b1ca8, calc(1.6px * -.87) calc(1.6px * -.5) 0 #4b1ca8, calc(1.6px * .5) calc(1.6px * .87) 0 #4b1ca8, calc(1.6px * -.5) calc(1.6px * .87) 0 #4b1ca8, calc(1.6px * .5) calc(1.6px * -.87) 0 #4b1ca8, calc(1.6px * -.5) calc(1.6px * -.87) 0 #4b1ca8, 0 3px 0 #2e0f75; }
 .game-top .level-pill { font-weight: 900; }
 .ribbon span, .modal h2, .card h2 { text-shadow: 0 2px 0 rgba(120, 20, 80, .55), 2px 0 0 rgba(120, 20, 80, .55), 0 -2px 0 rgba(120, 20, 80, .55), -2px 0 0 rgba(120, 20, 80, .55), 0 4px 0 rgba(80, 10, 50, .45); }
 

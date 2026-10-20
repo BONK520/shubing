@@ -27,6 +27,9 @@ python tools/build_assets.py --force   # 全部重做
 1. **模型**：`tools/source/<id>.usdz` 存在就用掃描檔（轉成 GLB + 縮小版 USDZ；看檔案內容決定要不要重轉，跟修改時間無關）。`source` 是 `photo` 的玩具沒有 3D 模型。
 2. **渲染**：掃描玩具的方塊圖、24 格旋轉圖、三寶合照（彩色炸彈）、標題圖（無頭 Chromium + three.js）。
 3. **後製**：白色描邊貼紙 + 陰影（`postprocess.py`）；照片玩具和裝飾貼紙用 `photo_cut.py` 從照片去背。
+   遊戲裡實際用的是**沒白邊的版本**（`<id>_n.png`、`<id>_spin_n.webp`、`trio_n.png`），會再加上「遊戲光」（`postprocess.py` 的 `toyify`）：
+   磨皮、暗部拉亮加對比、髒灰變乾淨、面向光的邊緣加暖白色邊緣光、左上一片光澤、邊緣柔化。參數在 `postprocess.py` 的 `TOY`。
+   發光邊（糖果色）和影子不做在圖裡，由遊戲依場景加。
 4. 複製到 `assets/sprites/`、`assets/models/`、`assets/deco/`、`assets/photos/`，寫 `assets/manifest.json`。
 5. 輸出檢查用總覽圖 `tools/out/contact.png`，跑完打開看一下每隻是否清楚。
 
@@ -84,7 +87,7 @@ python tools/build_assets.py --force   # 全部重做
 | `slim_usdz.py` | 縮小版 USDZ（3D 看看頁只用 GLB；USDZ 留著，方便之後在 Mac / iPhone 上直接打開看） |
 | `photo_cut.py` | 照片去背（照片玩具、裝飾貼紙）；`python tools/photo_cut.py <名字>` 看去背結果 |
 | `make_placeholders.py` | 程式產生暫代玩具（目前沒有用到，留著備用） |
-| `postprocess.py` | 貼紙描邊、陰影、旋轉圖拼成一張 |
+| `postprocess.py` | 貼紙描邊、陰影、旋轉圖拼成一張；`toyify`（遊戲光）；`retoy` 給沒有原照片的現成 `_n.png` 補上遊戲光（只能做一次） |
 | `contact_sheet.py` | 檢查用總覽圖 |
 | `render/shoot.py` | 無頭瀏覽器渲染（也可以單獨用：`python tools/render/shoot.py <jobs.json> <輸出資料夾>`） |
 | `inspect_usd.py` | 印出 USD 檔結構、點數、包圍盒 |
