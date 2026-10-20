@@ -21,9 +21,15 @@ const pct = x => `${Math.round(100 * x)}%`;
 // ---------- balance targets (per level) ----------
 // 三星要是「照著玩就拿得到」的標準：
 // decent: pass ≥ 97%, 3★ ≥ 80%.  casual: pass ≥ 88%, 3★ ≥ 45% (≥ 60% on 1–5).
+// 難度 t：第 1 關 0 → 第 15 關 1；第 16–30 關每五關一章，章頭 0.65 / 0.75 / 0.85、每關 +0.1（章末 1.05 / 1.15 / 1.25）
+export function difficulty(id) {
+  if (id <= 15) return Math.max(0, (id - 1) / 14);
+  const k = Math.floor((id - 16) / 5), pos = (id - 16) % 5;
+  return 0.65 + 0.1 * Math.min(k, 2) + 0.1 * pos;
+}
 export function targetsFor(id) {
   // 難度曲線：第 1 關幾乎都過、認真玩八成三星；越後面越難，第 15 關認真玩約三成三星（容許 4 個百分點誤差）
-  const t = Math.max(0, Math.min(1, (id - 1) / 14)), tol = 0.04;
+  const t = difficulty(id), tol = 0.04;
   return {
     decent: { pass: 0.995 - 0.115 * t - tol, s3: 0.82 - 0.5 * t - tol - 0.04 },
     casual: { pass: 0.97 - 0.37 * t - tol, s3: 0 },
