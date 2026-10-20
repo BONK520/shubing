@@ -1,5 +1,5 @@
 {
-  "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
+  "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
   "sprite": {
     "size": 256,
     "render": 1024
@@ -44,6 +44,17 @@
           1.0,
           0.94
         ]
+      },
+      "toy": {
+        "toonify": false,
+        "black": 0.05,
+        "contrast": 0.4,
+        "sat": 1.0,
+        "vib": 0.2,
+        "rim": 1.3,
+        "rim_w": 8.0,
+        "sheen": 0.1,
+        "spec": 0.12
       }
     },
     {
@@ -972,7 +983,7 @@
       "cut": {
         "rect": [
           190,
-          100,
+          60,
           615,
           385
         ],
@@ -1006,6 +1017,21 @@
             470,
             305,
             30
+          ],
+          [
+            442,
+            120,
+            12
+          ],
+          [
+            420,
+            138,
+            9
+          ],
+          [
+            500,
+            140,
+            9
           ]
         ],
         "bg": [
@@ -1048,6 +1074,21 @@
             220,
             300,
             18
+          ],
+          [
+            440,
+            80,
+            14
+          ],
+          [
+            380,
+            100,
+            12
+          ],
+          [
+            510,
+            100,
+            12
           ]
         ]
       }

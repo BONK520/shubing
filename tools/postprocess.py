@@ -264,10 +264,13 @@ def toyify(a, unit, **kw):
     return np.concatenate([np.clip(rgb, 0, 1), al[..., None]], -1).astype(np.float32)
 
 
-def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None, toon=True):
-    """沒有白邊、沒有陰影的玩具圖（盤面上放進糖果裡用；陰影和發光邊由遊戲畫）。toon：塑膠公仔化 + 遊戲光"""
+def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None, toon=True, toy=None):
+    """沒有白邊、沒有陰影的玩具圖（盤面上放進糖果裡用；陰影和發光邊由遊戲畫）。toon：塑膠公仔化 + 遊戲光。
+    toy：覆蓋 TOY 的參數；裡面放 "toonify": False 就不做 toonify（皮蛋這種黑色玩具做了會整片變灰紫色、像起霧）"""
+    toy = dict(toy or {})
+    pre = toy.pop('toonify', True)
     a = grade(to_np(render), g)
-    if toon:
+    if toon and pre:
         a = toonify(a)
     W = size * K; unit = size / 256 * K
     if transform is None:
@@ -276,7 +279,7 @@ def sprite_clean(render, size=256, K=3, fill=0.9, g=None, transform=None, toon=T
         s, ox, oy = transform[0] * K, transform[1] * K, transform[2] * K
     big = resample(a, s, ox, oy, W, W)
     if toon:
-        big = toyify(big, unit)
+        big = toyify(big, unit, **toy)
     return to_im(downsample(big, size, size))
 
 

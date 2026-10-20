@@ -4,6 +4,7 @@
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
 
 :root {
+  --cloud: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 84'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%23fff'/><stop offset='.5' stop-color='%23f8f5ff'/><stop offset='1' stop-color='%23cbbfff'/></linearGradient><clipPath id='c'><circle cx='42' cy='54' r='24'/><circle cx='72' cy='38' r='30'/><circle cx='106' cy='42' r='26'/><circle cx='130' cy='56' r='20'/><rect x='20' y='50' width='128' height='28' rx='14'/></clipPath><filter id='b' x='-30%' y='-30%' width='160%' height='160%'><feGaussianBlur stdDeviation='5'/></filter></defs><g clip-path='url(%23c)'><rect width='160' height='84' fill='url(%23g)'/><ellipse cx='86' cy='88' rx='78' ry='22' fill='%238b76ef' opacity='.5' filter='url(%23b)'/><ellipse cx='68' cy='17' rx='22' ry='9' fill='%23fff' filter='url(%23b)'/><ellipse cx='108' cy='24' rx='15' ry='7' fill='%23fff' opacity='.85' filter='url(%23b)'/><ellipse cx='40' cy='36' rx='12' ry='6' fill='%23fff' opacity='.8' filter='url(%23b)'/></g></svg>");   /* 立體的雲：上白下淡紫、底部有柔和的陰影（背景和地圖共用） */
   --font: "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   --ink: #5a2a6c;
   --ink-soft: #8d5fa3;
@@ -81,15 +82,12 @@ svg use { pointer-events: none; }
   50%  { transform: translate(18px, -60vh); }
   100% { transform: translate(-10px, -125vh); }
 }
-.cloud {
-  position: absolute; width: 150px; height: 46px; border-radius: 40px;
-  background: rgba(255, 255, 255, .78);
-  filter: drop-shadow(0 6px 10px rgba(110, 90, 200, .12));
+.cloud { /* 背景飄的雲：棉花糖一樣有厚度（上亮下帶淡紫色陰影） */
+  position: absolute; width: 150px; height: 79px; margin-top: -33px;
+  background: var(--cloud) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, .7)) drop-shadow(0 8px 10px rgba(110, 90, 200, .16));
   animation: drift 60s linear infinite;
 }
-.cloud::before, .cloud::after { content: ''; position: absolute; background: inherit; border-radius: 50%; }
-.cloud::before { width: 66px; height: 66px; left: 22px; top: -32px; }
-.cloud::after  { width: 50px; height: 50px; left: 72px; top: -22px; }
 .c1 { top: 9%;  left: -160px; animation-duration: 70s; animation-delay: -10s; transform: scale(.9); }
 .c2 { top: 30%; left: -160px; animation-duration: 95s; animation-delay: -60s; opacity: .6; }
 .c3 { top: 62%; left: -160px; animation-duration: 80s; animation-delay: -35s; opacity: .45; }
@@ -449,22 +447,42 @@ svg use { pointer-events: none; }
   position: absolute; pointer-events: none; transform: translate(-50%, -50%);
 }
 .map-island.cloudy {
-  width: 92px; height: 30px; border-radius: 30px; background: rgba(255, 255, 255, .7);
+  width: 96px; height: 51px;
+  background: var(--cloud) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(90, 60, 180, .2));
 }
-.map-island.cloudy::before { content: ''; position: absolute; width: 40px; height: 40px; border-radius: 50%; background: inherit; left: 16px; top: -20px; }
-.map-island.lolly { width: 34px; height: 70px; }
+/* 棒棒糖：糖是一顆有光澤的球（左上亮點、右下暗部），棍子是圓柱，地上有往右下的影子 */
+.map-island.lolly {
+  width: 52px; height: 74px;
+  background: radial-gradient(ellipse 34% 7% at 62% 95%, rgba(60, 20, 110, .34), rgba(60, 20, 110, 0));
+}
 .map-island.lolly::before {
-  content: ''; position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, #ff6fb0 0 30deg, #fff 30deg 60deg);
-  border: 3px solid #fff; box-shadow: 0 4px 8px rgba(90, 40, 120, .2);
+  content: ''; position: absolute; left: 6px; top: 0; width: 36px; height: 36px; border-radius: 50%; z-index: 1;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .95) 0 9%, rgba(255, 255, 255, .35) 22%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, rgba(120, 20, 80, 0) 55%, rgba(120, 20, 80, .35) 100%),
+    repeating-conic-gradient(from 10deg, #ff5fa8 0 30deg, #fff4fa 30deg 60deg);
+  border: 3px solid #fff;
+  box-shadow: inset -3px -4px 6px rgba(150, 20, 90, .35), 0 0 0 2px #ff7fbb, 0 3px 0 2px #c93b80, 3px 6px 7px rgba(70, 20, 110, .3);
 }
-.map-island.lolly::after { content: ''; position: absolute; left: 15px; top: 32px; width: 5px; height: 36px; border-radius: 3px; background: #fff; box-shadow: 0 2px 4px rgba(90, 40, 120, .15); }
-.map-island.toy { width: 62px; height: 62px; filter: drop-shadow(0 0 5px rgba(255, 210, 245, .8)) drop-shadow(5px 9px 5px rgba(60, 20, 110, .3)); animation: sway 3.4s ease-in-out infinite; }
-.map-island.toy img, .map-island.toy .toy-fallback { width: 100%; height: 100%; object-fit: contain; }
-.map-island.sweet { width: 40px; height: 26px; border-radius: 13px; background: linear-gradient(90deg, #8fd3ff, #c9b6ff); border: 3px solid #fff; box-shadow: 0 4px 8px rgba(90, 40, 120, .18); }
-.map-island.sweet::before, .map-island.sweet::after { content: ''; position: absolute; top: 3px; width: 0; height: 0; border: 7px solid transparent; }
-.map-island.sweet::before { left: -15px; border-right-color: #fff; }
-.map-island.sweet::after { right: -15px; border-left-color: #fff; }
+.map-island.lolly::after {
+  content: ''; position: absolute; left: 21px; top: 34px; width: 6px; height: 36px; border-radius: 3px;
+  background: linear-gradient(90deg, #fff 0%, #f6f0ff 40%, #cbbde6 100%);
+  box-shadow: 2px 2px 3px rgba(70, 20, 110, .25);
+}
+/* 從雲後面探頭的玩具：前面那朵雲擋住下半身，玩具一上一下探頭 */
+.map-island.toy { width: 92px; height: 74px; }
+.map-island.toy img, .map-island.toy .toy-fallback {
+  position: absolute; left: 50%; top: 0; width: 58px; height: 58px; margin-left: -29px; object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(255, 210, 245, .8));
+  animation: peek 3.4s ease-in-out infinite; animation-delay: var(--k, 0s);
+}
+.map-island.toy .puff {
+  position: absolute; left: 0; bottom: 0; width: 92px; height: 48px; z-index: 1;
+  background: var(--cloud) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(90, 60, 180, .2));
+}
+@keyframes peek { 0%, 100% { translate: 0 6px; rotate: -4deg; } 50% { translate: 0 -2px; rotate: 4deg; } }
 @keyframes sway { 0%, 100% { rotate: -6deg; } 50% { rotate: 6deg; } }
 
 .node { /* 有厚度的糖果按鈕：亮面、外圈、兩層側面、投影 */
@@ -502,18 +520,15 @@ svg.on .hi { opacity: .9; }
 }
 .node .badge img { width: 120%; height: 120%; object-fit: contain; }
 /* 要收集的玩具：站在關卡按鈕的右肩上（壓在按鈕邊上、有腳下的影子） */
+/* 要收集的玩具：小圓徽章（和果凍 / 分數徽章同一套），外圈是那隻玩具的糖果色、有厚度，玩具稍微探出圓框 */
 .node .badge.toy {
-  right: -34px; bottom: 10px; width: 44px; height: 44px; z-index: 2;
-  border: 0; border-radius: 0; background: none; overflow: visible; box-shadow: none;
+  right: -12px; bottom: -9px; width: 36px; height: 36px; z-index: 2; overflow: visible;
+  background: radial-gradient(circle at 50% 38%, #fff 0 30%, var(--pc-ll, #fff) 75%);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .08), 0 0 0 2px var(--pc, #ff6fb0), 0 3px 0 2px var(--pc-d, #c42a74), 0 6px 7px 2px rgba(60, 15, 90, .3);
 }
 .node .badge.toy img {
-  position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain;
-  translate: 0 calc(var(--foot, 0) * 100% + 4%);
-  filter: drop-shadow(0 0 4px var(--pc-l, #fff));
-}
-.node .badge.toy::after {
-  content: ''; position: absolute; left: 14%; right: 10%; bottom: -5%; height: 18%; border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 50%, rgba(40, 10, 70, .55) 0%, rgba(40, 10, 70, .25) 45%, rgba(40, 10, 70, 0) 72%);
+  position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(60, 20, 90, .35));
 }
 .node .badge.jelly { background: linear-gradient(180deg, #ffc1df, #ff75b5); }
 .node .badge.jelly::after { content: ''; width: 9px; height: 5px; border-radius: 50%; background: rgba(255, 255, 255, .9); transform: translate(-3px, -4px); }
@@ -1303,5 +1318,17 @@ svg.on .hi { opacity: .9; }
 .hud-moves > *, .hud-score > *, .hud-goal > .goal-items { position: relative; z-index: 1; }
 .hud-goal > .lbl { z-index: 2; }
 .hud-goal, .hud-score { border-width: 3px; }
-.starbar-track { height: 11px; top: 4px; background: linear-gradient(180deg, #e3d4f5, #f3ebfb); box-shadow: inset 0 2px 3px rgba(90, 40, 120, .3), 0 1px 0 #fff; }
-.starbar-fill { background: linear-gradient(180deg, #fff3a8 0%, #ffd23f 45%, #ffa21f 100%); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .8), inset 0 -2px 0 rgba(190, 100, 0, .3); }
+/* 分數條：深紫色內凹的槽（亮的金色進度條在上面才跳得出來）；還沒拿到的星星是有厚度的銀紫色凹槽星，拿到變金星 */
+.starbar-track {
+  height: 12px; top: 4px;
+  background: linear-gradient(180deg, rgba(40, 16, 102, .82), rgba(78, 44, 158, .7));
+  box-shadow: inset 0 2px 3px rgba(12, 0, 46, .6), inset 0 -1px 0 rgba(255, 255, 255, .22), 0 1px 0 rgba(255, 255, 255, .95), 0 -1px 0 rgba(70, 30, 140, .35);
+}
+.starbar-fill { background: linear-gradient(180deg, #fff3a8 0%, #ffd23f 45%, #ffa21f 100%); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .8), inset 0 -2px 0 rgba(190, 100, 0, .35), 0 0 6px rgba(255, 200, 60, .7); }
+.sb-star {
+  fill: url(#g-star-off); stroke: #3f1f86; stroke-width: 2.4; stroke-linejoin: round;
+  filter: drop-shadow(0 2px 0 #2f136e) drop-shadow(0 3px 3px rgba(40, 10, 90, .35));
+}
+.sb-star .hi { opacity: .45; }
+.sb-star.on { fill: url(#g-gold); stroke: #a8520a; filter: drop-shadow(0 2px 0 #8a4204) drop-shadow(0 0 6px rgba(255, 196, 40, .85)); }
+.sb-star.on .hi { opacity: .95; }

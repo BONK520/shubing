@@ -25,6 +25,11 @@
       <stop offset=".66" stop-color="#ffc21f"/>
       <stop offset="1" stop-color="#f39508"/>
     </linearGradient>
+    <linearGradient id="g-star-off" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1ecff"/>
+      <stop offset=".45" stop-color="#bdb0e4"/>
+      <stop offset="1" stop-color="#7a69b8"/>
+    </linearGradient>
     <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.6l2.75 5.6 6.15.9-4.45 4.35 1.05 6.13L12 16.68l-5.5 2.9 1.05-6.13L3.1 9.1l6.15-.9z"/></symbol>
     <symbol id="i-star-hi" viewBox="0 0 24 24"><ellipse cx="9.6" cy="9.9" rx="2.5" ry="1.15" transform="rotate(-32 9.6 9.9)"/><circle cx="12.3" cy="6.9" r=".85"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></symbol>
@@ -129,9 +134,9 @@
         <div class="score-line"><span class="lbl">分數</span><b id="hud-score">0</b></div>
         <div class="starbar" id="starbar">
           <div class="starbar-track"><div class="starbar-fill" id="starbar-fill"></div></div>
-          <svg class="sb-star" style="--p:33%"><use href="#i-star"/></svg>
-          <svg class="sb-star" style="--p:66%"><use href="#i-star"/></svg>
-          <svg class="sb-star" style="--p:100%"><use href="#i-star"/></svg>
+          <svg class="sb-star" style="--p:33%"><use href="#i-star"/><use class="hi" href="#i-star-hi"/></svg>
+          <svg class="sb-star" style="--p:66%"><use href="#i-star"/><use class="hi" href="#i-star-hi"/></svg>
+          <svg class="sb-star" style="--p:100%"><use href="#i-star"/><use class="hi" href="#i-star-hi"/></svg>
         </div>
       </div>
     </div>

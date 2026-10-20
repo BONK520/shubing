@@ -399,9 +399,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     boundsCache.set(img, b);
     return b;
   }
-  // 玩具要多大：在小畫布上把糖果和玩具疊起來量，找「蓋住糖果約 76%、超出糖果外框不到 3%」的最大尺寸
+  // 玩具要多大：在小畫布上把糖果和玩具疊起來量，找「蓋住糖果約 70%、超出糖果外框不到 3%」的最大尺寸
+  // （外圈要留一圈果凍色，才一眼看得出是什麼顏色）
   // （每種糖果形狀不一樣、每隻玩具的輪廓也不一樣，所以用量的；換玩具圖也會自動算）
-  const FIT_N = 80, FIT_COVER = 0.76, FIT_OUT = 0.03;
+  const FIT_N = 80, FIT_COVER = 0.7, FIT_OUT = 0.03;
   const shapeMasks = new Map(), fitCache = new Map();
   let fitG = null;
   function fitCtx() {
@@ -518,11 +519,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const og = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
     og.addColorStop(0, css(mixc(dark, BLACK, 0.28))); og.addColorStop(1, css(deeper));
     candyPath(g, shape, cx, cy, R * 1.06); g.fillStyle = og; g.fill();
-    const rg = g.createRadialGradient(cx - R * 0.35, cy - R * 0.45, R * 0.04, cx, cy, R * 1.18);
-    rg.addColorStop(0, css(mixc(sat, WHITE, 0.62)));
-    rg.addColorStop(0.32, css(mixc(sat, WHITE, 0.18)));
-    rg.addColorStop(0.7, css(sat));
-    rg.addColorStop(1, css(mixc(dark, BLACK, 0.38)));
+    // 糖果面：整片都是飽和的糖果色（玩具蓋住中間，露出來的那圈一眼就看得出顏色），中間亮一點
+    const rg = g.createRadialGradient(cx - R * 0.3, cy - R * 0.4, R * 0.04, cx, cy, R * 1.12);
+    rg.addColorStop(0, css(mixc(sat, WHITE, 0.5)));
+    rg.addColorStop(0.35, css(mixc(sat, WHITE, 0.1)));
+    rg.addColorStop(0.72, css(sat));
+    rg.addColorStop(1, css(mixc(dark, BLACK, 0.2)));
     candyPath(g, shape, cx, cy, R); g.fillStyle = rg; g.fill();
     g.save();
     candyPath(g, shape, cx, cy, R); g.clip();
@@ -530,19 +532,29 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.fillStyle = 'rgba(255,255,255,0.86)';
       paintStripes(g, cx - R, cy - R, R * 2, special);
     }
-    // 暗部：越往右下越深（用自己顏色的深色版，不是灰黑）
+    // 暗部：右下角淡淡地深一點（用自己顏色的深色版，不是灰黑）
     const dg = g.createLinearGradient(cx - R * 0.6, cy - R * 0.7, cx + R * 0.8, cy + R);
-    dg.addColorStop(0, css(deeper, 0)); dg.addColorStop(0.5, css(deeper, 0)); dg.addColorStop(1, css(deeper, 0.55));
+    dg.addColorStop(0, css(deeper, 0)); dg.addColorStop(0.55, css(deeper, 0)); dg.addColorStop(1, css(deeper, 0.32));
     g.fillStyle = dg; g.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
     // 透光：光從玻璃底部透上來，下半部裡面亮一團（不碰到邊，邊緣保持暗）
     const cg = g.createRadialGradient(cx + R * 0.05, cy + R * 0.58, 0, cx + R * 0.05, cy + R * 0.58, R * 0.5);
     cg.addColorStop(0, css(mixc(sat, WHITE, 0.55), 0.55)); cg.addColorStop(1, css(sat, 0));
     g.fillStyle = cg; g.fillRect(cx - R, cy, R * 2, R * 1.3);
-    // 邊緣一圈暗邊：右下最深、左上幾乎沒有（球面的厚度）
+    // 果凍邊：貼著外緣一圈粗粗的、很飽和的糖果色（左上受光比較亮、右下比較濃），玩具放大也蓋不掉
+    candyPath(g, shape, cx, cy, R);
+    const jg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    jg.addColorStop(0, css(mixc(sat, WHITE, 0.3))); jg.addColorStop(0.45, css(sat)); jg.addColorStop(1, css(mixc(dark, BLACK, 0.22)));
+    g.lineWidth = R * 0.34; g.strokeStyle = jg; g.stroke();
+    // 果凍邊內側一條細細的亮線（左上最亮），邊才有「果凍」的厚度
+    candyPath(g, shape, cx, cy, R * 0.84);
+    const lg = g.createLinearGradient(cx - R, cy - R, cx + R * 0.4, cy + R * 0.4);
+    lg.addColorStop(0, 'rgba(255,255,255,0.75)'); lg.addColorStop(0.5, 'rgba(255,255,255,0.18)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.lineWidth = Math.max(1, R * 0.05); g.strokeStyle = lg; g.stroke();
+    // 最外緣一圈暗邊（輪廓清楚）：右下深、左上淡
     candyPath(g, shape, cx, cy, R);
     const eg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    eg.addColorStop(0, css(deeper, 0.08)); eg.addColorStop(0.45, css(deeper, 0.24)); eg.addColorStop(1, css(deeper, 0.82));
-    g.lineWidth = R * 0.3; g.strokeStyle = eg; g.stroke();
+    eg.addColorStop(0, css(deeper, 0.18)); eg.addColorStop(0.5, css(deeper, 0.35)); eg.addColorStop(1, css(deeper, 0.75));
+    g.lineWidth = R * 0.07; g.strokeStyle = eg; g.stroke();
     g.restore();
     if (special === 'wrap') {
       candyPath(g, shape, cx, cy, R * 0.86);
@@ -554,43 +566,33 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function paintCandyGloss(g, kind, cx, cy, S) {
     const shape = shapeOf(kind), R = S * CANDY_R, col = kindColor(kind);
-    // 左上的半月形鏡面反光：貼著糖果的邊，中間挖掉（玩具塞滿糖果，反光不能蓋住臉）
+    // 左上的月牙形反光：只在果凍邊那一圈（中間挖掉到 0.8 倍），不會橫過玩具的臉
     const hl = makeCanvas(g.canvas.width, g.canvas.height), q = hl.getContext('2d');
     q.save();
     candyPath(q, shape, cx, cy, R); q.clip();
-    q.translate(cx - R * 0.3, cy - R * 0.52); q.rotate(-0.42);
-    const hg = q.createLinearGradient(0, -R * 0.36, 0, R * 0.3);
-    hg.addColorStop(0, 'rgba(255,255,255,0.95)'); hg.addColorStop(0.55, 'rgba(255,255,255,0.4)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
-    q.beginPath(); q.ellipse(0, 0, R * 0.72, R * 0.36, 0, 0, Math.PI * 2); q.fillStyle = hg; q.fill();
+    q.translate(cx - R * 0.34, cy - R * 0.5); q.rotate(-0.62);
+    const hg = q.createLinearGradient(0, -R * 0.4, 0, R * 0.32);
+    hg.addColorStop(0, 'rgba(255,255,255,0.8)'); hg.addColorStop(0.5, 'rgba(255,255,255,0.32)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+    q.beginPath(); q.ellipse(0, 0, R * 0.78, R * 0.4, 0, 0, Math.PI * 2); q.fillStyle = hg; q.fill();
     q.restore();
     q.globalCompositeOperation = 'destination-out';
-    const ix = cx + R * 0.14, iy = cy + R * 0.2, cut = q.createRadialGradient(ix, iy, 0, ix, iy, R * 0.86);
-    cut.addColorStop(0, 'rgba(0,0,0,1)'); cut.addColorStop(0.72, 'rgba(0,0,0,1)'); cut.addColorStop(1, 'rgba(0,0,0,0)');
+    const ix = cx + R * 0.06, iy = cy + R * 0.08, cut = q.createRadialGradient(ix, iy, 0, ix, iy, R * 0.94);
+    cut.addColorStop(0, 'rgba(0,0,0,1)'); cut.addColorStop(0.84, 'rgba(0,0,0,1)'); cut.addColorStop(1, 'rgba(0,0,0,0)');
     q.fillStyle = cut; q.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 2.4);
     g.drawImage(hl, 0, 0);
     g.save();
     candyPath(g, shape, cx, cy, R); g.clip();
-    // 玻璃罩：上半部一層淡淡的反光、再一道斜斜的亮痕，同時掃過玩具和糖果（像把玩具裝進彈珠 / 扭蛋裡）
-    const dome = g.createLinearGradient(0, cy - R, 0, cy + R * 0.05);
-    dome.addColorStop(0, 'rgba(255,255,255,0.16)'); dome.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = dome; g.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 1.3);
-    g.lineCap = 'round';
-    for (const [w, a] of [[R * 0.16, 0.12], [R * 0.07, 0.34]]) {
-      g.beginPath();
-      g.moveTo(cx - R * 0.86, cy + R * 0.12);
-      g.quadraticCurveTo(cx - R * 0.62, cy - R * 0.62, cx + R * 0.12, cy - R * 0.84);
-      g.lineWidth = w; g.strokeStyle = `rgba(255,255,255,${a})`; g.stroke();
-    }
-    // 右下：玻璃內側一道很細的折射光（往內縮，最外緣保持暗）
-    candyPath(g, shape, cx, cy, R * 0.88);
+    // 右下：玻璃內側一道很細的折射光（在果凍邊上，最外緣保持暗）
+    candyPath(g, shape, cx, cy, R * 0.9);
     const lc = mixc(saturate(col, 0.4), WHITE, 0.55), rl = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    rl.addColorStop(0, css(lc, 0)); rl.addColorStop(0.7, css(lc, 0)); rl.addColorStop(1, css(lc, 0.38));
+    rl.addColorStop(0, css(lc, 0)); rl.addColorStop(0.7, css(lc, 0)); rl.addColorStop(1, css(lc, 0.45));
     g.lineWidth = R * 0.06; g.strokeStyle = rl; g.stroke();
     g.restore();
-    g.beginPath(); g.arc(cx - R * 0.5, cy - R * 0.52, R * 0.1, 0, Math.PI * 2);
-    g.fillStyle = 'rgba(255,255,255,1)'; g.fill();
-    g.beginPath(); g.arc(cx - R * 0.27, cy - R * 0.68, R * 0.045, 0, Math.PI * 2);
-    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    // 亮點：也放在左上的邊上
+    g.beginPath(); g.arc(cx - R * 0.6, cy - R * 0.58, R * 0.075, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.95)'; g.fill();
+    g.beginPath(); g.arc(cx - R * 0.36, cy - R * 0.76, R * 0.04, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.85)'; g.fill();
   }
   // 液態玻璃糖果：有厚度的側邊、中間亮邊緣濃的玻璃面、底部透光、內圈亮邊（玩具上面再蓋一層反光，見 paintGlassOverlay）
   function paintTileBody(g, cx, cy, S, col, special) {
@@ -760,56 +762,96 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     fg.drawImage(top, 0, 0);
     return { full, base, top, P };
   }
+  // 三寶排成扇形（左右兩隻在後面、往外歪，中間那隻在前面），每隻一圈金光 + 往右下的影子；彩色炸彈和「三寶合體！」口號共用
+  const fanCache = new Map();
+  function trioFan(S) {
+    let c = fanCache.get(S);
+    if (c) return c;
+    const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2;
+    const kindOf = id => pieces.findIndex(p => p.id === id);
+    const L = [['egg', -0.19, -0.07, 0.42, -0.34], ['dog', 0.19, -0.07, 0.42, 0.34], ['sloth', 0, 0.07, 0.5, 0]];  // id, x, y, 大小（格）, 傾斜
+    const ims = L.map(([id]) => { const k = kindOf(id); return k >= 0 ? toyImage(k) : null; });
+    if (ims.some(im => !im)) return null;
+    c = makeCanvas(P, P);
+    const g = c.getContext('2d');
+    L.forEach(([, x, y, b, rot], i) => {
+      const box = Math.round(S * b), src = scaled(ims[i], box);
+      const gold = silhouette(src, '#ffd84a'), sh = silhouette(src, 'rgb(60,24,100)');
+      g.save();
+      g.translate(cx + x * S, cy + y * S); g.rotate(rot);
+      g.globalAlpha = 0.09;
+      for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) g.drawImage(sh, -box / 2 + box * 0.03 + dx * box * 0.01, -box / 2 + box * 0.06 + dy * box * 0.01);
+      for (const [r, a] of [[box * 0.07, 0.2], [box * 0.04, 0.5]]) {
+        g.globalAlpha = a;
+        for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(gold, -box / 2 + Math.cos(t) * r, -box / 2 + Math.sin(t) * r); }
+      }
+      g.globalAlpha = 1;
+      g.drawImage(src, -box / 2, -box / 2);
+      g.restore();
+    });
+    fanCache.set(S, c);
+    return c;
+  }
+  // 彩色炸彈：會轉的七彩漩渦球 + 金色寶石框 + 玻璃反光，上面是扇形的三寶；外面一圈金光（drawBomb 裡一明一暗）
   function buildBomb(S) {
-    const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, R = S * 0.42;
+    const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, R = S * 0.39;
     const under = makeCanvas(P, P), ug = under.getContext('2d');
     ug.save();
-    ug.shadowColor = 'rgba(36,8,64,0.5)'; ug.shadowBlur = S * 0.08; ug.shadowOffsetY = S * 0.05;
-    ug.beginPath(); ug.arc(cx, cy, R, 0, Math.PI * 2); ug.fillStyle = '#6a3aa8'; ug.fill();
+    ug.shadowColor = 'rgba(36,8,64,0.55)'; ug.shadowBlur = S * 0.08; ug.shadowOffsetX = S * 0.03; ug.shadowOffsetY = S * 0.06;
+    ug.beginPath(); ug.arc(cx, cy, R * 1.13, 0, Math.PI * 2); ug.fillStyle = '#8a5410'; ug.fill();
     ug.restore();
+    // 七彩漩渦（整張會轉）：彩虹扇形 + 白色的漩渦臂 + 中間亮、邊緣暗（球的體積）
     const orb = makeCanvas(P, P), og = orb.getContext('2d');
-    const n = 30;
+    const n = 36;
     for (let i = 0; i < n; i++) {
       const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1.08) / n) * Math.PI * 2;
       og.beginPath(); og.moveTo(cx, cy); og.arc(cx, cy, R, a0, a1); og.closePath();
-      og.fillStyle = `hsl(${(i / n) * 360},95%,66%)`; og.fill();
+      og.fillStyle = `hsl(${(i / n) * 360},96%,62%)`; og.fill();
     }
-    const rg = og.createRadialGradient(cx, cy, 0, cx, cy, R);
-    rg.addColorStop(0, 'rgba(255,255,255,0.9)'); rg.addColorStop(0.42, 'rgba(255,255,255,0.3)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
-    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.fillStyle = rg; og.fill();
-    const top = makeCanvas(P, P), tg = top.getContext('2d');
-    const rim = tg.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.2, cx, cy, R);
-    rim.addColorStop(0, 'rgba(255,255,255,0)'); rim.addColorStop(0.72, 'rgba(255,255,255,0)'); rim.addColorStop(1, 'rgba(70,20,120,0.5)');
-    tg.beginPath(); tg.arc(cx, cy, R, 0, Math.PI * 2); tg.fillStyle = rim; tg.fill();
-    tg.save();
-    tg.translate(cx - R * 0.3, cy - R * 0.45); tg.rotate(-0.55); tg.scale(1, 0.55);
-    const gl = tg.createLinearGradient(0, -R * 0.38, 0, R * 0.38);
-    gl.addColorStop(0, 'rgba(255,255,255,0.9)'); gl.addColorStop(1, 'rgba(255,255,255,0.08)');
-    tg.beginPath(); tg.arc(0, 0, R * 0.38, 0, Math.PI * 2); tg.fillStyle = gl; tg.fill();
-    tg.restore();
-    tg.beginPath(); tg.arc(cx, cy, R, 0, Math.PI * 2);
-    tg.lineWidth = S * 0.035; tg.strokeStyle = 'rgba(255,255,255,0.95)'; tg.stroke();
-    tg.beginPath(); tg.arc(cx, cy, R + S * 0.03, 0, Math.PI * 2);
-    tg.lineWidth = S * 0.02; tg.strokeStyle = 'rgba(80,30,130,0.7)'; tg.stroke();
-    // 三寶合照
-    const trio = makeCanvas(P, P), pg = trio.getContext('2d');
-    const tAll = imgsFor('trio'), im = usable(tAll.clean) ? tAll.clean : tAll.sprite;
-    if (usable(im)) {
-      const box = Math.round(S * 1.22), sc = scaled(im, box), x = Math.round(cx - box / 2), y = Math.round(cy - box / 2 + S * 0.03);
-      if (im === tAll.clean) {
-        // 沒白邊的版本：一圈柔和的亮光（在彩虹球上也看得清楚，但不是硬的白邊）、往右下的柔影
-        const glow = silhouette(sc, '#fff6ff'), sh = silhouette(sc, 'rgb(40,16,90)');
-        for (const [r, a] of [[box * 0.03, 0.12], [box * 0.016, 0.2]]) {
-          pg.globalAlpha = a;
-          for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; pg.drawImage(glow, x + Math.cos(t) * r, y + Math.sin(t) * r); }
-        }
-        pg.globalAlpha = 0.07;
-        for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) pg.drawImage(sh, x + box * 0.02 + dx * box * 0.008, y + box * 0.035 + dy * box * 0.008);
-        pg.globalAlpha = 1;
+    og.save();
+    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.clip();
+    og.lineCap = 'round';
+    for (let k = 0; k < 6; k++) {
+      const a0 = (k / 6) * Math.PI * 2;
+      og.beginPath();
+      for (let j = 0; j <= 20; j++) {
+        const f = j / 20, r = R * f * 1.05, a = a0 + f * 2.2;
+        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+        if (j) og.lineTo(x, y); else og.moveTo(x, y);
       }
-      pg.drawImage(sc, x, y);
-    } else {
-      // 沒有合照：三顆小球
+      og.lineWidth = R * 0.16; og.strokeStyle = 'rgba(255,255,255,0.22)'; og.stroke();
+      og.lineWidth = R * 0.05; og.strokeStyle = 'rgba(255,255,255,0.4)'; og.stroke();
+    }
+    og.restore();
+    const rg = og.createRadialGradient(cx, cy, 0, cx, cy, R);
+    rg.addColorStop(0, 'rgba(255,255,255,0.75)'); rg.addColorStop(0.35, 'rgba(255,255,255,0.18)'); rg.addColorStop(0.72, 'rgba(255,255,255,0)');
+    rg.addColorStop(1, 'rgba(70,20,120,0.3)');
+    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.fillStyle = rg; og.fill();
+    // 不轉的部分：金色寶石框（左上亮、右下深）、內側亮線、左上月牙反光和亮點
+    const top = makeCanvas(P, P), tg = top.getContext('2d');
+    tg.beginPath(); tg.arc(cx, cy, R * 1.13, 0, Math.PI * 2); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2, true);
+    const gg = tg.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    gg.addColorStop(0, '#fff6c2'); gg.addColorStop(0.3, '#ffd84a'); gg.addColorStop(0.65, '#f0a81c'); gg.addColorStop(1, '#a8640a');
+    tg.fillStyle = gg; tg.fill('evenodd');
+    tg.beginPath(); tg.arc(cx, cy, R * 1.05, Math.PI * 0.85, Math.PI * 1.65);
+    tg.lineWidth = Math.max(1, S * 0.022); tg.lineCap = 'round'; tg.strokeStyle = 'rgba(255,255,255,0.85)'; tg.stroke();
+    tg.beginPath(); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2);
+    tg.lineWidth = Math.max(1, S * 0.014); tg.strokeStyle = 'rgba(120,60,10,0.6)'; tg.stroke();
+    tg.beginPath(); tg.arc(cx, cy, R * 1.13, 0, Math.PI * 2);
+    tg.lineWidth = Math.max(1, S * 0.016); tg.strokeStyle = 'rgba(100,50,10,0.75)'; tg.stroke();
+    tg.save();
+    tg.beginPath(); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2); tg.clip();
+    tg.translate(cx - R * 0.36, cy - R * 0.5); tg.rotate(-0.62);
+    const gl = tg.createLinearGradient(0, -R * 0.36, 0, R * 0.26);
+    gl.addColorStop(0, 'rgba(255,255,255,0.75)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    tg.beginPath(); tg.ellipse(0, 0, R * 0.66, R * 0.3, 0, 0, Math.PI * 2); tg.fillStyle = gl; tg.fill();
+    tg.restore();
+    tg.beginPath(); tg.arc(cx - R * 0.78, cy - R * 0.62, R * 0.08, 0, Math.PI * 2); tg.fillStyle = 'rgba(255,255,255,0.95)'; tg.fill();
+    // 三寶（扇形）；圖還沒載好就用三顆小球
+    let trio = trioFan(S);
+    if (!trio) {
+      trio = makeCanvas(P, P);
+      const pg = trio.getContext('2d');
       for (let i = 0; i < 3; i++) {
         const a = -Math.PI / 2 + (i * Math.PI * 2) / 3, bx = cx + Math.cos(a) * R * 0.38, by = cy + Math.sin(a) * R * 0.38;
         const col = kindColor(Math.min(i, Math.max(0, pieces.length - 1)));
@@ -823,7 +865,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function getTile(kind, special) {
     const S = Math.max(4, Math.round(cs * dpr));
-    if (S !== cacheS) { tileCache.clear(); cacheS = S; jellyCache = []; rimCache = []; glowImg = null; }
+    if (S !== cacheS) { tileCache.clear(); fanCache.clear(); cacheS = S; jellyCache = []; rimCache = []; glowImg = null; }
     const key = special === 'bomb' || kind < 0 ? 'bomb' : kind + '|' + special;
     let e = tileCache.get(key);
     if (!e) {
@@ -1879,6 +1921,16 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       return { img: im, frame: -1 };
     }
     if (!sl.toy) return null;
+    if (sl.toy === 'trio') {
+      // 扇形的三寶（和彩色炸彈同一張），裁掉四周的空白，口號旁邊才放得夠大
+      const S2 = Math.max(4, Math.round(cs * dpr * 1.6)), fan = trioFan(S2);
+      if (fan) {
+        const w = Math.round(S2 * 0.96), h = Math.round(S2 * 0.78), c = makeCanvas(w, h);
+        c.getContext('2d').drawImage(fan, (fan.width - w) / 2, (fan.height - h) / 2 + S2 * 0.02, w, h, 0, 0, w, h);
+        c.src = 'trio-fan|' + S2;            // photoSprite 用 src 當快取的 key
+        return { img: c, frame: -1 };
+      }
+    }
     const e = imgsFor(sl.toy);
     // 24 格轉一圈：只挑正面附近 ±75°（第 19…23、0…5 格），每次角度不同又看得到臉
     if (sl.toy !== 'trio' && usable(e.spin)) return { img: e.spin, frame: (19 + Math.floor(Math.random() * 11)) % 24 };
@@ -2025,6 +2077,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
   function drawBomb(cx, cy, s, t, phase, spinRate = 1) {
     const e = getTile(-1, 'bomb'), P = e.P / dpr * s;
+    {
+      // 外圈的金光一明一暗（和條紋糖果的箭頭同一套）
+      const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), z = cs * (1.25 + 0.1 * k) * s, ga = ctx.globalAlpha;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.32 + 0.3 * k);
+      ctx.drawImage(getGlowCol(GOLD), cx - z / 2, cy - z / 2, z, z);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+    }
     ctx.drawImage(e.under, cx - P / 2, cy - P / 2, P, P);
     ctx.save();
     ctx.translate(cx, cy); ctx.rotate((t / 650) * spinRate + phase);
@@ -2749,7 +2808,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     window.removeEventListener('resize', onResize);
     for (const b of banners) { clearTimeout(b.timer); b.res(); }
     banners = []; ghosts = []; fx = []; parts = []; texts = []; sched = [];
-    tileCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
+    tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
   }
 
   const R = {

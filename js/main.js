@@ -83,7 +83,7 @@ function loadImg(src, timeout = 12000) {
 async function loadImages(onProgress) {
   const jobs = [];
   let done = 0;
-  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 2;
+  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 1;
   const track = p => p.then(v => { done++; onProgress(done / total); return v; });
   for (const p of PIECES) {
     const entry = { sprite: null, spin: null };
@@ -96,8 +96,7 @@ async function loadImages(onProgress) {
   }
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);
-  jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));
-  jobs.push(track(loadImg('assets/sprites/trio_n.png')).then(im => { trio.clean = im; }));   // 沒白邊的版本（彩色炸彈用）
+  jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));   // 圖還沒載好時的備用；彩色炸彈和口號用三隻各自的圖排成扇形（renderer 的 trioFan）
   // manifest 的 spinScale = 旋轉序列第 0 格相對靜態圖的大小；畫旋轉時放大回來，選取時才不會突然變小
   // manifest 可有可無：跟圖片一樣有時限（8 秒就放棄），請求卡住也不會讓載入畫面停在 98%
   const mac = typeof AbortController === 'function' ? new AbortController() : null;
@@ -310,10 +309,9 @@ function goalBadge(lvl) {
     const id = Object.keys(g.items || {})[0];
     const p = pieceById(id);
     if (p) {
-      // 要收集的玩具站在關卡按鈕的肩膀上（有腳下的影子），不是縮在小圓圈裡
+      // 要收集的玩具：裝在和果凍 / 分數同一套的小圓徽章裡（外圈是那隻玩具的糖果色），玩具稍微探出圓框
       b.classList.add('toy');
       setToyColors(b, p.color);
-      b.style.setProperty('--foot', toyFoot(toyImg(p)).toFixed(3));
       b.appendChild(toyEl(p, 12));
     }
   } else if (g.type === 'jelly') {
@@ -358,9 +356,9 @@ function buildMap(popIndex = -1) {
   if (cur > 0) { mk('road-dots-done', done); mk('road-dots-done-hi', done, -1.6); }
   inner.appendChild(svg);
 
-  // 裝飾
-  const decoKinds = ['cloudy', 'lolly', 'toy', 'sweet'];
-  for (let i = 0; i < n; i++) {
+  // 裝飾：立體的雲、棒棒糖（有地上的影子）、從雲後面探頭的玩具
+  const decoKinds = ['cloudy', 'lolly', 'toy'];
+  for (let i = 0; i < n - 1; i++) {      // 最後一關上面是「更多關卡製作中」的立牌，不放
     if (i % 2 === 1) continue;
     const p = pts[i];
     const side = p.x > 50 ? -1 : 1;
@@ -371,7 +369,8 @@ function buildMap(popIndex = -1) {
     if (kind === 'toy') {
       const toy = PIECES[(i / 2) % PIECES.length];
       d.appendChild(toyEl(toy, 22));
-      d.style.animationDelay = (-i * 0.7) + 's';
+      d.appendChild(el('i', 'puff'));      // 前面那朵雲，擋住玩具的下半身
+      d.style.setProperty('--k', String(-i * 0.7) + 's');
     }
     inner.appendChild(d);
   }

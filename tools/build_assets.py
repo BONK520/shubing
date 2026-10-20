@@ -214,20 +214,20 @@ def postprocess(cfg):
     S, F = cfg['sprite'], cfg['spin']
     info = {}
     for p in cfg['pieces']:
-        i, g = p['id'], p.get('grade')
+        i, g, toy = p['id'], p.get('grade'), p.get('toy')
         if is_photo(p):
             photo_piece(p)
             info[i] = {}
             continue
         static = rimg(i)
         pp.save_png(pp.sprite(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '.png'))
-        pp.save_png(pp.sprite_clean(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '_n.png'))   # 沒白邊（盤面用）
+        pp.save_png(pp.sprite_clean(static, S['size'], K=3, g=g, toy=toy), os.path.join(A_SPR, i + '_n.png'))   # 沒白邊（盤面用）
         frames = [rimg(f'{i}_s{k:02d}') for k in range(F['frames'])]
         T, ratio = pp.spin_transform([pp.to_np(f) for f in frames], pp.bbox(pp.to_np(static)), static.size, F['size'])
         cells = [pp.sprite(f, F['size'], K=2, g=g, transform=T) for f in frames]
         pp.save_webp(pp.sheet(cells, F['cols'], F['rows'], F['size']), os.path.join(A_SPR, i + '_spin.webp'),
                      F.get('webpQuality', 85))
-        cells_n = [pp.sprite_clean(f, F['size'], K=2, g=g, transform=T) for f in frames]
+        cells_n = [pp.sprite_clean(f, F['size'], K=2, g=g, transform=T, toy=toy) for f in frames]
         pp.save_webp(pp.sheet(cells_n, F['cols'], F['rows'], F['size']), os.path.join(A_SPR, i + '_spin_n.webp'),
                      F.get('webpQuality', 85))
         info[i] = dict(spinScale=round(float(ratio), 3))
@@ -242,9 +242,6 @@ def postprocess(cfg):
         im = pp.compose(layers, W, H, K=2, unit_px=c.get('unit'), outline=c.get('outline', pp.OUTLINE),
                         group=c.get('group', True), fill=c.get('fill'))
         pp.save_png(im, os.path.join(A_SPR, comp + '.png'))
-        if comp == 'trio':      # 彩色炸彈用的沒白邊版本（和盤面玩具一樣的遊戲光）
-            pp.save_png(pp.compose(layers, W, H, K=2, unit_px=c.get('unit'), fill=c.get('fill'), sticker=False),
-                        os.path.join(A_SPR, 'trio_n.png'))
         print(f'  {comp}: {W}x{H}')
     return info
 
