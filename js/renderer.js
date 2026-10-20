@@ -267,47 +267,47 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else g.fillRect(x + o, y - T, band, T * 3);
     }
   }
+  // 液態玻璃糖果：有厚度的側邊、中間亮邊緣濃的玻璃面、底部透光、內圈亮邊（玩具上面再蓋一層反光，見 paintGlassOverlay）
   function paintTileBody(g, cx, cy, S, col, special) {
-    const T = S * TILE, x = cx - T / 2, y = cy - T / 2, rad = T * 0.27;
-    const sat = saturate(col, 0.35);
-    // 陰影（底下一層深色「厚度」+ 柔和投影，像一顆有厚度的糖）
+    const T = S * TILE, x = cx - T / 2, y = cy - T / 2, rad = T * 0.3;
+    const sat = saturate(col, 0.38), deep = mixc(saturate(col, 0.6), BLACK, 0.48);
+    const D = S * 0.065;                                   // 厚度
+    // 投影 + 側邊（糖果的厚度）
     g.save();
-    g.shadowColor = 'rgba(30,6,60,0.5)'; g.shadowBlur = S * 0.08; g.shadowOffsetY = S * 0.06;
-    rr(g, x, y + S * 0.025, T, T, rad); g.fillStyle = css(mixc(sat, BLACK, 0.42)); g.fill();
+    g.shadowColor = 'rgba(25,5,55,0.55)'; g.shadowBlur = S * 0.09; g.shadowOffsetY = S * 0.07;
+    rr(g, x, y + D, T, T, rad); g.fillStyle = css(deep); g.fill();
     g.restore();
-    // 本體漸層：上亮、中間最鮮豔、下面深
-    const gr = g.createLinearGradient(0, y, 0, y + T);
-    gr.addColorStop(0, css(mixc(sat, WHITE, 0.32)));
-    gr.addColorStop(0.38, css(sat));
-    gr.addColorStop(0.78, css(mixc(saturate(col, 0.55), BLACK, 0.12)));
-    gr.addColorStop(1, css(mixc(saturate(col, 0.55), BLACK, 0.3)));
-    rr(g, x, y, T, T, rad); g.fillStyle = gr; g.fill();
+    const sw = g.createLinearGradient(0, y + T * 0.6, 0, y + T + D);
+    sw.addColorStop(0, css(mixc(sat, BLACK, 0.18))); sw.addColorStop(1, css(deep));
+    rr(g, x, y + D * 0.55, T, T, rad); g.fillStyle = sw; g.fill();
+    // 玻璃面：中間亮、邊緣顏色濃（越厚的地方顏色越深）
+    const rg = g.createRadialGradient(cx - T * 0.06, cy - T * 0.1, T * 0.04, cx, cy, T * 0.74);
+    rg.addColorStop(0, css(mixc(sat, WHITE, 0.58)));
+    rg.addColorStop(0.42, css(mixc(sat, WHITE, 0.16)));
+    rg.addColorStop(0.78, css(sat));
+    rg.addColorStop(1, css(mixc(saturate(col, 0.55), BLACK, 0.26)));
+    rr(g, x, y, T, T, rad); g.fillStyle = rg; g.fill();
     g.save();
     rr(g, x, y, T, T, rad); g.clip();
-    // 玩具後面一圈柔光，讓玩具跳出來
-    const cg = g.createRadialGradient(cx, cy + T * 0.04, 0, cx, cy + T * 0.04, T * 0.5);
-    cg.addColorStop(0, 'rgba(255,255,255,0.42)'); cg.addColorStop(0.55, 'rgba(255,255,255,0.12)'); cg.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = cg; g.fillRect(x, y, T, T);
     if (special === 'h' || special === 'v') {
       g.fillStyle = 'rgba(255,255,255,0.82)';
       paintStripes(g, x, y, T, special);
     }
-    // 底部反光：一條亮亮的弧（光從底下透上來，糖果感）
-    const bx = x + T * 0.18, by = y + T * 0.8, bw = T * 0.64, bh = T * 0.12;
-    const bg2 = g.createLinearGradient(0, by, 0, by + bh);
-    bg2.addColorStop(0, 'rgba(255,255,255,0)'); bg2.addColorStop(1, 'rgba(255,255,255,0.38)');
-    rr(g, bx, by, bw, bh, bh * 0.5); g.fillStyle = bg2; g.fill();
-    // 上方亮面（更亮、更像玻璃糖）
-    const gx = x + T * 0.1, gy = y + T * 0.05, gw = T * 0.8, gh = T * 0.42;
-    const gg = g.createLinearGradient(0, gy, 0, gy + gh);
-    gg.addColorStop(0, 'rgba(255,255,255,0.92)'); gg.addColorStop(0.45, 'rgba(255,255,255,0.35)'); gg.addColorStop(1, 'rgba(255,255,255,0)');
-    rr(g, gx, gy, gw, gh, gh * 0.5); g.fillStyle = gg; g.fill();
+    // 底部透光：一團比較亮的顏色（光從玻璃底下透上來）
+    const cg = g.createRadialGradient(cx, y + T * 1.04, 0, cx, y + T * 1.04, T * 0.6);
+    cg.addColorStop(0, css(mixc(sat, WHITE, 0.62), 0.85)); cg.addColorStop(0.6, css(mixc(sat, WHITE, 0.4), 0.3)); cg.addColorStop(1, css(sat, 0));
+    g.fillStyle = cg; g.fillRect(x, y + T * 0.4, T, T * 0.6);
     g.restore();
-    // 外框
+    // 內圈亮邊：左上白、右下帶顏色的亮光（玻璃的折射邊）
+    const ins = S * 0.024;
+    rr(g, x + ins, y + ins, T - ins * 2, T - ins * 2, rad * 0.9);
+    const rim = g.createLinearGradient(x, y, x + T, y + T);
+    rim.addColorStop(0, 'rgba(255,255,255,0.95)'); rim.addColorStop(0.4, 'rgba(255,255,255,0.18)');
+    rim.addColorStop(0.7, 'rgba(255,255,255,0.06)'); rim.addColorStop(1, css(mixc(sat, WHITE, 0.72), 0.9));
+    g.lineWidth = Math.max(1, S * 0.03); g.strokeStyle = rim; g.stroke();
+    // 外框：深色細線，輪廓清楚
     rr(g, x, y, T, T, rad);
-    g.lineWidth = Math.max(1, S * 0.03); g.strokeStyle = css(mixc(saturate(col, 0.4), BLACK, 0.34), 0.9); g.stroke();
-    rr(g, x + S * 0.035, y + S * 0.035, T - S * 0.07, T - S * 0.07, rad * 0.8);
-    g.lineWidth = Math.max(1, S * 0.018); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.stroke();
+    g.lineWidth = Math.max(1, S * 0.022); g.strokeStyle = css(mixc(saturate(col, 0.5), BLACK, 0.52), 0.9); g.stroke();
     if (special === 'wrap') {
       // 糖果紙：一圈白點點
       rr(g, x + T * 0.09, y + T * 0.09, T * 0.82, T * 0.82, rad * 0.7);
@@ -316,11 +316,27 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.lineWidth = T * 0.075; g.strokeStyle = 'rgba(255,255,255,0.92)'; g.stroke();
       g.restore();
     }
-    // 小亮點（一大一小）
-    g.beginPath(); g.arc(x + T * 0.19, y + T * 0.18, T * 0.05, 0, Math.PI * 2);
+  }
+  // 玩具上面的玻璃反光：上半部一片弧形亮面 + 亮點，讓玩具看起來在玻璃裡面
+  function paintGlassOverlay(g, cx, cy, S) {
+    const T = S * TILE, x = cx - T / 2, y = cy - T / 2, rad = T * 0.3;
+    g.save();
+    rr(g, x, y, T, T, rad); g.clip();
+    g.beginPath();
+    g.moveTo(x, y + T * 0.44);
+    g.bezierCurveTo(x + T * 0.28, y + T * 0.33, x + T * 0.72, y + T * 0.33, x + T, y + T * 0.4);
+    g.lineTo(x + T, y); g.lineTo(x, y); g.closePath();
+    const hg = g.createLinearGradient(0, y, 0, y + T * 0.44);
+    hg.addColorStop(0, 'rgba(255,255,255,0.5)'); hg.addColorStop(0.55, 'rgba(255,255,255,0.16)'); hg.addColorStop(1, 'rgba(255,255,255,0.02)');
+    g.fillStyle = hg; g.fill();
+    g.restore();
+    g.beginPath(); g.arc(x + T * 0.2, y + T * 0.17, T * 0.052, 0, Math.PI * 2);
     g.fillStyle = 'rgba(255,255,255,0.98)'; g.fill();
-    g.beginPath(); g.arc(x + T * 0.29, y + T * 0.13, T * 0.022, 0, Math.PI * 2);
+    g.beginPath(); g.arc(x + T * 0.31, y + T * 0.12, T * 0.024, 0, Math.PI * 2);
     g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    // 右下小小的反光
+    g.beginPath(); g.ellipse(x + T * 0.8, y + T * 0.82, T * 0.07, T * 0.03, -0.6, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.fill();
   }
   function paintArrows(g, cx, cy, S, dir, col) {
     const T = S * TILE, a = T * 0.17, off = T * 0.5 + a * 0.3;
@@ -403,7 +419,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     } else {
       paintSprite(fg, kind, cx, cy, box);
     }
-    if (top) fg.drawImage(top, 0, 0);
+    // 玻璃反光蓋在玩具上面；選取時（轉圈 / 彈跳）也要蓋，所以合併進 top
+    const gloss = makeCanvas(P, P);
+    paintGlassOverlay(gloss.getContext('2d'), cx, cy, S);
+    if (top) top.getContext('2d').drawImage(gloss, 0, 0);
+    else top = gloss;
+    fg.drawImage(top, 0, 0);
     return { full, base, top, P };
   }
   function buildBomb(S) {
