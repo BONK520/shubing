@@ -310,6 +310,9 @@ const SFX = {
     const big = (o.size || 3) >= 4;
     noise(t, { dur: 0.018, attack: 0.001, gain: 0.07, type: 'highpass', f0: 3000, q: 0.7 });
     tone(190 + step * 6, t, { dur: 0.07, attack: 0.002, gain: 0.08, to: 95, glide: 0.06 });
+    // 糖果碎開：短短的「喀啦」+ 幾顆很小的高音玻璃聲（和畫面上的碎片同時）
+    noise(t + 0.03, { dur: 0.07, attack: 0.001, gain: 0.07, type: 'bandpass', f0: 5200, f1: 2600, q: 2.6 });
+    for (let i = 0; i < 3; i++) tone(rnd(2800, 5200), t + 0.035 + i * rnd(0.012, 0.028), { dur: 0.05, attack: 0.001, gain: 0.025, type: 'sine' });
     bubble(m, t, big ? 0.19 : 0.17, clamp((g - 1) * 0.25, -0.5, 0.5));
     if (big) { marimba(m + 12, t + 0.02, 0.09, 0.3); bell(m + 12, t + 0.03, 0.04, 0.5); }
     if (c >= 3 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.026, 91 + Math.min(c, 6));
@@ -511,6 +514,32 @@ function stopMusic(fast) {
 }
 
 // ---------- 對外 API ----------
+// ---------- 稱讚語音（assets/voice/*.wav，tools/voice_fx.py 做的「魔性」男聲） ----------
+const VOICE_IDS = ['c2', 'c3', 'c4', 'c5', 'combo', 's1', 's2', 'start', 'sugar', 'win3'];
+const voiceBuf = Object.create(null);
+let voiceLoading = false, voiceSrc = null;
+function loadVoices() {
+  if (voiceLoading || !ctx) return;
+  voiceLoading = true;
+  for (const id of VOICE_IDS) {
+    fetch(`assets/voice/${id}.wav`).then(r => (r.ok ? r.arrayBuffer() : null))
+      .then(ab => ab && new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)))
+      .then(b => { if (b) voiceBuf[id] = b; })
+      .catch(() => { /* 沒有語音檔就不講話 */ });
+  }
+}
+SFX.voice = (t, o) => {
+  const b = voiceBuf[o.id];
+  if (!b) return;
+  try { if (voiceSrc) voiceSrc.stop(t); } catch (e) { /* 已經停了 */ }
+  const s = ctx.createBufferSource(), g = ctx.createGain();
+  s.buffer = b;
+  g.gain.value = 0.95;
+  s.connect(g); g.connect(sfxBus);
+  s.start(t);
+  voiceSrc = s;
+};
+
 export const audio = {
   unlock() {
     try {
@@ -522,6 +551,7 @@ export const audio = {
       unlocked = true;
       tryResume();
       playSilent();
+      loadVoices();
       if (musicOn) startMusic();
     } catch (e) { /* ignore */ }
   },

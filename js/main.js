@@ -792,7 +792,7 @@ function buzz(pattern, minGap = 70) {
 const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => buzz(pattern, minGap), delay); else buzz(pattern, minGap); };
 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
-const CUE_SOUND = { swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
+const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle' };
 function onCue(name, data, token) {
   if (token !== session) return;
@@ -1036,6 +1036,7 @@ async function winFlow() {
   $('#cheer').classList.add('party');
   const left = movesLeft;
   sugarBonus = left * 3000;
+  if (left > 0 && SLOGANS.sugar.voice) audio.play('voice', { id: SLOGANS.sugar.voice, delay: 150 });
   await R.banner(left > 0 ? SLOGANS.sugar.text : SLOGANS.win.text,
     left > 0 ? { sub: `剩下 ${left} 步 × 3,000 分！`, duration: 1700 } : { duration: 1300 });
   if (token !== session) return;
@@ -1074,6 +1075,7 @@ function showWin(stars, score, newBest, best, firstClear) {
   winTimers = [];
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
+  if (stars === 3 && SLOGANS.win3.voice) audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 });
   setPhoto('mw-photo', WIN_PHOTOS[Math.floor(Math.random() * WIN_PHOTOS.length)]);
   const bs = $$('#mw-stars .bs');
   bs.forEach(s => s.classList.remove('on'));

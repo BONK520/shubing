@@ -1442,6 +1442,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   function showWord(text, level, sl) {
     if (!text) return;
     word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
+    if (sl && sl.voice) cue('voice', 60, { id: sl.voice });
     requestDraw();
   }
   function banner(text, { sub = '', duration = 1600 } = {}) {
