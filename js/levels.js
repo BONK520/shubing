@@ -378,7 +378,6 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       items.forEach(([k, n]) => {
         if (!kinds.includes(k)) bad(`collect 的 ${k} 不在 kinds 裡`);
         if (!Number.isInteger(n) || n <= 0) bad(`collect ${k} 的數量要是正整數`);
-        if (!SCANNED.includes(k)) bad(`collect 建議用掃描的毛絨（${k}）`);
       });
       if (layers) bad('collect 關不要放果凍（目標面板不會顯示）');
     } else if (g.type === 'jelly') {
