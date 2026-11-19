@@ -2839,25 +2839,34 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const v of visuals.values()) if (v.special !== 'none' || v.kind < 0) return true;
     return false;
   }
+  // 只有待機動畫（特殊方塊在閃、提示在晃，沒有東西在移動）：中後段盤面上幾乎隨時都有特殊方塊，等於一直在畫，
+  // 所以只畫約 15fps（慢慢的閃爍看不出差別），而且兩張之間不要每個 vsync 都醒來：用 setTimeout 等到下一張該畫的時候再掛 rAF。
+  // 手指選著方塊時是在操作，維持約 30fps 比較順
+  const AMB_MS = 66, SEL_MS = 31;
+  let ambTimer = 0;
   // 每幀最多畫一次：畫的途中有人呼叫 requestDraw()（加飄分、排程…）不會再多掛一個 rAF
   function frame() {
     raf = 0;
     if (destroyed || paused) return;
     const t = now();
     inFrame = true;
-    let act = false, amb = false;
+    let act = false, amb = false, gap = AMB_MS;
     try {
       act = moving(t);
       amb = !act && ambient();
-      if (!(amb && t - lastDraw < 31)) { lastDraw = t; draw(t); }   // 只有待機動畫：約 30fps
+      gap = selected ? SEL_MS : AMB_MS;
+      if (!(amb && t - lastDraw < gap)) { lastDraw = t; draw(t); }
     } catch (e) {
       console.error('[renderer] draw', e);
     } finally {
       inFrame = false;
     }
-    if (!raf && !destroyed && !paused && (act || amb || busyCount > 0 || moving(now()))) raf = requestAnimationFrame(frame);
+    if (raf || destroyed || paused) return;
+    if (act || busyCount > 0 || moving(now())) raf = requestAnimationFrame(frame);
+    else if (amb && !ambTimer) ambTimer = setTimeout(() => { ambTimer = 0; requestDraw(); }, Math.max(0, lastDraw + gap - now() - 8));
   }
   function requestDraw() {
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
     if (!raf && !inFrame && !destroyed && !paused && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
   }
   // 畫面藏起來時停掉迴圈；play() 的等待用 setTimeout，所以動畫流程照樣會走完（只是不畫）
@@ -2866,6 +2875,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     paused = true;
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
   }
   function resume() {
     if (destroyed) return;
@@ -2890,6 +2900,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     abortWaits();
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
     clearTimeout(warmTimer); warmQ = [];
     if (ro) ro.disconnect();
     window.removeEventListener('resize', onResize);

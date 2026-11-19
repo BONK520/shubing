@@ -197,6 +197,7 @@ let parkTimer = 0;
 function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
+  document.documentElement.dataset.screen = name;   // CSS：遊戲畫面時背景的泡泡、雲停住（省電）
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
   // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
   clearTimeout(parkTimer);
@@ -217,6 +218,9 @@ function openModal(id) {
   lastFocus = document.activeElement;
   m.classList.add('open');
   m.setAttribute('aria-hidden', 'false');
+  // 對話框蓋住盤面時，盤面不用重畫（待機動畫在模糊的遮罩後面看不清楚；後面每一幀都在變的話，模糊也得每一幀重算）。
+  // renderer 暫停時 play() 的流程照樣用 setTimeout 走完，只是不畫；關掉最後一個對話框再接回來
+  if (R) R.pause();
   // 鍵盤使用者才自動把焦點移進去（觸控 / 滑鼠不需要焦點框）
   const f = m.querySelector('.btn.green, .btn');
   if (f && usingKeyboard) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 60);
@@ -226,6 +230,7 @@ function closeModal(id) {
   if (!m.classList.contains('open')) return;
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
+  if (R && !document.querySelector('.modal.open')) R.resume();
   if (usingKeyboard && lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 }
 const isOpen = id => document.getElementById(id).classList.contains('open');

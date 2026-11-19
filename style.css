@@ -591,7 +591,7 @@ svg.on .hi { opacity: .9; }
   padding: 12px 8px 14px; border-radius: 24px;
   background: rgba(255, 255, 255, .55); border: 3px solid rgba(255, 255, 255, .9);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* 不用 backdrop-filter：底色幾乎不透明（「面板加厚」那段），模糊看不出來，後面有東西在動時卻要每一幀重算 */
 }
 .hud .lbl { font-size: 13px; font-weight: 800; color: var(--ink-soft); letter-spacing: .12em; }
 .hud-moves {
@@ -1393,3 +1393,18 @@ svg.on .hi { opacity: .9; }
 .sb-star .hi { opacity: .45; }
 .sb-star.on { fill: url(#g-gold); stroke: #a8520a; filter: drop-shadow(0 2px 0 #8a4204) drop-shadow(0 0 6px rgba(255, 196, 40, .85)); }
 .sb-star.on .hi { opacity: .95; }
+
+/* ---------- 省電：看不到的東西不要動 ----------
+   換畫面只是把 .screen 設成 visibility: hidden（不是 display: none），裡面的無限動畫其實一直在跑：
+   玩遊戲時，載入畫面的條紋進度條（background-position，每一幀都要在主執行緒重算樣式）、標題的字和玩具、
+   地圖的 15 張貼紙、關著的對話框裡會呼吸的按鈕……全部照跑。這裡把它們暫停（回到那個畫面時從原地接著動）。
+   用 !important：很多元素的 animation 簡寫會把 play-state 重設成 running。 */
+.screen:not(.active) *, .screen:not(.active) *::before, .screen:not(.active) *::after,
+.modal:not(.open) *, .modal:not(.open) *::before, .modal:not(.open) *::after {
+  animation-play-state: paused !important;
+}
+/* 遊戲畫面：背景的泡泡、雲、散景停住（main.js 的 show() 設 data-screen）。盤面才是主角；
+   而且背景每一幀都在變的話，蓋在上面、有模糊的對話框也得每一幀重算模糊 */
+:root[data-screen="game"] .sky .bk, :root[data-screen="game"] .sky .cloud, :root[data-screen="game"] .sky::before {
+  animation-play-state: paused;
+}

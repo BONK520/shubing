@@ -91,6 +91,14 @@
 - **裝飾**：標題、載入畫面、地圖、過關 / 失敗畫面、照片驚喜口號有主人照片去背的貼紙（`assets/deco/`，沒有白邊）。
 - **3D 看看**：轉動、放大看三隻掃描玩具；照片玩具顯示貼紙（彈跳豬還有兩張照片）。沒有 AR 相機功能。
 - **存檔**：進度、星星、最高分存在那台裝置的瀏覽器裡（localStorage），換裝置或清除瀏覽器資料會重新開始。
+- **省電**（手機玩久了會燙的原因和改法）：
+  - 換畫面只是 `visibility: hidden`，以前看不到的畫面裡的無限動畫一直在跑（載入畫面的條紋進度條每一幀都要在主執行緒重算樣式、標題、地圖貼紙、關著的對話框）。
+    現在沒在顯示的畫面和關著的對話框裡的動畫都暫停（`style.css` 最後「省電」那段）；遊戲畫面時背景的泡泡、雲、散景也停住（`<html data-screen>`）。
+  - 上方 HUD 不用 `backdrop-filter`（底色本來就幾乎不透明）；對話框打開時盤面暫停重畫（`R.pause()` / `R.resume()`，流程照樣走完）。
+  - 盤面只有待機動畫（特殊方塊閃、提示晃）時約 15fps，兩張之間用 `setTimeout` 等、不會每個 vsync 都醒來；手指選著方塊時約 30fps。
+  - 音效和音樂都關掉時整個 AudioContext 暫停；殘響 0.7 秒（以前 1.1 秒）。
+  - 量測（無頭 Chromium、遊戲畫面放著不動，每秒忙碌時間）：主執行緒 265 → 77ms、合成 382 → 42ms、樣式重算 65 → 0 次；
+    開著暫停選單：合成 951 → 0ms。
 - **素材流程**：`python tools/build_assets.py` 一鍵重建；換玩具、加照片玩具見 [tools/README.md](tools/README.md)。原始照片放 `tools/source/photos/`，不進 git。
 - **檔案**：`index.html`、`style.css`、`js/`（engine、renderer、main、levels、audio、pieces、slogans）、`ar.html`、`assets/`、`tools/`、`tests/`。
   各模組的介面寫在 [docs/SPEC.md](docs/SPEC.md)。
