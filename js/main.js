@@ -179,6 +179,10 @@ function starSvg(cls = '') {
 }
 function jellyIcon(sm) { const d = document.createElement('span'); d.className = 'jelly-ic' + (sm ? ' sm' : ''); return d; }
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+// 立體數字：字面上亮下暗的漸層是 ::after 用 attr(data-t) 疊一份同樣的字（text-shadow 的描邊會蓋掉 background-clip 的漸層），
+// 所以數字要同時寫進 data-t（CSS 在「遊戲感的字」那段）
+function setNum(e, txt) { if (!e) return; txt = String(txt); e.textContent = txt; e.dataset.t = txt; }
+function numEl(tag, txt) { const e = el(tag); setNum(e, txt); return e; }
 // 重播 CSS 動畫：拿掉 class，隔兩幀再加回去（不用 offsetWidth 強迫同步排版，盤面動畫時不會卡一下）
 function restartAnim(node, cls) {
   if (!node) return;
@@ -423,7 +427,7 @@ function buildMap(popIndex = -1) {
 
   // 星星總數
   const total = LEVELS.reduce((s, l) => s + (Number(save.stars[l.id]) || 0), 0);
-  $('#map-stars').textContent = total;
+  setNum($('#map-stars'), total);
   $('#map-stars-max').textContent = '/ ' + n * 3;
   return pts;
 }
@@ -502,22 +506,22 @@ function openStartCard(i) {
       const gb = el('div', 'gb toy');          // 跟上方的目標一樣站在糖果色的泡泡上（CSS）
       setToyColors(gb, p.color);
       const ic = el('span', 'ic'); ic.appendChild(toyEl(p, 30));
-      gb.appendChild(ic); gb.appendChild(el('b', '', '×' + n));
+      gb.appendChild(ic); gb.appendChild(numEl('b', '×' + n));
       g.appendChild(gb);
     }
   } else if (goal.type === 'jelly') {
     const gb = el('div', 'gb');
     const ic = el('span', 'ic'); ic.appendChild(jellyIcon());
-    gb.appendChild(ic); gb.appendChild(el('b', '', '果凍'));
+    gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
     g.appendChild(gb);
   } else {
     const gb = el('div', 'gb');
     const ic = el('span', 'ic'); ic.appendChild(starSvg());
-    gb.appendChild(ic); gb.appendChild(el('b', '', fmt(scoreTarget(lvl))));
+    gb.appendChild(ic); gb.appendChild(numEl('b', fmt(scoreTarget(lvl))));
     g.appendChild(gb);
   }
   $('#ms-goal-text').textContent = goalText(lvl);
-  $('#ms-moves').textContent = lvl.moves;
+  setNum($('#ms-moves'), lvl.moves);
   const hint = lvl.hint || '';
   $('#ms-hint-box').hidden = !hint;
   $('#ms-hint').textContent = softWrap(hint);
@@ -607,7 +611,7 @@ async function startLevel(idx) {
   jellyCountsLayers = statJ === layers || layers === cells;
   jellyLive = statJ;
 
-  $('#hud-level').textContent = idx + 1;
+  setNum($('#hud-level'), idx + 1);
   buildGoal();
   renderMoves();
   renderScore(true);
@@ -757,7 +761,7 @@ function renderGoal(init = false) {
       txt = fmt(t); done = shownScore >= t;
     }
     if (r.last !== txt) {
-      r.cnt.textContent = txt;
+      setNum(r.cnt, txt);
       if (!init && r.kind !== 'score') restartAnim(r.gi.querySelector('.ic'), 'bump');
       r.last = txt;
     }
@@ -765,7 +769,7 @@ function renderGoal(init = false) {
   }
 }
 function renderMoves() {
-  $('#hud-moves').textContent = Math.max(0, dispMoves);
+  setNum($('#hud-moves'), Math.max(0, dispMoves));
   $('#hud-moves-box').classList.toggle('low', state !== 'ending' && dispMoves <= 5 && dispMoves > 0);
 }
 // 分數往上跑：每幀只改一個數字（文字有變才寫），星星條的寬度只在目標分數改變時設一次，由 CSS transition 補間
@@ -797,7 +801,7 @@ function renderScore(instant = false) {
 function paintScore() {
   const h = hudEls();
   const txt = fmt(shownScore);
-  if (txt !== h.text && h.score) { h.score.textContent = txt; h.score.dataset.len = txt.length; h.text = txt; }   // 位數多的時候 CSS 把字縮小
+  if (txt !== h.text && h.score) { setNum(h.score, txt); h.score.dataset.len = txt.length; h.text = txt; }   // 位數多的時候 CSS 把字縮小
   const s = level ? level.stars || [] : [];
   h.stars.forEach((st, i) => {
     const on = s[i] != null && shownScore >= s[i];
@@ -1252,7 +1256,7 @@ function showWin(stars, score, newBest, best, firstClear) {
   const bs = $$('#mw-stars .bs');
   bs.forEach(s => s.classList.remove('on'));
   $('#mw-stars').setAttribute('aria-label', `得到 ${stars} 顆星`);
-  $('#mw-score').textContent = '0';
+  setNum($('#mw-score'), 0);
   $('#mw-best').hidden = !newBest;
   const bonusLine = sugarBonus > 0 ? `剩餘步數獎勵 +${fmt(sugarBonus)}` : '';
   $('#mw-best-line').textContent = [bonusLine, !newBest && best > 0 ? `最高分 ${fmt(Math.max(best, score))}` : ''].filter(Boolean).join('　');
@@ -1271,7 +1275,7 @@ function showWin(stars, score, newBest, best, firstClear) {
   const t0 = performance.now() + 250, dur = 1000;
   const tick = now => {
     const f = clamp((now - t0) / dur, 0, 1);
-    $('#mw-score').textContent = fmt(score * (1 - Math.pow(1 - f, 3)));
+    setNum($('#mw-score'), fmt(score * (1 - Math.pow(1 - f, 3))));
     if (f < 1 && isOpen('m-win')) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
