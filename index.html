@@ -41,6 +41,7 @@
     <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2.2v11.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3.1" ry="2.5"/><ellipse cx="16.6" cy="15.4" rx="3.1" ry="2.5"/></symbol>
     <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8l8.2 4.6v9.2L12 21.2l-8.2-4.6V7.4z M3.8 7.4L12 12l8.2-4.6 M12 12v9.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7.2 19.2a4.7 4.7 0 0 1-.6-9.37 6 6 0 0 1 11.4 1.4 4 4 0 0 1-.5 7.97z"/></symbol>
   </defs>
 </svg>
 
@@ -69,6 +70,8 @@
     <span class="title-stk stk-pig" aria-hidden="true"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
     <span class="title-stk stk-snoopy" aria-hidden="true"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
     <div class="topbar">
+      <!-- 雲端存檔（設定了 js/cloud-config.js 才會出現）：沒登入是「登入存檔」，登入後是頭像＋名字；按了打開設定 -->
+      <button class="acct-chip" id="acct-chip" type="button" hidden><span class="acct-av" aria-hidden="true"></span><span class="acct-nm"></span></button>
       <span class="spacer"></span>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
@@ -234,6 +237,15 @@
   <div class="card sheet-card">
     <div class="sheet-handle" aria-hidden="true"></div>
     <h2 id="set-title">設定</h2>
+    <!-- 帳號（雲端存檔）：遊戲中暫停時不顯示 -->
+    <div class="acct" id="acct-box" hidden>
+      <div class="acct-row">
+        <span class="acct-av" aria-hidden="true"></span>
+        <div class="acct-text"><b id="acct-name">還沒登入</b><small id="acct-sub"></small></div>
+        <button class="acct-out" id="acct-out" type="button" hidden>登出</button>
+      </div>
+      <button class="btn blue" id="acct-in" type="button" hidden><svg class="bi"><use href="#i-cloud"/></svg><span class="bt" data-t="用 Google 登入">用 Google 登入</span></button>
+    </div>
     <div class="toggles">
       <button class="toggle" id="tg-sound" aria-pressed="true"><svg class="ti"><use href="#i-sound"/></svg><span class="tl">音效</span><span class="sw" aria-hidden="true"><i></i></span></button>
       <button class="toggle" id="tg-music" aria-pressed="true"><svg class="ti"><use href="#i-music"/></svg><span class="tl">音樂</span><span class="sw" aria-hidden="true"><i></i></span></button>
@@ -242,6 +254,18 @@
       <button class="btn blue" id="set-map">回到地圖</button>
       <button class="btn orange" id="set-restart">重新開始</button>
       <button class="btn green" id="set-close">繼續</button>
+    </div>
+  </div>
+</div>
+
+<!-- 登入時：這台裝置上有沒登入時玩的進度，問要不要帶進帳號 -->
+<div class="modal" id="m-merge" role="dialog" aria-modal="true" aria-labelledby="mm-title" aria-hidden="true">
+  <div class="card merge-card">
+    <div class="ribbon"><span id="mm-title">帶進帳號？</span></div>
+    <p class="merge-text" id="mm-text"></p>
+    <div class="btn-col">
+      <button class="btn green" id="mm-yes" type="button">帶進來</button>
+      <button class="btn blue" id="mm-no" type="button">不用</button>
     </div>
   </div>
 </div>

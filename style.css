@@ -1394,6 +1394,47 @@ svg.on .hi { opacity: .9; }
 .sb-star.on { fill: url(#g-gold); stroke: #a8520a; filter: drop-shadow(0 2px 0 #8a4204) drop-shadow(0 0 6px rgba(255, 196, 40, .85)); }
 .sb-star.on .hi { opacity: .95; }
 
+/* ---------- 帳號（雲端存檔）：標題左上的小牌子、設定裡的帳號列、「帶進帳號？」對話框 ---------- */
+.acct-chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 42px; max-width: 46vw; padding: 0 14px 0 4px;
+  border-radius: 999px; border: 3px solid #fff; cursor: pointer;
+  background: linear-gradient(180deg, #fffaf3 0%, #fff3ea 50%, #fde6dc 100%);
+  box-shadow: 0 0 0 2.5px #f78fb0, 0 4px 0 2.5px #d0567f, 0 8px 12px rgba(110, 50, 60, .22);
+  font: 900 15px/1 var(--font); color: var(--ink);
+  transition: transform .09s;
+}
+.acct-chip:active { transform: translateY(2px); }
+.acct-chip[hidden], .acct[hidden], .acct-out[hidden], #acct-in[hidden] { display: none; }
+.acct-av {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
+  background: linear-gradient(180deg, #8fe6ff, #38aef8); color: #fff; font-weight: 900; font-size: 15px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12), 0 0 0 2px #fff;
+}
+.acct-av img { width: 100%; height: 100%; object-fit: cover; }
+.acct-av svg { width: 19px; height: 19px; fill: #fff; filter: drop-shadow(0 1px 0 rgba(13, 82, 163, .5)); }
+.acct-chip.in .acct-av, .acct[data-sync]:not([data-sync="guest"]) .acct-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
+.acct-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.acct { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.sheet.in-game .acct { display: none; }      /* 玩到一半不換帳號 */
+.acct-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 20px;
+  border: 3px solid #fff; background: #fdf1e8; box-shadow: 0 4px 0 #ecc9c0, 0 6px 12px rgba(112, 40, 64, .12);
+}
+.acct-row .acct-av { width: 44px; height: 44px; font-size: 20px; }
+.acct-row .acct-av svg { width: 28px; height: 28px; }
+.acct-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.acct-text b { font-size: 18px; font-weight: 900; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-text small { font-size: 13px; font-weight: 800; color: var(--ink-soft); line-height: 1.35; }
+.acct[data-sync="synced"] .acct-text small { color: #2f9e48; }
+.acct[data-sync="offline"] .acct-text small { color: #c25b0c; }
+.acct-out {
+  flex: none; padding: 8px 14px; border-radius: 999px; border: 2px solid #fff; cursor: pointer;
+  background: #f3d9d0; color: var(--ink); font: 900 14px/1 var(--font); box-shadow: 0 3px 0 #dcb3a8;
+}
+.acct-out:active { transform: translateY(2px); box-shadow: 0 1px 0 #dcb3a8; }
+#acct-in { width: 100%; }
+.merge-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
+
 /* ---------- 省電：看不到的東西不要動 ----------
    換畫面只是把 .screen 設成 visibility: hidden（不是 display: none），裡面的無限動畫其實一直在跑：
    玩遊戲時，載入畫面的條紋進度條（background-position，每一幀都要在主執行緒重算樣式）、標題的字和玩具、

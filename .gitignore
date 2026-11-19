@@ -4,3 +4,7 @@ source/
 __pycache__/
 .venv/
 venv/
+
+# Firebase 模擬器的記錄檔（tests/cloud_e2e.js）
+*-debug.log
+.firebase/
