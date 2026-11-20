@@ -14,4 +14,14 @@
 //
 // 這些值本來就會出現在網頁裡、不是密碼（Firebase 官方的設計就是放在前端）；
 // 資料安全靠 Firestore 的規則（專案根目錄的 firestore.rules：每個人只能讀寫自己的存檔）。
-export const FIREBASE_CONFIG = null;
+//
+// 目前用的專案：plush-crush（免費的 Spark 方案；Firestore 在 asia-east1 台灣；授權網域 bonk520.github.io）。
+// 想暫時關掉雲端存檔：把下面整段換回 null。
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyABsrmZwxABSHZfaSka-8n7eTsW64uxqz8',
+  authDomain: 'plush-crush.firebaseapp.com',
+  projectId: 'plush-crush',
+  storageBucket: 'plush-crush.firebasestorage.app',
+  messagingSenderId: '740207706798',
+  appId: '1:740207706798:web:b9dd64dd74250aff3ce33f',
+};

@@ -83,7 +83,7 @@ async function initCloud() {
   let cfg = null;
   try { cfg = (await import('./cloud-config.js')).FIREBASE_CONFIG; } catch (e) { /* 沒有設定檔 */ }
   const emu = DEBUG && params.has('emu');      // 測試：連本機的 Firebase 模擬器（tests/ 和 docs/CLOUD_SAVE.md）
-  if (!cfg && emu) cfg = { apiKey: 'demo-key', authDomain: 'demo-plush.firebaseapp.com', projectId: 'demo-plush', appId: 'demo' };
+  if (emu) cfg = { apiKey: 'demo-key', authDomain: 'demo-plush.firebaseapp.com', projectId: 'demo-plush', appId: 'demo' };   // 測試永遠用假專案，不碰真的存檔
   if (!cfg) return;
   try { cloud = (await import('./cloud.js')).createCloud(cfg, { emulator: emu }); } catch (e) { console.warn('[cloud]', e); return; }
   document.documentElement.classList.add('has-cloud');

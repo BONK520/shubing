@@ -91,7 +91,7 @@
 - **裝飾**：標題、載入畫面、地圖、過關 / 失敗畫面、照片驚喜口號有主人照片去背的貼紙（`assets/deco/`，沒有白邊）。
 - **3D 看看**：轉動、放大看三隻掃描玩具；照片玩具顯示貼紙（彈跳豬還有兩張照片）。沒有 AR 相機功能。
 - **存檔**：進度、星星、最高分、道具存在那台裝置的瀏覽器裡（localStorage）。
-- **雲端存檔（帳號，要先設定）**：照 [docs/CLOUD_SAVE.md](docs/CLOUD_SAVE.md) 開一個免費的 Firebase 專案、把設定貼進 `js/cloud-config.js` 之後，
+- **雲端存檔（帳號，已設定：Firebase 專案 `plush-crush`，免費 Spark 方案，Firestore 在 asia-east1）**：照 [docs/CLOUD_SAVE.md](docs/CLOUD_SAVE.md) 開一個免費的 Firebase 專案、把設定貼進 `js/cloud-config.js` 之後，
   標題左上會出現「登入存檔」：每個人用自己的 Google 帳號登入，進度存到雲端，換手機登入同一個帳號就接著玩；同一台手機換人登入各玩各的。
   第一次登入時，這台手機上沒登入時玩的進度可以選擇帶進帳號。離線照玩，連上網路自動補傳。沒設定時一切跟以前一樣。
   測試：`npx firebase emulators:exec --only auth,firestore --project demo-plush "node tests/cloud_e2e.js"`（本機模擬器，兩台裝置的完整流程）。
