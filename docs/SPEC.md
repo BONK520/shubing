@@ -274,7 +274,13 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - Idle hint after 5 s (`engine.findHint()`).
 - Win: goal met → banner 「毛絨狂歡！」 → `engine.sugarCrush(movesLeft)` → win modal (stars animate in, score, 「下一關」「再玩一次」「地圖」).
 - Lose: no moves left and goal not met → 「步數用完了」 modal with 「再試一次」「地圖」.
-- Save (`localStorage` key `plushcrush.v1`): `{ unlocked, stars: {id: n}, best: {id: score}, muted, music }`.
+- Save (`localStorage` key `plushcrush.v1` for the guest on this device): `{ unlocked, stars: {id: n}, best: {id: score}, boosters, muted, music, t }`
+  (`t` = time of the last progress change).
+- Cloud save (optional, `docs/CLOUD_SAVE.md`): when `js/cloud-config.js` has a Firebase config, players can sign in with Google
+  (`js/cloud.js`). Each account's save is cached at `plushcrush.v1.u.<uid>` and synced to Firestore `saves/<uid>`
+  (`{ v, unlocked, stars, best, boosters, t }`, owner-only rules in `firestore.rules`). Merging two saves keeps the best
+  `unlocked` / stars / best per level and the newer `boosters`; `muted` / `music` stay per device. On sign-in, guest
+  progress on the device can be brought into the account (the guest save is then cleared). Without a config nothing changes.
 - Sounds: map renderer `onEvent` to `audio.play` (match with cascade, stripe/wrap/bomb by effects, special when created, land on fall, shuffle).
 
 ## 8. AR page — `ar.html`, `ar.css`

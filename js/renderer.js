@@ -124,8 +124,9 @@ function roundedPoly(g, pts, r) {
 // 愛心的幾何（單位 = 糖果半徑 R、原點在糖果中心、y 往下）：
 //   兩瓣 = 圓心 (±a, b)、半徑 r；底尖 = 圓心 (0, t)、半徑 rt；兩邊是「瓣」和「底尖」的外公切線；
 //   上凹口 = 同時外切兩瓣、半徑 f 的小圓。整顆和圓形糖果一樣寬（1.94R），dy 讓它上下置中。
+//   底尖圓圓的（rt 0.28、舊版 0.18）、兩瓣大一點：玩具蓋住上半部時，下面露出來的是一顆圓鼓鼓的糖尖，不是硬硬的 V 字
 const HEART = (() => {
-  const a = 0.47, b = -0.33, r = 0.5, t = 0.72, rt = 0.18, f = 0.1;
+  const a = 0.46, b = -0.31, r = 0.51, t = 0.6, rt = 0.28, f = 0.11;
   // 外公切線朝外的法向量 n：切點 = 圓心 + 半徑 × n，兩個切點在同一條線上 → n·(底尖圓心 − 右瓣圓心) = r − rt
   const ux = -a, uy = t - b, d = Math.hypot(ux, uy), k = (r - rt) / d, s = Math.sqrt(1 - k * k);
   const nx = (k * ux + s * uy) / d, ny = (k * uy - s * ux) / d;
@@ -349,7 +350,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const g = c.getContext('2d'), col = kindColor(kind);
     // 外圍柔光：糖果色的亮色版（不是白色、也不是一條硬線），兩圈位置疊出往外淡掉的光（淡淡的就好，太亮玩具會像浮在糖果上）
     const glow = silhouette(src, css(mixc(saturate(col, 0.35), WHITE, 0.4)));
-    for (const [rr2, a] of [[box * 0.045, 0.05], [box * 0.024, 0.1]]) {
+    // 愛心上的玩具（白色的史努比）：柔光幾乎不要 —— 白光疊在白毛外面，愛心的顏色會被洗掉、邊緣毛毛碎碎的；改靠下面更柔的落影陷進去
+    const heart = shapeOf(kind) === 'heart';
+    for (const [rr2, a] of heart ? [[box * 0.03, 0.02]] : [[box * 0.045, 0.05], [box * 0.024, 0.1]]) {
       g.globalAlpha = a;
       for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(glow, pad + Math.cos(t) * rr2, pad + Math.sin(t) * rr2); }
     }
@@ -357,7 +360,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // 落影：糖果色的深色版，往右下偏（光從左上來）。兩層：範圍大、很柔的影子（玩具像陷進糖果的凹槽裡）+ 貼著邊緣的接觸影
     // 柔邊用 shadowBlur（不用 ctx.filter，Safari 也一樣）：玩具圖畫在原位、影子往右下偏，圖本身等一下會被玩具蓋住
     const shc = mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
-    for (const [ox2, oy2, blur, a] of [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]]) {
+    const shadows = heart ? [[0.03, 0.085, 0.15, 0.62], [0.014, 0.04, 0.05, 0.4]] : [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]];
+    for (const [ox2, oy2, blur, a] of shadows) {
       g.save();
       g.shadowColor = css(shc, a); g.shadowBlur = box * blur; g.shadowOffsetX = box * ox2; g.shadowOffsetY = box * oy2;
       g.drawImage(src, pad, pad);
@@ -424,6 +428,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   // （外圈要留一圈果凍色，才一眼看得出是什麼顏色）
   // （每種糖果形狀不一樣、每隻玩具的輪廓也不一樣，所以用量的；換玩具圖也會自動算）
   const FIT_N = 80, FIT_COVER = 0.7, FIT_OUT = 0.03;
+  // 愛心：玩具蓋少一點（64%），兩瓣和圓圓的糖尖露出來比較多，一眼看得出是一整顆愛心糖、不會被擠得破破碎碎
+  const FIT_COVER_OF = { heart: 0.64 };
   const shapeMasks = new Map(), fitCache = new Map();
   let fitG = null;
   function fitCtx() {
@@ -475,13 +481,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const b = toyBounds(im), cx0 = 0.5 - (b.x0 + b.x1) / 2, cy0 = 0.5 - (b.y0 + b.y1) / 2;
     let best = { box: 0.72, dx: cx0 * 0.72, dy: cy0 * 0.72 };
     try {
-      const m = shapeMask(shapeOf(kind));
+      const shp = shapeOf(kind), m = shapeMask(shp), cover = FIT_COVER_OF[shp] || FIT_COVER;
       // 往上 / 往下挪一點，看哪裡放得最大（愛心上寬下尖，玩具放高一點才放得大）
       for (const shift of [0, -0.03, 0.03, -0.06, -0.09]) {
         let lo = 0.4, hi = 1.3;
         for (let it = 0; it < 8; it++) {
           const mid = (lo + hi) / 2, r = measureFit(im, m, mid * FIT_N, cx0 * mid * FIT_N, (cy0 * mid + shift) * FIT_N);
-          if (r.cover <= FIT_COVER && r.out <= FIT_OUT) lo = mid; else hi = mid;
+          if (r.cover <= cover && r.out <= FIT_OUT) lo = mid; else hi = mid;
         }
         if (shift === 0 || lo > best.box + 0.01) best = { box: lo, dx: cx0 * lo, dy: cy0 * lo + shift };
       }
@@ -527,15 +533,28 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const shape = shapeOf(kind), R = S * CANDY_R;
     const sat = saturate(col, 0.12), dark = saturate(col, 0.3);
     const deep = mixc(dark, BLACK, 0.55), deeper = mixc(dark, [26, 10, 64], 0.7);
-    // 落影：很深的藍黑色、半透明，往右下壓在格子的凹槽裡（範圍大、很柔）；再一圈貼著底部的接觸陰影，糖果才有重量、不像浮在上面
+    // 落影三層（深藍紫色、半透明，光從左上來所以都往右下）：
+    //   1. 範圍大、很柔的落影，壓在格子的凹槽裡   2. 貼著底部的接觸陰影（糖果的重量）
+    //   3. 四周一圈很窄的暗（環境光遮蔽）：糖果像重重地壓進格子裡，不是平平地懸空貼在上面
     g.save();
-    g.shadowColor = 'rgba(6,6,32,0.6)'; g.shadowBlur = S * 0.1; g.shadowOffsetX = S * 0.055; g.shadowOffsetY = S * 0.09;
+    g.shadowColor = 'rgba(12,4,46,0.78)'; g.shadowBlur = S * 0.11; g.shadowOffsetX = S * 0.06; g.shadowOffsetY = S * 0.095;
     candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
     g.restore();
     g.save();
-    g.shadowColor = 'rgba(4,4,24,0.6)'; g.shadowBlur = S * 0.03; g.shadowOffsetX = S * 0.018; g.shadowOffsetY = S * 0.04;
+    g.shadowColor = 'rgba(8,2,34,0.75)'; g.shadowBlur = S * 0.035; g.shadowOffsetX = S * 0.022; g.shadowOffsetY = S * 0.048;
     candyPath(g, shape, cx, cy, R * 1.05); g.fillStyle = css(deep); g.fill();
     g.restore();
+    g.save();
+    g.shadowColor = 'rgba(10,4,40,0.45)'; g.shadowBlur = S * 0.05; g.shadowOffsetX = S * 0.006; g.shadowOffsetY = S * 0.012;
+    candyPath(g, shape, cx, cy, R * 1.06); g.fillStyle = css(deep); g.fill();
+    g.restore();
+    if (shape === 'heart') {
+      // 愛心外面一圈柔柔的光暈（沒有硬邊線，在深色的盤面上看得出是一顆飽滿、發亮的愛心糖）
+      g.save();
+      g.shadowColor = css(mixc(saturate(col, 0.3), WHITE, 0.55), 0.6); g.shadowBlur = R * 0.22;
+      candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
+      g.restore();
+    }
     // 外框：左上受光的地方淺一點、右下背光的地方深
     const og = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
     og.addColorStop(0, css(mixc(dark, BLACK, 0.28))); og.addColorStop(1, css(deeper));
@@ -549,6 +568,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     candyPath(g, shape, cx, cy, R); g.fillStyle = rg; g.fill();
     g.save();
     candyPath(g, shape, cx, cy, R); g.clip();
+    if (shape === 'heart') paintHeartPuff(g, cx, cy, R, col);   // 愛心：枕頭狀的明暗（條紋要畫在它上面）
     if (special === 'h' || special === 'v') {
       g.fillStyle = 'rgba(255,255,255,0.86)';
       paintStripes(g, cx - R, cy - R, R * 2, special);
@@ -558,34 +578,38 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     dg.addColorStop(0, css(deeper, 0)); dg.addColorStop(0.55, css(deeper, 0)); dg.addColorStop(1, css(deeper, 0.32));
     g.fillStyle = dg; g.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
     // 透光：光從玻璃底部透上來，下半部裡面亮一團（不碰到邊，邊緣保持暗）
-    const cg = g.createRadialGradient(cx + R * 0.05, cy + R * 0.58, 0, cx + R * 0.05, cy + R * 0.58, R * 0.5);
-    cg.addColorStop(0, css(mixc(sat, WHITE, 0.55), 0.55)); cg.addColorStop(1, css(sat, 0));
-    g.fillStyle = cg; g.fillRect(cx - R, cy, R * 2, R * 1.3);
-    // 果凍邊：貼著外緣一圈粗粗的、很飽和的糖果色（左上受光比較亮、右下比較濃），玩具放大也蓋不掉
-    candyPath(g, shape, cx, cy, R);
-    const jg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    jg.addColorStop(0, css(mixc(sat, WHITE, 0.3))); jg.addColorStop(0.45, css(sat)); jg.addColorStop(1, css(mixc(dark, BLACK, 0.22)));
-    g.lineWidth = R * 0.34; g.strokeStyle = jg; g.stroke();
-    // 果凍邊內側一條細細的亮線（左上最亮），邊才有「果凍」的厚度
-    candyPath(g, shape, cx, cy, R * 0.84);
-    const lg = g.createLinearGradient(cx - R, cy - R, cx + R * 0.4, cy + R * 0.4);
-    lg.addColorStop(0, 'rgba(255,255,255,0.75)'); lg.addColorStop(0.5, 'rgba(255,255,255,0.18)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
-    g.lineWidth = Math.max(1, R * 0.05); g.strokeStyle = lg; g.stroke();
-    if (shape === 'heart') {
-      // 愛心軟糖：貼著外緣一圈發光的粉白邊（左上最亮、右下淡一點），邊緣看起來膨膨的、很圓潤
-      const pk = mixc(sat, WHITE, 0.72), pg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-      pg.addColorStop(0, css(pk, 0.95)); pg.addColorStop(0.55, css(pk, 0.6)); pg.addColorStop(1, css(pk, 0.28));
-      g.save();
-      g.shadowColor = css(pk, 0.9); g.shadowBlur = R * 0.16;
-      candyPath(g, shape, cx, cy, R * 0.9);
-      g.lineWidth = R * 0.055; g.strokeStyle = pg; g.stroke();
-      g.restore();
+    if (shape !== 'heart') {   // 愛心的糖尖自己有透光（paintHeartPuff）
+      const cg = g.createRadialGradient(cx + R * 0.05, cy + R * 0.58, 0, cx + R * 0.05, cy + R * 0.58, R * 0.5);
+      cg.addColorStop(0, css(mixc(sat, WHITE, 0.55), 0.55)); cg.addColorStop(1, css(sat, 0));
+      g.fillStyle = cg; g.fillRect(cx - R, cy, R * 2, R * 1.3);
+    }
+    if (shape !== 'heart') {
+      // 果凍邊：貼著外緣一圈粗粗的、很飽和的糖果色（左上受光比較亮、右下比較濃），玩具放大也蓋不掉
+      candyPath(g, shape, cx, cy, R);
+      const jg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      jg.addColorStop(0, css(mixc(sat, WHITE, 0.3))); jg.addColorStop(0.45, css(sat)); jg.addColorStop(1, css(mixc(dark, BLACK, 0.22)));
+      g.lineWidth = R * 0.34; g.strokeStyle = jg; g.stroke();
+      // 果凍邊內側一條細細的亮線（左上最亮），邊才有「果凍」的厚度
+      candyPath(g, shape, cx, cy, R * 0.84);
+      const lg = g.createLinearGradient(cx - R, cy - R, cx + R * 0.4, cy + R * 0.4);
+      lg.addColorStop(0, 'rgba(255,255,255,0.75)'); lg.addColorStop(0.5, 'rgba(255,255,255,0.18)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
+      g.lineWidth = Math.max(1, R * 0.05); g.strokeStyle = lg; g.stroke();
     }
     // 最外緣一圈暗邊（輪廓清楚）：右下深、左上淡
     candyPath(g, shape, cx, cy, R);
     const eg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
     eg.addColorStop(0, css(deeper, 0.18)); eg.addColorStop(0.5, css(deeper, 0.35)); eg.addColorStop(1, css(deeper, 0.75));
     g.lineWidth = R * 0.07; g.strokeStyle = eg; g.stroke();
+    if (shape === 'heart') {
+      // 愛心最外緣裡面一圈發光的亮邊：左上幾乎是白的、右下帶一點糖果色，邊緣像膨起來、很光滑的軟糖
+      const pk = mixc(saturate(col, 0.3), WHITE, 0.7), pg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      pg.addColorStop(0, 'rgba(255,255,255,0.95)'); pg.addColorStop(0.5, css(pk, 0.7)); pg.addColorStop(1, css(pk, 0.5));
+      g.save();
+      g.shadowColor = css(pk, 0.9); g.shadowBlur = R * 0.1;
+      candyPath(g, shape, cx, cy, R * 0.93);
+      g.lineWidth = R * 0.05; g.strokeStyle = pg; g.stroke();
+      g.restore();
+    }
     g.restore();
     if (special === 'wrap') {
       candyPath(g, shape, cx, cy, R * 0.86);
@@ -595,6 +619,31 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.restore();
     }
   }
+  // 愛心的「枕頭」明暗：不用一圈一圈的同心邊線（看起來像扁平貼紙），改成中間鼓起來、往邊緣柔柔地變深的軟糖
+  // （已經在 candyPath 的 clip 裡面）
+  function paintHeartPuff(g, cx, cy, R, col) {
+    const far = R * 40;
+    // 愛心的顏色比別的糖果濃一階（淺色的天空藍露出來的面積小，太淡會像玻璃、不像糖）
+    const body = mixc(saturate(col, 0.45), BLACK, 0.08), edge = mixc(body, [22, 14, 70], 0.52), puff = mixc(body, WHITE, 0.22);
+    // 整片：中間是飽和的糖果色，往外緣圓滑地變深
+    candyPath(g, 'heart', cx, cy, R);
+    const eg = g.createRadialGradient(cx - R * 0.12, cy - R * 0.16, R * 0.3, cx, cy, R * 1.1);
+    eg.addColorStop(0, css(body)); eg.addColorStop(0.58, css(body)); eg.addColorStop(0.84, css(mixc(body, edge, 0.6))); eg.addColorStop(1, css(edge));
+    g.fillStyle = eg; g.fill();
+    // 一顆模糊、縮小、往左上偏的亮色愛心 → 中間鼓起來（用 shadowBlur 做柔邊：形狀畫在畫面外，只有影子落回來）
+    g.save();
+    g.shadowColor = css(puff, 0.75); g.shadowBlur = R * 0.24; g.shadowOffsetX = far - R * 0.07; g.shadowOffsetY = -R * 0.1;
+    candyPath(g, 'heart', cx - far, cy, R * 0.66); g.fillStyle = '#000'; g.fill();
+    g.restore();
+    // 玩具坐的地方往下凹一點（玩具周圍一圈柔柔的暗，像陷進軟糖的凹槽）
+    const ay = cy + R * 0.16, ao = g.createRadialGradient(cx + R * 0.04, ay, R * 0.22, cx + R * 0.04, ay, R * 0.8);
+    ao.addColorStop(0, css(edge, 0.38)); ao.addColorStop(0.68, css(edge, 0.14)); ao.addColorStop(1, css(edge, 0));
+    g.fillStyle = ao; g.fillRect(cx - R * 1.2, cy - R * 1.2, R * 2.4, R * 2.4);
+    // 下面圓圓的糖尖：裡面透一點光（軟糖被光穿透），讓露出來的那塊也是鼓鼓的
+    const ty = cy + (HEART.t + HEART.dy) * R, tg = g.createRadialGradient(cx + R * 0.03, ty + R * 0.02, 0, cx + R * 0.03, ty + R * 0.02, R * 0.32);
+    tg.addColorStop(0, css(puff, 0.5)); tg.addColorStop(1, css(puff, 0));
+    g.fillStyle = tg; g.fillRect(cx - R * 0.5, ty - R * 0.4, R, R * 0.8);
+  }
   function paintCandyGloss(g, kind, cx, cy, S) {
     const shape = shapeOf(kind), R = S * CANDY_R, col = kindColor(kind);
     // 左上的月牙形反光：只在果凍邊那一圈（中間挖掉到 0.8 倍），不會橫過玩具的臉
@@ -602,19 +651,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     q.save();
     candyPath(q, shape, cx, cy, R); q.clip();
     q.translate(cx - R * 0.34, cy - R * 0.5); q.rotate(-0.62);
-    const hg = q.createLinearGradient(0, -R * 0.4, 0, R * 0.32);
-    hg.addColorStop(0, 'rgba(255,255,255,0.8)'); hg.addColorStop(0.5, 'rgba(255,255,255,0.32)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+    const hg = q.createLinearGradient(0, -R * 0.4, 0, R * 0.32), ha = shape === 'heart' ? 0.45 : 1;   // 愛心露出來的面積小，大片反光會把顏色刷白（兩瓣另外有反光）
+    hg.addColorStop(0, `rgba(255,255,255,${0.8 * ha})`); hg.addColorStop(0.5, `rgba(255,255,255,${0.32 * ha})`); hg.addColorStop(1, 'rgba(255,255,255,0)');
     q.beginPath(); q.ellipse(0, 0, R * 0.78, R * 0.4, 0, 0, Math.PI * 2); q.fillStyle = hg; q.fill();
     if (shape === 'heart') {
       // 愛心的兩個瓣各一塊順著圓弧的反光（右瓣背光、淡一點），看起來像膨起來的軟糖
       q.setTransform(1, 0, 0, 1, 0, 0);
       const H = HEART, ly = cy + (H.b + H.dy) * R;
-      for (const [sx, a] of [[-1, 0.8], [1, 0.45]]) {
+      for (const [sx, a] of [[-1, 0.92], [1, 0.55]]) {
         q.save();
         q.translate(cx + sx * (H.a + H.r * 0.44) * R, ly - H.r * 0.44 * R); q.rotate(sx * 0.785);
-        const lg2 = q.createLinearGradient(0, -R * 0.12, 0, R * 0.1);
+        const lg2 = q.createLinearGradient(0, -R * 0.14, 0, R * 0.12);
         lg2.addColorStop(0, `rgba(255,255,255,${a})`); lg2.addColorStop(1, 'rgba(255,255,255,0)');
-        q.beginPath(); q.ellipse(0, 0, R * 0.25, R * 0.11, 0, 0, Math.PI * 2); q.fillStyle = lg2; q.fill();
+        q.beginPath(); q.ellipse(0, 0, R * 0.3, R * 0.13, 0, 0, Math.PI * 2); q.fillStyle = lg2; q.fill();
         q.restore();
       }
     }
@@ -629,7 +678,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // 右下：玻璃內側一道很細的折射光（在果凍邊上，最外緣保持暗）
     candyPath(g, shape, cx, cy, R * 0.9);
     const lc = mixc(saturate(col, 0.4), WHITE, 0.55), rl = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    rl.addColorStop(0, css(lc, 0)); rl.addColorStop(0.7, css(lc, 0)); rl.addColorStop(1, css(lc, 0.45));
+    rl.addColorStop(0, css(lc, 0)); rl.addColorStop(0.7, css(lc, 0)); rl.addColorStop(1, css(lc, shape === 'heart' ? 0.2 : 0.45));
     g.lineWidth = R * 0.06; g.strokeStyle = rl; g.stroke();
     g.restore();
     // 亮點：也放在左上的邊上
@@ -1121,7 +1170,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!mask[r][c2]) continue;
       const x = X0 + c2 * S + gap, y = Y0 + r * S + gap;
       rr(q, x, y, cw, cw, crad);
-      q.fillStyle = (r + c2) % 2 ? 'rgba(255,255,255,0.06)' : 'rgba(150,160,255,0.035)';
+      q.fillStyle = (r + c2) % 2 ? 'rgba(200,210,255,0.1)' : 'rgba(170,180,255,0.075)';   // 槽底比盤面亮一點，糖果的深色落影才看得出來
       q.fill();
       // 內壁：比槽大一圈、中間挖空的框，往右下 / 左上投影 —— 框本身在槽外面被裁掉，只有影子落進槽裡
       q.save();
@@ -1907,12 +1956,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return scratch;
   }
   // size：CSS px。回傳 { c, w, h }，w / h 是 CSS px
-  // ext：立體厚度的顏色（跟 HUD 的字一樣）：最外圈的描邊往右下複製幾層，像糖果字被擠出來的側面（光從左上來）
+  // ext：立體厚度的顏色（跟 HUD 的字一樣）：最外圈的描邊往右下複製幾層，像糖果字被擠出來的側面（光從左上來），約字高的 13%
   function textSprite(text, size, fill, outline, outer, shadow, ext) {
     const k = dpr, sc = scratchCtx();
     sc.font = `900 ${Math.max(6, size * k)}px ${FONT}`;
     const mw = sc.measureText(text).width / k;
-    const depth = ext ? size * 0.09 : 0;
+    const depth = ext ? size * 0.13 : 0;
     const pad = size * (outer ? 0.36 : 0.28) + (shadow ? size * 0.22 : 0) + depth;
     const w = mw + pad * 2, h = size * 1.25 + pad * 2;
     const c = makeCanvas(w * k, h * k), g = c.getContext('2d');
@@ -1937,6 +1986,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     if (outer) { g.lineWidth = ow; g.strokeStyle = outer; g.strokeText(text, x, y); }
     g.lineWidth = size * (outer ? 0.17 : 0.22); g.strokeStyle = outline; g.strokeText(text, x, y);
+    // 字面加胖：描邊一半畫在字裡面，會把字吃瘦；用字面的顏色再描一圈，把字撐回來、再胖一點
+    // （只有數字和符號胖很多；中文筆畫多，只補回一點點，不然「關」「蛋」會糊成一團）
+    g.lineWidth = size * (/^[\d\s+\-×.,%/!！]+$/.test(text) ? 0.07 : 0.02); g.strokeStyle = fs; g.strokeText(text, x, y);
     g.fillStyle = fs; g.fillText(text, x, y);
     return { c, w, h };
   }
@@ -2787,25 +2839,34 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const v of visuals.values()) if (v.special !== 'none' || v.kind < 0) return true;
     return false;
   }
+  // 只有待機動畫（特殊方塊在閃、提示在晃，沒有東西在移動）：中後段盤面上幾乎隨時都有特殊方塊，等於一直在畫，
+  // 所以只畫約 15fps（慢慢的閃爍看不出差別），而且兩張之間不要每個 vsync 都醒來：用 setTimeout 等到下一張該畫的時候再掛 rAF。
+  // 手指選著方塊時是在操作，維持約 30fps 比較順
+  const AMB_MS = 66, SEL_MS = 31;
+  let ambTimer = 0;
   // 每幀最多畫一次：畫的途中有人呼叫 requestDraw()（加飄分、排程…）不會再多掛一個 rAF
   function frame() {
     raf = 0;
     if (destroyed || paused) return;
     const t = now();
     inFrame = true;
-    let act = false, amb = false;
+    let act = false, amb = false, gap = AMB_MS;
     try {
       act = moving(t);
       amb = !act && ambient();
-      if (!(amb && t - lastDraw < 31)) { lastDraw = t; draw(t); }   // 只有待機動畫：約 30fps
+      gap = selected ? SEL_MS : AMB_MS;
+      if (!(amb && t - lastDraw < gap)) { lastDraw = t; draw(t); }
     } catch (e) {
       console.error('[renderer] draw', e);
     } finally {
       inFrame = false;
     }
-    if (!raf && !destroyed && !paused && (act || amb || busyCount > 0 || moving(now()))) raf = requestAnimationFrame(frame);
+    if (raf || destroyed || paused) return;
+    if (act || busyCount > 0 || moving(now())) raf = requestAnimationFrame(frame);
+    else if (amb && !ambTimer) ambTimer = setTimeout(() => { ambTimer = 0; requestDraw(); }, Math.max(0, lastDraw + gap - now() - 8));
   }
   function requestDraw() {
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
     if (!raf && !inFrame && !destroyed && !paused && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame);
   }
   // 畫面藏起來時停掉迴圈；play() 的等待用 setTimeout，所以動畫流程照樣會走完（只是不畫）
@@ -2814,6 +2875,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     paused = true;
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
   }
   function resume() {
     if (destroyed) return;
@@ -2838,6 +2900,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     abortWaits();
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    if (ambTimer) { clearTimeout(ambTimer); ambTimer = 0; }
     clearTimeout(warmTimer); warmQ = [];
     if (ro) ro.disconnect();
     window.removeEventListener('resize', onResize);

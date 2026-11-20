@@ -17,30 +17,147 @@ const SCANNED = PIECES.filter(p => p.scan);
 const TITLE_TOYS = (SCANNED.length >= 3 ? SCANNED : PIECES).slice(0, 3);
 
 // ---------- 存檔 ----------
+// 沒登入：存在 SAVE_KEY（這台裝置的「訪客」存檔，跟以前一樣）。
+// 登入（雲端存檔，js/cloud.js）：每個帳號一份，這台裝置上的副本存在 SAVE_KEY + '.u.' + uid（離線也能玩），
+// 有變動就（等一下下）寫到雲端；換手機登入同一個帳號就接著玩。音效 / 音樂開關跟著裝置走，換帳號不會變。
 const SAVE_KEY = 'plushcrush.v1';
-const save = loadSave();
-function loadSave() {
-  const BST0 = { hammer: 3, swap: 3, ufo: 2, moves5: 1 };      // 第一次玩送的道具
-  const def = { unlocked: 1, stars: {}, best: {}, muted: false, music: true, boosters: { ...BST0 } };
+const BST0 = { hammer: 3, swap: 3, ufo: 2, moves5: 1 };      // 第一次玩送的道具
+let saveKey = SAVE_KEY;
+const save = loadSave(SAVE_KEY) || normSave(null);
+// 進度的欄位（同步到雲端的就是這些）：unlocked 開到第幾關、stars / best 每關的星星和最高分、boosters 道具、t 最後一次進度改變的時間
+function normSave(s) {
+  s = s && typeof s === 'object' ? s : {};
+  const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  const nums = o => Object.fromEntries(Object.entries(obj(o)).filter(([, v]) => Number.isFinite(Number(v))).map(([k, v]) => [k, Math.max(0, Number(v))]));
+  return {
+    unlocked: Number.isFinite(s.unlocked) && s.unlocked >= 1 ? Math.floor(s.unlocked) : 1,
+    stars: nums(s.stars),
+    best: nums(s.best),
+    muted: !!s.muted,
+    music: s.music !== false,
+    boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
+    t: Number.isFinite(s.t) ? s.t : 0,
+  };
+}
+function loadSave(key) {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return def;
-    const s = JSON.parse(raw) || {};
-    const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
-    return {
-      unlocked: Number.isFinite(s.unlocked) && s.unlocked >= 1 ? Math.floor(s.unlocked) : 1,
-      stars: obj(s.stars),
-      best: obj(s.best),
-      muted: !!s.muted,
-      music: s.music !== false,
-      boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
-    };
+    const raw = localStorage.getItem(key);
+    return raw ? normSave(JSON.parse(raw)) : null;
   } catch (e) {
-    return def;
+    return null;
   }
 }
+const progressOf = s => ({ v: 1, unlocked: s.unlocked, stars: s.stars, best: s.best, boosters: s.boosters, t: s.t || 0 });
+const hasProgress = s => !!s && (s.unlocked > 1 || Object.keys(s.stars).length > 0);
+let lastProgress = JSON.stringify({ ...progressOf(save), t: 0 });
 function writeSave() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* 無痕模式等：照玩 */ }
+  const p = JSON.stringify({ ...progressOf(save), t: 0 });
+  if (p !== lastProgress) { lastProgress = p; save.t = Date.now(); }   // 只有進度變了才算「更新」（開關音效不算）
+  try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* 無痕模式等：照玩 */ }
+  if (account) schedulePush();
+}
+// 兩份存檔合在一起：開到的關卡、每關的星星和最高分都取比較好的；道具照「比較新的那份」（不然兩台手機一合就變兩倍）
+function mergeSave(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const newer = (b.t || 0) > (a.t || 0) ? b : a;
+  const out = normSave({ ...newer, unlocked: Math.max(a.unlocked, b.unlocked), t: Math.max(a.t || 0, b.t || 0) });
+  for (const k of ['stars', 'best']) {
+    out[k] = { ...a[k] };
+    for (const [id, v] of Object.entries(b[k])) out[k][id] = Math.max(Number(out[k][id]) || 0, Number(v) || 0);
+  }
+  return out;
+}
+// 換成另一份存檔（save 是 const 物件，很多地方直接拿去用，所以就地換內容）；音效 / 音樂開關保留這台裝置的
+function applySave(s) {
+  const keep = { muted: save.muted, music: save.music };
+  for (const k of Object.keys(save)) delete save[k];
+  Object.assign(save, normSave(s), keep);
+  lastProgress = JSON.stringify({ ...progressOf(save), t: 0 });
+}
+
+// ---------- 雲端存檔（帳號） ----------
+// 沒設定 js/cloud-config.js 時整段不作用、畫面上也不會出現登入按鈕。
+let cloud = null, account = null, syncState = 'off', lastPushed = '', pushTimer = 0, askGuestMerge = false;
+async function initCloud() {
+  let cfg = null;
+  try { cfg = (await import('./cloud-config.js')).FIREBASE_CONFIG; } catch (e) { /* 沒有設定檔 */ }
+  const emu = DEBUG && params.has('emu');      // 測試：連本機的 Firebase 模擬器（tests/ 和 docs/CLOUD_SAVE.md）
+  if (emu) cfg = { apiKey: 'demo-key', authDomain: 'demo-plush.firebaseapp.com', projectId: 'demo-plush', appId: 'demo' };   // 測試永遠用假專案，不碰真的存檔
+  if (!cfg) return;
+  try { cloud = (await import('./cloud.js')).createCloud(cfg, { emulator: emu }); } catch (e) { console.warn('[cloud]', e); return; }
+  document.documentElement.classList.add('has-cloud');
+  syncState = 'guest';
+  renderAccount();
+  let q = Promise.resolve();          // 登入狀態的變化一個一個處理（快速登入又登出也不會打架）
+  cloud.onUser(u => { q = q.then(() => switchAccount(u)).catch(e => console.error('[cloud]', e)); });
+  cloud.ready.catch(() => { syncState = 'off'; document.documentElement.classList.remove('has-cloud'); renderAccount(); });
+  window.addEventListener('online', () => { if (account) pushCloud(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && account && pushTimer) pushCloud(); });
+}
+async function switchAccount(u) {
+  const uid = u ? u.uid : null;
+  if ((account ? account.uid : null) === uid) { account = u; renderAccount(); return; }
+  clearTimeout(pushTimer); pushTimer = 0;
+  if (!u) {                                  // 登出 → 回到這台裝置的訪客存檔
+    account = null; saveKey = SAVE_KEY; lastPushed = '';
+    applySave(loadSave(SAVE_KEY));
+    setSync('guest');
+    refreshAfterSwitch();
+    return;
+  }
+  account = u; saveKey = SAVE_KEY + '.u.' + uid; lastPushed = '';
+  const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
+  setSync('syncing');
+  let remote = null, online = true;
+  try { const d = await cloud.load(); remote = d ? normSave(d) : null; } catch (e) { online = false; console.warn('[cloud] 讀取失敗', e); }
+  if (!account || account.uid !== uid) return;            // 讀的時候又換人了
+  // 雲端的 + 這台裝置上這個帳號的副本（可能有離線時玩、還沒傳上去的進度）
+  let merged = mergeSave(remote, loadSave(saveKey)) || normSave(null);
+  // 剛按「登入」、這台裝置上又有沒登入時玩的進度：問要不要帶進帳號（帶進去之後訪客存檔清空，下一個人登入不會又拿到）
+  const guest = loadSave(SAVE_KEY);
+  if (askGuestMerge && hasProgress(guest)) {
+    if (await askMerge(guest, u)) {
+      merged = mergeSave(merged, guest);
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ...normSave(null), muted: save.muted, music: save.music })); } catch (e) { /* ignore */ }
+      if (!account || account.uid !== uid) return;
+    }
+  }
+  askGuestMerge = false;
+  applySave(merged);
+  try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* ignore */ }
+  if (remote) lastPushed = JSON.stringify(progressOf(remote));
+  refreshAfterSwitch();
+  if (online) pushCloud(); else setSync('offline');
+  if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
+}
+function schedulePush() {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushCloud, 1500);      // 連續好幾個變動（過關：星星、最高分、道具）合成一次
+  if (syncState !== 'offline') setSync('syncing');
+}
+async function pushCloud() {
+  clearTimeout(pushTimer); pushTimer = 0;
+  if (!cloud || !account) return;
+  const uid = account.uid, data = progressOf(save), json = JSON.stringify(data);
+  if (json === lastPushed) { setSync('synced'); return; }
+  setSync('syncing');
+  try {
+    await cloud.save(data, uid);                // cloud.js 會確認目前登入的還是這個人，才寫
+    if (!account || account.uid !== uid) return;
+    lastPushed = json;
+    setSync(JSON.stringify(progressOf(save)) === json ? 'synced' : 'syncing');
+  } catch (e) {
+    console.warn('[cloud] 寫入失敗，連上網路或下次存檔時再試', e);
+    if (account && account.uid === uid) setSync('offline');
+  }
+}
+function setSync(s) { syncState = s; renderAccount(); }
+function refreshAfterSwitch() {
+  if (LEVELS && save.unlocked > LEVELS.length + 1) save.unlocked = LEVELS.length + 1;
+  renderAccount();
+  if (screen === 'map') buildMap();
+  if (screen === 'game') renderBoosters();
 }
 
 // ---------- 模組 ----------
@@ -179,6 +296,10 @@ function starSvg(cls = '') {
 }
 function jellyIcon(sm) { const d = document.createElement('span'); d.className = 'jelly-ic' + (sm ? ' sm' : ''); return d; }
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+// 立體數字：字面上亮下暗的漸層是 ::after 用 attr(data-t) 疊一份同樣的字（text-shadow 的描邊會蓋掉 background-clip 的漸層），
+// 所以數字要同時寫進 data-t（CSS 在「遊戲感的字」那段）
+function setNum(e, txt) { if (!e) return; txt = String(txt); e.textContent = txt; e.dataset.t = txt; }
+function numEl(tag, txt) { const e = el(tag); setNum(e, txt); return e; }
 // 重播 CSS 動畫：拿掉 class，隔兩幀再加回去（不用 offsetWidth 強迫同步排版，盤面動畫時不會卡一下）
 function restartAnim(node, cls) {
   if (!node) return;
@@ -193,6 +314,7 @@ let parkTimer = 0;
 function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
+  document.documentElement.dataset.screen = name;   // CSS：遊戲畫面時背景的泡泡、雲停住（省電）
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
   // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
   clearTimeout(parkTimer);
@@ -213,6 +335,9 @@ function openModal(id) {
   lastFocus = document.activeElement;
   m.classList.add('open');
   m.setAttribute('aria-hidden', 'false');
+  // 對話框蓋住盤面時，盤面不用重畫（待機動畫在模糊的遮罩後面看不清楚；後面每一幀都在變的話，模糊也得每一幀重算）。
+  // renderer 暫停時 play() 的流程照樣用 setTimeout 走完，只是不畫；關掉最後一個對話框再接回來
+  if (R) R.pause();
   // 鍵盤使用者才自動把焦點移進去（觸控 / 滑鼠不需要焦點框）
   const f = m.querySelector('.btn.green, .btn');
   if (f && usingKeyboard) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 60);
@@ -222,10 +347,13 @@ function closeModal(id) {
   if (!m.classList.contains('open')) return;
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
+  if (id === 'm-merge' && mergeAnswer) mergeAnswer(false);
+  if (R && !document.querySelector('.modal.open')) R.resume();
   if (usingKeyboard && lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 }
 const isOpen = id => document.getElementById(id).classList.contains('open');
-function closeAllModals() { for (const m of $$('.modal.open')) closeModal(m.id); }
+// 「帶進帳號？」不跟著換畫面關掉（它在等玩家回答，換帳號的流程停在那裡）
+function closeAllModals() { for (const m of $$('.modal.open')) if (m.id !== 'm-merge') closeModal(m.id); }
 
 let toastTimer = 0;
 function toast(text, ms = 1500) {
@@ -423,7 +551,7 @@ function buildMap(popIndex = -1) {
 
   // 星星總數
   const total = LEVELS.reduce((s, l) => s + (Number(save.stars[l.id]) || 0), 0);
-  $('#map-stars').textContent = total;
+  setNum($('#map-stars'), total);
   $('#map-stars-max').textContent = '/ ' + n * 3;
   return pts;
 }
@@ -502,22 +630,22 @@ function openStartCard(i) {
       const gb = el('div', 'gb toy');          // 跟上方的目標一樣站在糖果色的泡泡上（CSS）
       setToyColors(gb, p.color);
       const ic = el('span', 'ic'); ic.appendChild(toyEl(p, 30));
-      gb.appendChild(ic); gb.appendChild(el('b', '', '×' + n));
+      gb.appendChild(ic); gb.appendChild(numEl('b', '×' + n));
       g.appendChild(gb);
     }
   } else if (goal.type === 'jelly') {
     const gb = el('div', 'gb');
     const ic = el('span', 'ic'); ic.appendChild(jellyIcon());
-    gb.appendChild(ic); gb.appendChild(el('b', '', '果凍'));
+    gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
     g.appendChild(gb);
   } else {
     const gb = el('div', 'gb');
     const ic = el('span', 'ic'); ic.appendChild(starSvg());
-    gb.appendChild(ic); gb.appendChild(el('b', '', fmt(scoreTarget(lvl))));
+    gb.appendChild(ic); gb.appendChild(numEl('b', fmt(scoreTarget(lvl))));
     g.appendChild(gb);
   }
   $('#ms-goal-text').textContent = goalText(lvl);
-  $('#ms-moves').textContent = lvl.moves;
+  setNum($('#ms-moves'), lvl.moves);
   const hint = lvl.hint || '';
   $('#ms-hint-box').hidden = !hint;
   $('#ms-hint').textContent = softWrap(hint);
@@ -607,7 +735,7 @@ async function startLevel(idx) {
   jellyCountsLayers = statJ === layers || layers === cells;
   jellyLive = statJ;
 
-  $('#hud-level').textContent = idx + 1;
+  setNum($('#hud-level'), idx + 1);
   buildGoal();
   renderMoves();
   renderScore(true);
@@ -757,7 +885,7 @@ function renderGoal(init = false) {
       txt = fmt(t); done = shownScore >= t;
     }
     if (r.last !== txt) {
-      r.cnt.textContent = txt;
+      setNum(r.cnt, txt);
       if (!init && r.kind !== 'score') restartAnim(r.gi.querySelector('.ic'), 'bump');
       r.last = txt;
     }
@@ -765,7 +893,7 @@ function renderGoal(init = false) {
   }
 }
 function renderMoves() {
-  $('#hud-moves').textContent = Math.max(0, dispMoves);
+  setNum($('#hud-moves'), Math.max(0, dispMoves));
   $('#hud-moves-box').classList.toggle('low', state !== 'ending' && dispMoves <= 5 && dispMoves > 0);
 }
 // 分數往上跑：每幀只改一個數字（文字有變才寫），星星條的寬度只在目標分數改變時設一次，由 CSS transition 補間
@@ -797,7 +925,7 @@ function renderScore(instant = false) {
 function paintScore() {
   const h = hudEls();
   const txt = fmt(shownScore);
-  if (txt !== h.text && h.score) { h.score.textContent = txt; h.score.dataset.len = txt.length; h.text = txt; }   // 位數多的時候 CSS 把字縮小
+  if (txt !== h.text && h.score) { setNum(h.score, txt); h.score.dataset.len = txt.length; h.text = txt; }   // 位數多的時候 CSS 把字縮小
   const s = level ? level.stars || [] : [];
   h.stars.forEach((st, i) => {
     const on = s[i] != null && shownScore >= s[i];
@@ -1252,7 +1380,7 @@ function showWin(stars, score, newBest, best, firstClear) {
   const bs = $$('#mw-stars .bs');
   bs.forEach(s => s.classList.remove('on'));
   $('#mw-stars').setAttribute('aria-label', `得到 ${stars} 顆星`);
-  $('#mw-score').textContent = '0';
+  setNum($('#mw-score'), 0);
   $('#mw-best').hidden = !newBest;
   const bonusLine = sugarBonus > 0 ? `剩餘步數獎勵 +${fmt(sugarBonus)}` : '';
   $('#mw-best-line').textContent = [bonusLine, !newBest && best > 0 ? `最高分 ${fmt(Math.max(best, score))}` : ''].filter(Boolean).join('　');
@@ -1271,7 +1399,7 @@ function showWin(stars, score, newBest, best, firstClear) {
   const t0 = performance.now() + 250, dur = 1000;
   const tick = now => {
     const f = clamp((now - t0) / dur, 0, 1);
-    $('#mw-score').textContent = fmt(score * (1 - Math.pow(1 - f, 3)));
+    setNum($('#mw-score'), fmt(score * (1 - Math.pow(1 - f, 3))));
     if (f < 1 && isOpen('m-win')) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
@@ -1338,6 +1466,90 @@ async function loseFlow() {
   openModal('m-lose');
 }
 
+// ---------- 帳號（雲端存檔）的畫面 ----------
+const SYNC_TEXT = {
+  guest: '登入後，換手機也能接著玩',
+  syncing: '同步中…',
+  synced: '已存到雲端 ✓',
+  offline: '離線中，連上網路會自動存到雲端',
+};
+// 頭像：Google 的大頭照；沒有就用名字的第一個字；沒登入是一朵雲
+function paintAvatar(box) {
+  box.textContent = '';
+  if (account && account.photo) {
+    const im = document.createElement('img');
+    im.alt = ''; im.referrerPolicy = 'no-referrer'; im.decoding = 'async';
+    im.onerror = () => { box.textContent = Array.from(account ? account.name : '?')[0] || '?'; };
+    im.src = account.photo;
+    box.appendChild(im);
+  } else if (account) {
+    box.textContent = Array.from(account.name || '?')[0] || '?';
+  } else {
+    const s = document.createElementNS(SVGNS, 'svg'), u = document.createElementNS(SVGNS, 'use');
+    u.setAttribute('href', '#i-cloud'); s.appendChild(u); box.appendChild(s);
+  }
+}
+function renderAccount() {
+  const on = !!cloud && syncState !== 'off';
+  const chip = $('#acct-chip'), box = $('#acct-box');
+  if (!chip || !box) return;
+  chip.hidden = !on; box.hidden = !on;
+  if (!on) return;
+  chip.classList.toggle('in', !!account);
+  paintAvatar($('.acct-av', chip));
+  $('.acct-nm', chip).textContent = account ? account.name : '登入存檔';
+  chip.setAttribute('aria-label', account ? `帳號：${account.name}（打開設定）` : '登入雲端存檔');
+  paintAvatar($('.acct-av', box));
+  $('#acct-name').textContent = account ? account.name : '雲端存檔';
+  $('#acct-sub').textContent = account ? (SYNC_TEXT[syncState] || '') : SYNC_TEXT.guest;
+  box.dataset.sync = account ? syncState : 'guest';
+  $('#acct-in').hidden = !!account;
+  $('#acct-out').hidden = !account;
+}
+// 要在點擊的當下直接開登入視窗（先 await 別的東西，瀏覽器會把視窗擋掉）
+function signIn() {
+  if (!cloud) return;
+  if (!cloud.isReady) { toast('雲端存檔還在準備，等一下再按一次'); return; }
+  askGuestMerge = true;
+  cloud.signIn().catch(e => {      // 成功的話 onUser → switchAccount 會接手（歡迎訊息在那裡，等「帶進帳號？」問完才出現）
+    askGuestMerge = false;
+    const c = (e && e.code) || '';
+    console.warn('[cloud] 登入失敗', e);
+    if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request' || c === 'auth/user-cancelled') return;
+    if (c === 'auth/popup-blocked') toast('登入視窗被擋住了，請允許彈出視窗再按一次');
+    else if (c === 'auth/operation-not-supported-in-this-environment' || c === 'auth/web-storage-unsupported') toast('這個瀏覽器不能登入，請用 Safari 或 Chrome 打開遊戲');
+    else if (c === 'auth/unauthorized-domain') toast('這個網址還不能登入（Firebase 的授權網域要加上它）');
+    else if (c === 'auth/network-request-failed') toast('連不上網路，晚點再試');
+    else toast('登入沒有成功，請再試一次');
+  });
+}
+async function signOut() {
+  if (!cloud || !account) return;
+  if (pushTimer || syncState !== 'synced') await pushCloud();     // 先把還沒傳上去的進度傳上去
+  try { await cloud.signOut(); toast('已登出，換回這台裝置的存檔'); } catch (e) { toast('登出沒有成功，請再試一次'); }
+}
+// 這台裝置上有沒登入時玩的進度：問要不要帶進剛登入的帳號
+function askMerge(guest, u) {
+  const stars = Object.values(guest.stars).reduce((a, b) => a + (Number(b) || 0), 0);
+  const lv = Math.max(1, Math.min(guest.unlocked - 1, LEVELS ? LEVELS.length : guest.unlocked));
+  $('#mm-text').textContent = `這台裝置上還沒登入時，已經過了 ${lv} 關、拿到 ${stars} 顆星。要把這些進度帶進「${u.name}」的帳號嗎？帶進去之後，這台裝置的訪客進度會清空。`;
+  return new Promise(res => {
+    let settled = false;
+    const done = v => {
+      if (settled) return;
+      settled = true; mergeAnswer = null;
+      $('#mm-yes').onclick = $('#mm-no').onclick = null;
+      closeModal('m-merge');
+      res(v);
+    };
+    mergeAnswer = done;                         // 被別的方式關掉（Esc 之類）就當作「不用」，換帳號的流程才不會卡住
+    $('#mm-yes').onclick = () => done(true);
+    $('#mm-no').onclick = () => done(false);
+    openModal('m-merge');
+  });
+}
+let mergeAnswer = null;
+
 // ---------- 設定 ----------
 function syncToggles() {
   $('#tg-sound').setAttribute('aria-pressed', String(!save.muted));
@@ -1350,6 +1562,7 @@ function openSettings() {
   $('#set-title').textContent = inGame ? '暫停' : '設定';
   $('#set-close').textContent = inGame ? '繼續' : '好了';
   syncToggles();
+  renderAccount();
   openModal('m-settings');
 }
 
@@ -1380,6 +1593,9 @@ function bindUI() {
     writeSave(); syncToggles();
   });
   $('#set-close').addEventListener('click', () => closeModal('m-settings'));
+  $('#acct-chip').addEventListener('click', openSettings);
+  $('#acct-in').addEventListener('click', signIn);
+  $('#acct-out').addEventListener('click', signOut);
   $('#set-map').addEventListener('click', () => leaveToMap());
   $('#set-restart').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-next').addEventListener('click', () => {
@@ -1464,6 +1680,12 @@ function installDebug() {
       return cellCenters[r + ',' + c] || null;
     },
     cellSize: () => cellSize(),
+    // 雲端存檔（測試用）
+    get cloud() { return cloud; },
+    get account() { return account; },
+    get syncState() { return syncState; },
+    get saveKey() { return saveKey; },
+    pushCloud,
   };
 }
 
@@ -1495,6 +1717,7 @@ async function boot() {
   bindUI();
   syncToggles();
   if (DEBUG) installDebug();
+  initCloud();          // 不等它：SDK 在背景載，登入狀態恢復後才換成那個帳號的存檔
   setProgress(1);
   await sleep(250);
   show('title');

@@ -1,0 +1,114 @@
+# 雲端存檔（帳號）設定步驟
+
+設定好之後，每個人用自己的 **Google 帳號** 登入，**破到第幾關、每關的星星、最高分、道具** 會存到雲端：
+換手機、換瀏覽器，登入同一個帳號就接著玩；同一台手機換人登入，各玩各的。
+
+還沒設定時（`js/cloud-config.js` 是 `null`），遊戲跟以前一樣，進度只存在那台裝置，畫面上也不會出現登入按鈕。
+
+用的是 Google 的 **Firebase**（免費方案就夠：每天 5 萬次讀取、2 萬次寫入；這個遊戲每過一關大約寫 1 次）。
+大約 10 分鐘，全部在網頁上點，不用寫程式。
+
+---
+
+## 1. 建立 Firebase 專案
+
+1. 打開 <https://console.firebase.google.com/>，用你的 Google 帳號登入。
+2. 按「**建立專案**」（Create a project），名字隨便取（例如 `plush-crush`）。
+3. Google Analytics 可以關掉（用不到），按「建立專案」，等它跑完。
+
+## 2. 新增網頁應用程式，拿到設定
+
+1. 專案首頁按 **`</>`**（網頁）圖示，「新增應用程式」。
+2. 暱稱隨便取（例如 `game`），**不用**勾 Firebase Hosting（遊戲放在 GitHub Pages）。
+3. 按「註冊應用程式」後，畫面會出現一段：
+
+   ```js
+   const firebaseConfig = {
+     apiKey: "AIza…",
+     authDomain: "plush-crush-xxxx.firebaseapp.com",
+     projectId: "plush-crush-xxxx",
+     storageBucket: "…",
+     messagingSenderId: "…",
+     appId: "1:…:web:…"
+   };
+   ```
+
+4. 打開專案裡的 **`js/cloud-config.js`**，把最後一行的 `null` 換成這段大括號（從 `{` 到 `}`）：
+
+   ```js
+   export const FIREBASE_CONFIG = {
+     apiKey: "AIza…",
+     authDomain: "plush-crush-xxxx.firebaseapp.com",
+     projectId: "plush-crush-xxxx",
+     storageBucket: "…",
+     messagingSenderId: "…",
+     appId: "1:…:web:…"
+   };
+   ```
+
+   > 這些值**不是密碼**，Firebase 的設計本來就是放在網頁裡；資料安全靠第 5 步的規則。
+
+## 3. 打開 Google 登入
+
+1. 左邊選單「**建構 → Authentication**」→「開始使用」。
+2. 「登入方式」（Sign-in method）分頁 → 選「**Google**」→ 打開「啟用」→ 選一個「專案支援電子郵件」（你的信箱）→ 儲存。
+
+## 4. 讓遊戲的網址可以登入
+
+1. 還在 Authentication →「**設定**」（Settings）分頁 →「**授權網域**」（Authorized domains）。
+2. 按「新增網域」，加上 **`bonk520.github.io`**（遊戲的 GitHub Pages 網址，不要加 `https://` 和後面的 `/shubing/`）。
+   `localhost` 預設已經在裡面（在自己電腦上用 `python -m http.server` 測試時用）。
+
+## 5. 建立存檔用的資料庫，貼上安全規則
+
+1. 左邊選單「**建構 → Firestore Database**」→「建立資料庫」。
+2. 地點選 **`asia-east1`（台灣）**（離玩家近、比較快；選了之後不能改）。
+3. 選「**以正式版模式啟動**」（production mode）→ 建立。
+4. 上面的「**規則**」（Rules）分頁：把裡面的東西全部刪掉，換成專案根目錄 **`firestore.rules`** 的內容，按「**發布**」。
+
+   規則的意思：每個人的存檔放在 `saves/{帳號 ID}`，**只有本人能讀、能寫**，別人看不到也改不了；寫入的格式也會檢查。
+
+## 6. 上傳、試玩
+
+1. commit 並 push（GitHub Pages 會自動更新，等 1～2 分鐘）。
+2. 打開遊戲：標題畫面左上角會出現「**登入存檔**」。按下去 →「**用 Google 登入**」→ 選帳號。
+3. 如果這台手機之前沒登入時已經玩過，會問「**帶進帳號？**」：
+   - 「帶進來」：之前的進度併進這個帳號（之後這台手機的訪客進度清空，下一個人登入不會拿到）。
+   - 「不用」：帳號從自己的雲端進度開始，訪客進度留在這台手機。
+4. 換另一台手機打開遊戲、登入同一個帳號，就會看到同樣的關卡和星星。
+
+---
+
+## 怎麼運作的
+
+- **存什麼**：開到第幾關、每關最多幾顆星、每關最高分、道具數量（`saves/{uid}`）。音效 / 音樂開關跟著裝置，不上傳。
+  不存 email、名字、照片（那些只在登入的那台裝置上顯示）。
+- **什麼時候存**：進度一有變動（過關、用道具），等 1.5 秒合成一次寫上雲端。設定裡會顯示「已存到雲端 ✓」。
+- **離線**：照樣可以玩，進度先存在手機上（「離線中，連上網路會自動存到雲端」），連上網路自動補傳。
+- **兩台手機都玩過**：合在一起時，關卡、星星、最高分都取比較好的那份；道具用比較新的那份（不會兩台一合就變兩倍）。
+- **登出**：換回那台裝置自己的訪客存檔。
+- **重新整理 / 關掉再開**：登入狀態會記住，不用每次登入。
+
+## 常見問題
+
+- **在 LINE、Facebook、Instagram 裡點連結打開遊戲，登入會失敗**：Google 不允許在這些 App 內建的瀏覽器登入。
+  請按右上角「用瀏覽器開啟」，用 Safari 或 Chrome 打開。
+- **按了登入沒反應 / 說視窗被擋住**：瀏覽器擋了彈出視窗，允許後再按一次。
+- **說「這個網址還不能登入」**：第 4 步的授權網域還沒加，或打錯字。
+- **想刪掉某個人的存檔**：Firestore Database →「資料」分頁 → `saves` → 找到那個 ID → 刪除文件。
+  帳號在 Authentication →「使用者」裡（可以看到 email 對應的 ID）。
+
+## 開發者：本機測試（不用真的 Firebase 專案）
+
+用 Firebase 的模擬器跑端對端測試（兩台「裝置」、登入、合併、換人、離線補傳）：
+
+```sh
+npm i --no-save playwright firebase@13.2.0 firebase-tools   # 還要有 Java
+npx firebase emulators:exec --only auth,firestore --project demo-plush "node tests/cloud_e2e.js"
+```
+
+或自己開模擬器（`npx firebase emulators:start --only auth,firestore --project demo-plush`），
+用 `?debug=1&emu=1` 打開遊戲就會連到模擬器。
+
+程式：`js/cloud-config.js`（設定）、`js/cloud.js`（登入、讀寫雲端，SDK 從 gstatic 載，版本 13.2.0）、
+`js/main.js` 的「存檔」「雲端存檔（帳號）」兩段（每個帳號一份存檔、合併、同步）。

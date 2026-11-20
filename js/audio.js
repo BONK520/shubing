@@ -71,7 +71,8 @@ function makeContext() {
     rev.connect(master);
     // 糖果碎掉的聲音也是空閒時才算（第一次消除前通常就算好了；還沒好的話第一次用到時才算）
     const addRev = () => {
-      try { rev.buffer = makeImpulse(c, 1.1, 2.6); } catch (e) { /* 沒有殘響也能玩 */ }
+      // 0.7 秒（以前 1.1 秒）：音樂開著時殘響一直在算，脈衝越長越吃 CPU；衰減放緩一點，聽起來一樣柔
+      try { rev.buffer = makeImpulse(c, 0.7, 2.2); } catch (e) { /* 沒有殘響也能玩 */ }
       try { if (!crunchBufs) crunchBufs = makeCrunches(c); } catch (e) { /* 用到時再算 */ }
     };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(addRev, { timeout: 4000 });
@@ -186,8 +187,23 @@ function playSilent() {
   } catch (e) { /* ignore */ }
 }
 
+// 音效和音樂都關掉時，整個 AudioContext 暫停（不然它還是一直在背景算一片靜音，手機會比較耗電）
+const wantSound = () => !muted || musicOn;
+let idleTimer = 0;
+function syncIdle() {
+  if (!ctx || !unlocked) return;
+  clearTimeout(idleTimer);
+  try {
+    if (!wantSound()) {
+      // 等音樂淡出（0.4 秒）再暫停，不要「啪」一聲切掉
+      idleTimer = setTimeout(() => { try { if (ctx && !wantSound() && ctx.state === 'running') ctx.suspend().catch(() => {}); } catch (e) { /* ignore */ } }, 500);
+    } else if (stale) rebuild();        // 關著的時候切過背景：打開的這一下（設定裡的開關，是手勢）順便重建
+    else tryResume();
+  } catch (e) { /* ignore */ }
+}
+
 function tryResume() {
-  if (!ctx) return;
+  if (!ctx || !wantSound()) return;
   try {
     if (ctx.state !== 'running' && ctx.state !== 'closed') {
       const p = ctx.resume();
@@ -225,7 +241,7 @@ function hookGestures() {
   if (gestureHooked || typeof document === 'undefined') return;
   gestureHooked = true;
   const onGesture = () => {
-    if (!ctx || document.hidden) return;
+    if (!ctx || document.hidden || !wantSound()) return;    // 全部關掉時維持暫停（打開的那一下由 syncIdle 處理）
     if (stale) { rebuild(); return; }
     if (ctx.state !== 'running') { tryResume(); playSilent(); }
   };
@@ -672,6 +688,7 @@ export const audio = {
       playSilent();
       loadVoices();
       if (musicOn) startMusic();
+      if (!wantSound()) syncIdle();    // 音效和音樂都關著：解鎖完就先暫停
     } catch (e) { /* ignore */ }
   },
 
@@ -707,12 +724,14 @@ export const audio = {
         }
       }
     } catch (e) { /* ignore */ }
+    syncIdle();
   },
   get muted() { return muted; },
 
   setMusic(b) {
     musicOn = !!b;
     try { if (musicOn) startMusic(); else stopMusic(false); } catch (e) { /* ignore */ }
+    syncIdle();
   },
   get music() { return musicOn; },
 

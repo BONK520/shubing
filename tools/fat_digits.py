@@ -1,9 +1,10 @@
-# 胖數字字型：把源泉圓體 Heavy 的數字和幾個符號「膨脹」一圈（筆畫約加粗 22%），做成很小的 woff2
+# 胖數字字型：把源泉圓體 Heavy 的數字和幾個符號「膨脹」一大圈（外輪廓每邊長 GROW、字裡的洞只縮 GROW_IN），做成很小的 woff2
 # 用法（在專案根目錄）:
 #   python tools/fat_digits.py
 # 讀 assets/fonts/gensen-rounded-heavy.woff2，輸出 assets/fonts/plush-num.woff2（字型名稱 PlushNum）。
 # 只放數字和數字旁邊會出現的符號；中文字筆畫多，加粗會糊成一團，所以不動（CSS 用 unicode-range 只拿這幾個字）。
-# 做法：輪廓畫成高解析度的圖 → 距離轉換往外長 GROW 個單位（圓角會更圓）→ 描回輪廓 → TrueType 字型。
+# 做法：輪廓畫成高解析度的圖 → 距離轉換往外長 GROW 個單位（圓角會更圓）→ 字裡封閉的洞（0 6 8 9 的圈）改用只長 GROW_IN 的版本挖回來
+#      → 描回輪廓 → TrueType 字型。外面長得多、洞縮得少：字很胖，圈圈還是開的（加上 CSS 的描邊也不會糊成一團）。
 # 字寬每邊加 GROW，字跟字的間距不變；數字都一樣寬（分數跑動時不會左右晃）。
 # 授權：源泉圓體是 SIL OFL 1.1，改過的版本不能用保留名稱（Source），所以叫 PlushNum。
 import os
@@ -18,7 +19,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'assets', 'fonts', 'gensen-rounded-heavy.woff2')
 OUT = os.path.join(ROOT, 'assets', 'fonts', 'plush-num.woff2')
 CHARS = '0123456789,.+-×/%'
-GROW = 19          # 每邊往外長幾個單位（UPM 1000；數字筆畫約 170 → 約 208）
+GROW = 44          # 外輪廓每邊往外長幾個單位（UPM 1000；數字筆畫約 170 → 外圈約 258，比舊版 19（→ 208）粗約 24%）
+GROW_IN = 19       # 封閉的洞（0 6 8 9 的圈）只往裡縮這麼多：洞跟舊版一樣大，描邊之後還看得到
 S = 4              # 每個單位幾個像素（越大輪廓越準）
 EPS = 0.9          # 描回輪廓時容許的誤差（像素）
 
@@ -72,6 +74,11 @@ def fatten(glyphset, name):
     # 到最近筆畫的距離 ≤ GROW 的地方都算筆畫（= 用圓形往外長，轉角變得更圓）
     dist = cv2.distanceTransform(255 - img, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)
     fat = np.where(dist <= GROW * S, 255, 0).astype(np.uint8)
+    # 封閉的洞：只長 GROW_IN 的版本裡，碰不到圖邊的空白（從圖邊灌水灌不到的地方）→ 從胖的版本挖掉
+    thin = np.where(dist <= GROW_IN * S, 255, 0).astype(np.uint8)
+    outside = thin.copy()
+    cv2.floodFill(outside, np.zeros((h + 2, w + 2), np.uint8), (0, 0), 128)
+    fat[outside == 0] = 0
     found, hier = cv2.findContours(fat, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     out = []
     for i, c in enumerate(found):

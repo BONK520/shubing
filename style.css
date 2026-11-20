@@ -591,7 +591,7 @@ svg.on .hi { opacity: .9; }
   padding: 12px 8px 14px; border-radius: 24px;
   background: rgba(255, 255, 255, .55); border: 3px solid rgba(255, 255, 255, .9);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* 不用 backdrop-filter：底色幾乎不透明（「面板加厚」那段），模糊看不出來，後面有東西在動時卻要每一幀重算 */
 }
 .hud .lbl { font-size: 13px; font-weight: 800; color: var(--ink-soft); letter-spacing: .12em; }
 .hud-moves {
@@ -626,7 +626,7 @@ svg.on .hi { opacity: .9; }
 /* 收集目標：玩具站在自己糖果色的立體泡泡上（跟盤面上那顆糖果同色），頭探出泡泡；main.js 設 --pc 這組顏色
    圖示框是直的（寬 × 1.24）：泡泡是底下那個正圓，玩具貼著框頂、比泡泡高一截 */
 .gi.toy .ic { height: auto; aspect-ratio: 1 / 1.24; display: block; }
-.gi.toy .ic::before { left: 0; right: 0; }
+.gi.toy .ic::before { left: 5%; right: 5%; }   /* 泡泡比玩具窄一點：玩具更搶眼，三個目標時泡泡也不會擠在一起 */
 /* 開始卡的目標也站在泡泡上（那裡的框是正方形：泡泡小一點，玩具的頭一樣探出泡泡） */
 .goal-big .gb.toy .ic { position: relative; }
 .goal-big .gb.toy .ic::before { left: 11%; right: 11%; }
@@ -636,8 +636,9 @@ svg.on .hi { opacity: .9; }
   background:
     radial-gradient(circle at 33% 27%, rgba(255, 255, 255, .95) 0 8%, rgba(255, 255, 255, 0) 24%),
     radial-gradient(circle at 46% 38%, var(--pc-ll, #fff) 0%, var(--pc-l, #ffd0e6) 36%, var(--pc, #ff6fb0) 76%, var(--pc-d, #c42a74) 100%);
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), inset 0 2px 1px rgba(255, 255, 255, .8),
-    0 0 0 2px #fff, 0 2.5px 0 2px var(--pc-d, #c42a74), 1.5px 5px 6px 2px rgba(59, 21, 34, .32);
+  /* 立體泡泡：裡面下緣暗、上緣亮 → 白色糖衣圈 → 糖果色外圈 → 往下的深色厚度 → 右下的落影（白色的貓咪老師泡泡在奶油色面板上也分得出來） */
+  box-shadow: inset 0 -5px 6px rgba(0, 0, 0, .14), inset 0 3px 2px rgba(255, 255, 255, .85),
+    0 0 0 2.5px #fff, 0 0 0 4px var(--pc-d, #c42a74), 0 3.5px 0 4px var(--pc-dd, #8a1a50), 2px 7px 8px 3px rgba(59, 21, 34, .3);
 }
 .gi.toy .ic img, .gi.toy .ic .toy-fallback {
   position: absolute; z-index: 1; left: -2%; top: 0; width: 104%; height: 88%; object-fit: contain; object-position: 50% 0;
@@ -978,9 +979,9 @@ svg.on .hi { opacity: .9; }
   .hud .hud-goal { overflow: visible; }   /* 「目標」小標籤凸出面板上緣，不能被切掉（蓋過後面「面板加反光」的 overflow: hidden） */
   .goal-items { justify-content: space-evenly; gap: 4px; }
   .gi { flex-direction: column; gap: 0; }   /* 數字放圖示下面，三種目標排得下 */
-  .gi .ic { width: 38px; height: 38px; }
-  .gi.toy .ic { width: 34px; }               /* 站在泡泡上的玩具框是直的（34 × 42），跟原本差不多高 */
-  .gi .cnt { font-size: 20px; }
+  .gi .ic { width: 40px; height: 40px; }
+  .gi.toy .ic { width: 46px; margin-top: -12px; }   /* 站在泡泡上的玩具框是直的（46 × 57），頭探出面板上緣 */
+  .gi .cnt { font-size: 22px; margin-top: 2px; }
   .gi .check { width: 24px; height: 24px; }
   .gi.score-goal .ic svg { width: 34px; height: 34px; }
 
@@ -1120,44 +1121,56 @@ svg.on .hi { opacity: .9; }
   #scr-game { gap: 10px; padding-left: calc(4px + var(--safe-l)); padding-right: calc(4px + var(--safe-r)); }
   .game-top { min-height: 40px; }
   .game-top .icon-btn { width: 42px; height: 42px; }
-  .game-top .level-pill { font-size: 17px; padding: 4px 16px 5px; }
-  .game-top .level-pill b { font-size: 25px; }
+  .game-top .level-pill { font-size: 19px; padding: 2px 16px 4px; }
+  .game-top .level-pill b { font-size: 31px; line-height: 1.05; vertical-align: -2px; }
   .hud {
-    grid-template-columns: 60px minmax(0, 1.62fr) minmax(0, 1fr); grid-template-rows: auto;
+    grid-template-columns: 66px minmax(0, 1.62fr) minmax(0, 1fr); grid-template-rows: auto;
     gap: 8px; padding: 9px 6px 12px; border-radius: 18px; border-width: 2px;   /* 上面留給壓在面板上緣的標籤和探頭的玩具、下面留給面板的厚度 */
   }
   /* 「步數」「分數」小標籤壓在面板的上緣（像貼紙），面板裡整個空間都給數字；目標玩具也從面板上緣探出來 */
   .hud .hud-moves, .hud .hud-score, .hud .hud-goal { overflow: visible; }   /* 蓋過後面「面板加反光」的 overflow: hidden */
   .hud-moves { grid-row: auto; border-radius: 14px; border-width: 2px; padding: 7px 0 3px; }
   .hud-moves .lbl { position: absolute; top: -10px; left: 50%; translate: -50% 0; font-size: 12px; letter-spacing: .08em; line-height: 1.2; white-space: nowrap; }
-  .hud-moves b { font-size: 35px; }
+  .hud-moves b { font-size: 39px; }
   .hud-goal { min-height: 0; padding: 4px 4px; gap: 4px; }
   .hud-goal > .lbl { display: none; }
   .goal-items { gap: 2px; }
-  /* 目標：玩具放大約 50%（30 → 46px 寬）、站在泡泡上，頭探出白色面板的上緣；數量疊在泡泡的右下角 */
+  /* 目標：玩具站在立體泡泡上「破框而出」—— 兩個目標 64px 寬（舊版 46px）、三個目標 50px（舊版 39px）；
+     頭探出整塊 HUD 的上緣、泡泡壓在面板的下緣。數量是疊在泡泡右下角的徽章（absolute，不佔橫向空間，圖示才放得大） */
   .gi { gap: 0; align-items: flex-end; }
-  .gi .ic { width: 40px; height: 40px; }                                   /* 果凍 / 分數目標 */
-  .gi.toy .ic { width: 46px; margin: -22px 0 -2px; }                        /* 46 × 57：頭探出面板上緣 */
-  .gi .cnt { font-size: 21px; margin: 0 0 -3px -11px; }
+  .gi .ic { width: 42px; height: 42px; }                                   /* 果凍 / 分數目標 */
+  .gi .cnt { font-size: 24px; margin: 0 0 -3px -8px; }
   .gi .cnt small { font-size: 12px; }
-  .gi .check { width: 24px; height: 24px; border-width: 2px; margin: 0 0 -2px -12px; }
-  .goal-items[data-n="3"] .gi.toy .ic { width: 39px; margin: -18px 0 -2px; }
-  .goal-items[data-n="3"] .gi .cnt { font-size: 18px; margin-left: -12px; }
-  .gi.score-goal .ic svg { width: 32px; height: 32px; }
-  .gi.score-goal .cnt { font-size: 17px; margin-left: -2px; }
-  .jelly-ic { width: 36px; height: 36px; border-radius: 9px; border-width: 2px; }
+  .gi .check { width: 26px; height: 26px; border-width: 2.5px; margin: 0 0 -2px -10px; }
+  .gi.toy { margin-right: 16px; }                                           /* 留給凸出去的數量徽章 */
+  .gi.toy .ic { width: 64px; margin: -26px 0 -7px; }                        /* 64 × 79 */
+  .gi.toy .cnt, .gi.toy .check { position: absolute; right: -20px; bottom: -8px; margin: 0; }
+  .gi.toy .check { right: -12px; bottom: -6px; }
+  .goal-items[data-n="3"] .gi.toy { margin-right: 9px; }
+  .goal-items[data-n="3"] .gi.toy .ic { width: 50px; margin: -20px 0 -6px; } /* 50 × 62 */
+  .goal-items[data-n="3"] .gi.toy .cnt { font-size: 20px; right: -13px; bottom: -7px; }
+  .goal-items[data-n="3"] .gi.toy .check { width: 22px; height: 22px; right: -8px; }
+  .gi.score-goal .ic svg { width: 34px; height: 34px; }
+  .gi.score-goal .cnt { font-size: 19px; margin-left: -2px; }
+  .jelly-ic { width: 40px; height: 40px; border-radius: 10px; border-width: 2.5px; }
   .hud-score { padding: 7px 8px 5px; gap: 1px; }
   .score-line { justify-content: center; }
   .score-line .lbl { position: absolute; top: -19px; left: 2px; font-size: 12px; line-height: 1.2; }
-  .score-line b { font-size: 21px; line-height: 1.05; }
-  .score-line b[data-len="7"] { font-size: 18px; }                           /* 105,000 */
-  .score-line b[data-len="8"], .score-line b[data-len="9"] { font-size: 15px; }
+  .score-line b { font-size: 26px; line-height: 1.05; }
+  .score-line b[data-len="6"] { font-size: 23px; }                           /* 10,500 */
+  .score-line b[data-len="7"] { font-size: 20px; }                           /* 105,000 */
+  .score-line b[data-len="8"], .score-line b[data-len="9"] { font-size: 16px; }
   /* 窄手機（寬 370 以下）：三種目標和分數的字再小一點才排得下 */
   @media (max-width: 370px) {
-    .goal-items[data-n="3"] .gi.toy .ic { width: 34px; margin-top: -15px; }
-    .goal-items[data-n="3"] .gi .cnt { font-size: 15px; margin-left: -10px; }
-    .score-line b { font-size: 18px; }
-    .score-line b[data-len="7"] { font-size: 15px; }
+    .gi.toy { margin-right: 12px; }
+    .gi.toy .ic { width: 56px; margin-top: -22px; }
+    .gi.toy .cnt { font-size: 21px; right: -16px; }
+    .goal-items[data-n="3"] .gi.toy { margin-right: 6px; }
+    .goal-items[data-n="3"] .gi.toy .ic { width: 43px; margin-top: -17px; }
+    .goal-items[data-n="3"] .gi.toy .cnt { font-size: 17px; right: -10px; }
+    .score-line b { font-size: 22px; }
+    .score-line b[data-len="6"] { font-size: 19px; }
+    .score-line b[data-len="7"] { font-size: 16px; }
     .score-line b[data-len="8"], .score-line b[data-len="9"] { font-size: 13px; }
   }
   .starbar { height: 18px; margin-right: 8px; }
@@ -1219,10 +1232,12 @@ svg.on .hi { opacity: .9; }
 
 
 /* ---------- 遊戲感的字：胖圓數字 + 厚描邊 + 往右下擠出來的立體厚度；面板上緣高光、下緣厚度 ---------- */
-/* 立體字三層（光從左上來，跟盤面的糖果一樣，所以厚度和影子都在右下）：
-   1. 字面：數字用胖數字 PlushNum（源泉圓體 Heavy 再膨脹一圈），中文字照用源泉圓體
-   2. 描邊：12 個方向的 text-shadow 疊出圓滑的深色描邊（--o 顏色、--w 粗細）
-   3. 厚度：filter 把「字 + 描邊」整個往右下複製三次（--x 顏色、每次 --d），最後一層柔和的落影
+/* 立體字四層（光從左上來，跟盤面的糖果一樣，所以厚度和影子都在右下）：
+   1. 字面：數字用胖數字 PlushNum（源泉圓體 Heavy 再膨脹一大圈），中文字照用源泉圓體；
+      重要的數字字面再疊一層上亮下暗的漸層（::after + data-t，main.js 的 setNum），像膨起來的糖果
+   2. 描邊：12 個方向的 text-shadow 疊出圓滑的描邊（--o 顏色、--w 粗細）—— 玫瑰色，比厚度亮一階
+   3. 厚度：filter 把「字 + 描邊」整個往右下複製三次（--x 顏色、每次 --d，總共約字高的 12–15%），
+      顏色比描邊深很多（深梅紅），看起來是字的「側面」而不是更粗的描邊；最後一層柔和的落影
       （text-shadow 只能複製字本身、複製不到描邊；filter 是整個畫好的字一起複製，厚度才會跟描邊一樣圓、連成一塊）
    有底色的元素（例如道具的數量徽章）不能用 filter（底色也會被複製），改用 text-shadow 做厚度。
    這裡只用變數、不宣告變數（預設值寫在 var() 裡），每個元素在檔案任何地方設的 --o / --w / --x / --d 才不會被這裡蓋掉。 */
@@ -1234,7 +1249,7 @@ svg.on .hi { opacity: .9; }
 }
 .hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .game-top .lv b, .hud-moves .lbl, .score-line .lbl, .bst .bn,
 .star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
-  --ow: var(--w, 2.2px); --oc: var(--o, #7a2342);
+  --ow: var(--w, 2.2px); --oc: var(--o, #a0255b);
   text-shadow:
     var(--ow) 0 0 var(--oc), calc(var(--ow) * -1) 0 0 var(--oc), 0 var(--ow) 0 var(--oc), 0 calc(var(--ow) * -1) 0 var(--oc),
     calc(var(--ow) * .87) calc(var(--ow) * .5) 0 var(--oc), calc(var(--ow) * -.87) calc(var(--ow) * .5) 0 var(--oc),
@@ -1244,24 +1259,37 @@ svg.on .hi { opacity: .9; }
 }
 .hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .hud-moves .lbl, .score-line .lbl, .bst .bn,
 .star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
-  --xd: var(--d, 1.1px); --xc: var(--x, #4d1228);
+  --xd: var(--d, 1.2px); --xc: var(--x, #4a0a26);
   filter: drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc))
-    drop-shadow(calc(var(--xd) * .9) calc(var(--xd) * 2.4) calc(var(--xd) * 2) rgba(35, 13, 20, .38));
+    drop-shadow(calc(var(--xd) * 1) calc(var(--xd) * 2.6) calc(var(--xd) * 1.8) rgba(40, 6, 22, .5));
 }
-/* 步數：白字 + 深玫瑰粗描邊 + 深一點的厚度（數字最大，厚度也最厚） */
-.hud-moves b { color: #fff; --o: #9a2453; --w: 2.6px; --x: #5e1233; --d: 1.35px; }
+/* 字面的漸層：同一份字（attr(data-t)）疊在上面，只留漸層、不要描邊和厚度（text-shadow 會繼承，要關掉） */
+/* :where() 權重是 0：目標數量徽章（.gi.toy .cnt）在別的地方設 position: absolute，不能被這裡蓋掉 */
+:where(.hud-moves b, .score-line b, .gi .cnt, .game-top .lv b, .star-pill b, .goal-big .gb b, .moves-line b, .score-box b)[data-t] { position: relative; }
+:where(.game-top .lv b, .moves-line b)[data-t] { display: inline-block; }
+.hud-moves b[data-t]::after, .score-line b[data-t]::after, .gi .cnt[data-t]::after, .game-top .lv b[data-t]::after, .star-pill b[data-t]::after,
+.goal-big .gb b[data-t]::after, .moves-line b[data-t]::after, .score-box b[data-t]::after {
+  content: attr(data-t); position: absolute; left: 0; top: 0; width: 100%; text-align: inherit; white-space: nowrap; pointer-events: none;
+  color: transparent; text-shadow: none; filter: none;
+  background: var(--face, linear-gradient(180deg, #fff 0%, #fff 50%, #fff2f7 72%, #ffd6e6 100%));
+  -webkit-background-clip: text; background-clip: text;
+}
+/* 粉紅色的數字（關卡、分數、星星數）：上面淡粉、下面濃桃紅 */
+.score-line b, .game-top .lv b, .star-pill b, .score-box b { --face: linear-gradient(180deg, #ffc0dc 0%, #ff7ab4 36%, #ff4893 62%, #e3247a 100%); }
+/* 步數：白字 + 深玫瑰粗描邊 + 最深的厚度（數字最大，厚度也最厚：3 × 1.7 ≈ 5px） */
+.hud-moves b { color: #fff; --o: #a3215a; --w: 2.8px; --x: #4c0624; --d: 1.7px; }
 /* 奶油色面板上的數字（分數、關卡、目標）：白描邊會跟淺色底糊在一起，所以描邊用深玫瑰 */
-.score-line b { color: #ff4f9a; }
-.gi .cnt { color: #fff; }
-.game-top .lv { color: #fff; --w: 2px; }
-.game-top .lv b { color: #ff4f9a; --w: 2.6px; }
+.score-line b { color: #ff4f9a; --w: 2.4px; --d: 1.25px; }
+.gi .cnt { color: #fff; --w: 2.4px; --d: 1.25px; }
+.game-top .lv { color: #fff; --w: 2.2px; --d: 1.45px; }
+.game-top .lv b { color: #ff4f9a; --w: 2.8px; }
 .hud .lbl { font-weight: 900; }
 /* 對話框裡的字：關卡緞帶（粉紅底 → 深桃紅描邊）、目標數量、步數、過關分數 */
 .ribbon span { display: inline-block; --o: #a3125c; --w: 2.4px; --x: #5c0a35; --d: 1.2px; }
 .ribbon.sad span { --o: #7a3a4c; --x: #4a1f2c; }
 .goal-big .gb b { --w: 2.2px; }
 .moves-line b { --o: #b8325f; --w: 2.4px; --x: #631a3a; }
-.score-box b { --w: 3px; --d: 1.7px; }
+.score-box b { --w: 3px; --d: 1.8px; margin-bottom: 4px; }   /* 胖數字的逗號往下長，留一點空間給下一行 */
 /* 面板：實體的糖果板 — 上面一道亮邊、外面一圈糖衣、底下一層深色的厚度、再往下的投影 */
 .hud {
   background: linear-gradient(180deg, rgba(255, 250, 242, .92), rgba(252, 238, 226, .88));
@@ -1365,3 +1393,59 @@ svg.on .hi { opacity: .9; }
 .sb-star .hi { opacity: .45; }
 .sb-star.on { fill: url(#g-gold); stroke: #a8520a; filter: drop-shadow(0 2px 0 #8a4204) drop-shadow(0 0 6px rgba(255, 196, 40, .85)); }
 .sb-star.on .hi { opacity: .95; }
+
+/* ---------- 帳號（雲端存檔）：標題左上的小牌子、設定裡的帳號列、「帶進帳號？」對話框 ---------- */
+.acct-chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 42px; max-width: 46vw; padding: 0 14px 0 4px;
+  border-radius: 999px; border: 3px solid #fff; cursor: pointer;
+  background: linear-gradient(180deg, #fffaf3 0%, #fff3ea 50%, #fde6dc 100%);
+  box-shadow: 0 0 0 2.5px #f78fb0, 0 4px 0 2.5px #d0567f, 0 8px 12px rgba(110, 50, 60, .22);
+  font: 900 15px/1 var(--font); color: var(--ink);
+  transition: transform .09s;
+}
+.acct-chip:active { transform: translateY(2px); }
+.acct-chip[hidden], .acct[hidden], .acct-out[hidden], #acct-in[hidden] { display: none; }
+.acct-av {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
+  background: linear-gradient(180deg, #8fe6ff, #38aef8); color: #fff; font-weight: 900; font-size: 15px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12), 0 0 0 2px #fff;
+}
+.acct-av img { width: 100%; height: 100%; object-fit: cover; }
+.acct-av svg { width: 19px; height: 19px; fill: #fff; filter: drop-shadow(0 1px 0 rgba(13, 82, 163, .5)); }
+.acct-chip.in .acct-av, .acct[data-sync]:not([data-sync="guest"]) .acct-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
+.acct-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.acct { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.sheet.in-game .acct { display: none; }      /* 玩到一半不換帳號 */
+.acct-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 20px;
+  border: 3px solid #fff; background: #fdf1e8; box-shadow: 0 4px 0 #ecc9c0, 0 6px 12px rgba(112, 40, 64, .12);
+}
+.acct-row .acct-av { width: 44px; height: 44px; font-size: 20px; }
+.acct-row .acct-av svg { width: 28px; height: 28px; }
+.acct-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.acct-text b { font-size: 18px; font-weight: 900; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-text small { font-size: 13px; font-weight: 800; color: var(--ink-soft); line-height: 1.35; }
+.acct[data-sync="synced"] .acct-text small { color: #2f9e48; }
+.acct[data-sync="offline"] .acct-text small { color: #c25b0c; }
+.acct-out {
+  flex: none; padding: 8px 14px; border-radius: 999px; border: 2px solid #fff; cursor: pointer;
+  background: #f3d9d0; color: var(--ink); font: 900 14px/1 var(--font); box-shadow: 0 3px 0 #dcb3a8;
+}
+.acct-out:active { transform: translateY(2px); box-shadow: 0 1px 0 #dcb3a8; }
+#acct-in { width: 100%; }
+.merge-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
+
+/* ---------- 省電：看不到的東西不要動 ----------
+   換畫面只是把 .screen 設成 visibility: hidden（不是 display: none），裡面的無限動畫其實一直在跑：
+   玩遊戲時，載入畫面的條紋進度條（background-position，每一幀都要在主執行緒重算樣式）、標題的字和玩具、
+   地圖的 15 張貼紙、關著的對話框裡會呼吸的按鈕……全部照跑。這裡把它們暫停（回到那個畫面時從原地接著動）。
+   用 !important：很多元素的 animation 簡寫會把 play-state 重設成 running。 */
+.screen:not(.active) *, .screen:not(.active) *::before, .screen:not(.active) *::after,
+.modal:not(.open) *, .modal:not(.open) *::before, .modal:not(.open) *::after {
+  animation-play-state: paused !important;
+}
+/* 遊戲畫面：背景的泡泡、雲、散景停住（main.js 的 show() 設 data-screen）。盤面才是主角；
+   而且背景每一幀都在變的話，蓋在上面、有模糊的對話框也得每一幀重算模糊 */
+:root[data-screen="game"] .sky .bk, :root[data-screen="game"] .sky .cloud, :root[data-screen="game"] .sky::before {
+  animation-play-state: paused;
+}
