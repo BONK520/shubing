@@ -1503,13 +1503,16 @@ function renderAccount() {
   $('#acct-name').textContent = account ? account.name : '雲端存檔';
   $('#acct-sub').textContent = account ? (SYNC_TEXT[syncState] || '') : SYNC_TEXT.guest;
   box.dataset.sync = account ? syncState : 'guest';
-  $('#acct-in').hidden = !!account;
+  $('#acct-btns').hidden = !!account;
   $('#acct-out').hidden = !account;
 }
+// LINE / Facebook / IG / 微信 裡面的瀏覽器：Google 不讓這些地方登入（帳號密碼可以）
+const IN_APP = typeof navigator !== 'undefined' && /\bLine\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent || '');
 // 要在點擊的當下直接開登入視窗（先 await 別的東西，瀏覽器會把視窗擋掉）
 function signIn() {
   if (!cloud) return;
   if (!cloud.isReady) { toast('雲端存檔還在準備，等一下再按一次'); return; }
+  if (IN_APP) { toast('LINE、IG 裡不能用 Google 登入：請用「帳號密碼」，或改用 Safari / Chrome 打開', 3200); return; }
   askGuestMerge = true;
   cloud.signIn().catch(e => {      // 成功的話 onUser → switchAccount 會接手（歡迎訊息在那裡，等「帶進帳號？」問完才出現）
     askGuestMerge = false;
@@ -1522,6 +1525,61 @@ function signIn() {
     else if (c === 'auth/network-request-failed') toast('連不上網路，晚點再試');
     else toast('登入沒有成功，請再試一次');
   });
+}
+// ---------- 帳號名稱＋密碼（不用 email） ----------
+let lgMode = 'in';             // 'in' 登入、'up' 開新帳號
+function setLoginMode(mode) {
+  lgMode = mode;
+  const up = mode === 'up', bt = $('#lg-submit .bt');
+  $('#lg-title').textContent = up ? '開新帳號' : '登入帳號';
+  bt.textContent = bt.dataset.t = up ? '開帳號' : '登入';
+  $('#lg-pass2-row').hidden = !up;
+  $('#lg-pass').autocomplete = up ? 'new-password' : 'current-password';
+  $('#lg-switch').textContent = up ? '已經有帳號了？直接登入' : '還沒有帳號？開一個新的';
+  $('#lg-err').textContent = '';
+}
+function openLogin(mode = 'in') {
+  if (!cloud) return;
+  setLoginMode(mode);
+  $('#lg-pass').value = $('#lg-pass2').value = '';
+  openModal('m-login');
+}
+function loginError(e) {
+  const c = (e && e.code) || '';
+  if (c === 'cloud/bad-name') return e.hint;
+  if (c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials' || c === 'auth/wrong-password' || c === 'auth/user-not-found') return '名字或密碼不對（英文不分大小寫）';
+  if (c === 'auth/email-already-in-use') return '這個名字已經有人用了，換一個吧';
+  if (c === 'auth/weak-password') return '密碼至少要 6 個字';
+  if (c === 'auth/too-many-requests') return '試太多次了，等幾分鐘再試';
+  if (c === 'auth/network-request-failed') return '連不上網路，晚點再試';
+  if (c === 'auth/operation-not-allowed') return '帳號密碼登入還沒開放（Firebase 後台要打開「電子郵件/密碼」）';
+  if (c === 'auth/user-disabled') return '這個帳號被停用了';
+  if (c === 'cloud/not-ready') return '雲端存檔還在準備，等一下再按一次';
+  return '沒有成功，請再試一次';
+}
+async function submitLogin(e) {
+  e.preventDefault();
+  if (!cloud) return;
+  const err = $('#lg-err'), btn = $('#lg-submit'), name = $('#lg-name').value, pass = $('#lg-pass').value;
+  err.textContent = '';
+  const chk = cloud.checkName(name);
+  if (chk.error) { err.textContent = chk.error; return; }
+  if (pass.length < 6) { err.textContent = '密碼至少要 6 個字'; return; }
+  if (lgMode === 'up' && pass !== $('#lg-pass2').value) { err.textContent = '兩次輸入的密碼不一樣'; return; }
+  if (btn.disabled) return;
+  btn.disabled = true;
+  askGuestMerge = true;                    // 跟 Google 登入一樣：這台裝置有訪客進度的話會問要不要帶進帳號
+  try {
+    await (lgMode === 'up' ? cloud.signUpWithName(name, pass) : cloud.signInWithName(name, pass));
+    $('#lg-pass').value = $('#lg-pass2').value = '';
+    closeModal('m-login');
+  } catch (ex) {
+    askGuestMerge = false;
+    err.textContent = loginError(ex);
+    if (!/^(auth\/(invalid|wrong|user-not|email-already|weak)|cloud\/)/.test((ex && ex.code) || '')) console.warn('[cloud] 帳號密碼登入失敗', ex);
+  } finally {
+    btn.disabled = false;
+  }
 }
 async function signOut() {
   if (!cloud || !account) return;
@@ -1595,6 +1653,10 @@ function bindUI() {
   $('#set-close').addEventListener('click', () => closeModal('m-settings'));
   $('#acct-chip').addEventListener('click', openSettings);
   $('#acct-in').addEventListener('click', signIn);
+  $('#acct-pw').addEventListener('click', () => openLogin('in'));
+  $('#lg-form').addEventListener('submit', submitLogin);
+  $('#lg-switch').addEventListener('click', () => setLoginMode(lgMode === 'up' ? 'in' : 'up'));
+  $('#lg-show').addEventListener('change', e => { const t = e.target.checked ? 'text' : 'password'; $('#lg-pass').type = t; $('#lg-pass2').type = t; });
   $('#acct-out').addEventListener('click', signOut);
   $('#set-map').addEventListener('click', () => leaveToMap());
   $('#set-restart').addEventListener('click', () => startLevel(levelIdx));
@@ -1634,7 +1696,8 @@ function bindUI() {
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (boosterMode && boosterMode !== 'busy') { setBoosterMode(null); return; }
-    if (isOpen('m-settings')) closeModal('m-settings');
+    if (isOpen('m-login')) closeModal('m-login');
+    else if (isOpen('m-settings')) closeModal('m-settings');
     else if (isOpen('m-start')) closeModal('m-start');
     else if (screen === 'game' && canPause()) openSettings();
   });

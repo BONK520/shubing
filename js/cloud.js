@@ -5,6 +5,8 @@
 //   cloud.isReady          SDK 載好了沒（登入要在點擊的當下馬上開視窗，SDK 沒好就先不要按）
 //   cloud.onUser(cb)       登入 / 登出 / 恢復登入時呼叫 cb(user | null)，user = { uid, name, email, photo }
 //   cloud.signIn()         Google 登入（彈出視窗；要在點擊事件裡直接呼叫，不然會被瀏覽器擋）
+//   cloud.signInWithName(name, password)   帳號名稱＋密碼登入（不用 email；LINE 裡也能用）
+//   cloud.signUpWithName(name, password)   開新帳號（名字已經有人用 → auth/email-already-in-use）
 //   cloud.signOut()
 //   cloud.load()           讀自己的存檔 → 物件或 null（還沒存過）
 //   cloud.save(data, uid)  寫自己的存檔（整份覆蓋）；目前登入的不是 uid 就不寫
@@ -15,10 +17,56 @@
 const V = '13.2.0';
 const CDN = `https://www.gstatic.com/firebasejs/${V}/`;
 
+// ---------- 帳號名稱 ↔ Firebase 的「email」 ----------
+// Firebase 的帳號密碼登入一定要 email，玩家只取名字：名字換成一個不會真的收信的地址（這個網域沒有信箱，Firebase 也不會寄信）。
+//   英數字的名字直接放：alice → alice@players.plush-crush.firebaseapp.com（在 Firebase 後台一眼看得出是誰）
+//   其他文字（中文…）轉成 base32：小明 → u.4wyi7z4ymo@players…（「.」不會出現在名字裡，所以分得開）
+// 這個網域一改，所有用名字開的帳號都登不進去，所以不要改。
+const NAME_DOMAIN = 'players.plush-crush.firebaseapp.com';
+const B32 = 'abcdefghijklmnopqrstuvwxyz234567';
+// 名字：2–12 個字，字母（任何語言）、數字、_、-，第一個字要是字母或數字；英文不分大小寫
+export function normName(raw) {
+  const s = String(raw || '').normalize('NFKC').trim().toLowerCase();
+  const n = Array.from(s).length;
+  if (n < 2) return { error: '名字至少要 2 個字' };
+  if (n > 12) return { error: '名字最多 12 個字' };
+  if (!/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u.test(s)) return { error: '名字只能用文字、數字、_ 和 -' };
+  let local;
+  if (/^[a-z0-9_-]+$/.test(s)) local = s;
+  else {
+    let bits = 0, val = 0;
+    local = 'u.';
+    for (const b of new TextEncoder().encode(s)) {
+      val = (val << 8) | b; bits += 8;
+      while (bits >= 5) { local += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
+    }
+    if (bits) local += B32[(val << (5 - bits)) & 31];
+  }
+  if (local.length > 64) return { error: '名字太長了' };
+  return { name: s, email: `${local}@${NAME_DOMAIN}` };
+}
+export function nameFromEmail(email) {
+  const [local, domain] = String(email || '').split('@');
+  if (domain !== NAME_DOMAIN) return null;
+  if (!local.startsWith('u.')) return local;
+  const bytes = [];
+  let bits = 0, val = 0;
+  for (const ch of local.slice(2)) {
+    val = (val << 5) | B32.indexOf(ch); bits += 5;
+    if (bits >= 8) { bytes.push((val >>> (bits - 8)) & 255); bits -= 8; }
+  }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); } catch (e) { return null; }
+}
+
 export function createCloud(config, { emulator = false } = {}) {
   let A = null, F = null, auth = null, db = null, user = null, isReady = false;
   const subs = new Set();
-  const toUser = u => (u ? { uid: u.uid, name: u.displayName || (u.email ? u.email.split('@')[0] : '玩家'), email: u.email || '', photo: u.photoURL || '' } : null);
+  // 名字：用帳號名稱開的 → 那個名字；Google → Google 上的名字；都沒有 → email 的前半
+  const toUser = u => {
+    if (!u) return null;
+    const own = nameFromEmail(u.email);
+    return { uid: u.uid, name: own || u.displayName || (u.email ? u.email.split('@')[0] : '玩家'), email: own ? '' : (u.email || ''), photo: own ? '' : (u.photoURL || ''), kind: own ? 'name' : 'google' };
+  };
 
   const ready = (async () => {
     const [appMod, authMod, fsMod] = await Promise.all([
@@ -56,6 +104,7 @@ export function createCloud(config, { emulator = false } = {}) {
 
   return {
     ready,
+    checkName: normName,        // 名字合不合格（送出前先在畫面上提醒）
     get isReady() { return isReady; },
     get user() { return user; },
     onUser(cb) { subs.add(cb); if (isReady) cb(user); return () => subs.delete(cb); },
@@ -71,6 +120,18 @@ export function createCloud(config, { emulator = false } = {}) {
       const p = new A.GoogleAuthProvider();
       p.setCustomParameters({ prompt: 'select_account' });     // 同一台裝置換人玩：每次都讓他選帳號
       return A.signInWithPopup(auth, p).then(r => toUser(r.user));
+    },
+    signInWithName(name, password) {
+      if (!isReady) return Promise.reject(Object.assign(new Error('cloud not ready'), { code: 'cloud/not-ready' }));
+      const n = normName(name);
+      if (n.error) return Promise.reject(Object.assign(new Error(n.error), { code: 'cloud/bad-name', hint: n.error }));
+      return A.signInWithEmailAndPassword(auth, n.email, String(password || '')).then(r => toUser(r.user));
+    },
+    signUpWithName(name, password) {
+      if (!isReady) return Promise.reject(Object.assign(new Error('cloud not ready'), { code: 'cloud/not-ready' }));
+      const n = normName(name);
+      if (n.error) return Promise.reject(Object.assign(new Error(n.error), { code: 'cloud/bad-name', hint: n.error }));
+      return A.createUserWithEmailAndPassword(auth, n.email, String(password || '')).then(r => toUser(r.user));
     },
     signOut() { return isReady ? A.signOut(auth) : Promise.resolve(); },
     async load() {

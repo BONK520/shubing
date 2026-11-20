@@ -244,7 +244,10 @@
         <div class="acct-text"><b id="acct-name">還沒登入</b><small id="acct-sub"></small></div>
         <button class="acct-out" id="acct-out" type="button" hidden>登出</button>
       </div>
-      <button class="btn blue" id="acct-in" type="button" hidden><svg class="bi"><use href="#i-cloud"/></svg><span class="bt" data-t="用 Google 登入">用 Google 登入</span></button>
+      <div class="acct-btns" id="acct-btns" hidden>
+        <button class="btn pink" id="acct-pw" type="button"><span class="bt" data-t="帳號密碼">帳號密碼</span></button>
+        <button class="btn blue" id="acct-in" type="button"><span class="bt" data-t="Google 登入">Google 登入</span></button>
+      </div>
     </div>
     <div class="toggles">
       <button class="toggle" id="tg-sound" aria-pressed="true"><svg class="ti"><use href="#i-sound"/></svg><span class="tl">音效</span><span class="sw" aria-hidden="true"><i></i></span></button>
@@ -255,6 +258,24 @@
       <button class="btn orange" id="set-restart">重新開始</button>
       <button class="btn green" id="set-close">繼續</button>
     </div>
+  </div>
+</div>
+
+<!-- 帳號名稱＋密碼：登入 / 開新帳號（不用 email，LINE 裡也能用） -->
+<div class="modal" id="m-login" role="dialog" aria-modal="true" aria-labelledby="lg-title" aria-hidden="true">
+  <div class="card login-card">
+    <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
+    <div class="ribbon"><span id="lg-title">登入帳號</span></div>
+    <form class="login-form" id="lg-form" novalidate>
+      <label class="fld"><span>帳號名稱</span><input id="lg-name" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="24" placeholder="例如：小明、alice" enterkeyhint="next"></label>
+      <label class="fld"><span>密碼</span><input id="lg-pass" type="password" autocomplete="current-password" placeholder="至少 6 個字" enterkeyhint="go"></label>
+      <label class="fld" id="lg-pass2-row" hidden><span>再輸入一次密碼</span><input id="lg-pass2" type="password" autocomplete="new-password" placeholder="跟上面一樣" enterkeyhint="go"></label>
+      <label class="lg-show"><input type="checkbox" id="lg-show"> 顯示密碼</label>
+      <p class="lg-err" id="lg-err" role="alert"></p>
+      <button class="btn green" id="lg-submit" type="submit"><span class="bt" data-t="登入">登入</span></button>
+      <button class="lg-switch" id="lg-switch" type="button">還沒有帳號？開一個新的</button>
+      <p class="lg-note">名字和密碼請記好：忘記密碼沒辦法自己找回來。</p>
+    </form>
   </div>
 </div>
 
