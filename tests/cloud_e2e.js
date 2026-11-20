@@ -169,6 +169,64 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   doc = await cloudDoc(aliceUid);
   check('back online → cloud catches up', doc && doc.unlocked >= 4 && doc.stars['3'] >= 1, JSON.stringify(doc));
 
+  // ---------- 帳號名稱＋密碼（不用 Google）：裝置 C 開帳號「小明」，裝置 D 用同一組登入 ----------
+  const pwForm = async (pg, mode, name, pass, pass2) => {
+    await G(pg, () => { if (!document.querySelector('#m-settings.open')) document.querySelector('[data-open-settings]').click(); });
+    await pg.waitForTimeout(400);
+    if (!(await pg.$('#m-login.open'))) { await G(pg, () => document.querySelector('#acct-pw').click()); await pg.waitForTimeout(300); }
+    const isUp = await G(pg, () => !document.querySelector('#lg-pass2-row').hidden);
+    if ((mode === 'up') !== isUp) await G(pg, () => document.querySelector('#lg-switch').click());
+    await pg.fill('#lg-name', name);
+    await pg.fill('#lg-pass', pass);
+    if (mode === 'up') await pg.fill('#lg-pass2', pass2 ?? pass);
+    await G(pg, () => document.querySelector('#lg-submit').click());
+  };
+  const lgErr = async pg => { await pg.waitForFunction(() => document.querySelector('#lg-err').textContent.trim() || !document.querySelector('#m-login.open'), null, { timeout: 10000 }); return G(pg, () => document.querySelector('#lg-err').textContent.trim()); };
+
+  const C = await device(b);
+  const pc = await open(C);
+  check('settings shows both sign-in buttons for a guest', await G(pc, () => { document.querySelector('[data-open-settings]').click(); return !document.querySelector('#acct-btns').hidden; }));
+  await pc.waitForTimeout(400);
+  await pwForm(pc, 'up', '小明', '123');
+  check('short password is refused before sending', /至少要 6 個字/.test(await lgErr(pc)));
+  await pwForm(pc, 'up', '小明', 'candy123', 'candy124');
+  check('mismatched confirmation is refused', /不一樣/.test(await lgErr(pc)));
+  await pwForm(pc, 'up', 'a', 'candy123');
+  check('one-letter name is refused', /至少要 2 個字/.test(await lgErr(pc)));
+  await shot(pc, 'login_signup');
+  await pwForm(pc, 'up', '小明', 'candy123');
+  await waitSync(pc);
+  check('created account 小明 and signed in', await G(pc, () => window.__game.account && window.__game.account.name === '小明' && !document.querySelector('#m-login.open')), JSON.stringify(await G(pc, () => window.__game.account)));
+  await shot(pc, 'login_done');
+  const xmUid = await G(pc, () => window.__game.account.uid);
+  await G(pc, () => document.querySelector('#set-close').click());
+  await G(pc, () => window.__game.startLevel(0));
+  await pc.waitForTimeout(2500);
+  await win(pc);
+  await waitSync(pc);
+  doc = await cloudDoc(xmUid);
+  check('小明 progress is in the cloud', doc && doc.unlocked === 2, JSON.stringify(doc));
+
+  const D = await device(b);
+  const pd = await open(D);
+  await pwForm(pd, 'up', '小明', 'other999');
+  check('same name cannot be taken twice', /已經有人用了/.test(await lgErr(pd)));
+  await pwForm(pd, 'in', '小明', 'wrong999');
+  check('wrong password is refused', /名字或密碼不對/.test(await lgErr(pd)));
+  await pwForm(pd, 'in', '小明', 'candy123');
+  await waitSync(pd);
+  check('小明 signs in on device D and gets the progress', await G(pd, () => window.__game.account && window.__game.account.name === '小明' && window.__game.save.unlocked === 2));
+  await G(pd, () => document.querySelector('#acct-out').click());
+  await pd.waitForFunction(() => window.__game.syncState === 'guest', null, { timeout: 10000 });
+  await pwForm(pd, 'up', 'Kid-01', 'jelly123');
+  await waitSync(pd);
+  check('English name is stored lower-case', await G(pd, () => window.__game.account.name === 'kid-01'));
+  await G(pd, () => document.querySelector('#acct-out').click());
+  await pd.waitForFunction(() => window.__game.syncState === 'guest', null, { timeout: 10000 });
+  await pwForm(pd, 'in', 'KID-01', 'jelly123');
+  await waitSync(pd);
+  check('English names ignore upper/lower case when signing in', await G(pd, () => window.__game.account && window.__game.account.name === 'kid-01'));
+
   console.log('page errors:', errs.length ? errs : 'none');
   console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
   await b.close(); srv.close();

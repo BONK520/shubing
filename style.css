@@ -1432,7 +1432,34 @@ svg.on .hi { opacity: .9; }
   background: #f3d9d0; color: var(--ink); font: 900 14px/1 var(--font); box-shadow: 0 3px 0 #dcb3a8;
 }
 .acct-out:active { transform: translateY(2px); box-shadow: 0 1px 0 #dcb3a8; }
-#acct-in { width: 100%; }
+.acct-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.acct-btns[hidden] { display: none; }
+.acct-btns .btn { width: 100%; padding-left: 8px; padding-right: 8px; font-size: 18px; }
+/* 帳號名稱＋密碼的登入框 */
+.login-card { gap: 12px; }
+.login-form { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.fld { display: flex; flex-direction: column; gap: 5px; text-align: left; }
+.fld[hidden] { display: none; }
+.fld span { font-weight: 900; font-size: 15px; color: var(--ink-soft); padding-left: 4px; }
+/* body 是 user-select: none（遊戲裡不要選到字），iPhone 上輸入框也會打不了字，這裡要打開 */
+.fld input {
+  -webkit-user-select: text; user-select: text;
+  width: 100%; height: 48px; padding: 0 14px; border-radius: 16px;
+  border: 3px solid #f3d6cd; background: #fffaf6; color: var(--ink);
+  font: 800 17px/1 var(--font);           /* 17px：iPhone 上小於 16px 會整頁放大 */
+  box-shadow: inset 0 2px 4px rgba(112, 40, 64, .1);
+  outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.fld input::placeholder { color: #c8a3ad; font-weight: 700; }
+.fld input:focus { border-color: #ff8fbf; box-shadow: inset 0 2px 4px rgba(112, 40, 64, .08), 0 0 0 4px rgba(255, 143, 191, .25); }
+.lg-show { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--ink-soft); cursor: pointer; padding-left: 2px; }
+.lg-show input { width: 20px; height: 20px; accent-color: #ff52a6; }
+.lg-err { margin: 0; min-height: 1.4em; font-weight: 900; font-size: 15px; color: #d23a4f; text-align: center; }
+.lg-err:empty { min-height: 0; margin-top: -12px; }
+#lg-submit { width: 100%; }
+#lg-submit[disabled] { filter: grayscale(.5) brightness(.95); }
+.lg-switch { border: 0; background: none; padding: 4px; font: 900 16px/1.3 var(--font); color: #e8287f; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lg-note { margin: 0; font-weight: 800; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .merge-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
 
 /* ---------- 省電：看不到的東西不要動 ----------
