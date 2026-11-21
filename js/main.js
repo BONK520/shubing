@@ -590,7 +590,7 @@ function goalText(lvl) {
 // ---------- 中文換行 ----------
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
-const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間'];
+const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -720,7 +720,7 @@ async function startLevel(idx) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
-  if (level.goal && level.goal.type === 'collect') {      // 小魚優先游去目標還要收集的毛絨
+  if (level.goal && level.goal.type === 'collect') {      // 飛天玩偶優先飛去目標還要收集的毛絨
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
   }
@@ -729,6 +729,7 @@ async function startLevel(idx) {
   movesLeft = dispMoves = level.moves;
   dispScore = shownScore = 0;
   liveCleared = {};
+  resetFlights();
   selected = null;
   moving = false;
   sugarMode = false;
@@ -766,6 +767,7 @@ async function startLevel(idx) {
 
 function leaveToMap(opts) {
   session++;
+  resetFlights();
   state = 'idle';
   clearHint();
   closeAllModals();
@@ -881,17 +883,19 @@ function renderGoal(init = false) {
   for (const r of goalRefs) {
     let txt, done = false;
     if (r.kind === 'collect') {
-      const left = Math.max(0, r.need - clearedOf(r.k));
+      // 還在飛向圖示的那幾顆先不扣（飛到了才扣，數字「ㄉㄨㄞ」一下）
+      const left = Math.max(0, r.need - clearedOf(r.k) + (flyIn[r.k] || 0));
       txt = String(left); done = left === 0;
     } else if (r.kind === 'jelly') {
-      txt = String(Math.max(0, jellyLive)); done = jellyLive <= 0;
+      const left = Math.max(0, jellyLive + flyJelly);
+      txt = String(left); done = left <= 0;
     } else {
       const t = scoreTarget(level);
       txt = fmt(t); done = shownScore >= t;
     }
     if (r.last !== txt) {
       setNum(r.cnt, txt);
-      if (!init && r.kind !== 'score') restartAnim(r.gi.querySelector('.ic'), 'bump');
+      if (!init && r.kind !== 'score') { restartAnim(r.gi.querySelector('.ic'), 'boing'); restartAnim(r.cnt, 'boing'); }
       r.last = txt;
     }
     r.gi.classList.toggle('done', done);
@@ -999,12 +1003,106 @@ function onCue(name, data, token) {
   const snd = CUE_SOUND[name];
   if (snd) audio.play(snd, data);
   const d = (data && data.delay) || 0;
+  if (name === 'gone' || name === 'jellyhit') { launchFlight(name, data, token); return; }
   switch (name) {
     case 'pop': buzzLater(d, 10, 80); break;
     case 'special': buzzLater(d, 12, 60); break;
     case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
   }
+}
+
+// ---------- 收集目標的弧線飛行 ----------
+// 消掉關卡目標（玩偶 / 果凍）時，一顆發光的小玩偶沿著彎彎的貝茲曲線從那一格飛到上面的目標圖示；
+// 飛到了才扣數字，圖示和數字「ㄉㄨㄞ」一下、閃出星芒。onEvent 先把這一步要飛的數量記成一批（batch），
+// renderer 在每一顆爆開的那一刻送 'gone' / 'jellyhit'，從這一批領一個名額起飛。沒領完的 3 秒後自動結清，數字不會卡住。
+let flyIn = {}, flyJelly = 0, flyBatches = [], flyLive = 0, flyLayer = null;
+const FLY_MAX = 12;                 // 同時最多幾顆在飛（超過的直接算到）
+function resetFlights() {
+  for (const b of flyBatches) clearTimeout(b.timer);
+  flyBatches = []; flyIn = {}; flyJelly = 0; flyLive = 0;
+  if (flyLayer) flyLayer.textContent = '';
+}
+function queueFlights(before, jellyBefore) {
+  const b = { k: {}, jelly: 0, timer: 0 };
+  let any = false;
+  for (const r of goalRefs) {
+    if (r.kind === 'collect') {
+      const was = before[r.k] || 0, now = clearedOf(r.k), n = Math.min(now - was, Math.max(0, r.need - was));
+      if (n > 0) { b.k[r.k] = n; flyIn[r.k] = (flyIn[r.k] || 0) + n; any = true; }
+    } else if (r.kind === 'jelly') {
+      const n = Math.max(0, jellyBefore - jellyLive);
+      if (n > 0) { b.jelly = n; flyJelly += n; any = true; }
+    }
+  }
+  if (!any) return;
+  b.timer = setTimeout(() => settleBatch(b), 3000);
+  flyBatches.push(b);
+}
+function settleBatch(b) {
+  clearTimeout(b.timer);
+  for (const k in b.k) { flyIn[k] = Math.max(0, (flyIn[k] || 0) - b.k[k]); b.k[k] = 0; }
+  if (b.jelly) { flyJelly = Math.max(0, flyJelly - b.jelly); b.jelly = 0; }
+  flyBatches = flyBatches.filter(x => x !== b);
+  renderGoal();
+}
+function launchFlight(name, data, token) {
+  const jelly = name === 'jellyhit', kind = data.kind;
+  const b = flyBatches.find(x => (jelly ? x.jelly > 0 : x.k[kind] > 0));
+  if (!b) return;
+  if (jelly) b.jelly--; else b.k[kind]--;
+  const ref = goalRefs.find(r => (jelly ? r.kind === 'jelly' : r.kind === 'collect' && r.k === kind));
+  const arrive = () => {
+    if (token !== session) return;
+    if (jelly) flyJelly = Math.max(0, flyJelly - 1); else flyIn[kind] = Math.max(0, (flyIn[kind] || 0) - 1);
+    if (b.jelly <= 0 && Object.values(b.k).every(v => v <= 0)) { clearTimeout(b.timer); flyBatches = flyBatches.filter(x => x !== b); }
+    renderGoal();
+    if (ref) starBurst(ref.gi.querySelector('.ic'));
+  };
+  setTimeout(() => {
+    if (token !== session) return;
+    const from = R && R.cellRect ? R.cellRect(data.r, data.c) : null;
+    if (!ref || !from || flyLive >= FLY_MAX || document.hidden) { arrive(); return; }
+    flyLive++;
+    flyToGoal(jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });
+  }, Math.max(0, data.delay || 0));
+}
+function flyToGoal(p, from, icon, done) {
+  if (!flyLayer) { flyLayer = el('div', 'fly-layer'); flyLayer.setAttribute('aria-hidden', 'true'); document.body.appendChild(flyLayer); }
+  const to = icon.getBoundingClientRect();
+  const ex = to.left + to.width / 2, ey = to.top + to.height / 2, sx = from.x, sy = from.y;
+  const sz = Math.max(24, Math.round(from.size * 0.92));
+  const f = el('div', 'flyer' + (p ? '' : ' jelly'));
+  f.style.width = f.style.height = sz + 'px';
+  f.appendChild(p ? toyEl(p, 14) : jellyIcon());
+  flyLayer.appendChild(f);
+  // 二次貝茲曲線：控制點往旁邊、往上拉，飛起來是一道彎彎的弧
+  const dist = Math.hypot(ex - sx, ey - sy), side = (sx < ex ? -1 : 1) * Math.min(110, 40 + Math.abs(ex - sx) * 0.45);
+  const cx = (sx + ex) / 2 + side, cy = Math.min(sy, ey) - 60 - dist * 0.08;
+  const N = 18, frames = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, m = 1 - u;
+    const x = m * m * sx + 2 * m * u * cx + u * u * ex, y = m * m * sy + 2 * m * u * cy + u * u * ey;
+    const sc = (1 + 0.38 * Math.sin(Math.PI * Math.min(1, u * 1.2))) * (1 - 0.42 * u * u);
+    frames.push({ offset: u, transform: `translate(${(x - sz / 2).toFixed(1)}px, ${(y - sz / 2).toFixed(1)}px) scale(${sc.toFixed(3)}) rotate(${(Math.sin(u * 9) * 14 * (1 - u)).toFixed(1)}deg)` });
+  }
+  const dur = clamp(520 + dist * 0.45, 560, 900);
+  let finished = false;
+  const end = () => { if (finished) return; finished = true; f.remove(); done(); };
+  try {
+    const a = f.animate(frames, { duration: dur, easing: 'cubic-bezier(.42,0,.6,1)', fill: 'forwards' });
+    a.onfinish = end; a.oncancel = end;
+  } catch (e) { end(); return; }
+  setTimeout(end, dur + 400);      // 保險：動畫事件沒來也會結束
+}
+// 飛到了：圖示閃出一圈星芒 +「叮」
+function starBurst(icon) {
+  if (!icon) return;
+  audio.play('collect', { step: 0 });
+  const s = el('span', 'star-burst');
+  for (let i = 0; i < 8; i++) { const r = el('i'); r.style.setProperty('--a', (i * 45) + 'deg'); s.appendChild(r); }
+  icon.appendChild(s);
+  setTimeout(() => s.remove(), 560);
 }
 
 // ---------- 事件 → HUD ----------
@@ -1026,11 +1124,13 @@ function onEvent(ev, token) {
       const cascade = Math.max(1, ev.cascade || 1);
       const fx = new Set((ev.effects || []).map(e => e.fx));
       const removed = ev.removed || [];
+      const before = { ...liveCleared }, jellyBefore = jellyLive;
       for (const r of removed) {
         const k = r.piece ? r.piece.kind : -1;
         if (k >= 0) liveCleared[k] = (liveCleared[k] || 0) + 1;
       }
       if (ev.jelly) jellyLive = sumJelly(ev.jelly, jellyCountsLayers);
+      queueFlights(before, jellyBefore);
       dispScore += ev.gained || 0;
       renderScore();
       renderGoal();

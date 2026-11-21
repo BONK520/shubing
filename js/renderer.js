@@ -35,12 +35,13 @@ const SWAP_MS = 200;      // 成功交換（主動的那顆有一點點回彈）
 const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
+const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
 const POP_LEAD = 300;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
 const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
 const POP_SEQ = 55;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
-const LAND_MS = 270;      // 落地壓扁回彈
+const LAND_MS = 340;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復）
 const LAND_HOLD = 100;     // 下一輪連鎖：方塊落地後多久爆
 const G_FALL = 0.00005;   // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.45 秒（參考 Candy Crush 類遊戲：約 0.1 秒 / 格）
 const V0_FALL = 0.004;    // 掉落初速（格 / ms）
@@ -48,7 +49,7 @@ const STAGGER_ROW = 60, STAGGER_MAX = 360, COL_JITTER = 30;   // 同一欄一顆
 // 特效傳到某格要多久
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
 // 飛天玩偶（2×2 正方形變的特殊方塊，引擎裡叫 'fish'）飛到目標的時間：基本 + 每格距離，最久 FISH_MAX
-// （先往上飛出一段弧線再俯衝，比以前的小魚慢一點，看得清楚）
+// （先往上飛出一段弧線再俯衝，看得清楚）
 const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
 const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
@@ -1494,7 +1495,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (destroyed) return;
     gen++;
     abortWaits();
-    sched = []; ghosts = []; fx = []; parts = []; texts = []; word = null; shakes = []; surpriseUsed = false;
+    sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
     if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
@@ -1550,19 +1551,73 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (parts.length >= MAX_PARTS) parts.splice(0, parts.length - MAX_PARTS + 1);
     parts.push(p);
   }
-  function burst(x, y, col, n, t, { speed = 3.4, stars = 2, up = 0.8 } = {}) {
-    const fl = getFluff(col), sc = getStarCol(col);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, v = speed * (0.45 + Math.random() * 0.75);
-      emit({ type: 0, img: fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.4, t0: t,
-        life: 380 + Math.random() * 260, size: 0.14 + Math.random() * 0.14 });
-    }
-    for (let i = 0; i < stars; i++) {
-      const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
-      emit({ type: 1, img: sc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.8, t0: t,
-        life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
-    }
+  // 小愛心（方塊顏色，左上一點亮光）
+  const heartCache = new Map();
+  function getHeart(col) {
+    const key = col.join(',');
+    let c = heartCache.get(key);
+    if (c) return c;
+    const n = 48, h = n / 2;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d'), k = saturate(mixc(col, WHITE, 0.1), 0.5);
+    candyPath(g, 'heart', h, h, n * 0.42);
+    const hg = g.createLinearGradient(0, n * 0.1, 0, n * 0.9);
+    hg.addColorStop(0, css(mixc(k, WHITE, 0.45))); hg.addColorStop(1, css(mixc(k, BLACK, 0.08)));
+    g.fillStyle = hg; g.fill();
+    g.lineWidth = n * 0.06; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
+    g.beginPath(); g.ellipse(h - n * 0.14, h - n * 0.12, n * 0.08, n * 0.05, -0.6, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    heartCache.set(key, c);
+    return c;
   }
+  // 細碎閃粉（很小的四角星）
+  let glitterImg = null;
+  function getGlitter() {
+    if (glitterImg) return glitterImg;
+    const n = 24, h = n / 2, c = makeCanvas(n, n), g = c.getContext('2d');
+    g.beginPath();
+    g.moveTo(h, 1); g.quadraticCurveTo(h, h, n - 1, h); g.quadraticCurveTo(h, h, h, n - 1); g.quadraticCurveTo(h, h, 1, h); g.quadraticCurveTo(h, h, h, 1);
+    g.fillStyle = '#fff6c8'; g.fill();
+    g.lineWidth = 1; g.strokeStyle = 'rgba(230,150,40,0.85)'; g.stroke();
+    glitterImg = c;
+    return c;
+  }
+  // 消除爆開的粒子（帶重力、慢慢淡出）：方塊顏色的棉花團 + 蓬鬆白棉花球 + 圓潤星星 + 小愛心 + 細碎閃粉。
+  // 粒子造型（衣櫃的「消除特效」）照 particleSkin 換
+  let particleSkin = 'default';
+  function burst(x, y, col, n, t, { speed = 3.4, stars = 2, up = 0.8 } = {}) {
+    const skin = PARTICLE_SKINS[particleSkin] || PARTICLE_SKINS.default;
+    skin(x, y, col, n, t, speed, stars, up);
+  }
+  const PARTICLE_SKINS = {
+    default(x, y, col, n, t, speed, stars, up) {
+      const fl = getFluff(col), cotton = getFluff([255, 248, 252]), sc = getStarCol(col);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.45 + Math.random() * 0.75);
+        emit({ type: 0, img: i % 3 === 2 ? cotton : fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.4, t0: t,
+          life: 380 + Math.random() * 260, size: (i % 3 === 2 ? 0.17 : 0.14) + Math.random() * 0.14 });
+      }
+      for (let i = 0; i < stars; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
+        emit({ type: 1, img: sc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.8, t0: t,
+          life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
+      }
+      if (n >= 4) {
+        const hc = getHeart(col);
+        for (let i = 0; i < (n >= 8 ? 2 : 1); i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2, v = speed * (0.5 + Math.random() * 0.4);
+          emit({ type: 1, img: hc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 4.5, drag: 2.2, t0: t,
+            life: 520 + Math.random() * 240, size: 0.26 + Math.random() * 0.1, rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 3 });
+        }
+      }
+      const gl = getGlitter();
+      for (let i = 0; i < Math.min(4, Math.ceil(n / 2)); i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.6 + Math.random() * 0.9);
+        emit({ type: 1, img: gl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.5, g: 5, drag: 3, t0: t + Math.random() * 60,
+          life: 360 + Math.random() * 260, size: 0.12 + Math.random() * 0.1 });
+      }
+    },
+  };
   function sparkle(x, y, n, t, spread = 0.5) {
     const st = getStarCol(SPARK_GOLD);
     for (let i = 0; i < n; i++) {
@@ -1738,6 +1793,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       lastPop = Math.max(lastPop, tm);
     }
 
+    // --- 告訴 main.js 每一顆 / 每一格果凍什麼時候爆（收集目標要從那裡飛到上面的目標圖示）---
+    for (const it of removed) {
+      const p = it.piece;
+      if (p && p.kind >= 0) cue('gone', tOf(it.r, it.c) + POP_HIT, { r: it.r, c: it.c, kind: p.kind });
+    }
+    for (const jh of ev.jellyHits || []) if (jh) cue('jellyhit', tOf(jh.r, jh.c) + POP_HIT, { r: jh.r, c: jh.c });
+
     // --- 特效 ---
     for (const x of E) {
       const st = x.start * f, at0 = t0 + st, e = x.e;
@@ -1788,7 +1850,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // --- 消除音效：每一顆碎開的那一刻「咔啦」一聲（殘影放大變白之後才碎：POP_MS 的 30%），音一顆比一顆高 ---
     groups.forEach((g, i) => {
       seqCells(g).forEach((q, j) => {
-        const tm = (remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f) + POP_MS * 0.3;
+        const tm = (remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f) + POP_HIT;
         cue('pop', tm, { cascade, group: i, idx: j, size: g.cells.length, shape: g.shape });
       });
     });
@@ -1816,6 +1878,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         sparkle(cr.c + 0.5, cr.r + 0.5, 10, tt, 0.3);
       });
       cue('special', tm, { special: p.special });
+      shake(p.special === 'bomb' ? 4.5 : 3, 210, t0 + tm);     // 四消 / 五消 / L、T：做出特殊方塊的那一下也震一下
     }
 
     // --- 果凍 ---
@@ -1882,7 +1945,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
     }
     if (cascade >= 2) cue('chime', 40, { level: cascade + 1 });   // 每次跳口號都叮咚一下
-    if (cascade >= 4) shake(1.8 + 0.4 * Math.min(4, cascade - 4), 220, t0 + 40);
+    // 稱讚字：在消除的地方彈出來（2 連消以上、或特殊組合），連越多字越大、越華麗
+    if (cascade >= 2 || isCombo) {
+      let sx = 0, sy = 0;
+      for (const it of removed) { sx += it.c; sy += it.r; }
+      const n = removed.length || 1;
+      addPraise(Math.max(cascade, isCombo ? 4 : 2), removed.length ? sx / n + 0.5 : cols / 2, removed.length ? sy / n + 0.5 : rows / 2, t0 + 140);
+    }
+    if (cascade >= 2) shake(Math.min(5, 2.8 + 0.55 * (cascade - 2)), 230, t0 + 40);   // 2 連消以上：盤面微微一震（3~5px）
     // 最後一顆開始爆之後一下下就讓上面的方塊開始掉（爆的動畫在背景收尾）
     await wait(t0 + lastPop + POP_LEAD - now());
   }
@@ -1944,7 +2014,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const dur = fallDur(dist, vel);
         v.mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
         v.landT = t + delay + dur;
-        v.landAmp = clamp((vel + G_FALL * dur) * 2.4, 0.07, 0.2);
+        v.landAmp = clamp((vel + G_FALL * dur) * 2.2, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
@@ -2243,8 +2313,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (t >= v.landT) {
       const p = (t - v.landT) / LAND_MS;
       if (p < 1) {
-        const k = Math.exp(-4.6 * p) * Math.cos(p * Math.PI * 2.5);
-        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * 0.7 * k;
+        const k = Math.exp(-2.6 * p) * Math.cos(p * Math.PI * 2.5);
+        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * k;
       }
     }
     if (t >= v.popT) { const p = (t - v.popT) / POPIN_MS; if (p < 1) s *= popCurve(p); }
@@ -2510,6 +2580,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.globalAlpha = 1;
     // 按下去：先輕輕一壓，再彈大（立刻有反應）
     const s = st.s * (age < 60 ? lerp(1, 0.94, age / 60) : age < 220 ? lerp(0.94, 1.12, easeOutBack((age - 60) / 160, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
+    // 俏皮的左右輕晃：剛選到時晃大一點、慢慢收小，之後一直輕輕擺
+    const rot = age < 520 ? 0.1 * Math.sin(age / 42) * (1 - age / 520) : 0.03 * Math.sin((age - 520) / 240);
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
+    try { drawSelectedBody(v, cx, cy, s, t, age); } finally { ctx.restore(); }
+  }
+  function drawSelectedBody(v, cx, cy, s, t, age) {
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     if (v.special === 'fish') drawWings(cx, cy - cs * 0.08 * s, cs * 0.66 * s, cs * 0.26 * s, 0.5 + 0.5 * Math.sin(age / 90), 1);   // 選著的飛天玩偶翅膀拍快一點
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
@@ -2636,7 +2713,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
         if (g.to) sparkle(g.x + 0.5, g.y + 0.5, 1, g.t0, 0.2);
         else {
-          g.shatterAt = g.t0 + g.dur * 0.3;
+          g.shatterAt = g.t0 + POP_HIT;
           burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 5 : 9, g.shatterAt, { stars: g.heavy ? 2 : 5, speed: g.special !== 'none' ? 3.8 : 3 });
           shatter(g.x + 0.5, g.y + 0.5, g.kind, g.special, g.shatterAt, g.special !== 'none' ? 1.3 : 1);
           fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
@@ -2651,8 +2728,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       } else {
         // 一下子放大 + 變白（「啵」），接著整顆碎開（碎片粒子接手）
         if (g.shatterAt && t >= g.shatterAt && g.kind >= 0) continue;
-        const q = 0.3;
-        if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.8 * u; }
+        const q = POP_HIT / g.dur;
+        if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.92 * u; }
         else { const u = (p - q) / (1 - q); s = 1.2 * (1 - u * u * (3 - 2 * u)); wh = 0.8 * (1 - u) * (1 - u); }
         a = p < 0.55 ? 1 : 1 - (p - 0.55) / 0.45;
       }
@@ -2966,6 +3043,46 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.globalAlpha = 1;
   }
 
+  // ---- 稱讚字（在消除的地方彈出來，Q 彈地放大、晃一晃、往上飄、淡掉）----
+  const PRAISE = { 2: ['超可愛!', '軟綿綿!'], 3: ['好Q彈!', '甜滋滋!'], 4: ['大爆發!', '超厲害!'], 5: ['神操作!', '無敵可愛!'] };
+  let praises = [];
+  function addPraise(level, x, y, t0) {
+    const lv = clamp(Math.round(level), 2, 5), list = PRAISE[lv];
+    praises.push({ text: list[Math.floor(Math.random() * list.length)], lv, x, y, t0, dur: 1050, sp: null, spCs: 0, tilt: (Math.random() - 0.5) * 0.3 });
+    if (praises.length > 3) praises.shift();
+    if (lv >= 4) at(t0, tt => sparkle(x, y, 4 + lv * 2, tt, 0.6));
+    requestDraw();
+  }
+  function drawPraises(t) {
+    let w = 0;
+    for (const f of praises) {
+      const p = (t - f.t0) / f.dur;
+      if (p >= 1) continue;
+      praises[w++] = f;
+      if (p < 0) continue;
+      if (!f.sp || f.spCs !== cs) {
+        const pal = WORD_PAL[f.lv - 2], size = cs * (0.6 + 0.13 * (f.lv - 2));
+        f.sp = textSprite(f.text, size, (g, sz) => {
+          const w0 = g.canvas.width / dpr / 2, h0 = g.canvas.height / dpr / 2;
+          const gr = g.createLinearGradient(w0, h0 - sz / 2, w0, h0 + sz / 2);
+          gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[2]);
+          return gr;
+        }, '#fff', css(PLUM), true, css(PLUM_D));
+        f.spCs = cs;
+      }
+      const pin = clamp01(p / 0.2), sc = easeOutBack(pin, 3.2) * (1 + (p > 0.2 ? 0.04 * Math.sin((p - 0.2) * 18) * (1 - p) : 0));
+      const half = f.sp.w / cs / 2, x = clamp(f.x, half, Math.max(half, cols - half)), y = Math.max(0.5, f.y - 0.2 - 0.7 * easeOutCubic(p));
+      ctx.save();
+      ctx.translate(ox + x * cs, oy + y * cs);
+      ctx.rotate(f.tilt + 0.08 * Math.sin(p * 14) * (1 - p));
+      ctx.globalAlpha = p < 0.72 ? 1 : 1 - (p - 0.72) / 0.28;
+      drawSprite(f.sp, 0, 0, Math.max(0.001, sc));
+      ctx.restore();
+    }
+    praises.length = w;
+    ctx.globalAlpha = 1;
+  }
+
   const WORD_PAL = [['#fff8b0', '#ffc23d', '#ff7a59'], ['#fff3fb', '#ff9ad1', '#ff4f9a'], ['#f3ecff', '#c49bff', '#8a5cff'], ['#fffbe0', '#ffd23d', '#ff4fa3']];
   function drawWord(t) {
     if (!word) return;
@@ -3119,6 +3236,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       drawFx(t);
       drawParticles(t);
       drawTexts(t);
+      drawPraises(t);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawWord(t);
     }
@@ -3128,7 +3246,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
   // ================= 主迴圈 =================
   function moving(t) {
-    if (sched.length || ghosts.length || fx.length || parts.length || texts.length || word || banners.length || shakes.length || dragState || jellyFx.size) return true;
+    if (sched.length || ghosts.length || fx.length || parts.length || texts.length || praises.length || word || banners.length || shakes.length || dragState || jellyFx.size) return true;
     for (const v of visuals.values()) {
       const m = v.mv;
       if (m && t < m.t0 + m.dur + 20) return true;
@@ -3212,8 +3330,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
   }
 
+  // 某一格在畫面上的位置（CSS px，視窗座標）：main.js 讓收集目標從這裡飛到上面的目標圖示
+  function cellRect(r, c) {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !W) return null;
+    const k = rect.width / W;
+    return { x: rect.left + (ox + (c + 0.5) * cs) * k, y: rect.top + (oy + (r + 0.5) * cs) * k, size: cs * k };
+  }
   const R = {
-    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume,
+    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect,
     get busy() { return busyCount > 0; },
     get paused() { return paused; },
   };
