@@ -80,12 +80,12 @@ export const TOY_FACE = {
 // 每種配件的基本位置：anchor = 對齊臉的哪一條線；size = 寬度（臉寬的幾倍）；ay = 配件圖的哪個高度對齊那條線（0 上緣、1 下緣）；
 // dx = 往右挪（臉寬的幾倍）
 export const ACCESSORY_PLACE = {
-  crown:  { anchor: 'top',    size: 0.62, ay: 0.78, dx: 0 },
-  chef:   { anchor: 'top',    size: 0.78, ay: 0.82, dx: 0 },
-  halo:   { anchor: 'top',    size: 0.8,  ay: 0.85, dx: 0 },
-  bow:    { anchor: 'top',    size: 0.5,  ay: 0.45, dx: 0.34 },
-  shades: { anchor: 'eyes',   size: 1.0,  ay: 0.45, dx: 0 },
-  blush:  { anchor: 'cheeks', size: 1.0,  ay: 0.5,  dx: 0 },
+  crown:  { anchor: 'top',    size: 0.92, ay: 0.72, dx: 0 },
+  chef:   { anchor: 'top',    size: 1.0,  ay: 0.78, dx: 0 },
+  halo:   { anchor: 'top',    size: 1.05, ay: 0.95, dx: 0 },
+  bow:    { anchor: 'top',    size: 0.66, ay: 0.4,  dx: 0.36 },
+  shades: { anchor: 'eyes',   size: 1.05, ay: 0.45, dx: 0 },
+  blush:  { anchor: 'cheeks', size: 1.08, ay: 0.5,  dx: 0 },
 };
 // ★ 微調設定檔：某隻玩偶戴某個配件時，位置 / 大小不對就改這裡 ★
 //   offsetX / offsetY：往右 / 往下挪多少（玩偶寬 / 高的比例，例如 0.05 = 挪 5%；負數 = 往左 / 往上）
