@@ -89,7 +89,7 @@ Pure logic: no DOM, no timers, no `Math.random` (seeded PRNG only, e.g. mulberry
   - `id` is unique for the engine's lifetime and never reused.
   - `'h'` striped: clears its whole **row**. `'v'` striped: clears its whole **column**.
   - `'wrap'` wrapped: clears the 3×3 around it.
-  - `'fish'` fish (from a 2×2 square, Candy Crush's Swedish fish): swims to one target and removes it —
+  - `'fish'` winged flying plush (from a 2×2 square, Candy Crush's Swedish fish; shown as the plush with flapping angel wings): flies to one target and removes it —
     a piece on jelly first, else a piece the collect goal still needs (`createEngine({ collect: { [kind]: count } })`),
     else a random normal piece.
   - `'bomb'` color bomb: `kind === -1`, never part of a normal match.
