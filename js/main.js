@@ -719,6 +719,10 @@ async function startLevel(idx) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
+  if (level.goal && level.goal.type === 'collect') {      // 小魚優先游去目標還要收集的毛絨
+    opts.collect = {};
+    for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
+  }
   engine = createEngine(opts);
 
   movesLeft = dispMoves = level.moves;
@@ -988,7 +992,7 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
-  combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle' };
+  combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];
@@ -997,7 +1001,7 @@ function onCue(name, data, token) {
   switch (name) {
     case 'pop': buzzLater(d, 10, 80); break;
     case 'special': buzzLater(d, 12, 60); break;
-    case 'stripe': case 'wrap': buzzLater(d, 16, 60); break;
+    case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
   }
 }

@@ -85,10 +85,13 @@ Pure logic: no DOM, no timers, no `Math.random` (seeded PRNG only, e.g. mulberry
 ### 3.1 Data
 
 - Coordinates `{r, c}`, `r = 0` is the top row.
-- `Piece = { id: int, kind: int, special: 'none' | 'h' | 'v' | 'wrap' | 'bomb' }`
+- `Piece = { id: int, kind: int, special: 'none' | 'h' | 'v' | 'wrap' | 'fish' | 'bomb' }`
   - `id` is unique for the engine's lifetime and never reused.
   - `'h'` striped: clears its whole **row**. `'v'` striped: clears its whole **column**.
   - `'wrap'` wrapped: clears the 3×3 around it.
+  - `'fish'` fish (from a 2×2 square, Candy Crush's Swedish fish): swims to one target and removes it —
+    a piece on jelly first, else a piece the collect goal still needs (`createEngine({ collect: { [kind]: count } })`),
+    else a random normal piece.
   - `'bomb'` color bomb: `kind === -1`, never part of a normal match.
 - `mask`: array of row strings, `'.'` = hole (not a cell), anything else = cell. `null` = full board.
 - `jelly`: array of row strings, digit = layers (0–2), `'.'` = 0. `null` = none.
@@ -129,16 +132,18 @@ A swap of two adjacent cells is valid if it creates a match (a 3-in-a-row or a 2
 2. Find matches: runs of ≥3 same kind horizontally or vertically. Runs of the same kind that share a
    cell form one group. **2×2 squares** of one kind also match: a square that touches a line group adds its
    other cells to that group (the line still decides shape and special); a square on its own is a group of
-   its own (`shape: 'square'`, no special).
-3. Special creation per group (squares never create one):
+   its own (`shape: 'square'`).
+3. Special creation per group:
    - straight run of ≥5 → color bomb
    - else the group has both a horizontal and a vertical run (L / T / +) → wrapped
    - else straight run of 4 → striped. **Horizontal 4 → `'v'`** (clears column); **vertical 4 → `'h'`** (clears row). (Same as Candy Crush.)
+   - else the group has a 2×2 square (a lone square, or a 3 with a square = 'P' shape) → fish
    - The new special appears at the swapped cell if the group contains one; otherwise (cascade) at the
      run's intersection (L/T) or a middle cell of the run.
 4. Remove all matched pieces except the cell receiving the new special. A removed special **activates**
    (chains recursively, each cell cleared once per step):
-   `'h'` row, `'v'` column, `'wrap'` 3×3, `'bomb'` (hit by an effect) all pieces of the most common kind on the board.
+   `'h'` row, `'v'` column, `'wrap'` 3×3, `'fish'` one target (effect `{ fx: 'fish', r, c, to, carry }`, cause `'fish'`),
+   `'bomb'` (hit by an effect) all pieces of the most common kind on the board.
    Each removed piece hits the jelly under it once (−1 layer).
 5. Gravity: pieces fall straight down; holes are passed through (a piece never stops in a hole).
    New pieces spawn above the top of each column and fall in.
@@ -160,6 +165,9 @@ A swap of two adjacent cells is valid if it creates a match (a 3-in-a-row or a 2
 | bomb + normal piece of kind K | remove every piece of kind K |
 | bomb + striped of kind K | every K becomes striped (random h/v) → `transform` event → all activate |
 | bomb + wrapped of kind K | every K becomes wrapped → `transform` → all activate |
+| bomb + fish of kind K | every K becomes a fish → `transform` → all swim |
+| fish + fish | three fish |
+| fish + striped / wrapped | the fish carries the stripe / wrap to its target, where it fires (`carry` on the fish effect) |
 | bomb + bomb | clear the whole board |
 
 ### 3.6 Scoring
