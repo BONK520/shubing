@@ -335,6 +335,7 @@ function openModal(id) {
   lastFocus = document.activeElement;
   m.classList.add('open');
   m.setAttribute('aria-hidden', 'false');
+  document.documentElement.dataset.modal = '1';     // CSS：有對話框（模糊遮罩）時背景的漂浮光點停住
   // 對話框蓋住盤面時，盤面不用重畫（待機動畫在模糊的遮罩後面看不清楚；後面每一幀都在變的話，模糊也得每一幀重算）。
   // renderer 暫停時 play() 的流程照樣用 setTimeout 走完，只是不畫；關掉最後一個對話框再接回來
   if (R) R.pause();
@@ -348,7 +349,7 @@ function closeModal(id) {
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
   if (id === 'm-merge' && mergeAnswer) mergeAnswer(false);
-  if (R && !document.querySelector('.modal.open')) R.resume();
+  if (!document.querySelector('.modal.open')) { delete document.documentElement.dataset.modal; if (R) R.resume(); }
   if (usingKeyboard && lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 }
 const isOpen = id => document.getElementById(id).classList.contains('open');
