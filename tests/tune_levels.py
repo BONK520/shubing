@@ -2,6 +2,7 @@
 #   python tests/tune_levels.py                  # 全部關卡
 #   python tests/tune_levels.py 16 17 30         # 只調這幾關
 #   python tests/tune_levels.py --games 600      # 每次模擬的局數（越多越穩，預設 400）
+#   python tests/tune_levels.py --keep-moves-upto 30 --json out.json   # 舊關卡不減步數；結果另存 JSON
 # 做法（目標 = tests/sim.js 的 targetsFor，兩組盤面「各種盤面 / 第 0 個盤面」都要達到）：
 #   1. 步數：找「casual 和 decent 的過關率都比目標高 MARGIN」的最少步數（步數越少越難）
 #   2. 種子：試 level.seed、+1、+2 …，挑第 0 個盤面（第一次玩一定是它）最像平常盤面、又達標的那個
@@ -16,7 +17,7 @@ from run_tests import serve   # noqa: E402
 MARGIN, S3_MARGIN = 0.03, 0.05
 
 SEARCH = r"""
-async ({ ids, games, margin, s3margin, seeds }) => {
+async ({ ids, games, margin, s3margin, seeds, keepUpto }) => {
   const { targetsFor, summarize } = await import('/tests/sim.js');
   // fixed = null：第 0…games-1 次玩的盤面各一局；fixed = 0：每次打開都先看到的第 0 個盤面玩 games 次
   const run = async (L, fixed) => (await window.simLevels([L], { games, fixed }))[L.id];
@@ -27,7 +28,8 @@ async ({ ids, games, margin, s3margin, seeds }) => {
     const T = targetsFor(id);
     const ok = S => S.casual.pass >= T.casual.pass + margin && S.decent.pass >= T.decent.pass + margin;
     // 1. 步數：在「各種盤面」上二分搜尋最少步數（過關率大致隨步數遞增）
-    let lo = 10, hi = 60, m = null;
+    // --keep-moves-upto N：第 1–N 關步數不會比現在少（重新調星星時只會變簡單，不會突然少給步數）
+    let lo = id <= keepUpto ? Math.max(10, L0.moves) : 10, hi = 60, m = null;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1, L = { ...L0, moves: mid };
       if (ok(sum(L, await run(L, null)))) { m = mid; hi = mid - 1; } else lo = mid + 1;
@@ -71,6 +73,7 @@ def main():
     ap.add_argument('ids', nargs='*', type=int)
     ap.add_argument('--games', type=int, default=400)
     ap.add_argument('--seeds', type=int, default=12, help='每關試幾個種子（level.seed, +1, +2 …）')
+    ap.add_argument('--keep-moves-upto', type=int, default=0, help='第 1–N 關的步數至少維持現在的值（只調星星和種子、必要時加步數）')
     ap.add_argument('--json', help='另外把建議值存成 JSON（[{id, moves, seed, stars, …}]），給腳本套用到 js/levels.js')
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):
@@ -87,7 +90,7 @@ def main():
         pg.wait_for_function('() => window.__simReady === true', timeout=60000)
         problems = pg.evaluate('() => window.validateLevels()')
         print('validateLevels:', '; '.join(problems) if problems else 'OK')
-        res = pg.evaluate(SEARCH, {'ids': ids, 'games': a.games, 'margin': MARGIN, 's3margin': S3_MARGIN, 'seeds': a.seeds})
+        res = pg.evaluate(SEARCH, {'ids': ids, 'games': a.games, 'margin': MARGIN, 's3margin': S3_MARGIN, 'seeds': a.seeds, 'keepUpto': a.keep_moves_upto})
         b.close()
     srv.shutdown()
     for e in errors:
