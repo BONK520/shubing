@@ -35,6 +35,7 @@
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.6"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.6"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6" fill="none" stroke="currentColor" stroke-width="4.4" stroke-dasharray="2.98 2.99"/><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="3.4"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-hanger" viewBox="0 0 24 24"><path d="M12 7.2a2.2 2.2 0 1 1 2.2-2.2c0 1.2-1 1.6-1.6 2.1-.4.3-.6.6-.6 1.1v.6l8.2 5.6c1 .7.5 2.2-.7 2.2H4.5c-1.2 0-1.7-1.5-.7-2.2L12 8.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><path d="M8 11V8.2a4 4 0 0 1 8 0V11" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><rect x="5" y="10.5" width="14" height="10" rx="3"/></symbol>
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3.5 9.2h3.8L12 5.3v13.4l-4.7-3.9H3.5z"/><path d="M15.3 9a4.2 4.2 0 0 1 0 6M17.8 6.4a8 8 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
@@ -103,6 +104,13 @@
       <div class="pill star-pill" aria-label="星星總數"><svg class="pill-star"><use href="#i-star"/></svg><b id="map-stars" data-t="0">0</b><span id="map-stars-max">/ 0</span></div>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
+    <!-- 玩偶衣櫃（三星外觀獎勵）：地圖右下角的大按鈕；造型幣數量、有寶箱可以開時亮紅點 -->
+    <button class="closet-fab" id="btn-closet" type="button" aria-label="玩偶衣櫃（換裝）">
+      <span class="cf-icon" aria-hidden="true"><svg><use href="#i-hanger"/></svg></span>
+      <span class="cf-label">衣櫃</span>
+      <span class="cf-coins" aria-hidden="true"><i class="coin"></i><b id="cf-coins">0</b></span>
+      <span class="cf-dot" id="cf-dot" hidden></span>
+    </button>
     <div class="map-scroll" id="map-scroll">
       <div class="map-inner" id="map-inner"></div>
       <!-- 地圖貼紙：高度 0 的一層貼在地圖最底下，用 bottom 往上量（第 1 關固定在離底 110px、每關 116px，跟 main.js 的 MAP_BOTTOM / MAP_GAP 一樣）。
@@ -224,6 +232,11 @@
       <span class="best-line" id="mw-best-line"></span>
     </div>
     <div class="mw-reward" id="mw-reward" hidden></div>
+    <!-- 第一次拿到這關的三星：送 1 枚三星造型幣（華麗的金幣翻進來）；有寶箱可以開時多一行 -->
+    <div class="mw-coin" id="mw-coin" hidden>
+      <span class="mc-coin" aria-hidden="true"><i class="coin big"></i></span>
+      <span class="mc-text"><b>三星造型幣 +1</b><small id="mc-sub">去衣櫃幫玩偶換裝吧！</small></span>
+    </div>
     <div class="modal-toys" id="mw-toys"></div>
     <div class="btn-col">
       <button class="btn green xl" id="mw-next"><span class="bt" data-t="下一關">下一關</span></button>
@@ -231,6 +244,7 @@
         <button class="btn blue" id="mw-retry">再玩一次</button>
         <button class="btn pink" id="mw-map">地圖</button>
       </div>
+      <button class="link-btn" id="mw-closet" type="button"><svg><use href="#i-hanger"/></svg>玩偶衣櫃<span class="lb-dot" id="mw-closet-dot" hidden></span></button>
     </div>
   </div>
 </div>
@@ -247,6 +261,39 @@
       <button class="btn orange" id="ml-more" hidden>＋5 步繼續（剩 <b id="ml-more-n">0</b> 個）</button>
       <button class="btn green xl" id="ml-retry"><span class="bt" data-t="再試一次">再試一次</span></button>
       <button class="btn pink" id="ml-map">地圖</button>
+    </div>
+  </div>
+</div>
+
+<!-- 玩偶衣櫃（三星外觀獎勵）：上面是即時預覽的小盤面，下面四個分類、寶箱 -->
+<div class="modal" id="m-closet" role="dialog" aria-modal="true" aria-labelledby="cl-title" aria-hidden="true">
+  <div class="card closet-card">
+    <div class="ribbon"><span id="cl-title">玩偶衣櫃</span></div>
+    <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
+    <div class="cl-scroll">
+    <div class="cl-wallet">
+      <span class="cl-chip"><i class="coin"></i><b id="cl-coins">0</b><small>三星造型幣</small></span>
+      <span class="cl-chip"><svg class="cl-star"><use href="#i-star"/></svg><b id="cl-stars">0</b><small id="cl-stars-max">/ 0</small></span>
+    </div>
+    <div class="cl-preview">
+      <canvas id="cl-board" aria-label="外觀預覽"></canvas>
+      <span class="cl-try" id="cl-try" hidden>試穿中</span>
+      <button class="cl-demo" id="cl-demo" type="button">試試消除特效</button>
+    </div>
+    <div class="cl-tabs" id="cl-tabs" role="tablist" aria-label="分類"></div>
+    <div class="cl-grid" id="cl-grid" role="tabpanel"></div>
+    <div class="cl-sub">三星豪華寶箱<small>星星總數到了就能開</small></div>
+    <div class="cl-chests" id="cl-chests"></div>
+    <p class="cl-help">每一關<b>第一次拿到三星</b>送 1 枚三星造型幣</p>
+    </div>
+    <!-- 開寶箱的動畫 -->
+    <div class="cl-pop" id="cl-pop" hidden>
+      <div class="cp-box">
+        <div class="cp-chest" id="cp-chest" aria-hidden="true"></div>
+        <div class="cp-items" id="cp-items"></div>
+        <p class="cp-text" id="cp-text"></p>
+        <button class="btn green" id="cp-ok" type="button"><span class="bt" data-t="太棒了！">太棒了！</span></button>
+      </div>
     </div>
   </div>
 </div>

@@ -297,6 +297,16 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - `ar` with `ar-modes="webxr scene-viewer quick-look"`, `src` = GLB, `ios-src` = USDZ, camera-controls, auto-rotate,
   soft shadow. Shows 「這是暫代模型」 for placeholders. Back link to `index.html`. zh-TW labels.
 
+## 8b. Wardrobe (three-star cosmetics) — `js/cosmetics.js`
+
+- `DEBUG_UNLOCK_ALL_COSMETICS` (top of the file): `true` unlocks every cosmetic for previewing; ship with `false`.
+- `ITEMS` (4 categories: `hat`, `fx`, `frame`, `theme`), `CHESTS` (star milestones), `TOY_FACE` / `ACCESSORY_PLACE` /
+  `ACCESSORY_TUNING` (where accessories sit on each plush photo; per-toy `offsetX`, `offsetY`, `scale`), `ACCESSORY_SVG`.
+- `createCloset()` → `{ load(key), coins(stars), isUnlocked(item, stars), canBuy, buy, equip, chestState(i, stars), openChest, look(stars) }`.
+  Coins = levels with 3 stars + chest coins − spent; state `{ owned, chests, equip }` in `localStorage[saveKey + '.closet']`.
+- Renderer: `R.setLook({ hat, fx, frame, theme })` (accessory overlay on the toy, particle skin, tile frame, board theme from
+  `BOARD_THEMES`), `R.demoBurst(r, c)` (wardrobe preview), `R.cellRect(r, c)` (HUD goal flights).
+
 ## 9. Tests
 
 - `tests/engine.test.html` runs engine tests in the browser and sets `window.__results = { passed, failed, failures: [] }`.

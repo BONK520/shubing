@@ -1,6 +1,7 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
 import { PIECES, TRIO, spritePath, spinPath } from './pieces.js';
 import { SLOGANS } from './slogans.js';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js';
 
 window.__plushBooted = true;
 
@@ -155,6 +156,9 @@ async function pushCloud() {
 function setSync(s) { syncState = s; renderAccount(); }
 function refreshAfterSwitch() {
   if (LEVELS && save.unlocked > LEVELS.length + 1) save.unlocked = LEVELS.length + 1;
+  closet.load(closetKey());
+  applyLook();
+  renderClosetBtn();
   renderAccount();
   if (screen === 'map') buildMap();
   if (screen === 'game') renderBoosters();
@@ -353,6 +357,182 @@ function tickMotes() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && motes.length && !moteTimer) tickMotes(); });
 
+// ---------- 玩偶衣櫃（三星外觀獎勵，js/cosmetics.js）----------
+// 衣櫃存在這台裝置的 localStorage，每個帳號一份（key 跟著存檔走）；造型幣、星星照存檔裡的關卡星星算
+const closet = createCloset();
+const closetKey = () => saveKey + '.closet';
+let clR = null, clCat = 'hat', tryOn = {};
+// 預覽用的小盤面：3 × 4，七種玩偶都有，再放一顆條紋和一隻飛天玩偶
+const CL_GRID = [[[1], [0], [2], [3]], [[6], [5, 'h'], [4], [1, 'fish']], [[2], [6], [0], [5]]];
+function applyLook() {
+  const l = closet.look(save.stars);
+  if (R && R.setLook) R.setLook(l);
+  if (clR) clR.setLook(previewLook());
+}
+function previewLook() {
+  const l = closet.look(save.stars);
+  for (const [cat, id] of Object.entries(tryOn)) l[cat] = id.split('.')[1];
+  return l;
+}
+function renderClosetBtn() {
+  const coins = closet.coins(save.stars), ready = closet.readyChests(save.stars).length > 0;
+  setNum($('#cf-coins'), coins);
+  $('#cf-dot').hidden = !ready;
+  $('#btn-closet').classList.toggle('ready', ready);
+}
+function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
+function openCloset() {
+  tryOn = {};
+  renderCloset();
+  openModal('m-closet');
+  if (!clR) {
+    try { clR = createRenderer($('#cl-board'), { pieces: PIECES, images }); } catch (e) { console.error(e); clR = null; }
+  }
+  if (clR) {
+    let id = 1;
+    const grid = CL_GRID.map(row => row.map(([kind, sp]) => ({ id: id++, kind: Math.min(kind, PIECES.length - 1), special: sp || 'none' })));
+    clR.resume();
+    clR.setBoard({ rows: grid.length, cols: grid[0].length, grid });
+    clR.setLook(previewLook());
+    setTimeout(() => { if (clR && isOpen('m-closet')) clR.layout(); }, 420);    // 卡片彈出來的動畫結束後再量一次大小
+  }
+}
+function closetClosed() {
+  tryOn = {};
+  $('#cl-pop').hidden = true;
+  if (clR) { clR.setBoard(null); clR.pause(); }
+  applyLook();
+  renderClosetBtn();
+}
+// 試試消除特效：預覽盤面上連續爆三下
+function closetDemo() {
+  if (!clR) return;
+  audio.play('pop', { cascade: 1 });
+  [[0, 1], [1, 2], [2, 0]].forEach(([r, c], i) => setTimeout(() => { if (clR && isOpen('m-closet')) { clR.demoBurst(r, c); audio.play('pop', { cascade: i + 1 }); } }, i * 220));
+}
+function unlockText(it) {
+  const u = it.unlock;
+  if (!u) return '';
+  if (u.coins) return `${u.coins} 枚兌換`;
+  if (u.stars) return `★ ${u.stars} 解鎖`;
+  if (u.chest != null) return `寶箱 ★${CHESTS[u.chest].stars}`;
+  return '';
+}
+function renderCloset() {
+  const stars = save.stars, coins = closet.coins(stars);
+  setNum($('#cl-coins'), coins);
+  setNum($('#cl-stars'), totalStars(stars));
+  $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
+  // 分類頁籤
+  const tabs = $('#cl-tabs');
+  tabs.innerHTML = '';
+  for (const c of CATEGORIES) {
+    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : ''));
+    b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === clCat ? 'true' : 'false');
+    b.textContent = c.name;
+    b.addEventListener('click', () => { if (clCat === c.id) return; clCat = c.id; audio.play('tap'); renderCloset(); });
+    tabs.appendChild(b);
+  }
+  // 這一類的外觀
+  const grid = $('#cl-grid');
+  grid.innerHTML = '';
+  const equipped = closet.look(stars)[clCat];
+  for (const it of ITEMS.filter(x => x.cat === clCat)) {
+    const unlocked = closet.isUnlocked(it, stars), on = unlocked && it.id.split('.')[1] === equipped && !tryOn[clCat];
+    const trying = tryOn[clCat] === it.id;
+    const can = !unlocked && closet.canBuy(it, stars);
+    const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
+    b.type = 'button';
+    const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
+    const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false;
+    pic.appendChild(img);
+    if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
+    b.appendChild(pic);
+    b.appendChild(el('span', 'ci-name', it.name));
+    const stt = el('span', 'ci-state');
+    if (on) stt.textContent = '穿著中';
+    else if (unlocked) stt.textContent = trying ? '試穿中' : '點一下穿上';
+    else if (it.unlock.coins) { stt.appendChild(coinEl()); stt.appendChild(document.createTextNode(trying && can ? `${it.unlock.coins} 再點一下兌換` : unlockText(it))); }
+    else stt.textContent = unlockText(it);
+    b.appendChild(stt);
+    b.addEventListener('click', () => onClosetItem(it));
+    grid.appendChild(b);
+  }
+  $('#cl-try').hidden = !Object.keys(tryOn).length;
+  // 寶箱
+  const box = $('#cl-chests');
+  box.innerHTML = '';
+  CHESTS.forEach((ch, i) => {
+    const stt = closet.chestState(i, stars);
+    const b = el('button', 'cl-chest ' + stt);
+    b.type = 'button';
+    b.setAttribute('aria-label', `寶箱：星星 ${ch.stars} 顆（${stt === 'open' ? '開過了' : stt === 'ready' ? '可以開了' : '還沒到'}）`);
+    b.appendChild(el('span', 'cc-box'));
+    b.appendChild(el('span', 'cc-need', `★${ch.stars}`));
+    if (stt === 'ready') b.addEventListener('click', () => openChest(i));
+    else b.addEventListener('click', () => toast(stt === 'open' ? `開過了：${ch.name}` : `星星總數到 ${ch.stars} 顆就能開：${ch.name}`, 1700));
+    box.appendChild(b);
+  });
+}
+function onClosetItem(it) {
+  const stars = save.stars;
+  if (closet.isUnlocked(it, stars)) {
+    closet.equip(it, stars);
+    delete tryOn[it.cat];
+    audio.play('select');
+    applyLook(); renderCloset(); renderClosetBtn();
+    if (it.cat === 'fx') setTimeout(closetDemo, 120);
+    return;
+  }
+  const u = it.unlock || {};
+  if (u.coins && tryOn[it.cat] === it.id && closet.canBuy(it, stars)) {
+    // 第二下：兌換 + 穿上
+    closet.buy(it, stars);
+    closet.equip(it, stars);
+    delete tryOn[it.cat];
+    audio.play('special');
+    toast(`兌換成功！穿上「${it.name}」`, 1600);
+    applyLook(); renderCloset(); renderClosetBtn();
+    return;
+  }
+  // 沒解鎖：先試穿（預覽盤面上看得到），告訴玩家怎麼拿
+  tryOn[it.cat] = it.id;
+  audio.play('tap');
+  if (clR) clR.setLook(previewLook());
+  if (it.cat === 'fx') setTimeout(closetDemo, 120);
+  const need = u.coins ? u.coins - closet.coins(stars) : 0;
+  if (u.coins) toast(need > 0 ? `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！` : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
+  else if (u.stars) toast(`試穿中～星星總數到 ${u.stars} 顆就會解鎖（現在 ${totalStars(stars)} 顆）`, 2000);
+  else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
+  renderCloset();
+}
+// 開寶箱：寶箱抖一抖 → 蓋子彈開 → 獎勵一個一個跳出來；開到的外觀直接穿上
+function openChest(i) {
+  const res = closet.openChest(i, save.stars);
+  if (!res) return;
+  const pop = $('#cl-pop'), items = $('#cp-items'), chest = $('#cp-chest');
+  items.innerHTML = '';
+  for (const it of res.items) {
+    const d = el('span', 'cp-item');
+    const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id));
+    d.appendChild(img); d.appendChild(el('small', '', it.name));
+    items.appendChild(d);
+    closet.equip(it, save.stars);
+  }
+  if (res.coins) {
+    const d = el('span', 'cp-item coins');
+    d.appendChild(coinEl(true)); d.appendChild(el('small', '', `造型幣 +${res.coins}`));
+    items.appendChild(d);
+  }
+  $('#cp-text').textContent = `打開了「${CHESTS[i].name}」！`;
+  pop.hidden = false;
+  restartAnim(chest, 'opening');
+  restartAnim(items, 'reveal');
+  audio.play('chime', { level: 6 });
+  setTimeout(() => audio.play('win'), 450);
+  applyLook(); renderClosetBtn();
+}
+
 // ---------- 對話框 ----------
 let lastFocus = null;
 let usingKeyboard = false;
@@ -377,6 +557,7 @@ function closeModal(id) {
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
   if (id === 'm-merge' && mergeAnswer) mergeAnswer(false);
+  if (id === 'm-closet') closetClosed();
   if (!document.querySelector('.modal.open')) { delete document.documentElement.dataset.modal; if (R) R.resume(); }
   if (usingKeyboard && lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 }
@@ -586,6 +767,7 @@ function buildMap(popIndex = -1) {
 }
 function showMap({ pop = -1, thenOpen = -1 } = {}) {
   const pts = buildMap(pop);
+  renderClosetBtn();
   show('map');
   const sc = $('#map-scroll');
   const cur = currentIndex();
@@ -1489,7 +1671,7 @@ async function winFlow() {
   state = 'won';
   await sleep(450);
   if (token !== session) return;
-  showWin(stars, score, newBest && prevBest > 0, prevBest, firstClear);
+  showWin(stars, score, newBest && prevBest > 0, prevBest, firstClear, stars === 3 && prevStars < 3);
 }
 
 let winTimers = [];
@@ -1501,9 +1683,24 @@ function setPhoto(id, src) {
   im.classList.remove('broken');
   im.src = src;
 }
-function showWin(stars, score, newBest, best, firstClear) {
+function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   winTimers.forEach(clearTimeout);
   winTimers = [];
+  // 三星：第一次拿到這關的三星 → 送 1 枚三星造型幣（金幣翻進來 + 金光），卡片整張閃金光
+  const card = $('#m-win .win-card'), mc = $('#mw-coin'), ready = closet.readyChests(save.stars).length;
+  card.classList.toggle('three', stars === 3);
+  mc.hidden = true; mc.classList.remove('show');
+  $('#mc-sub').textContent = ready ? '有三星豪華寶箱可以開了！快去衣櫃～' : '去衣櫃幫玩偶換裝吧！';
+  $('#mw-closet-dot').hidden = !ready;
+  renderClosetBtn();
+  if (newThree) {
+    winTimers.push(setTimeout(() => {
+      if (!isOpen('m-win')) return;
+      mc.hidden = false; restartAnim(mc, 'show');
+      audio.play('special'); audio.play('collect', { step: 4, delay: 120 });
+      confetti(true);
+    }, 500 + 3 * 420 + 300));
+  }
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
   const rw = $('#mw-reward');
@@ -1537,11 +1734,11 @@ function showWin(stars, score, newBest, best, firstClear) {
   };
   requestAnimationFrame(tick);
 }
-function confetti() {
+function confetti(gold = false) {
   const box = $('#confetti');
-  box.innerHTML = '';
-  const colors = ['#ff5fa8', '#ffd23f', '#6fe39a', '#6cc8ff', '#b98cff', '#ff9a3c', '#ffffff'];
-  for (let i = 0; i < 46; i++) {
+  if (!gold) box.innerHTML = '';
+  const colors = gold ? ['#ffd23f', '#ffe98a', '#ffb800', '#fff6c8', '#ffffff'] : ['#ff5fa8', '#ffd23f', '#6fe39a', '#6cc8ff', '#b98cff', '#ff9a3c', '#ffffff'];
+  for (let i = 0; i < (gold ? 36 : 46); i++) {
     const c = document.createElement('i');
     c.style.left = (Math.random() * 100) + '%';
     c.style.background = colors[i % colors.length];
@@ -1801,6 +1998,10 @@ function bindUI() {
   });
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-map').addEventListener('click', () => leaveToMap());
+  $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  $('#cl-demo').addEventListener('click', closetDemo);
+  $('#cp-ok').addEventListener('click', () => { $('#cl-pop').hidden = true; renderCloset(); });
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#ml-more').addEventListener('click', () => {
     if (state !== 'lost' || (save.boosters.moves5 || 0) <= 0) return;
@@ -1910,6 +2111,9 @@ async function boot() {
     return;
   }
   try { audio.setMuted(save.muted); audio.setMusic(save.music); } catch (e) {}
+  closet.load(closetKey());
+  applyLook();
+  renderClosetBtn();
   buildTitle();
   bindUI();
   syncToggles();

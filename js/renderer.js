@@ -1886,7 +1886,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const g = c.getContext('2d'), rg = g.createRadialGradient(h, h, h * 0.55, h, h, h * 0.95);
     rg.addColorStop(0, `hsla(${hue},100%,85%,0.08)`); rg.addColorStop(0.8, `hsla(${hue},95%,70%,0.55)`); rg.addColorStop(1, `hsla(${(hue + 60) % 360},95%,70%,0)`);
     g.beginPath(); g.arc(h, h, h * 0.92, 0, Math.PI * 2); g.fillStyle = rg; g.fill();
-    g.lineWidth = 2; g.strokeStyle = `hsla(${hue},90%,62%,0.8)`; g.stroke();
+    g.lineWidth = 3; g.strokeStyle = `hsla(${hue},92%,58%,0.95)`; g.stroke();
     g.beginPath(); g.ellipse(h - h * 0.32, h - h * 0.36, h * 0.2, h * 0.11, -0.7, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
     bubbleCache.set(hue, c);
     return c;

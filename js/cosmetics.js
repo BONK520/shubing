@@ -1,4 +1,4 @@
-// 三星外觀獎勵與玩偶衣櫃（docs/SPEC.md §9）
+// 三星外觀獎勵與玩偶衣櫃（docs/SPEC.md §8b）
 //
 // ★ 測試用快捷開關：開發時改成 true，所有外觀直接解鎖，可以先預覽效果；正式玩時記得改回 false ★
 export const DEBUG_UNLOCK_ALL_COSMETICS = false;
