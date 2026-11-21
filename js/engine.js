@@ -31,10 +31,17 @@
 //   bomb's own cell. Causes in `removed`: 'match' (in a match group), 'h' | 'v' | 'wrap' | 'bomb'
 //   (hit by that special's effect, including bomb targets), 'combo' (the swapped specials consumed by
 //   a combo, and cells hit by a striped/wrapped combo or bomb+bomb).
-// * 2×2 squares of one kind also match. A square on its own is a group of its own (shape 'square', no special).
-//   A square that touches a line group (3+ in a row) adds its other cells to that group; the line decides the
-//   shape and the special as before. Swaps that only make a square are valid moves; refills, the first board and
-//   shuffles avoid squares just like 3-in-a-rows.
+// * 2×2 squares of one kind also match. A square on its own is a group of its own (shape 'square') and makes a
+//   FISH (special 'fish', Candy Crush's Swedish fish). A square that touches a line group (3+ in a row) adds its other
+//   cells to that group; the line decides the shape, and the special is the line's (bomb > wrap > stripe) or, when the
+//   line alone makes none (a 3 with a square = 'P' shape), a fish. Swaps that only make a square are valid moves;
+//   refills, the first board and shuffles avoid squares just like 3-in-a-rows.
+// * Fish: when it fires it swims to ONE target and removes it (cause 'fish'). Target = a random piece on jelly; else a
+//   piece of a kind the collect goal still needs (option `collect: { [kind]: count }`); else a random normal piece.
+//   Effect { fx: 'fish', r, c (where it starts), to: { r, c }, carry: null | 'h' | 'v' | 'wrap' }.
+//   Combos: fish + fish -> 3 fish; fish + striped / wrapped -> the fish carries that special to its target and it
+//   fires there (a 'line' / 'blast' effect at the target follows the fish effect; cells it hits have cause 'combo');
+//   colour bomb + fish -> every piece of the fish's kind becomes a fish, then they all fire.
 // * Scoring = Candy Crush (exported as SCORE):
 //     match group   3 in a row 60 · 4 in a row 120 · L / T (wrapped) 200 · 5 in a row (colour bomb) 200
 //                   2×2 square on its own 120 · each square that adds cells to a line group +60
@@ -59,7 +66,7 @@
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
-//     digit d  -> normal piece of global kind d        dh / dv / dw -> striped h / striped v / wrapped
+//     digit d  -> normal piece of global kind d        dh / dv / dw / df -> striped h / striped v / wrapped / fish
 //     B or *   -> colour bomb                           .  -> hole (unless `mask` is also given)
 //     ?        -> random kind from `kinds` that makes no 3-in-a-row with its neighbours
 //   rows/cols default to the layout size. The layout is used as-is (it may contain matches).
@@ -96,7 +103,7 @@ export function mulberry32(seed) {
 function parseLayout(layout) {
   return layout.map((row, r) => {
     const compact = String(row).replace(/\s+/g, '');
-    const toks = compact.match(/\d[hvw]?|[B*.?]/g) || [];
+    const toks = compact.match(/\d[hvwf]?|[B*.?]/g) || [];
     if (toks.join('') !== compact) throw new Error(`engine: bad layout row ${r}: "${row}"`);
     return toks;
   });
@@ -116,6 +123,8 @@ export function createEngine(opts = {}) {
   const rand = n => Math.floor(rng() * n);
   const maskIn = opts.mask || null;
   const jellyIn = opts.jelly || null;
+  // collect goal { kind: count } (main.js / sim bots pass it): the fish prefers pieces the goal still needs
+  const collect = opts.collect && typeof opts.collect === 'object' ? { ...opts.collect } : null;
 
   // ---- state ----
   const cellMask = [];
@@ -275,7 +284,7 @@ export function createEngine(opts = {}) {
   }
 
   function classify(g) {
-    if (!g.runs.length) return { shape: 'square', special: NONE, longest: null };
+    if (!g.runs.length) return { shape: 'square', special: 'fish', longest: null };
     const hs = g.runs.filter(x => x.dir === 'h');
     const vs = g.runs.filter(x => x.dir === 'v');
     const longest = g.runs.reduce((m, x) => (x.len > m.len ? x : m), g.runs[0]);
@@ -294,7 +303,8 @@ export function createEngine(opts = {}) {
       return { shape, special: 'wrap', crosses, longest };
     }
     if (longest.len === 4) return { shape: '4', special: longest.dir === 'h' ? 'v' : 'h', longest };
-    return { shape: '3', special: NONE, longest };
+    // a 3 in a row that also has a 2×2 square ('P' shape): the square makes a fish
+    return { shape: '3', special: g.squares ? 'fish' : NONE, longest };
   }
 
   // receiving cell of a new special
@@ -302,6 +312,14 @@ export function createEngine(opts = {}) {
     if (cls.special === NONE) return null;
     if (swapped) for (const s of swapped) if (g.keys.has(key(s.r, s.c))) return { r: s.r, c: s.c };
     const normal = p => grid[p.r][p.c] && grid[p.r][p.c].special === NONE;
+    if (cls.special === 'fish') {
+      // the cell nearest the middle of the group (a normal piece if there is one); ties: lower, then left
+      const n = g.cells.length, my = g.cells.reduce((s, x) => s + x[0], 0) / n, mx = g.cells.reduce((s, x) => s + x[1], 0) / n;
+      const order = g.cells.map(([r, c]) => ({ r, c, d: Math.abs(r - my) + Math.abs(c - mx) }))
+        .sort((x, y) => x.d - y.d || y.r - x.r || x.c - y.c);
+      const pick = order.find(normal) || order[0];
+      return { r: pick.r, c: pick.c };
+    }
     if (cls.special === 'wrap' && cls.crosses.length) return { ...(cls.crosses.find(normal) || cls.crosses[0]) };
     const run = cls.longest;
     const mid = (run.len - 1) / 2;
@@ -378,11 +396,42 @@ export function createEngine(opts = {}) {
     });
     return out;
   }
+  // fish target: a piece on jelly; else a piece the collect goal still needs; else a normal piece; else any piece
+  function fishTarget(st, src) {
+    const tiers = [[], [], [], []];
+    forCells((r, c) => {
+      const p = grid[r][c], k = key(r, c);
+      if (!p || st.done.has(k) || st.prot.has(k) || (r === src.r && c === src.c)) return;
+      if (jel[r][c] > 0) tiers[0].push({ r, c });
+      else if (collect && p.kind >= 0 && collect[p.kind] > (cleared[p.kind] || 0)) tiers[1].push({ r, c });
+      else if (p.special === NONE) tiers[2].push({ r, c });
+      else tiers[3].push({ r, c });
+    });
+    const t = tiers.find(x => x.length);
+    return t ? t[rand(t.length)] : null;
+  }
+  // n fish swim from src; each removes its target (carry: a special it brings along that fires there)
+  function launchFish(st, src, n, carry = null) {
+    for (let i = 0; i < n; i++) {
+      const t = fishTarget(st, src);
+      if (!t) return;
+      st.effects.push({ fx: 'fish', r: src.r, c: src.c, to: { r: t.r, c: t.c }, carry });
+      hit(st, t.r, t.c, 'fish', src);
+      if (carry === 'h' || carry === 'v') {
+        st.effects.push({ fx: 'line', dir: carry, r: t.r, c: t.c });
+        if (carry === 'h') hitRow(st, t.r, t.c, 'combo', t); else hitCol(st, t.r, t.c, 'combo', t);
+      } else if (carry === 'wrap') {
+        st.effects.push({ fx: 'blast', r: t.r, c: t.c, radius: 1 });
+        hitSquare(st, t.r, t.c, 1, 'combo', t);
+      }
+    }
+  }
   function runQueue(st) {
     while (st.queue.length) {
       const { r, c, special } = st.queue.shift();
       const src = { r, c };
-      if (special === 'h') { st.effects.push({ fx: 'line', dir: 'h', r, c }); hitRow(st, r, c, 'h', src); }
+      if (special === 'fish') launchFish(st, src, 1);
+      else if (special === 'h') { st.effects.push({ fx: 'line', dir: 'h', r, c }); hitRow(st, r, c, 'h', src); }
       else if (special === 'v') { st.effects.push({ fx: 'line', dir: 'v', r, c }); hitCol(st, r, c, 'v', src); }
       else if (special === 'wrap') { st.effects.push({ fx: 'blast', r, c, radius: 1 }); hitSquare(st, r, c, 1, 'wrap', src); }
       else if (special === 'bomb') {
@@ -458,7 +507,7 @@ export function createEngine(opts = {}) {
         forCells((r, c) => {
           const p = grid[r][c];
           if (p && p.kind === K && p.special === NONE) {
-            p.special = other.special === 'wrap' ? 'wrap' : rng() < 0.5 ? 'h' : 'v';
+            p.special = other.special === 'wrap' || other.special === 'fish' ? other.special : rng() < 0.5 ? 'h' : 'v';
             cells.push({ r, c, piece: cp(p) });
           }
         });
@@ -468,6 +517,13 @@ export function createEngine(opts = {}) {
       const targets = cellsOfKind(K, st);
       st.effects.push({ fx: 'bomb', r: bombAt.r, c: bombAt.c, targets: targets.map(t => ({ ...t })) });
       for (const t of targets) hit(st, t.r, t.c, 'bomb', bombAt);
+    } else if (pa.special === 'fish' || pb.special === 'fish') {
+      // fish + fish: three fish; fish + striped / wrapped: the fish carries the other special to its target
+      const other = pa.special === 'fish' ? pb.special : pa.special;
+      hit(st, a.r, a.c, 'combo', center, true);
+      hit(st, b.r, b.c, 'combo', center, true);
+      if (other === 'fish') launchFish(st, center, 3);
+      else launchFish(st, center, 1, other);
     } else {
       const stripes = [pa.special, pb.special].filter(s => s === 'h' || s === 'v').length;
       hit(st, a.r, a.c, 'combo', center, true);
@@ -559,8 +615,9 @@ export function createEngine(opts = {}) {
     }
     return false;
   }
-  const COMBO_VALUE = { 'bomb+bomb': 1000, 'bomb+wrap': 900, 'bomb+h': 850, 'bomb+v': 850, 'wrap+wrap': 700,
-    'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600 };
+  const COMBO_VALUE = { 'bomb+bomb': 1000, 'bomb+wrap': 900, 'bomb+h': 850, 'bomb+v': 850, 'bomb+fish': 800, 'wrap+wrap': 700,
+    'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600,
+    'fish+wrap': 580, 'fish+h': 560, 'fish+v': 560, 'fish+fish': 540 };
   function cellValue(r, c) {
     const { h, v } = lineLens(r, c);
     const sq = squareOf(r, c);
@@ -571,7 +628,7 @@ export function createEngine(opts = {}) {
       for (const [y, x] of [[sq.r, sq.c], [sq.r, sq.c + 1], [sq.r + 1, sq.c], [sq.r + 1, sq.c + 1]]) if (y !== r || x !== c) s += sp(y, x);
       return s;
     };
-    if (h < 3 && v < 3) return sq ? 110 + sqPart() + sp(r, c) : 0;    // 2×2 on its own: between a 3 and a 4
+    if (h < 3 && v < 3) return sq ? 140 + sqPart() + sp(r, c) : 0;    // 2×2 on its own makes a fish: almost a 4
     let s = h >= 5 || v >= 5 ? 300 : h >= 3 && v >= 3 ? 200 : h === 4 || v === 4 ? 150 : 100;
     s += (h >= 3 ? h : 0) + (v >= 3 ? v : 0);
     if (sq) s += 20;
@@ -661,7 +718,7 @@ export function createEngine(opts = {}) {
       const t = (layoutToks[r] && layoutToks[r][c]) || '?';
       if (t === '?' || t === '.') { later.push([r, c]); return; }
       if (t === 'B' || t === '*') { grid[r][c] = newPiece(-1, 'bomb'); return; }
-      const sp = t[1] === 'h' ? 'h' : t[1] === 'v' ? 'v' : t[1] === 'w' ? 'wrap' : NONE;
+      const sp = t[1] === 'h' ? 'h' : t[1] === 'v' ? 'v' : t[1] === 'w' ? 'wrap' : t[1] === 'f' ? 'fish' : NONE;
       grid[r][c] = newPiece(parseInt(t[0], 10), sp);
     });
     for (const [r, c] of later) {

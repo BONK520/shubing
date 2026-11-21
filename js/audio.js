@@ -32,7 +32,7 @@ const lastPlayed = Object.create(null);   // name -> 最近排定的幾個時間
 
 // 同一個音效最短間隔（秒，用「排定要響的時間」比），避免同時疊太多變得很吵
 const GAP = { land: 0.016, tap: 0.04, match: 0.03, pop: 0.022, special: 0.05, star: 0.05, stripe: 0.035, wrap: 0.05,
-  bomb: 0.12, chime: 0.3, swap: 0.05, invalid: 0.1, combo: 0.15, board: 0.3 };
+  bomb: 0.12, chime: 0.3, swap: 0.05, invalid: 0.1, combo: 0.15, board: 0.3, fish: 0.06 };
 
 // ---------- 建立音訊圖 ----------
 function makeContext() {
@@ -460,6 +460,16 @@ const SFX = {
     noise(t, { dur: 0.26, attack: 0.006, gain: 0.1, type: 'bandpass', f0: 900, f1: 3500, q: 0.9 });
     pop(t, 900, 300, 0.05, 0.05);
     sparkle(t + 0.12, 3, 0.026, 98);
+  },
+  // 小魚：「咻～」往上滑的口哨 + 水泡泡的「啵啵」+ 一點亮片（帶著條紋 / 包裝的時候再厚一點）
+  fish(t, o) {
+    tone(520, t, { dur: 0.22, attack: 0.01, gain: 0.07, to: 1250, glide: 0.2 });
+    tone(780, t + 0.015, { dur: 0.18, attack: 0.01, gain: 0.035, to: 1700, glide: 0.17, type: 'triangle' });
+    noise(t, { dur: 0.2, attack: 0.02, gain: 0.05, type: 'bandpass', f0: 1200, f1: 3000, q: 1.2 });
+    pop(t + 0.05, 700, 1100, 0.045, 0.04);
+    pop(t + 0.12, 900, 1400, 0.035, 0.035);
+    if (o && o.carry) tone(140, t, { dur: 0.22, attack: 0.004, gain: 0.08, to: 70, glide: 0.2 });
+    sparkle(t + 0.18, 2, 0.02, 99);
   },
   // 包裝：低沉的「碰」
   wrap(t, o) {

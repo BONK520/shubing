@@ -46,6 +46,10 @@ export function makeEngine(level, attempt) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed: seedFor(level, attempt) };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
+  if (level.goal && level.goal.type === 'collect') {      // 跟 main.js 一樣：小魚優先游去目標還要收集的毛絨
+    opts.collect = {};
+    for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
+  }
   return createEngine(opts);
 }
 // main.js goalMet()（目標關；分數關沒有「提早達成」）
@@ -59,8 +63,8 @@ export function goalMet(level, e) {
 // ---------- players ----------
 export const PROFILES = {
   // weights are in "cells" (1 = one plain piece cleared); urgency: jelly weight × (1 + urgency / jelly left)
-  casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3 },
-  decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5 },
+  casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3 },
+  decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5 },
 };
 
 // top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
@@ -133,6 +137,8 @@ function bestMove(s, moves, level, e, W, rnd) {
     if (p && want.has(p.kind)) v += W.want;
     return v;
   };
+  // a fish hits one cell, and it picks a useful one (jelly / a piece the goal still needs) when there is one
+  const fishHit = () => 1 + (jellyGoal && e.stats.jellyLeft > 0 ? jellyW : want.size ? W.want : 0);
   const addRow = (set, y) => { for (let x = 0; x < C; x++) if (isCell(y, x)) set.add(y * C + x); };
   const addCol = (set, x) => { for (let y = 0; y < R; y++) if (isCell(y, x)) set.add(y * C + x); };
   const addSq = (set, y0, x0, rad) => {
@@ -150,13 +156,13 @@ function bestMove(s, moves, level, e, W, rnd) {
     while (is(r1 + 1, c)) r1++;
     const h = c1 - c0 + 1, v = r1 - r0 + 1;
     const sq = squareCells(g, R, C, mask, r, c);
-    // a 2×2 square on its own clears 4 (no special); next to a line it adds its other cells
-    if (h < 3 && v < 3) return sq ? { cells: sq, shape: '', low: Math.floor(Math.max(...sq) / C) } : null;
+    // a 2×2 square on its own clears 4 and makes a fish; next to a line it adds its other cells
+    if (h < 3 && v < 3) return sq ? { cells: sq, shape: 'fish', low: Math.floor(Math.max(...sq) / C) } : null;
     const cells = [];
     if (h >= 3) for (let x = c0; x <= c1; x++) cells.push(r * C + x);
     if (v >= 3) for (let y = r0; y <= r1; y++) if (!(h >= 3 && y === r)) cells.push(y * C + c);
     if (sq) for (const k of sq) if (!cells.includes(k)) cells.push(k);
-    const shape = h >= 5 || v >= 5 ? 'bomb' : h >= 3 && v >= 3 ? 'wrap' : h === 4 || v === 4 ? 'stripe' : '';
+    const shape = h >= 5 || v >= 5 ? 'bomb' : h >= 3 && v >= 3 ? 'wrap' : h === 4 || v === 4 ? 'stripe' : sq ? 'fish' : '';
     return { cells, shape, low: Math.max(r1, r, ...cells.map(k => Math.floor(k / C))) };
   };
 
@@ -170,6 +176,12 @@ function bestMove(s, moves, level, e, W, rnd) {
       // combo: estimate the cells it clears
       const sp = [p.special, q.special];
       if (sp[0] === 'bomb' && sp[1] === 'bomb') { for (let y = 0; y < R; y++) addRow(area, y); }
+      else if (sp.includes('fish') && !sp.includes('bomb')) {
+        const other = sp[0] === 'fish' ? sp[1] : sp[0];
+        // fish + fish: 3 hits; fish + stripe: a row / column somewhere; fish + wrapped: a 3×3 somewhere
+        v += other === 'fish' ? 3 * fishHit() : other === 'wrap' ? 9 + fishHit() : Math.max(R, C) + fishHit();
+        area.add(a.r * C + a.c); area.add(b.r * C + b.c);
+      }
       else if (sp.includes('bomb')) {
         const other = p.special === 'bomb' ? q : p;
         let n = 0;
@@ -178,6 +190,7 @@ function bestMove(s, moves, level, e, W, rnd) {
           if (!isCell(y, x) || !o || o.kind !== other.kind) continue;
           area.add(y * C + x);
           if (other.special === 'wrap') addSq(area, y, x, 1);
+          else if (other.special === 'fish') v += fishHit();
           else if (other.special !== 'none') { if (n++ % 2) addRow(area, y); else addCol(area, x); }
         }
         area.add(a.r * C + a.c); area.add(b.r * C + b.c);
@@ -206,6 +219,7 @@ function bestMove(s, moves, level, e, W, rnd) {
         if (sp === 'h') addRow(area, y);
         else if (sp === 'v') addCol(area, x);
         else if (sp === 'wrap') addSq(area, y, x, 1);
+        else if (sp === 'fish') v += W.fire * fishHit();
       }
       for (const k of area) if (!matched.has(k)) v += W.fire * cellVal(k);
       v += W.low * (low / Math.max(1, R - 1));

@@ -122,25 +122,91 @@ test('invalid swaps leave the board unchanged (non-adjacent, diagonal, hole, out
 });
 
 // ---------------------------------------------------------------- 2×2 squares
-test('a 2x2 square clears on its own: shape "square", 120 points, no special; hint finds it', () => {
+test('a 2x2 square on its own makes a fish at the swapped cell: shape "square", 120 points; hint finds it', () => {
   const rowsA = ['______', '_00___', '_0_0__', '______'];
   const h = mk(rowsA).findHint();
   deq(cellSet([h.a, h.b]), cellSet([P(2, 2), P(2, 3)]), 'the only move makes the square');
   const e = mk(rowsA);
+  const id = e.cell(2, 3).id;
   const res = play(e, P(2, 3), P(2, 2));
   const c = firstClear(res);
   deq(c.groups.map(g => `${g.kind}:${g.shape}:${g.cells.length}`), ['0:square:4']);
-  deq(cellSet(c.removed), cellSet([P(1, 1), P(1, 2), P(2, 1), P(2, 2)]));
-  eq(c.created.length, 0, 'no special');
+  deq(cellSet(c.removed), cellSet([P(1, 1), P(1, 2), P(2, 1)]), 'the other three go, the swapped one becomes the fish');
+  eq(c.created.length, 1);
+  deq(c.created[0], { r: 2, c: 2, piece: { id, kind: 0, special: 'fish' } });
+  eq(e.stats.specialsMade, 1);
   eq(c.gained, 120);
 });
 
-test('a square touching a 3-in-a-row adds its other cells to that group (+60)', () => {
+test('a square touching a 3-in-a-row adds its other cells to that group (+60) and makes a fish ("P" shape)', () => {
   // the 0 from (0,1) lands on (1,1): row 1 becomes 0 0 0 and (1,0) (1,1) (2,0) (2,1) a square
   const e = mk(['_0____', '0_0___', '00____', '______']);
   const c = firstClear(play(e, P(0, 1), P(1, 1)));
   deq(c.groups.map(g => `${g.kind}:${g.shape}:${g.cells.length}`), ['0:3:5']);
+  eq(c.created.length, 1); deq([c.created[0].r, c.created[0].c, c.created[0].piece.special], [1, 1, 'fish']);
   eq(c.gained, 60 + 60);
+});
+
+// ---------------------------------------------------------------- fish (from 2×2 squares)
+test('a fish in a match swims to one target and removes it (+60)', () => {
+  const e = mk(['_ _ _ _ _ _', '0f 0 _ _ _ _', '_ _ 0 _ _ _', '_ _ _ _ _ _']);
+  const c = firstClear(play(e, P(2, 2), P(1, 2)));
+  const f = c.effects.filter(x => x.fx === 'fish');
+  eq(f.length, 1, 'one fish');
+  deq([f[0].r, f[0].c, f[0].carry], [1, 0, null], 'it starts where the fish was');
+  const hitByFish = c.removed.filter(x => x.cause === 'fish');
+  eq(hitByFish.length, 1);
+  deq([hitByFish[0].r, hitByFish[0].c], [f[0].to.r, f[0].to.c], 'the target is what it removes');
+  eq(c.gained, 60 + 60);
+});
+
+test('fish targets jelly first, then pieces the collect goal still needs', () => {
+  const rowsF = ['_ _ _ _ _ _', '0f 0 _ _ _ _', '_ _ 0 _ _ _', '_ _ _ _ _ _'];
+  for (let s = 1; s <= 6; s++) {
+    const e = mk(rowsF, { seed: s, jelly: ['......', '......', '......', '.....1'] });
+    const f = firstClear(play(e, P(2, 2), P(1, 2))).effects.find(x => x.fx === 'fish');
+    deq(f.to, { r: 3, c: 5 }, 'the only jelly cell');
+  }
+  for (let s = 1; s <= 6; s++) {
+    const e = mk(rowsF, { seed: s, collect: { 5: 99 } });
+    const c = firstClear(play(e, P(2, 2), P(1, 2)));
+    const t = c.removed.find(x => x.cause === 'fish');
+    eq(t.piece.kind, 5, 'a kind the goal needs');
+  }
+});
+
+test('fish + striped: the fish carries the stripe to its target and it fires there', () => {
+  const e = mk(['_ _ _ _ _ _', '0f 1h _ _ _ _', '_ _ _ _ _ _', '_ _ _ _ _ _'], { jelly: ['......', '......', '......', '.....1'] });
+  const c = firstClear(play(e, P(1, 0), P(1, 1)));
+  const f = c.effects.find(x => x.fx === 'fish');
+  deq([f.to.r, f.to.c, f.carry], [3, 5, 'h']);
+  ok(c.effects.some(x => x.fx === 'line' && x.dir === 'h' && x.r === 3 && x.c === 5), 'a row stripe at the target');
+  for (let x = 0; x < 6; x++) ok(c.removed.some(it => it.r === 3 && it.c === x), `row 3 col ${x} cleared`);
+  eq(c.removed.filter(it => it.cause === 'combo' && it.r !== 1).length, 5, 'the rest of the row: cause combo');
+});
+
+test('fish + wrapped: blast around the target; fish + fish: three fish, three different targets', () => {
+  const e1 = mk(['_ _ _ _ _ _', '0f 1w _ _ _ _', '_ _ _ _ _ _', '_ _ _ _ _ _', '_ _ _ _ _ _'], { jelly: ['......', '......', '......', '....1.', '......'] });
+  const c1 = firstClear(play(e1, P(1, 0), P(1, 1)));
+  ok(c1.effects.some(x => x.fx === 'fish' && x.carry === 'wrap' && x.to.r === 3 && x.to.c === 4));
+  ok(c1.effects.some(x => x.fx === 'blast' && x.r === 3 && x.c === 4 && x.radius === 1));
+  for (const [r, c] of [[2, 3], [2, 5], [4, 3], [4, 5]]) ok(c1.removed.some(it => it.r === r && it.c === c), `(${r},${c}) blasted`);
+  const e2 = mk(['_ _ _ _ _ _', '0f 1f _ _ _ _', '_ _ _ _ _ _', '_ _ _ _ _ _']);
+  const c2 = firstClear(play(e2, P(1, 0), P(1, 1)));
+  const fs = c2.effects.filter(x => x.fx === 'fish');
+  eq(fs.length, 3, 'three fish');
+  eq(new Set(fs.map(x => `${x.to.r},${x.to.c}`)).size, 3, 'different targets');
+  eq(c2.removed.filter(it => it.cause === 'fish').length, 3);
+});
+
+test('colour bomb + fish: every piece of the fish kind becomes a fish, then they all swim', () => {
+  const e = mk(['_ _ 0 _ _ _', 'B 0f _ _ 0 _', '_ _ _ 0 _ _', '_ _ _ _ _ _']);
+  const res = play(e, P(1, 0), P(1, 1));
+  const tr = res.events.find(x => x.t === 'transform');
+  eq(tr.cells.length, 3, 'the three other 0s');
+  ok(tr.cells.every(x => x.piece.special === 'fish' && x.piece.kind === 0));
+  const c = firstClear(res);
+  eq(c.effects.filter(x => x.fx === 'fish').length, 4, 'the fish itself + 3 new ones');
 });
 
 test('squares do not change line specials: a 4 in a row with a square still makes a stripe', () => {

@@ -132,9 +132,9 @@ export function replayEvents(board0, jelly0, events) {
   return { board: g, jelly: j };
 }
 
-const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo']);
+const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish']);
 const SHAPES = new Set(['3', '4', '5', 'L', 'T', 'square']);
-const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb']);
+const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb', 'fish']);
 
 // Check one engine.swap() / sugarCrush() result against everything the contract promises.
 // ctx carries state across calls: { score, maxId, gone:Set, cleared:{}, specialsMade, shuffles }
@@ -217,7 +217,8 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       for (const g of e.groups) if (!SHAPES.has(g.shape) || !g.cells.length || typeof g.kind !== 'number') fail('bad group');
       for (const f of e.effects) {
         const okFx = (f.fx === 'line' && (f.dir === 'h' || f.dir === 'v')) || (f.fx === 'blast' && f.radius >= 1) ||
-          (f.fx === 'bomb' && Array.isArray(f.targets)) || f.fx === 'board';
+          (f.fx === 'bomb' && Array.isArray(f.targets)) || f.fx === 'board' ||
+          (f.fx === 'fish' && f.to && Number.isInteger(f.to.r) && Number.isInteger(f.to.c) && [null, 'h', 'v', 'wrap'].includes(f.carry));
         if (!okFx) fail(`bad effect ${JSON.stringify(f)}`);
       }
       ctx.specialsMade += e.created.length;

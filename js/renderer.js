@@ -47,6 +47,9 @@ const V0_FALL = 0.004;    // 掉落初速（格 / ms）
 const STAGGER_ROW = 60, STAGGER_MAX = 360, COL_JITTER = 30;   // 同一欄一顆接一顆落下（間隔約 0.06 秒），像瀑布
 // 特效傳到某格要多久
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
+// 小魚（2×2 正方形變的特殊方塊）游到目標的時間：基本 + 每格距離，最久 FISH_MAX
+const FISH_BASE = 260, FISH_PER = 32, FISH_MAX = 520;
+const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40];
 const now = () => performance.now();
@@ -55,6 +58,7 @@ const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const easeInCubic = t => t * t * t;
+const easeInOutSine = t => 0.5 - 0.5 * Math.cos(Math.PI * t);
 const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t, s = 1.70158) => { const u = t - 1; return 1 + (s + 1) * u * u * u + s * u * u; };
 const easeInBack = (t, s = 1.70158) => (s + 1) * t * t * t - s * t * t;
@@ -176,6 +180,48 @@ function candyPath(g, shape, cx, cy, R) {
     }
     default: g.arc(cx, cy, R, 0, Math.PI * 2);
   }
+}
+// 小魚：金色的胖胖小魚（跟條紋糖果的金色箭頭同一套顏色），頭朝 +x。L = 全長
+function paintFish(g, x, y, L, angle = 0) {
+  g.save();
+  g.translate(x, y); g.rotate(angle);
+  const bw = L * 0.36, bh = L * 0.25, bx = L * 0.08;            // 身體（橢圓）中心往前一點，尾巴在後面
+  const body = () => { g.beginPath(); g.ellipse(bx, 0, bw, bh, 0, 0, Math.PI * 2); };
+  const tail = () => {
+    g.beginPath();
+    g.moveTo(bx - bw * 0.78, 0);
+    g.quadraticCurveTo(-L * 0.42, -bh * 0.2, -L * 0.5, -bh * 1.05);
+    g.quadraticCurveTo(-L * 0.4, 0, -L * 0.5, bh * 1.05);
+    g.quadraticCurveTo(-L * 0.42, bh * 0.2, bx - bw * 0.78, 0);
+    g.closePath();
+  };
+  const fin = () => {
+    g.beginPath();
+    g.moveTo(bx - bw * 0.35, -bh * 0.82);
+    g.quadraticCurveTo(bx - bw * 0.05, -bh * 1.65, bx + bw * 0.42, -bh * 0.9);
+    g.closePath();
+  };
+  const gold = g.createLinearGradient(0, -bh * 1.4, 0, bh * 1.2);
+  gold.addColorStop(0, '#fffbe2'); gold.addColorStop(0.38, '#ffd845'); gold.addColorStop(1, '#f08400');
+  g.lineJoin = 'round';
+  // 外圈白邊（在糖果、玩具上都看得清楚）
+  g.lineWidth = L * 0.13; g.strokeStyle = 'rgba(255,255,255,0.95)';
+  tail(); g.stroke(); fin(); g.stroke(); body(); g.stroke();
+  g.lineWidth = L * 0.05; g.strokeStyle = '#a24a06';
+  for (const shape of [tail, fin, body]) { shape(); g.fillStyle = gold; g.fill(); g.stroke(); }
+  // 身上的亮面、鱗片、眼睛、嘴
+  g.save(); body(); g.clip();
+  const sh = g.createLinearGradient(0, -bh, 0, bh * 0.1);
+  sh.addColorStop(0, 'rgba(255,255,255,0.9)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
+  g.beginPath(); g.ellipse(bx - bw * 0.05, -bh * 0.45, bw * 0.75, bh * 0.42, 0, 0, Math.PI * 2); g.fillStyle = sh; g.fill();
+  g.strokeStyle = 'rgba(190,90,0,0.55)'; g.lineWidth = L * 0.03;
+  for (const k of [-0.25, 0.1]) { g.beginPath(); g.arc(bx + bw * k, bh * 0.1, bh * 0.42, Math.PI * 0.6, Math.PI * 1.4, true); g.stroke(); }
+  g.restore();
+  g.beginPath(); g.arc(bx + bw * 0.5, -bh * 0.18, L * 0.055, 0, Math.PI * 2); g.fillStyle = '#3a1a08'; g.fill();
+  g.beginPath(); g.arc(bx + bw * 0.53, -bh * 0.26, L * 0.02, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+  g.beginPath(); g.arc(bx + bw * 0.86, bh * 0.18, L * 0.04, Math.PI * 0.7, Math.PI * 1.3);
+  g.strokeStyle = '#a24a06'; g.lineWidth = L * 0.03; g.stroke();
+  g.restore();
 }
 // 四個角各自的圓角半徑（盤面外框用：只有凸出去的角才圓）
 function rr4(g, x, y, w, h, tl, tr, br, bl) {
@@ -832,10 +878,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (special === 'wrap') paintWrapEnds(bg, cx, cy, S, col);
     paintCandy(bg, kind, cx, cy, S, col, special);
     let top = null;
-    if (special === 'h' || special === 'v' || special === 'wrap') {
+    if (special === 'h' || special === 'v' || special === 'wrap' || special === 'fish') {
       top = makeCanvas(P, P);
       const tg = top.getContext('2d');
       if (special === 'wrap') paintCellophane(tg, cx, cy, S);
+      else if (special === 'fish') paintFish(tg, cx + S * TILE * 0.17, cy + S * TILE * 0.25, S * 0.62, -0.32);   // 右下角一隻小魚
       else paintArrows(tg, cx, cy, S, special);
     }
     const full = makeCanvas(P, P), fg = full.getContext('2d');
@@ -1017,6 +1064,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.fillStyle = rg; g.fillRect(0, 0, s, s);
     glowImg = c;
     return c;
+  }
+  // 游動中的小魚（一張圖，畫的時候旋轉）
+  let fishSprite = null, fishSpriteKey = '';
+  function getFishSprite() {
+    const n = Math.max(16, Math.round(cs * dpr * 1.1)), k = n + '|' + dpr;
+    if (fishSprite && fishSpriteKey === k) return fishSprite;
+    fishSprite = makeCanvas(n, n); fishSpriteKey = k;
+    paintFish(fishSprite.getContext('2d'), n / 2, n / 2, n * 0.82, 0);
+    return fishSprite;
   }
   function getStar() {
     if (starImg) return starImg;
@@ -1547,6 +1603,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         return i < 0 ? -1 : BOMB_FIRST + i * bombStagger(ts.length);
       }
       case 'board': return Math.hypot(r - (rows - 1) / 2, c - (cols - 1) / 2) * BOARD_MS;
+      case 'fish': return e.to && r === e.to.r && c === e.to.c ? fishMs(e) : -1;
     }
     return -1;
   }
@@ -1672,6 +1729,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
           t0: at0, first: BOMB_FIRST * f, stagger: stg, end: at0 + BOMB_FIRST * f + ts.length * stg + 220 });
         shake(4, 380, at0);
         cue('bomb', st, { n: ts.length });
+      } else if (e.fx === 'fish' && e.to) {
+        const dur = fishMs(e) * f, x1 = e.to.c + 0.5, y1 = e.to.r + 0.5;
+        fx.push({ type: 'fishfly', x0: e.c + 0.5, y0: e.r + 0.5, x1, y1, t0: at0, dur, carry: e.carry || null, seed: (e.to.r * 31 + e.to.c * 7 + e.r) % 2 ? 1 : -1 });
+        at(at0 + dur, tt => { fx.push({ type: 'flash', x: x1, y: y1, t0: tt, dur: 260, R: 1.1 }); sparkle(x1, y1, 6, tt, 0.3); });
+        cue('fish', st, { carry: e.carry || null });
       } else if (e.fx === 'board') {
         fx.push({ type: 'boardfx', t0: at0, dur: 800 });
         shake(9, 560, at0);
@@ -2216,6 +2278,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       }
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
     }
+    if (special === 'fish') {
+      // 小魚的金光一明一暗（待機動畫）
+      const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), gl = getGlowCol(GOLD), z = cs * 0.75 * s;
+      const ga = ctx.globalAlpha;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.1 + 0.25 * k);
+      ctx.drawImage(gl, cx + cs * TILE * 0.17 * s - z / 2, cy + dy + cs * TILE * 0.25 * s - z / 2, z, z);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+    }
     if (white > 0.01) {
       const ga = ctx.globalAlpha;
       ctx.globalAlpha = ga * white;
@@ -2506,6 +2576,30 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
             ctx.drawImage(flash, tx - fr / 2, ty - fr / 2, fr, fr);
           }
         }
+      } else if (f.type === 'fishfly') {
+        // 沿著一條弧線游過去（弧往側邊彎、隨機左右），頭朝前進方向；後面拖一串金色亮點
+        const u = easeInOutSine(clamp01(p));
+        const x0 = ox + f.x0 * cs, y0 = oy + f.y0 * cs, x1 = ox + f.x1 * cs, y1 = oy + f.y1 * cs;
+        const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1;
+        const bend = Math.min(cs * 1.6, d * 0.35) * f.seed;
+        const mx = (x0 + x1) / 2 - dy / d * bend, my = (y0 + y1) / 2 + dx / d * bend - cs * 0.3;
+        const qx = (k) => (1 - k) * (1 - k) * x0 + 2 * (1 - k) * k * mx + k * k * x1;
+        const qy = (k) => (1 - k) * (1 - k) * y0 + 2 * (1 - k) * k * my + k * k * y1;
+        const gl = getGlowCol(GOLD);
+        for (let i = 6; i >= 1; i--) {
+          const k = Math.max(0, u - i * 0.045), z = cs * (0.5 - i * 0.05);
+          ctx.globalAlpha = 0.5 * (1 - i / 7);
+          ctx.drawImage(gl, qx(k) - z / 2, qy(k) - z / 2, z, z);
+        }
+        const x = qx(u), y = qy(u), ang = Math.atan2(qy(Math.min(1, u + 0.02)) - qy(Math.max(0, u - 0.02)), qx(Math.min(1, u + 0.02)) - qx(Math.max(0, u - 0.02)));
+        const wig = Math.sin(t / 45) * 0.18, sz = cs * (1.2 + 0.2 * Math.sin(Math.PI * u));
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        const spr = getFishSprite();
+        const flip = Math.cos(ang) < 0;      // 往左游的時候不要肚子朝上
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang + wig); if (flip) ctx.scale(1, -1);
+        ctx.drawImage(spr, -sz / 2, -sz / 2, sz, sz);
+        ctx.restore();
+        ctx.globalCompositeOperation = 'lighter';
       } else if (f.type === 'boardfx') {
         const bx = ox, by = oy, bw = cols * cs, bh = rows * cs, cx = bx + bw / 2, cy = by + bh / 2;
         ctx.globalAlpha = 1;
