@@ -325,6 +325,34 @@ function show(name) {
   }
 }
 
+// ---------- 背景漂浮光點 ----------
+// 約每秒 10 次把光點往上移一點點、左右晃、一閃一閃（飄得很慢，看起來和每秒 60 張一樣順，但背景不用一直合成）。
+// 分頁藏起來、有對話框時停住；系統設定「減少動態」時只留淡淡的靜止光點
+const motes = [];
+let moteTimer = 0;
+function initMotes() {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const m of $$('.sky .mote')) {
+    if (reduce) { m.style.opacity = '.25'; continue; }
+    motes.push({ el: m, sp: 5 + Math.random() * 6, ph: Math.random() * 6.283, tw: 2.4 + Math.random() * 1.8, off: Math.random() });
+  }
+  if (motes.length) tickMotes();
+}
+function tickMotes() {
+  moteTimer = 0;
+  if (document.hidden || document.documentElement.dataset.modal) { moteTimer = setTimeout(tickMotes, 500); return; }
+  const t = performance.now() / 1000, span = Math.max(300, window.innerHeight * 0.7), edge = span * 0.12;
+  for (const m of motes) {
+    const y = (t * m.sp + m.off * span) % span;             // 往上飄了多少 px（一輪 span，循環）
+    const fade = Math.min(1, y / edge, (span - y) / edge);  // 兩端淡入淡出，循環接回去時看不出來
+    const op = fade * (0.12 + 0.43 * (0.5 + 0.5 * Math.sin(t * 6.283 / m.tw + m.ph)));
+    m.el.style.transform = `translate(${(Math.sin(t * 0.35 + m.ph) * 14).toFixed(1)}px, ${(-y).toFixed(1)}px)`;
+    m.el.style.opacity = op.toFixed(2);
+  }
+  moteTimer = setTimeout(tickMotes, 100);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && motes.length && !moteTimer) tickMotes(); });
+
 // ---------- 對話框 ----------
 let lastFocus = null;
 let usingKeyboard = false;
@@ -1859,6 +1887,7 @@ function installDebug() {
 
 // ---------- 開機 ----------
 async function boot() {
+  initMotes();
   setProgress(0.03);
   const modP = loadModules();
   const imgP = loadImages(f => setProgress(0.08 + f * 0.9));

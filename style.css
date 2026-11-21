@@ -94,31 +94,23 @@ svg use { pointer-events: none; }
 .c2 { top: 30%; left: -160px; animation-duration: 95s; animation-delay: -60s; opacity: .4; }
 .c3 { top: 62%; left: -160px; animation-duration: 80s; animation-delay: -35s; opacity: .3; }
 @keyframes drift { from { translate: 0 0; } to { translate: calc(100vw + 330px) 0; } }
-/* 漂浮光點：很淡的柔光小點，慢慢往上飄、左右晃、一閃一閃（商業手遊的空氣感，不搶盤面） */
+/* 漂浮光點：很淡的柔光小點，慢慢往上飄、左右晃、一閃一閃（商業手遊的空氣感，不搶盤面）。
+   不用 CSS 動畫：CSS 動畫每秒 60 張，背景一直要合成；main.js 的 tickMotes() 約每秒 10 次移一點點（飄得很慢，看起來一樣順） */
 .mote {
-  position: absolute; width: 10px; height: 10px; border-radius: 50%;
+  position: absolute; width: 10px; height: 10px; border-radius: 50%; opacity: 0;
   background: radial-gradient(circle, rgba(255, 255, 255, .95) 0%, rgba(255, 240, 250, .5) 35%, rgba(255, 240, 250, 0) 70%);
-  opacity: 0; animation: moteFloat 22s linear infinite, moteTwinkle 3.2s ease-in-out infinite;
   will-change: transform, opacity;
 }
-.m1  { left: 8%;  top: 82%; width: 14px; height: 14px; animation-duration: 26s, 3.4s; animation-delay: -3s, -1s; }
-.m2  { left: 19%; top: 64%; animation-duration: 21s, 2.7s; animation-delay: -11s, -2s; }
-.m3  { left: 31%; top: 90%; width: 18px; height: 18px; animation-duration: 30s, 4s; animation-delay: -17s, -.5s; }
-.m4  { left: 46%; top: 72%; width: 8px; height: 8px; animation-duration: 19s, 2.4s; animation-delay: -6s, -1.6s; }
-.m5  { left: 57%; top: 95%; width: 12px; height: 12px; animation-duration: 24s, 3.6s; animation-delay: -20s, -2.4s; }
-.m6  { left: 68%; top: 60%; animation-duration: 28s, 2.9s; animation-delay: -9s, -.8s; }
-.m7  { left: 79%; top: 86%; width: 16px; height: 16px; animation-duration: 23s, 3.8s; animation-delay: -14s, -3s; }
-.m8  { left: 90%; top: 70%; width: 9px; height: 9px; animation-duration: 20s, 2.6s; animation-delay: -2s, -1.2s; }
-.m9  { left: 13%; top: 40%; width: 7px; height: 7px; animation-duration: 25s, 3.1s; animation-delay: -12s, -2.8s; }
-.m10 { left: 86%; top: 35%; width: 11px; height: 11px; animation-duration: 27s, 3.3s; animation-delay: -22s, -.3s; }
-@keyframes moteFloat {
-  0%   { transform: translate(0, 0); }
-  25%  { transform: translate(14px, -18vh); }
-  50%  { transform: translate(-10px, -36vh); }
-  75%  { transform: translate(12px, -54vh); }
-  100% { transform: translate(0, -72vh); }
-}
-@keyframes moteTwinkle { 0%, 100% { opacity: .12; } 50% { opacity: .55; } }
+.m1  { left: 8%;  top: 82%; width: 14px; height: 14px; }
+.m2  { left: 19%; top: 64%; }
+.m3  { left: 31%; top: 90%; width: 18px; height: 18px; }
+.m4  { left: 46%; top: 72%; width: 8px; height: 8px; }
+.m5  { left: 57%; top: 95%; width: 12px; height: 12px; }
+.m6  { left: 68%; top: 60%; }
+.m7  { left: 79%; top: 86%; width: 16px; height: 16px; }
+.m8  { left: 90%; top: 70%; width: 9px; height: 9px; }
+.m9  { left: 13%; top: 40%; width: 7px; height: 7px; }
+.m10 { left: 86%; top: 35%; width: 11px; height: 11px; }
 
 /* ---------- App 欄位 ---------- */
 #app {
@@ -1515,11 +1507,9 @@ svg.on .hi { opacity: .9; }
 }
 /* 遊戲畫面：背景的泡泡、雲、散景停住（main.js 的 show() 設 data-screen）。盤面才是主角；
    而且背景每一幀都在變的話，蓋在上面、有模糊的對話框也得每一幀重算模糊 */
-/* 遊戲中背景照樣慢慢飄（只用 transform / opacity，GPU 合成、不重畫），但泡泡、雲淡一點，不搶盤面；
+/* 遊戲中：泡泡、雲停住（CSS 動畫每秒 60 張，手機會燙），只剩 main.js 低頻率移動的漂浮光點；
    有對話框（模糊遮罩）時全部停住，不然後面每一幀都在變，模糊也得每一幀重算 */
-:root[data-screen="game"] .sky .bk { opacity: .18; }
-:root[data-screen="game"] .sky .cloud { opacity: .25; }
-:root[data-modal] .sky .bk, :root[data-modal] .sky .cloud, :root[data-modal] .sky .mote, :root[data-modal] .sky::before {
+:root[data-screen="game"] .sky .bk, :root[data-screen="game"] .sky .cloud, :root[data-screen="game"] .sky::before,
+:root[data-modal] .sky .bk, :root[data-modal] .sky .cloud, :root[data-modal] .sky::before {
   animation-play-state: paused;
 }
-@media (prefers-reduced-motion: reduce) { .sky .mote { animation: none; opacity: .25; } }
