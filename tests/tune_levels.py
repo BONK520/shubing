@@ -78,7 +78,7 @@ def main():
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    ids = a.ids or list(range(1, 61))
+    ids = a.ids or list(range(1, 101))
     srv = serve()
     pct = lambda x: f'{round(100 * x):3d}%'
     with sync_playwright() as p:
