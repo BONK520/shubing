@@ -8,7 +8,7 @@
 // ?mode=api  ：不自動跑，給工具呼叫 window.simLevels(levels, { games, profiles, start })。
 // ?mode=kinds：舊的「種類數 × 防連鎖」表（greedy / random 機器人，?games=60&moves=20）。
 import { createEngine } from '../js/engine.js';
-import { LEVELS, validateLevels } from '../js/levels.js';
+import { LEVELS, validateLevels, goalParts } from '../js/levels.js';
 import { PIECES } from '../js/pieces.js';
 import { mulberry, matchesIn } from './util.js';
 import { playLevel } from './sim.bots.js';
@@ -110,7 +110,10 @@ function goalStr(L) {
   const g = L.goal || {};
   if (g.type === 'score') return `分數 ${g.target}`;
   if (g.type === 'collect') return '收集 ' + Object.entries(g.items).map(([k, v]) => `${PIECES[PIECES.findIndex(p => p.id === k)].name}${v}`).join(' ');
-  return '果凍';
+  if (g.type === 'jelly') return '果凍';
+  const NAME = { jelly: '果凍', dino: '恐龍', frost: '糖霜', choco: '巧克力', cage: '籠子' };
+  return goalParts(L).map(q => q.kind === 'collect' ? `${PIECES[PIECES.findIndex(p => p.id === q.id)].name}${q.need}`
+    : q.kind === 'dino' ? `恐龍${q.need}` : NAME[q.kind] || q.kind).join('+');
 }
 
 // pad by display width (CJK = 2 columns) so the table lines up
