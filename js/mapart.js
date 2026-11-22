@@ -1,6 +1,6 @@
 // 薯餅蛋蛋島 — 關卡地圖的 24 站背景：每站的底色和物件、兩站交界的銜接物、站牌、駐站娃娃
 // 畫法照 shubing夜間/草稿/大地圖示意/island-map.html 的 A 樣式（完整風景）搬過來；全部用程式畫 SVG，不用另外載圖
-import { PIECES } from './pieces.js?v=20261123l';
+import { PIECES } from './pieces.js?v=20261123m';
 
 function rngOf(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const pick = (r, a) => a[Math.floor(r() * a.length)];
