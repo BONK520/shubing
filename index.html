@@ -8,11 +8,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="用自己 3D 掃描的毛絨玩具玩的三消小遊戲">
-<title>毛絨消消樂</title>
+<meta name="description" content="薯餅蛋蛋島：用自己 3D 掃描的毛絨玩具玩的三消小遊戲">
+<title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123f">
+<link rel="stylesheet" href="style.css?v=20261123g">
 </head>
 <body>
 
@@ -60,7 +60,7 @@
   <!-- 載入中 -->
   <section id="scr-loading" class="screen active" aria-label="載入中">
     <div class="load-wrap">
-      <h1 class="logo logo-sm" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+      <h1 class="logo logo-sm" aria-label="薯餅蛋蛋島"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="薯" style="--i:0"><b>薯</b></span><span class="ch" data-ch="餅" style="--i:1"><b>餅</b></span><span class="ch" data-ch="蛋" style="--i:2"><b>蛋</b></span><span class="ch" data-ch="蛋" style="--i:3"><b>蛋</b></span><span class="ch" data-ch="島" style="--i:4"><b>島</b></span></span></h1>
       <!-- 貼紙照片（assets/deco/）：檔案不在就整個拿掉，不留空位 -->
       <div class="load-deco" aria-hidden="true"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></div>
       <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
@@ -82,7 +82,7 @@
     <div class="title-main">
       <!-- 直式：兩個包裝都是 display:contents（一欄排下來）；橫式手機：左欄標題、右欄玩具＋按鈕 -->
       <div class="title-head">
-        <h1 class="logo" aria-label="毛絨消消樂"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="毛" style="--i:0"><b>毛</b></span><span class="ch" data-ch="絨" style="--i:1"><b>絨</b></span><span class="ch" data-ch="消" style="--i:2"><b>消</b></span><span class="ch" data-ch="消" style="--i:3"><b>消</b></span><span class="ch" data-ch="樂" style="--i:4"><b>樂</b></span></span></h1>
+        <h1 class="logo" aria-label="薯餅蛋蛋島"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="薯" style="--i:0"><b>薯</b></span><span class="ch" data-ch="餅" style="--i:1"><b>餅</b></span><span class="ch" data-ch="蛋" style="--i:2"><b>蛋</b></span><span class="ch" data-ch="蛋" style="--i:3"><b>蛋</b></span><span class="ch" data-ch="島" style="--i:4"><b>島</b></span></span></h1>
         <!-- 名字順序 = 下面玩具由左到右的順序（皮蛋、薯餅在中間、蛋黃哥） -->
         <p class="logo-sub" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
         <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
@@ -101,67 +101,11 @@
   <section id="scr-map" class="screen" aria-label="關卡地圖">
     <div class="topbar">
       <button class="icon-btn" id="map-back" aria-label="回到標題"><svg><use href="#i-back"/></svg></button>
+      <span class="map-here" id="map-here" aria-live="polite"></span>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
     <div class="map-scroll" id="map-scroll">
       <div class="map-inner" id="map-inner"></div>
-      <!-- 地圖貼紙：高度 0 的一層貼在地圖最底下，用 bottom 往上量（第 1 關固定在離底 110px、每關 116px，跟 main.js 的 MAP_BOTTOM / MAP_GAP 一樣）。
-           --u = 第幾關的高度（0 = 第 1 關）、--x = 橫向位置；都放在路的旁邊空地，站在小雲台上（有往右下的影子），畫在路上面、關卡按鈕下面 -->
-      <div class="map-deco" aria-hidden="true">
-        <span class="md md-s" style="--u:.12;--x:86%;--k:0"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:1.45;--x:19%;--k:1"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:3.9;--x:82%;--k:2"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:5.5;--x:12%;--k:3"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:7.45;--x:18%;--k:4"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:9.9;--x:82%;--k:5"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:11.5;--x:12%;--k:6"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:13.45;--x:19%;--k:7"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <!-- 第 16 關以後：路每 6 關繞回同一邊，所以照上面的位置重複（換不同的貼紙） -->
-        <span class="md md-m" style="--u:15.9;--x:82%;--k:8"><img src="assets/deco/group.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:17.5;--x:12%;--k:9"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:19.45;--x:18%;--k:10"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:21.9;--x:82%;--k:11"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:23.5;--x:12%;--k:12"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:25.45;--x:19%;--k:13"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:27.9;--x:82%;--k:14"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <!-- 第 31–60 關：同樣每 6 關一輪的位置，貼紙輪流換 -->
-        <span class="md md-s" style="--u:29.5;--x:12%;--k:15"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:31.45;--x:19%;--k:16"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:33.9;--x:82%;--k:17"><img src="assets/deco/group.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:35.5;--x:12%;--k:18"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:37.45;--x:19%;--k:19"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:39.9;--x:82%;--k:20"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:41.5;--x:12%;--k:21"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:43.45;--x:19%;--k:22"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:45.9;--x:82%;--k:23"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:47.5;--x:12%;--k:24"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:49.45;--x:19%;--k:25"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:51.9;--x:82%;--k:26"><img src="assets/deco/group.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:53.5;--x:12%;--k:27"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:55.45;--x:19%;--k:28"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:57.9;--x:82%;--k:29"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <!-- 第 61–100 關：一樣每 6 關一輪 -->
-        <span class="md md-s" style="--u:59.50;--x:12%;--k:30"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:61.45;--x:19%;--k:31"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:63.90;--x:82%;--k:32"><img src="assets/deco/group.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:65.50;--x:12%;--k:33"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:67.45;--x:19%;--k:34"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:69.90;--x:82%;--k:35"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:71.50;--x:12%;--k:36"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:73.45;--x:19%;--k:37"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:75.90;--x:82%;--k:38"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:77.50;--x:12%;--k:39"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:79.45;--x:19%;--k:40"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:81.90;--x:82%;--k:41"><img src="assets/deco/group.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:83.50;--x:12%;--k:42"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:85.45;--x:19%;--k:43"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-t" style="--u:87.90;--x:82%;--k:44"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:89.50;--x:12%;--k:45"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:91.45;--x:19%;--k:46"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-l" style="--u:93.90;--x:82%;--k:47"><img src="assets/deco/sloth_bed.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-s" style="--u:95.50;--x:12%;--k:48"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-        <span class="md md-m" style="--u:97.45;--x:19%;--k:49"><img src="assets/deco/sloth_pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-      </div>
     </div>
     <!-- 底部固定列（76px）：頭像（點了捲回目前關卡）、造型幣、星星、玩偶衣櫃。是地圖下面的一列，不疊在地圖上，第 1 關不會被蓋住 -->
     <div class="map-dock">
@@ -412,6 +356,6 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/main.js?v=20261123f"></script>
+<script type="module" src="js/main.js?v=20261123g"></script>
 </body>
 </html>

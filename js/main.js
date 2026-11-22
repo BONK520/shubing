@@ -1,10 +1,11 @@
-// 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123f';
-import { SLOGANS } from './slogans.js?v=20261123f';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123f';
-import { blockerCanvas } from './blockers.js?v=20261123f';
+// 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123g';
+import { SLOGANS } from './slogans.js?v=20261123g';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123g';
+import { blockerCanvas } from './blockers.js?v=20261123g';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123g';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123f';
+const MOD_V = '?v=20261123g';
 
 window.__plushBooted = true;
 
@@ -721,6 +722,7 @@ function buildTitle() {
 // ---------- 關卡地圖 ----------
 const MAP_GAP = 116, MAP_TOP = 150, MAP_BOTTOM = 110;
 let mapNodes = [];
+let mapSt = [], mapArtKey = '', mapArtStr = '';   // 目前畫的各站範圍、背景快取（寬度|關卡數）
 function isUnlocked(i) { return i < save.unlocked; }
 function currentIndex() { return clamp(save.unlocked, 1, LEVELS.length) - 1; }
 function nodePos(i, n, H) {
@@ -775,6 +777,12 @@ function buildMap(popIndex = -1) {
   const pts = LEVELS.map((_, i) => nodePos(i, n, H));
   const cur = currentIndex();
 
+  // 24 站的風景墊在最底下（寬度一樣就用上次畫好的）
+  const art = el('div', 'map-art');
+  art.innerHTML = mapArt(inner, n, H);
+  inner.appendChild(art);
+  mapSt = mapStations(n, H);
+
   const svg = document.createElementNS(SVGNS, 'svg');
   svg.setAttribute('class', 'map-path');
   svg.setAttribute('viewBox', `0 0 100 ${H}`);
@@ -800,24 +808,8 @@ function buildMap(popIndex = -1) {
   if (cur > 0) { mk('road-dots-done', done); mk('road-dots-done-hi', done, -1.6); }
   inner.appendChild(svg);
 
-  // 裝飾：立體的雲、棒棒糖（有地上的影子）、從雲後面探頭的玩具
-  const decoKinds = ['cloudy', 'lolly', 'toy'];
-  for (let i = 0; i < n - 1; i++) {      // 最後一關上面是「更多關卡製作中」的立牌，不放
-    if (i % 2 === 1) continue;
-    const p = pts[i];
-    const side = p.x > 50 ? -1 : 1;
-    const kind = decoKinds[(i / 2) % decoKinds.length];
-    const d = el('span', 'map-island ' + kind);
-    d.style.left = clamp(p.x + side * 34, 9, 91) + '%';
-    d.style.top = (p.y - MAP_GAP * 0.45) + 'px';
-    if (kind === 'toy') {
-      const toy = PIECES[(i / 2) % PIECES.length];
-      d.appendChild(toyEl(toy, 22));
-      d.appendChild(el('i', 'puff'));      // 前面那朵雲，擋住玩具的下半身
-      d.style.setProperty('--k', String(-i * 0.7) + 's');
-    }
-    inner.appendChild(d);
-  }
+  // 站牌和駐站娃娃（還沒走到的站，娃娃是灰色的）
+  inner.insertAdjacentHTML('beforeend', mapSignsHTML(n, H, save.unlocked));
 
   // 關卡按鈕
   mapNodes = [];
@@ -864,6 +856,30 @@ function buildMap(popIndex = -1) {
   $('#map-stars-max').textContent = '/ ' + n * 3;
   return pts;
 }
+// 地圖背景：只跟地圖寬度和關卡數有關，同一個寬度畫一次就好
+function mapArt(inner, n, H) {
+  const W = Math.round(inner.clientWidth) || 375, key = W + '|' + n;
+  if (key !== mapArtKey) { mapArtKey = key; mapArtStr = mapArtHTML(W, n, H); }
+  return mapArtStr;
+}
+// 換了寬度（轉向、視窗變大變小）才重畫背景；路、關卡、站牌都是用 % 排的，不用動
+function refreshMapArt() {
+  const inner = $('#map-inner'), art = inner && $('.map-art', inner);
+  if (!art) return;
+  const W = Math.round(inner.clientWidth);
+  if (!W || Math.abs(W - (parseInt(mapArtKey, 10) || 0)) <= 2) return;
+  const n = LEVELS.length;
+  art.innerHTML = mapArt(inner, n, MAP_TOP + (n - 1) * MAP_GAP + MAP_BOTTOM);
+}
+// 右上角顯示畫面中間是哪一站
+function updateMapHere() {
+  const pill = $('#map-here'), sc = $('#map-scroll');
+  if (!pill || !sc || !mapSt.length) return;
+  const r = stationAt(mapSt, sc.scrollTop + sc.clientHeight / 2);
+  if (pill.dataset.k === r.k + '|' + r.to) return;
+  pill.dataset.k = r.k + '|' + r.to;
+  pill.innerHTML = `第${r.k}站・${r.name}<small>第${r.from}～${r.to}關</small>`;
+}
 // 地圖捲到某個高度的關卡：讓它停在可視範圍偏下（約 58% 的位置）
 function mapTarget(y) { const sc = $('#map-scroll'); return clamp(y - sc.clientHeight * 0.58, 0, sc.scrollHeight); }
 function scrollMapToCurrent() {
@@ -883,6 +899,7 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
   } else {
     sc.scrollTop = target(cur);
   }
+  updateMapHere();
   if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openStartCard(thenOpen); }, 750);
 }
 
@@ -2179,6 +2196,7 @@ function openSettings() {
 function bindUI() {
   $('#btn-start').addEventListener('click', () => showMap());
   $('#map-back').addEventListener('click', () => show('title'));
+  $('#map-scroll').addEventListener('scroll', updateMapHere, { passive: true });
   for (const b of $$('[data-open-settings]')) b.addEventListener('click', openSettings);
   // 一步還在結算（掉落、連鎖）時不能暫停，免得過關／失敗的流程跑在暫停選單後面
   const canPause = () => (state === 'play' && !moving && !(R && R.busy)) || state === 'intro';
@@ -2261,7 +2279,7 @@ function bindUI() {
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault());
 
-  const onResize = () => { if (screen === 'game') sizeBoard(); };
+  const onResize = () => { if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); } };
   window.addEventListener('resize', onResize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', () => setTimeout(onResize, 250));

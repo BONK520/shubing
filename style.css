@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123f") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123f") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123g") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123g") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -441,10 +441,6 @@ svg use { pointer-events: none; }
 .star-pill b { color: #ff4f9a; }
 .star-pill span { font-size: 15px; color: #fff; --w: 1.3px; --d: .8px; }
 .map-scroll {
-  /* 淡色山丘：一張 6 關高（6 × 116px）的圖往上重複，跟著地圖捲動（background-attachment: local），從最底下對齊第 1 關。
-     路每 6 關繞一圈，所以山丘剛好墊在關卡下面；畫在背景，地圖貼紙和關卡都在它上面 */
-  --hills: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 375 696' preserveAspectRatio='none'><defs><radialGradient id='p' cx='.5' cy='.35' r='.65'><stop offset='0' stop-color='%23ffe0ee'/><stop offset='1' stop-color='%23ffb3d4'/></radialGradient><radialGradient id='v' cx='.5' cy='.35' r='.65'><stop offset='0' stop-color='%23ece0ff'/><stop offset='1' stop-color='%23c9a6ff'/></radialGradient><radialGradient id='b' cx='.5' cy='.35' r='.65'><stop offset='0' stop-color='%23e3f3ff'/><stop offset='1' stop-color='%23a8d8ff'/></radialGradient><radialGradient id='m' cx='.5' cy='.35' r='.65'><stop offset='0' stop-color='%23e6fff3'/><stop offset='1' stop-color='%23aee8cf'/></radialGradient></defs><ellipse cx='272' cy='474' rx='176' ry='122' fill='url(%23p)' opacity='.5'/><ellipse cx='36' cy='598' rx='92' ry='58' fill='url(%23m)' opacity='.34'/><ellipse cx='104' cy='128' rx='170' ry='116' fill='url(%23v)' opacity='.5'/><ellipse cx='338' cy='196' rx='96' ry='62' fill='url(%23b)' opacity='.38'/></svg>");
-  background: var(--hills) center bottom / 100% 696px repeat-y local;
   position: relative; z-index: 1;
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -471,45 +467,44 @@ svg use { pointer-events: none; }
 .road-dots-done { stroke: #ff5fa8; stroke-width: 11; stroke-dasharray: 0 22; }
 .road-dots-done-hi { stroke: #ffe8f4; stroke-width: 4; stroke-dasharray: 0 22; }
 
-.map-island { /* 地圖裝飾 */
-  position: absolute; pointer-events: none; transform: translate(-50%, -50%);
+/* 24 站的風景（js/mapart.js 畫的 SVG）：墊在路和關卡下面，跟著地圖捲動 */
+.map-art { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.map-art svg { position: absolute; left: 0; width: 100%; display: block; }
+.map-art .ma-bridge { z-index: 1; }
+/* 站牌：每站第一關旁邊，放在路的另一側 */
+.map-sign {
+  position: absolute; transform: translateY(-50%); pointer-events: none;
+  background: #fffaf6; border-radius: 12px; padding: 5px 10px 6px;
+  font-weight: 700; font-size: 12px; line-height: 1.25; color: #6b2d4a; white-space: nowrap;
+  box-shadow: 0 3px 0 rgba(107, 45, 74, .25);
 }
-.map-island.cloudy {
-  width: 96px; height: 51px;
-  background: var(--cloud) center / 100% 100% no-repeat;
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(143, 51, 82, .2));
+.map-sign b { display: block; font-size: 10px; letter-spacing: .12em; color: #b46a8b; }
+/* 駐站娃娃：遊戲裡原本的玩具，站在兩關中間、路的另一側；還沒走到的站是灰色的 */
+.map-doll { position: absolute; width: 76px; margin-left: -38px; transform: translateY(-62%); text-align: center; pointer-events: none; }
+.map-doll img {
+  display: block; width: 62px; height: 62px; margin: 0 auto; object-fit: contain; position: relative; z-index: 1;
+  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);
+  animation: dollBob 2.8s ease-in-out infinite;
 }
-/* 棒棒糖：糖是一顆有光澤的球（左上亮點、右下暗部），棍子是圓柱，地上有往右下的影子 */
-.map-island.lolly {
-  width: 52px; height: 74px;
-  background: radial-gradient(ellipse 34% 7% at 62% 95%, rgba(73, 26, 42, .34), rgba(73, 26, 42, 0));
+.map-doll i { display: block; width: 50px; height: 10px; margin: -8px auto 0; border-radius: 50%; background: rgba(60, 20, 40, .16); }
+.map-doll span {
+  display: inline-block; margin-top: 2px; padding: 2px 8px 3px; border-radius: 999px;
+  background: rgba(255, 250, 246, .94); color: #6b2d4a; font-weight: 700; font-size: 10.5px; line-height: 1.2; white-space: nowrap;
 }
-.map-island.lolly::before {
-  content: ''; position: absolute; left: 6px; top: 0; width: 36px; height: 36px; border-radius: 50%; z-index: 1;
-  background:
-    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .95) 0 9%, rgba(255, 255, 255, .35) 22%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, rgba(120, 20, 80, 0) 55%, rgba(120, 20, 80, .35) 100%),
-    repeating-conic-gradient(from 10deg, #ff5fa8 0 30deg, #fff4fa 30deg 60deg);
-  border: 3px solid #fff;
-  box-shadow: inset -3px -4px 6px rgba(150, 20, 90, .35), 0 0 0 2px #ff7fbb, 0 3px 0 2px #c93b80, 3px 6px 7px rgba(78, 28, 45, .3);
+.map-doll.lock img { filter: grayscale(1) brightness(1.08) opacity(.6); animation: none; }
+.map-doll.lock span { color: #8d8b98; }
+@keyframes dollBob { 50% { transform: translateY(-4px); } }
+/* 右上角：畫面中間是哪一站 */
+.map-here {
+  margin-left: auto; min-width: 0; max-width: calc(100% - 128px); overflow: hidden; text-overflow: ellipsis;
+  background: rgba(255, 250, 246, .95); color: #6b2d4a; border-radius: 999px; padding: 6px 12px;
+  font-weight: 700; font-size: 13px; line-height: 1.2; text-align: right; white-space: nowrap;
+  box-shadow: 0 3px 0 rgba(107, 45, 74, .25);
 }
-.map-island.lolly::after {
-  content: ''; position: absolute; left: 21px; top: 34px; width: 6px; height: 36px; border-radius: 3px;
-  background: linear-gradient(90deg, #fff 0%, #fff4ec 40%, #e2c6bc 100%);
-  box-shadow: 2px 2px 3px rgba(78, 28, 45, .25);
-}
-/* 從雲後面探頭的玩具：前面那朵雲擋住下半身，玩具一上一下探頭 */
-.map-island.toy { width: 92px; height: 74px; }
-.map-island.toy img, .map-island.toy .toy-fallback {
-  position: absolute; left: 50%; top: 0; width: 58px; height: 58px; margin-left: -29px; object-fit: contain;
-  filter: drop-shadow(0 0 5px rgba(255, 210, 245, .8));
-  animation: peek 3.4s ease-in-out infinite; animation-delay: var(--k, 0s);
-}
-.map-island.toy .puff {
-  position: absolute; left: 0; bottom: 0; width: 92px; height: 48px; z-index: 1;
-  background: var(--cloud) center / 100% 100% no-repeat;
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(143, 51, 82, .2));
-}
+.map-here:empty { visibility: hidden; }
+.map-here small { display: block; font-size: 11px; color: #b46a8b; }
+@media (prefers-reduced-motion: reduce) { .map-doll img { animation: none; } }
+
 @keyframes peek { 0%, 100% { translate: 0 6px; rotate: -4deg; } 50% { translate: 0 -2px; rotate: 4deg; } }
 @keyframes sway { 0%, 100% { rotate: -6deg; } 50% { rotate: 6deg; } }
 
@@ -1127,28 +1122,7 @@ svg.on .hi { opacity: .9; }
 .stk-snoopy { --r: 9deg; width: clamp(72px, 19vw, 116px); right: calc(0px + var(--safe-r)); top: calc(70px + var(--safe-t)); animation-delay: -2.1s; }
 @media (max-height: 700px) { .stk-snoopy { width: clamp(60px, 15vw, 92px); top: calc(54px + var(--safe-t)); } }
 
-/* 地圖：高度 0 的一層接在地圖最底下，用 bottom 往上量（MAP_BOTTOM 110px、每關 MAP_GAP 116px） */
 .map-inner { z-index: 1; }
-.map-deco { position: relative; height: 0; z-index: 0; pointer-events: none; }
-.md { /* 地圖旁的玩具站在小雲台上：雲台有厚度、影子往右下（跟遊戲裡的光同一個方向） */
-  position: absolute; left: var(--x); bottom: calc(110px + var(--u) * 116px);
-  transform: translate(-50%, 50%);
-}
-.md img {
-  position: relative; z-index: 1; display: block; width: 100%; height: auto; transform-origin: 50% 100%;
-  animation: stk-sway 4.6s ease-in-out infinite; animation-delay: calc(var(--k, 0) * -.7s);
-  filter: drop-shadow(0 0 6px rgba(255, 200, 240, .7));
-}
-.md::before {
-  content: ''; position: absolute; left: -10%; right: -10%; bottom: -12%; height: 24%; border-radius: 50%;
-  background: radial-gradient(ellipse 70% 80% at 50% 30%, #fff 0%, #fff4ee 45%, #f6d9d6 100%);
-  box-shadow: inset 0 2px 0 #fff, inset 0 -4px 6px rgba(220, 140, 150, .35), 0 5px 0 #efc0c4, 0 8px 0 #d8999f, 7px 15px 14px rgba(82, 29, 47, .3);
-}
-.md::after {
-  content: ''; position: absolute; left: 24%; right: 14%; bottom: -3%; height: 9%; border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 50%, rgba(66, 24, 38, .5) 0%, rgba(66, 24, 38, .22) 45%, rgba(66, 24, 38, 0) 72%);
-}
-.md-s { width: 58px; } .md-m { width: 96px; } .md-l { width: 112px; } .md-t { width: 72px; }   /* md-t：直的（Snoopy 疊在薯餅上） */
 
 /* 過關卡：貼紙照片從右上角探出來；失敗卡：照片取代那排難過的玩具 */
 .modal-photo { display: block; height: auto; pointer-events: none; filter: drop-shadow(0 0 5px rgba(255, 240, 252, .95)) drop-shadow(0 8px 14px rgba(71, 25, 41, .28)); }
