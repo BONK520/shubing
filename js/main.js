@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123g';
-import { SLOGANS } from './slogans.js?v=20261123g';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123g';
-import { blockerCanvas } from './blockers.js?v=20261123g';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123g';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123h';
+import { SLOGANS } from './slogans.js?v=20261123h';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123h';
+import { blockerCanvas } from './blockers.js?v=20261123h';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123h';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123g';
+const MOD_V = '?v=20261123h';
 
 window.__plushBooted = true;
 
