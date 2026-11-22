@@ -644,6 +644,487 @@ const TROPHY = [   // 冠軍獎盃（最後一關）
   '.#####.',
 ];
 
+// ---------- 第 61–100 關的盤面（9 列 × 7 欄）----------
+const SNOWMAN = [   // 雪人（第 61 關）
+  '..###..',
+  '..###..',
+  '.#####.',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+];
+
+const MITTEN = [   // 手套（第 62 關）
+  '..####.',
+  '..####.',
+  '#.####.',
+  '#######',
+  '#######',
+  '.######',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+];
+
+const SNOWFLAKE = [   // 雪花（第 63 關）
+  '..#.#..',
+  '.##.##.',
+  '#######',
+  '.#####.',
+  '###.###',
+  '.#####.',
+  '#######',
+  '.##.##.',
+  '..#.#..',
+];
+
+const IGLOO = [   // 冰屋（第 64 關）
+  '.......',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '###.###',
+  '##...##',
+  '##...##',
+  '#######',
+];
+
+const XMASTREE = [   // 聖誕樹（章末）（第 65 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '..###..',
+  '.#####.',
+  '#######',
+  '...#...',
+  '.#####.',
+];
+
+const BALLOON = [   // 氣球（第 66 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '...#...',
+  '...#...',
+  '..###..',
+];
+
+const FERRIS = [   // 摩天輪（第 67 關）
+  '.#####.',
+  '###.###',
+  '#.###.#',
+  '#.#.#.#',
+  '#.###.#',
+  '###.###',
+  '.#####.',
+  '...#...',
+  '..###..',
+];
+
+const TICKET = [   // 門票（第 68 關）
+  '#######',
+  '#######',
+  '##.#.##',
+  '#######',
+  '.#####.',
+  '#######',
+  '##.#.##',
+  '#######',
+  '#######',
+];
+
+const CAROUSEL = [   // 旋轉木馬（第 69 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#######',
+  '#######',
+  '.#####.',
+];
+
+const COASTER = [   // 雲霄飛車（章末）（第 70 關）
+  '###....',
+  '###...#',
+  '.###.##',
+  '..#####',
+  '...####',
+  '#######',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+];
+
+const LEAF = [   // 樹葉（第 71 關）
+  '....###',
+  '...####',
+  '..#####',
+  '.######',
+  '#######',
+  '######.',
+  '#####..',
+  '####...',
+  '.#.....',
+];
+
+const ACORN = [   // 橡實（第 72 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '..###..',
+  '...#...',
+  '.......',
+];
+
+const OWL = [   // 貓頭鷹（第 73 關）
+  '#.....#',
+  '##...##',
+  '#######',
+  '##.#.##',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#####.',
+  '.#.#.#.',
+];
+
+const CABIN = [   // 小木屋（第 74 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#.###.#',
+  '#.###.#',
+  '#######',
+  '##...##',
+  '##...##',
+];
+
+const FOX = [   // 狐狸（章末）（第 75 關）
+  '#.....#',
+  '##...##',
+  '###.###',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '...#...',
+  '.......',
+];
+
+const NOTE = [   // 音符（第 76 關）
+  '...####',
+  '...####',
+  '...##..',
+  '...##..',
+  '...##..',
+  '.#####.',
+  '######.',
+  '######.',
+  '.####..',
+];
+
+const GUITAR = [   // 吉他（第 77 關）
+  '...#...',
+  '..###..',
+  '...#...',
+  '...#...',
+  '.#####.',
+  '#######',
+  '###.###',
+  '#######',
+  '.#####.',
+];
+
+const DRUM = [   // 小鼓（第 78 關）
+  '.#####.',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#######',
+  '.#####.',
+];
+
+const PIANO = [   // 鋼琴（第 79 關）
+  '#######',
+  '#######',
+  '##.#.##',
+  '##.#.##',
+  '#######',
+  '#######',
+  '#.....#',
+  '#.....#',
+  '#.....#',
+];
+
+const MIC = [   // 麥克風（章末）（第 80 關）
+  '..###..',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '..###..',
+  '...#...',
+  '...#...',
+  '.#####.',
+  '#######',
+];
+
+const OCTOPUS = [   // 章魚（第 81 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#.###.#',
+  '#######',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#.#.#.#',
+];
+
+const SHELL = [   // 貝殼（第 82 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '..###..',
+];
+
+const JELLYFISH = [   // 水母（第 83 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#.#.#.#',
+  '..#.#..',
+  '.......',
+];
+
+const WHALE = [   // 鯨魚（第 84 關）
+  '.....##',
+  '.....##',
+  '#....##',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+];
+
+const CHEST = [   // 寶箱（章末）（第 85 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '###.###',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+
+const UFO = [   // 幽浮（第 86 關）
+  '.......',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#.#.#.',
+  '.#.#.#.',
+  '.......',
+];
+
+const COMET = [   // 彗星（第 87 關）
+  '##.....',
+  '###....',
+  '####...',
+  '.####..',
+  '..####.',
+  '..#####',
+  '.######',
+  '.######',
+  '..####.',
+];
+
+const ALIEN = [   // 外星人（第 88 關）
+  '#.....#',
+  '#.....#',
+  '#######',
+  '#######',
+  '##.#.##',
+  '#######',
+  '.#####.',
+  '..#.#..',
+  '..#.#..',
+];
+
+const PLANET = [   // 星球（第 89 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###.#',
+  '....###',
+  '....###',
+];
+
+const SPIRAL = [   // 銀河漩渦（章末）（第 90 關）
+  '#######',
+  '#.....#',
+  '#.###.#',
+  '#.#.#.#',
+  '#.#.#.#',
+  '#.#####',
+  '#......',
+  '#######',
+  '.......',
+];
+
+const APARTMENT = [   // 公寓（第 91 關）
+  '#######',
+  '#.#.#.#',
+  '#######',
+  '#.#.#.#',
+  '#######',
+  '#.#.#.#',
+  '#######',
+  '###.###',
+  '###.###',
+];
+
+const BUS = [   // 公車（第 92 關）
+  '.......',
+  '#######',
+  '#.#.#.#',
+  '#######',
+  '#######',
+  '#######',
+  '.#...#.',
+  '.#...#.',
+  '.......',
+];
+
+const UMBRELLA = [   // 雨傘（第 93 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#.#.#.#',
+  '...#...',
+  '.#.#...',
+  '.#.#...',
+  '.###...',
+];
+
+const COFFEE = [   // 咖啡杯（第 94 關）
+  '.......',
+  '######.',
+  '#######',
+  '#####.#',
+  '#####.#',
+  '#######',
+  '#####..',
+  '.###...',
+  '#######',
+];
+
+const TOWER = [   // 城市高塔（章末）（第 95 關）
+  '...#...',
+  '..###..',
+  '..###..',
+  '.#####.',
+  '..###..',
+  '.#####.',
+  '..###..',
+  '#######',
+  '#######',
+];
+
+const GEM = [   // 寶石（第 96 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '..###..',
+  '...#...',
+  '.......',
+  '.......',
+];
+
+const CROWN2 = [   // 皇冠（第 97 關）
+  '#..#..#',
+  '#..#..#',
+  '##.#.##',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '.......',
+  '#######',
+];
+
+const CASTLE2 = [   // 城堡大門（第 98 關）
+  '#.#.#.#',
+  '#######',
+  '#######',
+  '##.#.##',
+  '#######',
+  '#######',
+  '###.###',
+  '###.###',
+  '###.###',
+];
+
+const MEDAL = [   // 金牌（第 99 關）
+  '###.###',
+  '###.###',
+  '.#####.',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+];
+
+const FIREWORKS = [   // 煙火（第 100 關）（第 100 關）
+  '.#...#.',
+  '###.###',
+  '.#.#.#.',
+  '..###..',
+  '.#####.',
+  '..###..',
+  '.#.#.#.',
+  '###.###',
+  '.#...#.',
+];
+
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'], antiCascade: 0.7,
@@ -1378,7 +1859,507 @@ export const LEVELS = [
       '.......',
     ],
     seed: 6015,
-    hint: '最後一關！捧起冠軍獎盃～',
+    hint: '第二部最後一關！捧起冠軍獎盃～',
+  },
+  {
+    id: 61, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { snoopy: 20 } }, stars: [10000, 20000, 30000],
+    mask: SNOWMAN, jelly: null,
+    seed: 6107,
+    hint: '雪地篇！雪人身上收集史努比',
+  },
+  {
+    id: 62, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 26 層
+    mask: MITTEN,
+    jelly: [
+      '..1111.',
+      '..1111.',
+      '..1111.',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 6207,
+    hint: '手套上的果凍，用橫的連線',
+  },
+  {
+    id: 63, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { nyanko: 18, egg: 18 } }, stars: [10000, 20000, 30000],
+    mask: SNOWFLAKE, jelly: null,
+    seed: 6307,
+    hint: '雪花的六個角都要照顧到',
+  },
+  {
+    id: 64, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    mask: IGLOO,
+    jelly: [
+      '.......',
+      '..111..',
+      '.11111.',
+      '1111111',
+      '1111111',
+      '111.111',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 6407,
+    hint: '冰屋圓頂上鋪滿了果凍',
+  },
+  {
+    id: 65, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 38 層
+    mask: XMASTREE,
+    jelly: [
+      '.......',
+      '..222..',
+      '.22222.',
+      '1111111',
+      '..111..',
+      '.11111.',
+      '1111111',
+      '.......',
+      '.......',
+    ],
+    seed: 6507,
+    hint: '聖誕樹頂端的果凍有兩層！',
+  },
+  {
+    id: 66, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { moodeng: 20 } }, stars: [10000, 20000, 30000],
+    mask: BALLOON, jelly: null,
+    seed: 6607,
+    hint: '遊樂園篇！氣球飛起來囉',
+  },
+  {
+    id: 67, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    mask: FERRIS,
+    jelly: [
+      '.11111.',
+      '111.111',
+      '..111..',
+      '.......',
+      '..111..',
+      '111.111',
+      '.11111.',
+      '.......',
+      '.......',
+    ],
+    seed: 6707,
+    hint: '摩天輪轉一圈，果凍融化光',
+  },
+  {
+    id: 68, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { sloth: 18, dog: 18 } }, stars: [10000, 20000, 30000],
+    mask: TICKET, jelly: null,
+    seed: 6807,
+    hint: '門票上的洞要小心',
+  },
+  {
+    id: 69, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 15 層
+    mask: CAROUSEL,
+    jelly: [
+      '.......',
+      '..111..',
+      '.11111.',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 6907,
+    hint: '旋轉木馬的屋頂鋪滿果凍',
+  },
+  {
+    id: 70, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { egg: 16, dino: 16, snoopy: 16 } }, stars: [10000, 20000, 30000],
+    mask: COASTER, jelly: null,
+    seed: 7007,
+    hint: '雲霄飛車！三種一起收',
+  },
+  {
+    id: 71, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dino: 22 } }, stars: [10000, 20000, 30000],
+    mask: LEAF, jelly: null,
+    seed: 7107,
+    hint: '森林篇！樹葉上收集小恐龍',
+  },
+  {
+    id: 72, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 19 層
+    mask: ACORN,
+    jelly: [
+      '.11111.',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 7207,
+    hint: '橡實的帽子上有果凍',
+  },
+  {
+    id: 73, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dog: 18, nyanko: 18 } }, stars: [10000, 20000, 30000],
+    mask: OWL, jelly: null,
+    seed: 7307,
+    hint: '貓頭鷹的大眼睛眨呀眨',
+  },
+  {
+    id: 74, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 25 層
+    mask: CABIN,
+    jelly: [
+      '.......',
+      '.......',
+      '.11111.',
+      '1111111',
+      '..111..',
+      '..111..',
+      '1111111',
+      '.......',
+      '.......',
+    ],
+    seed: 7407,
+    hint: '小木屋的牆上鋪滿果凍',
+  },
+  {
+    id: 75, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'moodeng', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 32 層
+    mask: FOX,
+    jelly: [
+      '.......',
+      '.......',
+      '111.111',
+      '2222222',
+      '1111111',
+      '.11111.',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 7507,
+    hint: '狐狸臉中間的果凍有兩層',
+  },
+  {
+    id: 76, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { egg: 20 } }, stars: [10000, 20000, 30000],
+    mask: NOTE, jelly: null,
+    seed: 7607,
+    hint: '音樂會篇！跟著音符收集',
+  },
+  {
+    id: 77, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 30 層
+    mask: GUITAR,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.11111.',
+      '1111111',
+      '111.111',
+      '1111111',
+      '.11111.',
+    ],
+    seed: 7707,
+    hint: '吉他的身體上有果凍',
+  },
+  {
+    id: 78, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { sloth: 18, moodeng: 18 } }, stars: [10000, 20000, 30000],
+    mask: DRUM, jelly: null,
+    seed: 7807,
+    hint: '咚咚咚！鼓面一格一格消',
+  },
+  {
+    id: 79, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    mask: PIANO,
+    jelly: [
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 7907,
+    hint: '琴鍵上的果凍彈掉它',
+  },
+  {
+    id: 80, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dog: 16, egg: 16, nyanko: 16 } }, stars: [10000, 20000, 30000],
+    mask: MIC, jelly: null,
+    seed: 8007,
+    hint: '麥克風！大合唱收集三種',
+  },
+  {
+    id: 81, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { moodeng: 20 } }, stars: [10000, 20000, 30000],
+    mask: OCTOPUS, jelly: null,
+    seed: 8107,
+    hint: '海底篇！章魚的腳好多',
+  },
+  {
+    id: 82, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 22 層
+    mask: SHELL,
+    jelly: [
+      '.......',
+      '..111..',
+      '.11111.',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 8207,
+    hint: '貝殼上的果凍融化掉',
+  },
+  {
+    id: 83, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { snoopy: 18, sloth: 18 } }, stars: [10000, 20000, 30000],
+    mask: JELLYFISH, jelly: null,
+    seed: 8307,
+    hint: '水母的觸手長長的',
+  },
+  {
+    id: 84, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    mask: WHALE,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '1111111',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+    ],
+    seed: 8407,
+    hint: '鯨魚背上鋪滿了果凍',
+  },
+  {
+    id: 85, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 46 層
+    mask: CHEST,
+    jelly: [
+      '.11111.',
+      '2222222',
+      '2222222',
+      '1111111',
+      '111.111',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 8507,
+    hint: '寶箱上的果凍有兩層！',
+  },
+  {
+    id: 86, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { nyanko: 20 } }, stars: [10000, 20000, 30000],
+    mask: UFO, jelly: null,
+    seed: 8607,
+    hint: '宇宙篇！幽浮來接貓咪老師',
+  },
+  {
+    id: 87, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 21 層
+    mask: COMET,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '..1111.',
+      '..11111',
+      '.111111',
+      '.111111',
+      '.......',
+    ],
+    seed: 8707,
+    hint: '彗星的尾巴有果凍',
+  },
+  {
+    id: 88, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dino: 18, egg: 18 } }, stars: [10000, 20000, 30000],
+    mask: ALIEN, jelly: null,
+    seed: 8807,
+    hint: '外星人的天線要用直的消',
+  },
+  {
+    id: 89, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 31 層
+    mask: PLANET,
+    jelly: [
+      '.......',
+      '.11111.',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.11111.',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 8907,
+    hint: '星球表面鋪滿果凍',
+  },
+  {
+    id: 90, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'dino', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { sloth: 16, dog: 16, snoopy: 16 } }, stars: [10000, 20000, 30000],
+    mask: SPIRAL, jelly: null,
+    seed: 9007,
+    hint: '銀河漩渦！三種一起收',
+  },
+  {
+    id: 91, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { egg: 22 } }, stars: [10000, 20000, 30000],
+    mask: APARTMENT, jelly: null,
+    seed: 9107,
+    hint: '城市篇！公寓的窗戶亮了',
+  },
+  {
+    id: 92, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 21 層
+    mask: BUS,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 9207,
+    hint: '公車車身上有果凍',
+  },
+  {
+    id: 93, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { snoopy: 18, moodeng: 18 } }, stars: [10000, 20000, 30000],
+    mask: UMBRELLA, jelly: null,
+    seed: 9307,
+    hint: '下雨天撐傘收集',
+  },
+  {
+    id: 94, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 30 層
+    mask: COFFEE,
+    jelly: [
+      '.......',
+      '111111.',
+      '1111111',
+      '11111..',
+      '11111..',
+      '1111111',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    seed: 9407,
+    hint: '咖啡杯裡的果凍融化掉',
+  },
+  {
+    id: 95, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 31 層
+    mask: TOWER,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '.11111.',
+      '.......',
+      '.11111.',
+      '.......',
+      '2222222',
+      '1111111',
+    ],
+    seed: 9507,
+    hint: '高塔的底座有兩層果凍',
+  },
+  {
+    id: 96, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { nyanko: 18, dog: 18 } }, stars: [10000, 20000, 30000],
+    mask: GEM, jelly: null,
+    seed: 9607,
+    hint: '終極篇！閃亮亮的寶石',
+  },
+  {
+    id: 97, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    mask: CROWN2,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '1111111',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.......',
+      '.......',
+    ],
+    seed: 9707,
+    hint: '皇冠上鑲滿了果凍',
+  },
+  {
+    id: 98, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { sloth: 18, egg: 18, moodeng: 16 } }, stars: [10000, 20000, 30000],
+    mask: CASTLE2, jelly: null,
+    seed: 9807,
+    hint: '城堡大門！三種一起收',
+  },
+  {
+    id: 99, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'dino', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 26 層
+    mask: MEDAL,
+    jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.11111.',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.......',
+    ],
+    seed: 9907,
+    hint: '金牌上的果凍有好多',
+  },
+  {
+    id: 100, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dog: 18, sloth: 18, egg: 18 } }, stars: [10000, 20000, 30000],
+    mask: FIREWORKS, jelly: null,
+    seed: 10007,
+    hint: '第 100 關！放煙火慶祝吧～',
   },
 ];
 
@@ -1407,7 +2388,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
   const out = [];
   const DEF_ROWS = 9, DEF_COLS = 7;   // 長條盤面（像 Candy Crush）
   if (!Array.isArray(levels) || !levels.length) return ['LEVELS 是空的'];
-  if (levels.length < 12 || levels.length > 60) out.push(`關卡數 ${levels.length}（SPEC：12–60）`);
+  if (levels.length < 12 || levels.length > 150) out.push(`關卡數 ${levels.length}（SPEC：12–150）`);
   const seenSeeds = new Set();
   levels.forEach((L, i) => {
     const tag = `第 ${i + 1} 關`;

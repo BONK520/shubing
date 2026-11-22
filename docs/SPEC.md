@@ -217,7 +217,7 @@ export const LEVELS = [
 ];
 ```
 
-- 12–60 levels (currently 30), mechanics introduced one at a time (collect → shapes → jelly → mixed); from level 16 on,
+- 12–150 levels (currently 100), mechanics introduced one at a time (collect → shapes → jelly → mixed); from level 16 on,
   chapters of five with the hardest level last (difficulty curve: `targetsFor` in `tests/sim.js`).
 - Uses 4–6 kinds; never only 3 (too many free cascades).
 - The scanned toys (`dog`, `sloth`, `egg`) appear in every level; collect goals prefer them.
