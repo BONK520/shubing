@@ -1610,10 +1610,19 @@ svg.on .hi { opacity: .9; }
 .ci-state .coin { width: 13px; height: 13px; }
 .cl-item.on .ci-state { color: #c27a00; }
 .cl-item.can .ci-state { color: #c26a00; }
-.cl-sub { align-self: flex-start; font-size: 16px; font-weight: 900; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.cl-ready {
+  flex: none; align-self: stretch; margin: 0 2px; padding: 9px 14px; border: 0; border-radius: 14px; cursor: pointer;
+  background: linear-gradient(180deg, #ffe27a, #ffb52e); color: #6b2d4a; font: inherit; font-size: 15px; font-weight: 900;
+  box-shadow: 0 3px 0 #d98a00, 0 0 14px 2px rgba(255, 205, 70, .6); animation: clReady 1.6s ease-in-out infinite;
+}
+.cl-ready[hidden] { display: none; }
+.cl-ready:active { transform: translateY(2px); box-shadow: 0 1px 0 #d98a00; }
+@keyframes clReady { 0%, 100% { box-shadow: 0 3px 0 #d98a00, 0 0 10px 1px rgba(255, 205, 70, .45); } 50% { box-shadow: 0 3px 0 #d98a00, 0 0 18px 5px rgba(255, 205, 70, .85); } }
+.cl-sub { scroll-margin-top: 6px; align-self: flex-start; font-size: 16px; font-weight: 900; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
 .cl-sub small { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
 /* flex: none：有 overflow-x 的 flex 子項目會被壓扁（手機上只剩 20px 高），保持原本高度，放不下時由 .cl-scroll 往下捲 */
-.cl-chests { flex: none; display: flex; gap: 8px; width: 100%; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: none; }
+/* 改版 2026-11：改成會換行的格子，13 個寶箱全部攤開，不用橫向捲動（手機上看不出右邊還有） */
+.cl-chests { flex: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); justify-items: center; row-gap: 10px; column-gap: 4px; width: 100%; padding: 8px 2px 4px; }
 .cl-chest { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 58px; padding: 0; border: 0; background: none; cursor: pointer; }
 .cc-box {
   position: relative; width: 50px; height: 40px; border-radius: 8px 8px 10px 10px;
@@ -1652,7 +1661,7 @@ svg.on .hi { opacity: .9; }
 .cp-items.reveal .cp-item:nth-child(3) { --i: 2; }
 @keyframes itemPop { 0% { transform: translateY(30px) scale(.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .cp-text { margin: 0; font-size: 18px; font-weight: 900; color: #c42a74; text-align: center; }
-@media (prefers-reduced-motion: reduce) { .closet-fab, .closet-fab.ready, .cl-chest.ready .cc-box, .win-card.three, .win-card.three .big-stars::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .closet-fab, .closet-fab.ready, .cl-chest.ready .cc-box, .cl-ready, .win-card.three, .win-card.three .big-stars::before { animation: none; } }
 
 /* 新機關教學小卡 */
 #m-intro { cursor: pointer; }

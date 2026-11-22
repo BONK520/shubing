@@ -12,7 +12,7 @@
 <title>毛絨消消樂</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261123">
 </head>
 <body>
 
@@ -306,6 +306,8 @@
     <div class="ribbon"><span id="cl-title">玩偶衣櫃</span></div>
     <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
     <div class="cl-scroll">
+    <!-- 有寶箱可以開時才出現，點了捲到寶箱區（改版 2026-11） -->
+    <button class="cl-ready" id="cl-ready" type="button" hidden></button>
     <div class="cl-wallet">
       <span class="cl-chip"><i class="coin"></i><b id="cl-coins">0</b><small>三星造型幣</small></span>
       <span class="cl-chip"><svg class="cl-star"><use href="#i-star"/></svg><b id="cl-stars">0</b><small id="cl-stars-max">/ 0</small></span>
@@ -317,7 +319,7 @@
     </div>
     <div class="cl-tabs" id="cl-tabs" role="tablist" aria-label="分類"></div>
     <div class="cl-grid" id="cl-grid" role="tabpanel"></div>
-    <div class="cl-sub">三星豪華寶箱<small>星星總數到了就能開</small></div>
+    <div class="cl-sub" id="cl-chest-sec">三星豪華寶箱<small>星星總數到了就能開</small></div>
     <div class="cl-chests" id="cl-chests"></div>
     <p class="cl-help">每一關<b>第一次拿到三星</b>送 1 枚三星造型幣</p>
     </div>
@@ -404,6 +406,7 @@
     document.documentElement.classList.add('load-failed');
   }, 9000);
 </script>
-<script type="module" src="js/main.js"></script>
+<!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
+<script type="module" src="js/main.js?v=20261123"></script>
 </body>
 </html>

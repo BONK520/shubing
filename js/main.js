@@ -1,8 +1,10 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js';
-import { SLOGANS } from './slogans.js';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js';
-import { blockerCanvas } from './blockers.js';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123';
+import { SLOGANS } from './slogans.js?v=20261123';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123';
+import { blockerCanvas } from './blockers.js?v=20261123';
+// 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
+const MOD_V = '?v=20261123';
 
 window.__plushBooted = true;
 
@@ -84,11 +86,11 @@ function applySave(s) {
 let cloud = null, account = null, syncState = 'off', lastPushed = '', pushTimer = 0, askGuestMerge = false;
 async function initCloud() {
   let cfg = null;
-  try { cfg = (await import('./cloud-config.js')).FIREBASE_CONFIG; } catch (e) { /* 沒有設定檔 */ }
+  try { cfg = (await import('./cloud-config.js' + MOD_V)).FIREBASE_CONFIG; } catch (e) { /* 沒有設定檔 */ }
   const emu = DEBUG && params.has('emu');      // 測試：連本機的 Firebase 模擬器（tests/ 和 docs/CLOUD_SAVE.md）
   if (emu) cfg = { apiKey: 'demo-key', authDomain: 'demo-plush.firebaseapp.com', projectId: 'demo-plush', appId: 'demo' };   // 測試永遠用假專案，不碰真的存檔
   if (!cfg) return;
-  try { cloud = (await import('./cloud.js')).createCloud(cfg, { emulator: emu }); } catch (e) { console.warn('[cloud]', e); return; }
+  try { cloud = (await import('./cloud.js' + MOD_V)).createCloud(cfg, { emulator: emu }); } catch (e) { console.warn('[cloud]', e); return; }
   document.documentElement.classList.add('has-cloud');
   syncState = 'guest';
   renderAccount();
@@ -172,7 +174,7 @@ const silentAudio = { unlock() {}, play() {}, setMuted() {}, setMusic() {}, setS
 
 async function loadModules() {
   const names = ['engine', 'renderer', 'levels', 'audio'];
-  const res = await Promise.allSettled(names.map(n => import(`./${n}.js`)));
+  const res = await Promise.allSettled(names.map(n => import(`./${n}.js${MOD_V}`)));
   const fail = [];
   const mod = i => (res[i].status === 'fulfilled' ? res[i].value : (fail.push(names[i] + '.js'), console.error(res[i].reason), null));
   const eng = mod(0), ren = mod(1), lev = mod(2);
@@ -474,6 +476,20 @@ function openCloset() {
     setTimeout(() => { if (clR && isOpen('m-closet')) clR.layout(); }, 420);    // 卡片彈出來的動畫結束後再量一次大小
   }
 }
+// 捲到寶箱區。直式是 .cl-scroll 在捲；手機橫放時整個 #m-closet 在捲，所以往上找第一個真的捲得動的那層
+function scrollToChests(smooth = true) {
+  const sec = $('#cl-chest-sec');
+  if (!sec) return;
+  let sc = sec.parentElement;
+  while (sc && sc !== document.body) {
+    const oy = getComputedStyle(sc).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && sc.scrollHeight > sc.clientHeight + 1) break;
+    sc = sc.parentElement;
+  }
+  if (!sc || sc === document.body) return;
+  const top = sec.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 6;
+  try { sc.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }); } catch (e) { sc.scrollTop = top; }
+}
 function closetClosed() {
   tryOn = {};
   $('#cl-pop').hidden = true;
@@ -536,7 +552,11 @@ function renderCloset() {
     grid.appendChild(b);
   }
   $('#cl-try').hidden = !Object.keys(tryOn).length;
-  // 寶箱
+  // 寶箱：有可以開的，衣櫃最上面放一條提示，點了捲到寶箱區
+  const readyN = closet.readyChests(stars).length;
+  const rb = $('#cl-ready');
+  rb.hidden = !readyN;
+  rb.textContent = readyN ? `有 ${readyN} 個寶箱可以開 ↓` : '';
   const box = $('#cl-chests');
   box.innerHTML = '';
   CHESTS.forEach((ch, i) => {
@@ -2177,6 +2197,7 @@ function bindUI() {
   $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#cl-demo').addEventListener('click', closetDemo);
+  $('#cl-ready').addEventListener('click', () => { audio.play('tap'); scrollToChests(); });
   $('#cp-ok').addEventListener('click', () => { $('#cl-pop').hidden = true; renderCloset(); });
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#ml-more').addEventListener('click', () => {
