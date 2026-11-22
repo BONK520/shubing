@@ -1131,43 +1131,43 @@ const FIREWORKS = [   // 煙火（第 100 關）（第 100 關）
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { sloth: 30 } }, stars: [15000, 30000, 45000],
-    mask: null, jelly: null, seed: 105,
+    goal: { type: 'collect', items: { sloth: 30 } }, stars: [21000, 42000, 63000],
+    mask: null, jelly: null, seed: 114,
     hint: '把三個一樣的連成一排，收集 15 個薯餅！',
   },
   {
-    id: 2, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'piggy'],
-    goal: { type: 'collect', items: { dog: 30, egg: 30 } }, stars: [8000, 16000, 24000],
-    mask: null, jelly: null, seed: 204,
+    id: 2, rows: 9, cols: 7, moves: 19, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'piggy'],
+    goal: { type: 'collect', items: { dog: 30, egg: 30 } }, stars: [12000, 24000, 36000],
+    mask: null, jelly: null, seed: 214,
     hint: '一次連四個，會變出條紋方塊喔！',
   },
   {
-    id: 3, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
-    goal: { type: 'collect', items: { egg: 40 } }, stars: [10000, 20000, 30000],
-    mask: null, jelly: null, seed: 303,
+    id: 3, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
+    goal: { type: 'collect', items: { egg: 40 } }, stars: [13000, 26000, 39000],
+    mask: null, jelly: null, seed: 308,
     hint: '四顆排成田字，會變出長翅膀的飛天玩偶！',
   },
   {
-    id: 4, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'],
+    id: 4, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'],
     goal: { type: 'collect', items: { dog: 40, sloth: 40 } }, stars: [12000, 24000, 36000],
-    mask: null, jelly: null, seed: 419,   // 加了 2×2 正方形之後重挑：第一次玩看到的盤面跟平常的盤面差不多
+    mask: null, jelly: null, seed: 422,   // 加了 2×2 正方形之後重挑：第一次玩看到的盤面跟平常的盤面差不多
     hint: '排成\u00a0L\u00a0形或\u00a0T\u00a0形，會變出會爆炸的包裝糖！',   // 不斷行空格：只在逗號後換行
   },
   {
     id: 5, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [10000, 20000, 30000],
-    mask: HEART, jelly: null, seed: 506,
+    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [16000, 32000, 48000],
+    mask: HEART, jelly: null, seed: 513,
     hint: '愛心盤面！五個連成一排會變出彩色炸彈～',
   },
   {
-    id: 6, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { sloth: 40, egg: 40 } }, stars: [8000, 16000, 24000],
-    mask: COOKIE, jelly: null, seed: 611,
+    id: 6, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { sloth: 40, egg: 40 } }, stars: [18000, 36000, 54000],
+    mask: COOKIE, jelly: null, seed: 622,
     hint: '把彩色炸彈和毛絨交換，全場同款一次消光！',
   },
   {
-    id: 7, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'piggy'],
-    goal: { type: 'jelly' }, stars: [14000, 28000, 42000],
+    id: 7, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'piggy'],
+    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],
     mask: null,
     jelly: [
       '.......',
@@ -1180,12 +1180,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 762,
+    seed: 768,
     hint: '在冰藍果凍上消除，果凍就會碎掉！',
   },
   {
-    id: 8, rows: 9, cols: 7, moves: 27, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],
+    id: 8, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [13000, 26000, 39000],
     mask: DONUT,
     jelly: [
       '.......',
@@ -1198,12 +1198,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 877,
+    seed: 882,
     hint: '果凍圍著甜甜圈的洞，一圈一圈消掉吧！',
   },
   {
-    id: 9, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [17000, 34000, 51000],
+    id: 9, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
     mask: PLUS,
     jelly: [
       '.......',
@@ -1216,18 +1216,18 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 919,
+    seed: 926,
     hint: '深藍色的果凍有兩層，要消兩次喔！',
   },
   {
-    id: 10, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 34, sloth: 34, egg: 34 } }, stars: [7000, 14000, 21000],
-    mask: BUTTERFLY, jelly: null, seed: 1026,
+    id: 10, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 34, sloth: 34, egg: 34 } }, stars: [12000, 24000, 36000],
+    mask: BUTTERFLY, jelly: null, seed: 1037,
     hint: '蝴蝶盤面！皮蛋、薯餅、蛋黃哥一起收集～',
   },
   {
-    id: 11, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],
+    id: 11, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],
     mask: HOURGLASS,
     jelly: [
       '.......',
@@ -1240,24 +1240,24 @@ export const LEVELS = [
       '.11111.',
       '.......',
     ],
-    seed: 1121,
+    seed: 1129,
     hint: '沙漏中間的果凍，用直的一排消最快！',
   },
   {
-    id: 12, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { egg: 40, nyanko: 40 } }, stars: [7000, 14000, 21000],
-    mask: STAIRS, jelly: null, seed: 1265,
+    id: 12, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { egg: 40, nyanko: 40 } }, stars: [16000, 32000, 48000],
+    mask: STAIRS, jelly: null, seed: 1271,
     hint: '階梯盤面，用特殊方塊一次收集一大堆！',
   },
   {
-    id: 13, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'piggy', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 34, sloth: 34, egg: 34 } }, stars: [9000, 18000, 27000],
-    mask: ROUNDED, jelly: null, seed: 1340,
+    id: 13, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'piggy', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 34, sloth: 34, egg: 34 } }, stars: [12000, 24000, 36000],
+    mask: ROUNDED, jelly: null, seed: 1349,
     hint: '把兩個特殊方塊互換，會放出超強組合技！',
   },
   {
-    id: 14, rows: 9, cols: 7, moves: 40, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [31000, 62000, 93000],
+    id: 14, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [29000, 58000, 87000],
     mask: DIAMOND,
     jelly: [
       '.......',
@@ -1270,11 +1270,11 @@ export const LEVELS = [
       '..111..',
       '.......',
     ],
-    seed: 1425,
+    seed: 1436,
     hint: '鑽石果凍，正中間有兩層！',
   },
   {
-    id: 15, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'],
+    id: 15, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'],
     goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
     mask: null,
     jelly: [
@@ -1293,14 +1293,14 @@ export const LEVELS = [
   },
   // ---- 第 16–30 關：每五關一章，章末最難（20、25、30），下一章開頭先放鬆一點 ----
   {
-    id: 16, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { dog: 32, egg: 32 } }, stars: [6000, 12000, 18000],
-    mask: ZIGZAG, jelly: null, seed: 1632,
+    id: 16, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { dog: 32, egg: 32 } }, stars: [12000, 24000, 36000],
+    mask: ZIGZAG, jelly: null, seed: 1643,
     hint: '彎彎的小路！在下面消，比較容易連鎖～',
   },
   {
-    id: 17, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [24000, 48000, 72000],
+    id: 17, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],
     mask: CAT,
     jelly: [
       '.2...2.',
@@ -1313,18 +1313,18 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 1722,
+    seed: 1723,
     hint: '貓咪老師的耳朵上也有果凍喔！',
   },
   {
-    id: 18, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { snoopy: 32, sloth: 32 } }, stars: [8000, 16000, 24000],
-    mask: DOGHOUSE, jelly: null, seed: 1829,
+    id: 18, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { snoopy: 32, sloth: 32 } }, stars: [12000, 24000, 36000],
+    mask: DOGHOUSE, jelly: null, seed: 1838,
     hint: '史努比的狗屋！收集史努比和薯餅～',
   },
   {
-    id: 19, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'piggy', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],
+    id: 19, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'piggy', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],
     mask: CASTLE,
     jelly: [
       '.......',
@@ -1337,18 +1337,18 @@ export const LEVELS = [
       '..222..',
       '..222..',
     ],
-    seed: 1924,
+    seed: 1934,
     hint: '城堡的塔和城門都是兩層果凍！',
   },
   {
-    id: 20, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [6000, 12000, 18000],
-    mask: PAW, jelly: null, seed: 2032,
+    id: 20, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [12000, 24000, 36000],
+    mask: PAW, jelly: null, seed: 2042,
     hint: '皮蛋留下了大腳印！三寶一起收集～',
   },
   {
     id: 21, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [11000, 22000, 33000],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
     mask: TREE,
     jelly: [
       '.......',
@@ -1361,18 +1361,18 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 2122,
+    seed: 2124,
     hint: '薯餅最愛的大樹，果凍藏在樹葉裡！',
   },
   {
-    id: 22, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'piggy', 'moodeng'],
-    goal: { type: 'collect', items: { piggy: 36, moodeng: 36 } }, stars: [10000, 20000, 30000],
+    id: 22, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'piggy', 'moodeng'],
+    goal: { type: 'collect', items: { piggy: 36, moodeng: 36 } }, stars: [11000, 22000, 33000],
     mask: ISLANDS, jelly: null, seed: 2230,
     hint: '左右兩座島，條紋方塊可以一次清兩邊！',
   },
   {
-    id: 23, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],
+    id: 23, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],
     mask: DOTS,
     jelly: [
       '.......',
@@ -1385,18 +1385,18 @@ export const LEVELS = [
       '..2.2..',
       '...2...',
     ],
-    seed: 2328,
+    seed: 2337,
     hint: '小洞旁邊都是果凍，用特殊方塊一起炸！',
   },
   {
-    id: 24, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { egg: 36, nyanko: 36 } }, stars: [8000, 16000, 24000],
-    mask: CUP, jelly: null, seed: 2440,
+    id: 24, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { egg: 36, nyanko: 36 } }, stars: [13000, 26000, 39000],
+    mask: CUP, jelly: null, seed: 2443,
     hint: '杯子的兩邊很窄，只能直直地消喔！',
   },
   {
-    id: 25, rows: 9, cols: 7, moves: 38, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],
+    id: 25, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],
     mask: RING,
     jelly: [
       '.......',
@@ -1409,17 +1409,17 @@ export const LEVELS = [
       '..222..',
       '.......',
     ],
-    seed: 2529,
+    seed: 2540,
     hint: '圓環上下的果凍，一圈一圈敲碎它！',
   },
   {
-    id: 26, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 56 } }, stars: [10000, 20000, 30000],
-    mask: BONE, jelly: null, seed: 2632,
+    id: 26, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 56 } }, stars: [11000, 22000, 33000],
+    mask: BONE, jelly: null, seed: 2637,
     hint: '皮蛋最愛的骨頭！收集好多皮蛋～',
   },
   {
-    id: 27, rows: 9, cols: 7, moves: 31, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    id: 27, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
     goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
     mask: HEART,
     jelly: [
@@ -1433,18 +1433,18 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 2744,   // 加了 2×2 正方形之後重挑（第一次玩的盤面三星太難）
+    seed: 2746,   // 加了 2×2 正方形之後重挑（第一次玩的盤面三星太難）
     hint: '愛心裡面藏著一顆果凍小愛心！',
   },
   {
-    id: 28, rows: 9, cols: 7, moves: 31, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [10000, 20000, 30000],
-    mask: CANDY, jelly: null, seed: 2837,
+    id: 28, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [14000, 28000, 42000],
+    mask: CANDY, jelly: null, seed: 2842,
     hint: '包裝糖果盤面！三寶大集合～',
   },
   {
-    id: 29, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [11000, 22000, 33000],
+    id: 29, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],
     mask: null,
     jelly: [
       '.......',
@@ -1457,12 +1457,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 2940,
+    seed: 2947,
     hint: '叉叉上的果凍都是兩層喔！',
   },
   {
-    id: 30, rows: 9, cols: 7, moves: 42, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
+    id: 30, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],
     mask: CROWN,
     jelly: [
       '.......',
@@ -1479,15 +1479,15 @@ export const LEVELS = [
     hint: '第一部最後一關！戴上王冠吧～',
   },
   {
-    id: 31, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { sloth: 40 } }, stars: [8000, 16000, 24000],
+    id: 31, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { sloth: 40 } }, stars: [14000, 28000, 42000],
     mask: FISH, jelly: null,
-    seed: 3116,
+    seed: 3117,
     hint: '海邊篇！四顆排成田字會變出飛天玩偶',
   },
   {
-    id: 32, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],   // 果凍 44 層
+    id: 32, rows: 9, cols: 7, moves: 19, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 44 層
     mask: BOAT,
     jelly: [
       '...22..',
@@ -1500,19 +1500,19 @@ export const LEVELS = [
       '.22222.',
       '..222..',
     ],
-    seed: 3213,
+    seed: 3218,
     hint: '帆船上的果凍，讓飛天玩偶去融化！',
   },
   {
-    id: 33, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 36, egg: 36 } }, stars: [9000, 18000, 27000],
+    id: 33, rows: 9, cols: 7, moves: 27, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 36, egg: 36 } }, stars: [10000, 20000, 30000],
     mask: ANCHOR, jelly: null,
-    seed: 3318,
+    seed: 3319,
     hint: '錨的圈圈裡，直的連線最好用',
   },
   {
-    id: 34, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],   // 果凍 48 層
+    id: 34, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [27000, 54000, 81000],   // 果凍 48 層
     mask: WAVE,
     jelly: [
       '22.....',
@@ -1525,12 +1525,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 3408,
+    seed: 3415,
     hint: '順著海浪，一路往下融化果凍',
   },
   {
-    id: 35, rows: 9, cols: 7, moves: 41, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 34 層
+    id: 35, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [24000, 48000, 72000],   // 果凍 34 層
     mask: LIGHTHOUSE,
     jelly: [
       '..222..',
@@ -1543,19 +1543,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 3511,
+    seed: 3514,
     hint: '燈塔上的果凍都是兩層喔！',
   },
   {
-    id: 36, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { egg: 44 } }, stars: [10000, 20000, 30000],
+    id: 36, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { egg: 44 } }, stars: [15000, 30000, 45000],
     mask: CUPCAKE, jelly: null,
-    seed: 3611,
+    seed: 3618,
     hint: '甜點篇開始！先收集蛋黃哥',
   },
   {
-    id: 37, rows: 9, cols: 7, moves: 35, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],   // 果凍 72 層
+    id: 37, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [40000, 80000, 120000],   // 果凍 72 層
     mask: ICECREAM,
     jelly: [
       '.22222.',
@@ -1568,19 +1568,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 3716,
+    seed: 3720,
     hint: '冰淇淋球上的果凍快融化了',
   },
   {
-    id: 38, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { moodeng: 32, sloth: 32 } }, stars: [7000, 14000, 21000],
+    id: 38, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { moodeng: 32, sloth: 32 } }, stars: [10000, 20000, 30000],
     mask: LOLLIPOP, jelly: null,
-    seed: 3817,
+    seed: 3822,
     hint: '棒棒糖中間空空的，從兩邊消',
   },
   {
-    id: 39, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],   // 果凍 54 層
+    id: 39, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [29000, 58000, 87000],   // 果凍 54 層
     mask: CAKE,
     jelly: [
       '.2.2.2.',
@@ -1593,26 +1593,26 @@ export const LEVELS = [
       '2222222',
       '.......',
     ],
-    seed: 3912,
+    seed: 3923,
     hint: '蠟燭上的果凍，用直的連線！',
   },
   {
-    id: 40, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [10000, 20000, 30000],
+    id: 40, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [12000, 24000, 36000],
     mask: CHOCBOX, jelly: null,
-    seed: 4018,
+    seed: 4028,
     hint: '巧克力盒的格子很窄，加油！',
   },
   {
-    id: 41, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { snoopy: 36 } }, stars: [8000, 16000, 24000],
+    id: 41, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { snoopy: 36 } }, stars: [12000, 24000, 36000],
     mask: CLOUD, jelly: null,
-    seed: 4114,
+    seed: 4121,
     hint: '天空篇！雲朵下面在下雨',
   },
   {
-    id: 42, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],   // 果凍 72 層
+    id: 42, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [37000, 74000, 111000],   // 果凍 72 層
     mask: MOON,
     jelly: [
       '..2222.',
@@ -1625,19 +1625,19 @@ export const LEVELS = [
       '.2222..',
       '..2222.',
     ],
-    seed: 4207,
+    seed: 4209,
     hint: '彎彎的月亮鋪滿了果凍',
   },
   {
-    id: 43, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { egg: 36, piggy: 36 } }, stars: [6000, 12000, 18000],
+    id: 43, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { egg: 36, piggy: 36 } }, stars: [8000, 16000, 24000],
     mask: STAR, jelly: null,
-    seed: 4310,
+    seed: 4313,
     hint: '星星的尖角要用直線消',
   },
   {
-    id: 44, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],   // 果凍 28 層
+    id: 44, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 28 層
     mask: ROCKET,
     jelly: [
       '.......',
@@ -1650,12 +1650,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 4410,
+    seed: 4418,
     hint: '火箭窗戶旁的果凍要敲兩次',
   },
   {
-    id: 45, rows: 9, cols: 7, moves: 43, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 56 層
+    id: 45, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [30000, 60000, 90000],   // 果凍 56 層
     mask: SATURN,
     jelly: [
       '.......',
@@ -1668,19 +1668,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 4517,
+    seed: 4524,
     hint: '土星環上鋪滿了果凍！',
   },
   {
-    id: 46, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [7000, 14000, 21000],
+    id: 46, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [16000, 32000, 48000],
     mask: FLOWER, jelly: null,
-    seed: 4615,
+    seed: 4621,
     hint: '花園篇！把彈跳豬收集起來',
   },
   {
-    id: 47, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 58 層
+    id: 47, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [33000, 66000, 99000],   // 果凍 58 層
     mask: MUSHROOM,
     jelly: [
       '..222..',
@@ -1693,19 +1693,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 4711,
+    seed: 4713,
     hint: '香菇傘上的果凍融化光光',
   },
   {
-    id: 48, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [8000, 16000, 24000],
+    id: 48, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [10000, 20000, 30000],
     mask: TULIP, jelly: null,
-    seed: 4811,
+    seed: 4819,
     hint: '鬱金香的花瓣尖尖的喔',
   },
   {
-    id: 49, rows: 9, cols: 7, moves: 42, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [27000, 54000, 81000],   // 果凍 38 層
+    id: 49, rows: 9, cols: 7, moves: 19, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 38 層
     mask: CACTUS,
     jelly: [
       '..222..',
@@ -1718,12 +1718,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 4913,
+    seed: 4915,
     hint: '仙人掌的手臂也要融化',
   },
   {
-    id: 50, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [17000, 34000, 51000],   // 果凍 36 層
+    id: 50, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 36 層
     mask: RAINBOW,
     jelly: [
       '.22222.',
@@ -1736,19 +1736,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 5011,
+    seed: 5018,
     hint: '彩虹的頂端鋪滿了果凍',
   },
   {
-    id: 51, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { nyanko: 36, egg: 36 } }, stars: [7000, 14000, 21000],
+    id: 51, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { nyanko: 36, egg: 36 } }, stars: [13000, 26000, 39000],
     mask: TEDDY, jelly: null,
-    seed: 5112,
+    seed: 5118,
     hint: '玩具屋篇！小熊臉上收集',
   },
   {
-    id: 52, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],   // 果凍 34 層
+    id: 52, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],   // 果凍 34 層
     mask: TRAIN,
     jelly: [
       '.222...',
@@ -1761,19 +1761,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 5216,
+    seed: 5224,
     hint: '火車頭和煙囪上有果凍',
   },
   {
-    id: 53, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    id: 53, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'piggy'],
     goal: { type: 'collect', items: { piggy: 36, sloth: 36 } }, stars: [8000, 16000, 24000],
     mask: BLOCKS, jelly: null,
-    seed: 5312,
+    seed: 5313,
     hint: '積木一層一層疊上去',
   },
   {
-    id: 54, rows: 9, cols: 7, moves: 34, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],   // 果凍 48 層
+    id: 54, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],   // 果凍 48 層
     mask: KITE,
     jelly: [
       '...2...',
@@ -1786,26 +1786,26 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 5417,
+    seed: 5420,
     hint: '風箏上的果凍都是兩層',
   },
   {
-    id: 55, rows: 9, cols: 7, moves: 36, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { moodeng: 40, dog: 32, egg: 32 } }, stars: [12000, 24000, 36000],
+    id: 55, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { moodeng: 40, dog: 32, egg: 32 } }, stars: [13000, 26000, 39000],
     mask: PIG, jelly: null,
-    seed: 5507,
+    seed: 5511,
     hint: '彈跳豬的大臉！三種一起收',
   },
   {
-    id: 56, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { sloth: 44 } }, stars: [11000, 22000, 33000],
+    id: 56, rows: 9, cols: 7, moves: 33, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { sloth: 44 } }, stars: [10000, 20000, 30000],
     mask: KEY, jelly: null,
     seed: 5614,
     hint: '大冒險篇！找到寶藏鑰匙',
   },
   {
-    id: 57, rows: 9, cols: 7, moves: 40, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [24000, 48000, 72000],   // 果凍 42 層
+    id: 57, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [27000, 54000, 81000],   // 果凍 42 層
     mask: TOWERS,
     jelly: [
       '22...22',
@@ -1822,15 +1822,15 @@ export const LEVELS = [
     hint: '兩座塔中間的橋要融化',
   },
   {
-    id: 58, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { egg: 36, snoopy: 36 } }, stars: [8000, 16000, 24000],
+    id: 58, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { egg: 36, snoopy: 36 } }, stars: [11000, 22000, 33000],
     mask: LADDER, jelly: null,
-    seed: 5810,
+    seed: 5816,
     hint: '爬上梯子，一格一格收集',
   },
   {
-    id: 59, rows: 9, cols: 7, moves: 44, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 64 層
+    id: 59, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [38000, 76000, 114000],   // 果凍 64 層
     mask: HEARTS2,
     jelly: [
       '.22.22.',
@@ -1843,12 +1843,12 @@ export const LEVELS = [
       '.22222.',
       '.......',
     ],
-    seed: 5913,
+    seed: 5918,
     hint: '兩顆愛心都要融化喔',
   },
   {
-    id: 60, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [16000, 32000, 48000],   // 果凍 36 層
+    id: 60, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 36 層
     mask: TROPHY,
     jelly: [
       '.......',
@@ -1861,19 +1861,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6015,
+    seed: 6026,
     hint: '第二部最後一關！捧起冠軍獎盃～',
   },
   {
-    id: 61, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { snoopy: 40 } }, stars: [9000, 18000, 27000],
+    id: 61, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { snoopy: 40 } }, stars: [15000, 30000, 45000],
     mask: SNOWMAN, jelly: null,
-    seed: 6114,
+    seed: 6121,
     hint: '雪地篇！雪人身上收集史努比',
   },
   {
-    id: 62, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],   // 果凍 52 層
+    id: 62, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [34000, 68000, 102000],   // 果凍 52 層
     mask: MITTEN,
     jelly: [
       '..2222.',
@@ -1886,19 +1886,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6210,
+    seed: 6220,
     hint: '手套上的果凍，用橫的連線',
   },
   {
-    id: 63, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { nyanko: 36, egg: 36 } }, stars: [6000, 12000, 18000],
+    id: 63, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { nyanko: 36, egg: 36 } }, stars: [11000, 22000, 33000],
     mask: SNOWFLAKE, jelly: null,
-    seed: 6315,
+    seed: 6326,
     hint: '雪花的六個角都要照顧到',
   },
   {
-    id: 64, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 56 層
+    id: 64, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [29000, 58000, 87000],   // 果凍 56 層
     mask: IGLOO,
     jelly: [
       '.......',
@@ -1911,12 +1911,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6415,
+    seed: 6416,
     hint: '冰屋圓頂上鋪滿了果凍',
   },
   {
-    id: 65, rows: 9, cols: 7, moves: 35, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],   // 果凍 40 層
+    id: 65, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 40 層
     mask: XMASTREE,
     jelly: [
       '.......',
@@ -1929,19 +1929,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6510,
+    seed: 6518,
     hint: '聖誕樹上的果凍全部敲碎！',
   },
   {
-    id: 66, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [8000, 16000, 24000],
+    id: 66, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [12000, 24000, 36000],
     mask: BALLOON, jelly: null,
-    seed: 6607,
+    seed: 6613,
     hint: '遊樂園篇！氣球飛起來囉',
   },
   {
-    id: 67, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 20 層
+    id: 67, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 20 層
     mask: FERRIS,
     jelly: [
       '.22222.',
@@ -1954,19 +1954,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6707,
+    seed: 6711,
     hint: '摩天輪上下的果凍融化光',
   },
   {
-    id: 68, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
-    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [9000, 18000, 27000],
+    id: 68, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'moodeng'],
+    goal: { type: 'collect', items: { sloth: 36, dog: 36 } }, stars: [13000, 26000, 39000],
     mask: TICKET, jelly: null,
-    seed: 6816,
+    seed: 6820,
     hint: '門票上的洞要小心',
   },
   {
-    id: 69, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [16000, 32000, 48000],   // 果凍 30 層
+    id: 69, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 30 層
     mask: CAROUSEL,
     jelly: [
       '.......',
@@ -1979,26 +1979,26 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6917,
+    seed: 6922,
     hint: '旋轉木馬的屋頂鋪滿果凍',
   },
   {
-    id: 70, rows: 9, cols: 7, moves: 33, kinds: ['dog', 'egg', 'piggy', 'snoopy'],
-    goal: { type: 'collect', items: { egg: 32, piggy: 32, snoopy: 32 } }, stars: [9000, 18000, 27000],
+    id: 70, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'egg', 'piggy', 'snoopy'],
+    goal: { type: 'collect', items: { egg: 32, piggy: 32, snoopy: 32 } }, stars: [10000, 20000, 30000],
     mask: COASTER, jelly: null,
-    seed: 7007,
+    seed: 7013,
     hint: '雲霄飛車！三種一起收',
   },
   {
-    id: 71, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { piggy: 44 } }, stars: [8000, 16000, 24000],
+    id: 71, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { piggy: 44 } }, stars: [15000, 30000, 45000],
     mask: LEAF, jelly: null,
-    seed: 7117,
+    seed: 7124,
     hint: '森林篇！樹葉上收集存錢豬',
   },
   {
-    id: 72, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'jelly' }, stars: [17000, 34000, 51000],   // 果凍 38 層
+    id: 72, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [26000, 52000, 78000],   // 果凍 38 層
     mask: ACORN,
     jelly: [
       '.22222.',
@@ -2011,19 +2011,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 7210,
+    seed: 7217,
     hint: '橡實的帽子上有果凍',
   },
   {
-    id: 73, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { dog: 36, nyanko: 36 } }, stars: [8000, 16000, 24000],
+    id: 73, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { dog: 36, nyanko: 36 } }, stars: [12000, 24000, 36000],
     mask: OWL, jelly: null,
-    seed: 7308,
+    seed: 7315,
     hint: '貓頭鷹的大眼睛眨呀眨',
   },
   {
-    id: 74, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 50 層
+    id: 74, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 50 層
     mask: CABIN,
     jelly: [
       '.......',
@@ -2036,12 +2036,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 7418,
+    seed: 7419,
     hint: '小木屋的牆上鋪滿果凍',
   },
   {
-    id: 75, rows: 9, cols: 7, moves: 35, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],   // 果凍 50 層
+    id: 75, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [27000, 54000, 81000],   // 果凍 50 層
     mask: FOX,
     jelly: [
       '.......',
@@ -2054,19 +2054,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 7511,
+    seed: 7515,
     hint: '狐狸臉上的果凍都是兩層',
   },
   {
-    id: 76, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { egg: 40 } }, stars: [9000, 18000, 27000],
+    id: 76, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { egg: 40 } }, stars: [10000, 20000, 30000],
     mask: NOTE, jelly: null,
-    seed: 7611,
+    seed: 7612,
     hint: '音樂會篇！跟著音符收集',
   },
   {
-    id: 77, rows: 9, cols: 7, moves: 31, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 60 層
+    id: 77, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [31000, 62000, 93000],   // 果凍 60 層
     mask: GUITAR,
     jelly: [
       '.......',
@@ -2083,15 +2083,15 @@ export const LEVELS = [
     hint: '吉他的身體上有果凍',
   },
   {
-    id: 78, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { sloth: 36, moodeng: 36 } }, stars: [9000, 18000, 27000],
+    id: 78, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { sloth: 36, moodeng: 36 } }, stars: [11000, 22000, 33000],
     mask: DRUM, jelly: null,
-    seed: 7812,
+    seed: 7823,
     hint: '咚咚咚！鼓面一格一格消',
   },
   {
-    id: 79, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 56 層
+    id: 79, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 56 層
     mask: PIANO,
     jelly: [
       '2222222',
@@ -2104,26 +2104,26 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 7914,
+    seed: 7918,
     hint: '琴鍵上的果凍彈掉它',
   },
   {
-    id: 80, rows: 9, cols: 7, moves: 33, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { dog: 32, egg: 32, nyanko: 32 } }, stars: [9000, 18000, 27000],
+    id: 80, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { dog: 32, egg: 32, nyanko: 32 } }, stars: [10000, 20000, 30000],
     mask: MIC, jelly: null,
-    seed: 8007,
+    seed: 8013,
     hint: '麥克風！大合唱收集三種',
   },
   {
-    id: 81, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
-    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [8000, 16000, 24000],
+    id: 81, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'collect', items: { moodeng: 40 } }, stars: [10000, 20000, 30000],
     mask: OCTOPUS, jelly: null,
-    seed: 8108,
+    seed: 8119,
     hint: '海底篇！章魚的腳好多',
   },
   {
-    id: 82, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [16000, 32000, 48000],   // 果凍 44 層
+    id: 82, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 44 層
     mask: SHELL,
     jelly: [
       '.......',
@@ -2136,19 +2136,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 8208,
+    seed: 8211,
     hint: '貝殼上的果凍融化掉',
   },
   {
-    id: 83, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { snoopy: 36, sloth: 36 } }, stars: [8000, 16000, 24000],
+    id: 83, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { snoopy: 36, sloth: 36 } }, stars: [9000, 18000, 27000],
     mask: JELLYFISH, jelly: null,
-    seed: 8317,
+    seed: 8321,
     hint: '水母的觸手長長的',
   },
   {
-    id: 84, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],   // 果凍 56 層
+    id: 84, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [33000, 66000, 99000],   // 果凍 56 層
     mask: WHALE,
     jelly: [
       '.......',
@@ -2161,12 +2161,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 8412,
+    seed: 8417,
     hint: '鯨魚背上鋪滿了果凍',
   },
   {
-    id: 85, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [24000, 48000, 72000],   // 果凍 42 層
+    id: 85, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 42 層
     mask: CHEST,
     jelly: [
       '.......',
@@ -2179,19 +2179,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 8507,
+    seed: 8515,
     hint: '寶箱蓋子上的果凍要敲兩次！',
   },
   {
-    id: 86, rows: 9, cols: 7, moves: 24, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { nyanko: 40 } }, stars: [8000, 16000, 24000],
+    id: 86, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { nyanko: 40 } }, stars: [11000, 22000, 33000],
     mask: UFO, jelly: null,
-    seed: 8608,
+    seed: 8610,
     hint: '宇宙篇！幽浮來接貓咪老師',
   },
   {
-    id: 87, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [16000, 32000, 48000],   // 果凍 42 層
+    id: 87, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 42 層
     mask: COMET,
     jelly: [
       '.......',
@@ -2204,19 +2204,19 @@ export const LEVELS = [
       '.222222',
       '.......',
     ],
-    seed: 8713,
+    seed: 8716,
     hint: '彗星的尾巴有果凍',
   },
   {
-    id: 88, rows: 9, cols: 7, moves: 28, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'collect', items: { piggy: 36, egg: 36 } }, stars: [8000, 16000, 24000],
+    id: 88, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { piggy: 36, egg: 36 } }, stars: [9000, 18000, 27000],
     mask: ALIEN, jelly: null,
-    seed: 8811,
+    seed: 8822,
     hint: '外星人的天線要用直的消',
   },
   {
-    id: 89, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 62 層
+    id: 89, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [34000, 68000, 102000],   // 果凍 62 層
     mask: PLANET,
     jelly: [
       '.......',
@@ -2233,22 +2233,22 @@ export const LEVELS = [
     hint: '星球表面鋪滿果凍',
   },
   {
-    id: 90, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { sloth: 28, dog: 28, snoopy: 28 } }, stars: [13000, 26000, 39000],
+    id: 90, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { sloth: 28, dog: 28, snoopy: 28 } }, stars: [10000, 20000, 30000],
     mask: SPIRAL, jelly: null,
     seed: 9014,
     hint: '銀河漩渦！三種一起收',
   },
   {
-    id: 91, rows: 9, cols: 7, moves: 29, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { egg: 44 } }, stars: [10000, 20000, 30000],
+    id: 91, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { egg: 44 } }, stars: [12000, 24000, 36000],
     mask: APARTMENT, jelly: null,
-    seed: 9109,
+    seed: 9115,
     hint: '城市篇！公寓的窗戶亮了',
   },
   {
-    id: 92, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [16000, 32000, 48000],   // 果凍 42 層
+    id: 92, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],   // 果凍 42 層
     mask: BUS,
     jelly: [
       '.......',
@@ -2261,19 +2261,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 9215,
+    seed: 9219,
     hint: '公車車身上有果凍',
   },
   {
-    id: 93, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'snoopy', 'moodeng'],
-    goal: { type: 'collect', items: { snoopy: 36, moodeng: 36 } }, stars: [8000, 16000, 24000],
+    id: 93, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'snoopy', 'moodeng'],
+    goal: { type: 'collect', items: { snoopy: 36, moodeng: 36 } }, stars: [10000, 20000, 30000],
     mask: UMBRELLA, jelly: null,
-    seed: 9308,
+    seed: 9313,
     hint: '下雨天撐傘收集',
   },
   {
-    id: 94, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 60 層
+    id: 94, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [37000, 74000, 111000],   // 果凍 60 層
     mask: COFFEE,
     jelly: [
       '.......',
@@ -2286,12 +2286,12 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 9418,
+    seed: 9429,
     hint: '咖啡杯裡的果凍融化掉',
   },
   {
-    id: 95, rows: 9, cols: 7, moves: 41, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 28 層
+    id: 95, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 28 層
     mask: TOWER,
     jelly: [
       '.......',
@@ -2304,19 +2304,19 @@ export const LEVELS = [
       '2222222',
       '2222222',
     ],
-    seed: 9507,
+    seed: 9518,
     hint: '城市高塔的底座鋪滿果凍',
   },
   {
-    id: 96, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
-    goal: { type: 'collect', items: { nyanko: 36, dog: 36 } }, stars: [8000, 16000, 24000],
+    id: 96, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { nyanko: 36, dog: 36 } }, stars: [11000, 22000, 33000],
     mask: GEM, jelly: null,
-    seed: 9612,
+    seed: 9623,
     hint: '終極篇！閃亮亮的寶石',
   },
   {
-    id: 97, rows: 9, cols: 7, moves: 27, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'jelly' }, stars: [20000, 40000, 60000],   // 果凍 56 層
+    id: 97, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 56 層
     mask: CROWN2,
     jelly: [
       '.......',
@@ -2329,19 +2329,19 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 9710,
+    seed: 9717,
     hint: '皇冠上鑲滿了果凍',
   },
   {
-    id: 98, rows: 9, cols: 7, moves: 34, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
-    goal: { type: 'collect', items: { sloth: 36, egg: 36, moodeng: 32 } }, stars: [11000, 22000, 33000],
+    id: 98, rows: 9, cols: 7, moves: 27, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'],
+    goal: { type: 'collect', items: { sloth: 36, egg: 36, moodeng: 32 } }, stars: [13000, 26000, 39000],
     mask: CASTLE2, jelly: null,
-    seed: 9810,
+    seed: 9820,
     hint: '城堡大門！三種一起收',
   },
   {
-    id: 99, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'piggy'],
-    goal: { type: 'jelly' }, stars: [21000, 42000, 63000],   // 果凍 52 層
+    id: 99, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [34000, 68000, 102000],   // 果凍 52 層
     mask: MEDAL,
     jelly: [
       '.......',
@@ -2354,14 +2354,14 @@ export const LEVELS = [
       '2222222',
       '.......',
     ],
-    seed: 9909,
+    seed: 9911,
     hint: '金牌上的果凍有好多',
   },
   {
-    id: 100, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
-    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [11000, 22000, 33000],
+    id: 100, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'collect', items: { dog: 32, sloth: 32, egg: 32 } }, stars: [8000, 16000, 24000],
     mask: FIREWORKS, jelly: null,
-    seed: 10010,
+    seed: 10021,
     hint: '第 100 關！放煙火慶祝吧～',
   },
 ];
