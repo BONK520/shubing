@@ -716,7 +716,11 @@ function smoothPath(pts) {
   return d;
 }
 function goalBadge(lvl) {
-  const g = lvl.goal || {};
+  const g0 = lvl.goal || {};
+  // 王關（好幾個目標）：照第一個目標顯示
+  const first = g0.type === 'mix' ? goalPartsOf(lvl)[0] : null;
+  const g = first && first.kind === 'collect' ? { type: 'collect', items: { [first.id]: first.need } }
+    : first && first.kind === 'jelly' ? { type: 'jelly' } : g0;
   const b = el('span', 'badge');
   if (g.type === 'collect') {
     const id = Object.keys(g.items || {})[0];
