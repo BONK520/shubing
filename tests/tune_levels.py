@@ -17,7 +17,7 @@ from run_tests import serve   # noqa: E402
 MARGIN, S3_MARGIN = 0.03, 0.05
 
 SEARCH = r"""
-async ({ ids, games, margin, s3margin, seeds, keepUpto }) => {
+async ({ ids, games, margin, s3margin, seeds, keepUpto, minMoves = 10 }) => {
   const { targetsFor, summarize } = await import('/tests/sim.js');
   // fixed = null：第 0…games-1 次玩的盤面各一局；fixed = 0：每次打開都先看到的第 0 個盤面玩 games 次
   const run = async (L, fixed) => (await window.simLevels([L], { games, fixed }))[L.id];
@@ -29,7 +29,7 @@ async ({ ids, games, margin, s3margin, seeds, keepUpto }) => {
     const ok = S => S.casual.pass >= T.casual.pass + margin && S.decent.pass >= T.decent.pass + margin;
     // 1. 步數：在「各種盤面」上二分搜尋最少步數（過關率大致隨步數遞增）
     // --keep-moves-upto N：第 1–N 關步數不會比現在少（重新調星星時只會變簡單，不會突然少給步數）
-    let lo = id <= keepUpto ? Math.max(10, L0.moves) : 10, hi = 60, m = null;
+    let lo = id <= keepUpto ? Math.max(minMoves, L0.moves) : minMoves, hi = 60, m = null;
     while (lo <= hi) {
       const mid = (lo + hi) >> 1, L = { ...L0, moves: mid };
       if (ok(sum(L, await run(L, null)))) { m = mid; hi = mid - 1; } else lo = mid + 1;
@@ -74,6 +74,7 @@ def main():
     ap.add_argument('--games', type=int, default=400)
     ap.add_argument('--seeds', type=int, default=12, help='每關試幾個種子（level.seed, +1, +2 …）')
     ap.add_argument('--keep-moves-upto', type=int, default=0, help='第 1–N 關的步數至少維持現在的值（只調星星和種子、必要時加步數）')
+    ap.add_argument('--min-moves', type=int, default=10, help='步數至少這麼多（連消很多時關卡太短不好玩）')
     ap.add_argument('--json', help='另外把建議值存成 JSON（[{id, moves, seed, stars, …}]），給腳本套用到 js/levels.js')
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):
@@ -90,7 +91,7 @@ def main():
         pg.wait_for_function('() => window.__simReady === true', timeout=60000)
         problems = pg.evaluate('() => window.validateLevels()')
         print('validateLevels:', '; '.join(problems) if problems else 'OK')
-        res = pg.evaluate(SEARCH, {'ids': ids, 'games': a.games, 'margin': MARGIN, 's3margin': S3_MARGIN, 'seeds': a.seeds, 'keepUpto': a.keep_moves_upto})
+        res = pg.evaluate(SEARCH, {'ids': ids, 'games': a.games, 'margin': MARGIN, 's3margin': S3_MARGIN, 'seeds': a.seeds, 'keepUpto': a.keep_moves_upto, 'minMoves': a.min_moves})
         b.close()
     srv.shutdown()
     for e in errors:
