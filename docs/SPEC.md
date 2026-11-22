@@ -217,12 +217,32 @@ export const LEVELS = [
 ];
 ```
 
-- 12–60 levels (currently 30), mechanics introduced one at a time (collect → shapes → jelly → mixed); from level 16 on,
+- 12–150 levels (currently 100), mechanics introduced one at a time (collect → shapes → jelly → mixed); from level 16 on,
   chapters of five with the hardest level last (difficulty curve: `targetsFor` in `tests/sim.js`).
 - Uses 4–6 kinds; never only 3 (too many free cascades).
 - The scanned toys (`dog`, `sloth`, `egg`) appear in every level; collect goals prefer them.
 - `stars[0]` is the minimum score to pass a score level; for other goals the goal must be met, stars come from the final score.
 - `hint` = one short zh-TW line shown at level start (optional).
+
+## 4a. Level rotation with board mechanics (2026-11)
+
+- Every level keeps its board shape and chapter; mechanics were layered on by a generator (rules below), then all
+  100 levels were retuned with `tests/tune_levels.py --min-moves 15`.
+- First appearance (main.js shows a one-time intro card: icon + one sentence, tap to start; seen list in
+  `save.seen`, per device): jelly 7, dino 10, cage 12, frosting 16, chocolate 22, licorice 26, portal 31.
+- Levels 31–100, five per chapter: dino rescue (every other chapter: collect with portals + licorice) → jelly with
+  cages / portals → clear frosting + cages (every other chapter: collect + clear chocolate) → jelly with frosting /
+  portals → boss (`mix`: jelly or collect + dinos + frosting / cages).
+- Placement rules: frosting builds up from the bottom of a column segment (no empty cell under it) and every
+  frosting / chocolate cell has a neighbour that can still make a 3-in-a-row; chocolate starts in the middle rows;
+  portals bridge gaps in a column (to the mirrored column when possible); dinos only drop into columns with at
+  least 4 cells to an exit; every cell a dino cannot fall out of is an exit (arrows hidden on short column tops
+  dinos never reach).
+- `validateLevels` checks obstacles (size, characters, not on holes, frosting / chocolate not on jelly, nothing
+  empty under frosting), portals (entrance has no cell below, exit no cell above), licorice, and that each goal's
+  blockers exist on the board.
+- Simulation bots pick from `engine.listMoves()` and value dino progress, blockers hit, cages opened and chocolate
+  cleared (`tests/sim.bots.js` PROFILES: `block`, `chocoAny`, `dino`).
 
 ## 5. Audio — `js/audio.js`
 
@@ -296,6 +316,47 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - `<model-viewer>` (pinned jsDelivr version) showing one toy at a time, tabs/thumbnails to switch between all six.
 - `ar` with `ar-modes="webxr scene-viewer quick-look"`, `src` = GLB, `ios-src` = USDZ, camera-controls, auto-rotate,
   soft shadow. Shows 「這是暫代模型」 for placeholders. Back link to `index.html`. zh-TW labels.
+
+## 8a. Gravity, refill and combos (2026-11)
+
+- Holes stop pieces; new pieces enter only at each column's top cell. A cell under a hole is filled by a resting piece
+  sliding diagonally from the upper-left / upper-right (`fall` moves / spawns carry `path` when not straight down);
+  an unreachable cell gets a new piece directly.
+- Refill colours are chosen after landing, bottom-up; `cascadeBias` (default 0.18) copies a neighbour's colour,
+  `antiCascade` defaults to 0. sugarCrush turns the bias off.
+- First board and shuffles have at least 2 valid moves.
+- Combos: wrapped + wrapped = 5×5, refill, 5×5 again (second clear has cascade 2); fish + striped / wrapped = 3 carrying fish.
+
+## 8c. Board mechanics (Candy Crush blockers, 2026-11) — `js/engine.js`, `js/blockers.js`
+
+Composable per level. Level fields (passed to the engine by `mechOpts(level)` in `js/levels.js`):
+- `obstacles`: one string per row. `L` cage (licorice lock: the piece cannot be swapped or fall and stops what falls
+  onto it; a match through it or any effect breaks it, the piece stays), `1`/`2`/`3` frosting layers (never moves; a
+  match next to it or an effect removes a layer), `C` chocolate (1 layer; after a move that broke none, one chocolate
+  grows into a neighbouring normal piece), `S` licorice swirl (falls, swappable, never matches; removed by a match next
+  to it or an effect; stops striped beams), `D` dino, `E` dino exit, `.` nothing.
+- `portals: [[r1, c1, r2, c2], …]`: what falls out of the bottom of (r1, c1) comes in at the top of (r2, c2).
+- `licorice: { rate, max }`: new pieces are sometimes swirls. `dinos: { onBoard, rate }`: how dinos drop in.
+- Dinos (the old dino plush photo, `assets/sprites/dino_n.png`) fall, slide and can be swapped, but cannot be matched or
+  destroyed; one standing on an exit leaves the board. With dinos and no `E`, every column's bottom cell (not a
+  portal entrance) is an exit.
+
+Goals (`goal.type`): `collect`, `jelly`, `score`, plus `dino { count }`, `clear { what: ['frost', 'choco', 'cage'] }`
+and `mix { items?, jelly?, dinos?, clear? }`. `goalParts`, `partLeft`, `goalDone` in `js/levels.js` are shared by the
+game and the simulator.
+
+Engine events and fields: every event has `lock` (cage layer); `clear` adds `unlocks [{ r, c }]` and
+`blockerHits [{ r, c, block: 'frost', left }]`; a removed blocker is in `removed` (`piece.block`, cause `near` for a
+neighbouring match); line effects cut by a swirl carry `reach [lo, hi]`; `exit { cells }` (then a `fall`);
+`spread { from, to, piece, was }` (last event of a move, before an auto-shuffle); fall paths mark portal jumps with
+`warp: true`. Pieces of these kinds carry `block` (`dino` / `frost` / `choco` / `licorice`) and `hp`.
+`stats` adds `dinosOut`, `dinosTotal`, `frostLeft` (layers), `chocoLeft`, `licoriceLeft`, `locksLeft`.
+Plain levels give exactly the same events as before.
+
+Renderer: blockers are drawn from `js/blockers.js` (canvas, cached per cell size); cages break in two halves; frosting
+and chocolate crumble; chocolate spread grows from the neighbour and melts the eaten piece; dinos (mint rescue bubble,
+look around) hop out at exits (cues `dino`, `dinoout` → main.js flies them to the HUD); green arrows under exits; portal
+rings on the cell edges; falling pieces drop out of a portal entrance and come in above the exit.
 
 ## 8b. Wardrobe (three-star cosmetics) — `js/cosmetics.js`
 

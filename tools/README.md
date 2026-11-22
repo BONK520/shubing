@@ -50,7 +50,7 @@ python tools/build_assets.py --force   # 全部重做
 | `dog` | 皮蛋 | Object Capture 掃描（會轉圈） |
 | `sloth` | 薯餅 | Object Capture 掃描 |
 | `egg` | 蛋黃哥 | Object Capture 掃描 |
-| `dino` | 小恐龍 | 照片去背（選到會彈跳） |
+| `piggy` | 存錢豬 | 照片去背（選到會彈跳；2026-11 取代 `dino` 龍龍當方塊；`assets/sprites/dino*.png` 現在是「救出龍龍」關卡的龍龍） |
 | `nyanko` | 貓咪老師 | 照片去背 |
 | `moodeng` | 彈跳豬（Moo Deng） | 照片去背 |
 | `snoopy` | 史努比 | 照片去背 |

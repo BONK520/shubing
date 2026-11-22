@@ -15,7 +15,7 @@
 //            稍微偏好在下面消（比較容易連鎖）
 import { createEngine } from '../js/engine.js';
 import { PIECES } from '../js/pieces.js';
-import { isScoreLevel, passScore, starsFor } from '../js/levels.js';
+import { isScoreLevel, passScore, starsFor, mechOpts, goalDone, goalParts, partLeft } from '../js/levels.js';
 
 export { isScoreLevel, passScore, starsFor };
 
@@ -46,6 +46,7 @@ export function makeEngine(level, attempt) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed: seedFor(level, attempt) };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
+  Object.assign(opts, mechOpts(level));                    // 盤面機關（鐵籠子、糖霜、巧克力、甘草、龍龍、傳送門）
   if (level.goal && level.goal.type === 'collect') {      // 跟 main.js 一樣：小魚優先游去目標還要收集的毛絨
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
@@ -54,17 +55,18 @@ export function makeEngine(level, attempt) {
 }
 // main.js goalMet()（目標關；分數關沒有「提早達成」）
 export function goalMet(level, e) {
-  const g = level.goal || {};
-  if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (e.stats.cleared[kindOf(id)] || 0) >= n);
-  if (g.type === 'jelly') return e.stats.jellyLeft <= 0;
-  return e.score >= passScore(level);          // 分數關：到了目標就結束
+  return goalDone(level, e.stats, e.score, kindOf);     // 分數關：到了目標就結束
 }
 
 // ---------- players ----------
 export const PROFILES = {
   // weights are in "cells" (1 = one plain piece cleared); urgency: jelly weight × (1 + urgency / jelly left)
-  casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3 },
-  decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5 },
+  // board mechanics: block = one layer of a goal blocker (frosting / chocolate / cage), chocoAny = clearing chocolate
+  // that is not a goal (it would spread), dino = one row a dino moves down
+  casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3,
+    block: 2, chocoAny: 1, dino: 2.5 },
+  decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5,
+    block: 3, chocoAny: 1.5, dino: 4 },
 };
 
 // top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
@@ -120,14 +122,57 @@ function validMoves(s) {
 // best move by immediate value (no lookahead)
 function bestMove(s, moves, level, e, W, rnd) {
   const { rows: R, cols: C, mask, grid: g, jelly: J } = s;
-  const goal = level.goal || {};
-  const jellyGoal = goal.type === 'jelly';
+  const LK = s.lock || null;
+  const parts = goalParts(level), st = e.stats;
+  const part = k => parts.find(q => q.kind === k);
+  const leftOf = k => (part(k) ? partLeft(part(k), st, kindOf) : 0);
+  const jellyGoal = !!part('jelly') && leftOf('jelly') > 0;
   const want = new Set();
-  if (goal.type === 'collect') {
-    const cl = e.stats.cleared;
-    for (const [id, n] of Object.entries(goal.items || {})) if ((cl[kindOf(id)] || 0) < n) want.add(kindOf(id));
-  }
+  for (const q of parts) if (q.kind === 'collect' && partLeft(q, st, kindOf) > 0) want.add(kindOf(q.id));
+  // board mechanics: what one hit on each kind of blocker is worth, and one row of dino progress
+  const urg = k => 1 + W.urgency / Math.max(1, leftOf(k));
+  const BLK = {
+    frost: leftOf('frost') > 0 ? W.block * urg('frost') : 0.3,
+    choco: leftOf('choco') > 0 ? W.block * urg('choco') : W.chocoAny,
+    cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
+    licorice: 0.4,
+  };
+  const dinoW = leftOf('dino') > 0 ? W.dino * (1 + 2 / Math.max(1, leftOf('dino'))) : 0;
+  const dinos = [];
+  if (dinoW) for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) if (g[y][x] && g[y][x].block === 'dino') dinos.push({ y, x });
   const isCell = (y, x) => y >= 0 && y < R && x >= 0 && x < C && mask[y][x];
+  // extra value of clearing these cells (matched = cells of the match itself, area = cells effects hit)
+  const mech = (matched, area, mv) => {
+    let v = 0;
+    const hitCells = new Set([...matched, ...area]);
+    const seen = new Set();
+    for (const k of hitCells) {
+      const y = (k / C) | 0, x = k % C, q = g[y][x];
+      if (LK && LK[y][x]) v += BLK.cage;
+      if (q && q.block && BLK[q.block] && area.has(k)) { v += BLK[q.block]; seen.add(k); }
+    }
+    // a match also hits frosting / chocolate / swirls next to it
+    for (const k of matched) {
+      const y = (k / C) | 0, x = k % C;
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const yy = y + dy, xx = x + dx, kk = yy * C + xx;
+        if (!isCell(yy, xx) || seen.has(kk) || hitCells.has(kk)) continue;
+        const q = g[yy][xx];
+        if (q && q.block && BLK[q.block]) { v += BLK[q.block]; seen.add(kk); }
+      }
+    }
+    // dinos drop by the number of cleared cells below them in their column
+    for (const d of dinos) {
+      let n = 0;
+      for (const k of hitCells) if (k % C === d.x && ((k / C) | 0) > d.y && !(LK && LK[(k / C) | 0][d.x])) n++;
+      if (mv) {
+        const da = mv.a.r === d.y && mv.a.c === d.x, db = mv.b.r === d.y && mv.b.c === d.x;
+        if (da || db) n += (da ? mv.b.r - mv.a.r : mv.a.r - mv.b.r);     // swapped down (+1) / up (-1)
+      }
+      v += dinoW * n;
+    }
+    return v;
+  };
   // the fewer jelly layers are left, the more a player focuses on them (the last few are the hard part)
   const jellyW = jellyGoal ? W.jelly * (1 + W.urgency / Math.max(1, e.stats.jellyLeft)) : 0;
   const cellVal = key => {
@@ -172,7 +217,7 @@ function bestMove(s, moves, level, e, W, rnd) {
     const p = g[a.r][a.c], q = g[b.r][b.c];
     let v = 0;
     const area = new Set();
-    if ((p.special !== 'none' && q.special !== 'none') || p.special === 'bomb' || q.special === 'bomb') {
+    if (!p.block && !q.block && ((p.special !== 'none' && q.special !== 'none') || p.special === 'bomb' || q.special === 'bomb')) {
       // combo: estimate the cells it clears
       const sp = [p.special, q.special];
       if (sp[0] === 'bomb' && sp[1] === 'bomb') { for (let y = 0; y < R; y++) addRow(area, y); }
@@ -201,7 +246,7 @@ function bestMove(s, moves, level, e, W, rnd) {
         else addSq(area, b.r, b.c, 2);
       }
       for (const k of area) v += cellVal(k);
-      v += W.combo;
+      v += W.combo + mech(new Set(), area, null);
     } else {
       g[a.r][a.c] = q; g[b.r][b.c] = p;
       const matched = new Set();
@@ -224,6 +269,7 @@ function bestMove(s, moves, level, e, W, rnd) {
       for (const k of area) if (!matched.has(k)) v += W.fire * cellVal(k);
       v += W.low * (low / Math.max(1, R - 1));
       g[a.r][a.c] = p; g[b.r][b.c] = q;
+      v += mech(matched, area, mv);
     }
     v += rnd() * W.noise;   // people don't weigh moves exactly: near-equal moves are a coin flip
     if (v > bestV) { bestV = v; best = mv; }
@@ -234,7 +280,7 @@ function bestMove(s, moves, level, e, W, rnd) {
 export function pickMove(e, level, profile, rnd) {
   const W = PROFILES[profile];
   const s = e.snapshot();
-  const moves = validMoves(s);
+  const moves = e.listMoves ? e.listMoves() : validMoves(s);
   if (!moves.length) return null;
   if (W.randomP > 0 && rnd() < W.randomP) return moves[Math.floor(rnd() * moves.length)];
   return bestMove(s, moves, level, e, W, rnd);

@@ -63,6 +63,37 @@
 //   of moves). Sugar-crush transforms are the only events besides `clear` that carry `gained` / `points`.
 //   No shuffle is appended at the end of sugarCrush.
 // * addScore(n): adds n bonus points to the score (main.js lifts a completed goal level to 1 star with it).
+// * Gravity (Candy Crush style): holes stop pieces. New pieces enter only at the top cell of each column (its spawner)
+//   and fall inside that column's top segment. A cell that nothing can fall into from straight above (a hole above
+//   it) is filled by a piece sliding diagonally from the upper-left / upper-right cell (only a piece that is resting,
+//   i.e. cannot fall straight down). A cell nothing can ever reach that way gets a new piece directly.
+//   fall moves / spawns carry `path` ([{ r, c }, …], first = start; spawns start above their spawner) when the piece
+//   did not just fall straight down.
+// * Refill colours: chosen after everything has landed, bottom-up. Option `cascadeBias` (default 0.18): that share of
+//   new pieces copies the colour of a neighbour (more free cascades, Candy Crush feel). Option `antiCascade`
+//   (default 0): that share avoids colours that would match at once.
+// * The first board and every shuffle have at least 2 valid moves.
+// * Combos also: wrapped + wrapped = 5×5 blast, then after the refill a second 5×5 blast (its own clear, cascade 2);
+//   fish + striped / wrapped = 3 fish, each carrying it.
+// * Board mechanics (Candy Crush blockers). Option `obstacles`: rows of characters over the board:
+//     L  cage (licorice lock) on the piece there: it cannot be swapped and does not fall (it also stops what falls
+//        onto it). A match through it, or any effect, breaks the cage (clear `unlocks`); the piece stays.
+//     1 2 3  frosting with that many layers: fills the cell, never moves. A match next to it (up / down / left /
+//        right) or an effect removes one layer (clear `blockerHits` { r, c, block, left }); at 0 it is removed.
+//     C  chocolate: like 1-layer frosting. After a player move that broke no chocolate, one chocolate grows into a
+//        neighbouring normal piece (event { t: 'spread', from, to, piece, was }).
+//     S  licorice swirl: falls and can be swapped, never matches; removed by a match next to it or an effect.
+//        It stops striped beams (the beam removes it and goes no further that way; line effects carry `reach`).
+//     D  a dino (Candy Crush ingredient): falls and slides, can be swapped, cannot be matched or destroyed.
+//     E  a dino exit. A dino that lands on an exit leaves the board (event { t: 'exit', cells }), then gravity.
+//   Pieces of these kinds carry `block` ('frost' | 'choco' | 'licorice' | 'dino') and `hp` (frost layers);
+//   kinds -4 / -5 / -6 / -3. Cages are a separate layer: every event carries `lock` (0 / 1 per cell).
+//   Option `dinos: { total, onBoard = 2, rate = 0.3 }`: dinos drop in at the top until `total` have entered
+//   (counting the ones on the starting board), at most `onBoard` at a time. With dinos and no E, every column's
+//   bottom cell (and every cell above a hole) is an exit. Option `licorice: { rate, max }`: new pieces are sometimes licorice swirls.
+//   Option `portals: [[r1, c1, r2, c2], …]`: what falls out of the bottom of (r1, c1) comes in at the top of
+//   (r2, c2) (fall paths mark that step with `warp: true`).
+//   stats also: dinosOut, dinosTotal, frostLeft (layers), chocoLeft, licoriceLeft, locksLeft.
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
@@ -109,29 +140,39 @@ function parseLayout(layout) {
   });
 }
 
-const cp = p => (p ? { id: p.id, kind: p.kind, special: p.special } : null);
-const isComboPair = (p, q) =>
-  (p.special !== NONE && q.special !== NONE) || p.special === 'bomb' || q.special === 'bomb';
+const cp = p => (p ? (p.block ? { id: p.id, kind: p.kind, special: p.special, block: p.block, hp: p.hp } : { id: p.id, kind: p.kind, special: p.special }) : null);
+const isSpecial = p => !!p && !p.block && p.special !== NONE;
+// two specials, or a colour bomb with a candy; blockers (dino, licorice …) never make a combo
+const isComboPair = (p, q) => !p.block && !q.block && ((isSpecial(p) && isSpecial(q)) || p.special === 'bomb' || q.special === 'bomb');
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const BLOCK_KIND = { dino: -3, frost: -4, choco: -5, licorice: -6 };
 
 export function createEngine(opts = {}) {
   const layoutToks = opts.layout ? parseLayout(opts.layout) : null;
   const rows = opts.rows ?? (layoutToks ? layoutToks.length : 8);
   const cols = opts.cols ?? (layoutToks ? Math.max(...layoutToks.map(t => t.length)) : 8);
   const kinds = Array.isArray(opts.kinds) && opts.kinds.length ? opts.kinds.slice() : [0, 1, 2, 3, 4];
-  const antiCascade = opts.antiCascade ?? 0.72;
+  const antiCascade = opts.antiCascade ?? 0;
+  const cascadeBias = opts.cascadeBias ?? 0.18;
+  let biasNow = cascadeBias;            // sugarCrush turns it off (the bonus should settle, not keep chaining)
   const rng = mulberry32(opts.seed ?? 1);
   const rand = n => Math.floor(rng() * n);
   const maskIn = opts.mask || null;
   const jellyIn = opts.jelly || null;
   // collect goal { kind: count } (main.js / sim bots pass it): the fish prefers pieces the goal still needs
   const collect = opts.collect && typeof opts.collect === 'object' ? { ...opts.collect } : null;
+  const obsIn = Array.isArray(opts.obstacles) ? opts.obstacles : null;
+  const portalsIn = (opts.portals || []).map(q => (Array.isArray(q) ? { from: { r: q[0], c: q[1] }, to: { r: q[2], c: q[3] } } : q));
+  const dinoOpt = opts.dinos && opts.dinos.total > 0 ? { total: opts.dinos.total | 0, onBoard: opts.dinos.onBoard || 2, rate: opts.dinos.rate ?? 0.3 } : null;
+  const licOpt = opts.licorice && opts.licorice.rate > 0 ? { rate: opts.licorice.rate, max: opts.licorice.max ?? 4 } : null;
 
   // ---- state ----
   const cellMask = [];
   const grid = [];
   const jel = [];
+  const lock = [], exitAt = [];
   for (let r = 0; r < rows; r++) {
-    cellMask.push([]); grid.push([]); jel.push([]);
+    cellMask.push([]); grid.push([]); jel.push([]); lock.push(new Array(cols).fill(0)); exitAt.push(new Array(cols).fill(false));
     for (let c = 0; c < cols; c++) {
       let on;
       if (maskIn) { const ch = maskIn[r] ? maskIn[r][c] : undefined; on = ch !== undefined && ch !== '.'; }
@@ -151,8 +192,11 @@ export function createEngine(opts = {}) {
   for (const row of jel) for (const v of row) jellyLeft += v;
   let specialsMade = 0;
   let cascadesMax = 0;
+  let frostLeft = 0, chocoLeft = 0, licoriceLeft = 0, locksLeft = 0, dinosOnBoard = 0, dinosSpawned = 0, dinosOut = 0;
+  let chocoBroken = 0, dinosStart = 0;
 
   const newPiece = (kind, special = NONE) => ({ id: nextId++, kind, special });
+  const newBlock = (block, hp = 1) => ({ id: nextId++, kind: BLOCK_KIND[block], special: NONE, block, hp });
   const isCell = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && cellMask[r][c];
   const key = (r, c) => r * cols + c;
   // kind usable for matching at (r,c), or -9 (hole / empty / bomb)
@@ -163,7 +207,11 @@ export function createEngine(opts = {}) {
   };
   const gridCopy = () => grid.map(row => row.map(cp));
   const jellyCopy = () => jel.map(row => row.slice());
-  const ev = o => { o.board = gridCopy(); o.jelly = jellyCopy(); return o; };
+  const ev = o => { o.board = gridCopy(); o.jelly = jellyCopy(); o.lock = lock.map(row => row.slice()); return o; };
+  // frosting / chocolate and caged pieces never move; everything else falls
+  const immovable = (r, c) => { const p = grid[r][c]; return !!lock[r][c] || (!!p && (p.block === 'frost' || p.block === 'choco')); };
+  const movableAt = (r, c) => isCell(r, c) && !!grid[r][c] && !immovable(r, c);
+  const canSwap = (r, c) => movableAt(r, c);
   const forCells = fn => { for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (cellMask[r][c]) fn(r, c); };
 
   // ---- matching ----
@@ -311,28 +359,33 @@ export function createEngine(opts = {}) {
   function placeSpecial(g, cls, swapped) {
     if (cls.special === NONE) return null;
     if (swapped) for (const s of swapped) if (g.keys.has(key(s.r, s.c))) return { r: s.r, c: s.c };
-    const normal = p => grid[p.r][p.c] && grid[p.r][p.c].special === NONE;
+    // never into a cage: a group of only caged / special cells makes no new special
+    const normal = p => grid[p.r][p.c] && grid[p.r][p.c].special === NONE && !lock[p.r][p.c];
+    const free = p => !lock[p.r][p.c];
+    const or = (pick, list) => { const q = pick || list.find(free); return q ? { r: q.r, c: q.c } : null; };
     if (cls.special === 'fish') {
       // the cell nearest the middle of the group (a normal piece if there is one); ties: lower, then left
       const n = g.cells.length, my = g.cells.reduce((s, x) => s + x[0], 0) / n, mx = g.cells.reduce((s, x) => s + x[1], 0) / n;
       const order = g.cells.map(([r, c]) => ({ r, c, d: Math.abs(r - my) + Math.abs(c - mx) }))
         .sort((x, y) => x.d - y.d || y.r - x.r || x.c - y.c);
-      const pick = order.find(normal) || order[0];
-      return { r: pick.r, c: pick.c };
+      return or(order.find(normal), order);
     }
-    if (cls.special === 'wrap' && cls.crosses.length) return { ...(cls.crosses.find(normal) || cls.crosses[0]) };
+    if (cls.special === 'wrap' && cls.crosses.length) {
+      const cr = cls.crosses.map(x => ({ r: x.r, c: x.c }));
+      const q = or(cr.find(normal), cr);
+      if (q) return q;
+    }
     const run = cls.longest;
     const mid = (run.len - 1) / 2;
     const order = run.cells.map((cell, i) => ({ r: cell[0], c: cell[1], d: Math.abs(i - mid), i }))
       .sort((x, y) => x.d - y.d || x.i - y.i);
-    const pick = order.find(normal) || order[0];
-    return { r: pick.r, c: pick.c };
+    return or(order.find(normal), order);
   }
 
   // ---- one clear step ----
   function newStep(cascade) {
     return { cascade, mult: cascade, done: new Set(), prot: new Set(), removed: [], effects: [], created: [],
-      jellyHits: [], groups: [], pts: new Map(), queue: [] };
+      jellyHits: [], groups: [], pts: new Map(), queue: [], unlocks: [], blockerHits: [] };
   }
   function addPts(st, r, c, v) {
     if (!v) return;
@@ -353,7 +406,35 @@ export function createEngine(opts = {}) {
     const k = key(r, c);
     if (st.done.has(k) || st.prot.has(k)) return false;
     const p = grid[r][c];
+    if (lock[r][c]) {
+      // cage: it breaks, the piece inside stays (a match through it also counts for the jelly under it)
+      st.done.add(k);
+      lock[r][c] = 0; locksLeft--;
+      st.unlocks.push({ r, c });
+      hitJelly(st, r, c);
+      if (cause !== 'match') addPts(st, src.r, src.c, EFFECT_POINTS * st.mult);
+      return true;
+    }
     if (!p) return false;
+    if (p.block === 'dino') return false;                 // dinos cannot be destroyed
+    if (p.block === 'frost' && p.hp > 1) {
+      st.done.add(k);
+      p.hp--; frostLeft--;
+      st.blockerHits.push({ r, c, block: 'frost', left: p.hp });
+      addPts(st, src.r, src.c, EFFECT_POINTS * st.mult);
+      return true;
+    }
+    if (p.block) {
+      st.done.add(k);
+      grid[r][c] = null;
+      if (p.block === 'frost') frostLeft--;
+      else if (p.block === 'choco') { chocoLeft--; chocoBroken++; }
+      else if (p.block === 'licorice') licoriceLeft--;
+      st.removed.push({ r, c, piece: cp(p), cause });
+      hitJelly(st, r, c);
+      addPts(st, src.r, src.c, EFFECT_POINTS * st.mult);
+      return true;
+    }
     st.done.add(k);
     grid[r][c] = null;
     st.removed.push({ r, c, piece: cp(p), cause });
@@ -363,13 +444,37 @@ export function createEngine(opts = {}) {
     if (p.special !== NONE && !noFire) st.queue.push({ r, c, special: p.special });
     return true;
   }
-  function hitRow(st, r, c, cause, src) {
+  // a beam both ways from (r, c), one cell at a time each way (the same order as always); a licorice swirl
+  // is removed and stops the beam on that side. Returns how far each side reached (row or column index)
+  // when a swirl stopped it, else null.
+  function hitBeam(st, r, c, dr, dc, cause, src) {
     hit(st, r, c, cause, src);
-    for (let d = 1; d < cols; d++) { hit(st, r, c - d, cause, src); hit(st, r, c + d, cause, src); }
+    const reach = [dr ? r : c, dr ? r : c], open = [true, true];
+    let cut = false;
+    for (let d = 1; open[0] || open[1]; d++) {
+      for (let s = 0; s < 2; s++) {
+        if (!open[s]) continue;
+        const sg = s ? 1 : -1, y = r + dr * d * sg, x = c + dc * d * sg;
+        if (y < 0 || y >= rows || x < 0 || x >= cols) { open[s] = false; continue; }
+        reach[s] = dr ? y : x;
+        const p = isCell(y, x) ? grid[y][x] : null;
+        const stop = !!p && p.block === 'licorice' && !st.done.has(key(y, x));
+        hit(st, y, x, cause, src);
+        if (stop) { open[s] = false; cut = true; }
+      }
+    }
+    return cut ? reach : null;
   }
-  function hitCol(st, r, c, cause, src) {
-    hit(st, r, c, cause, src);
-    for (let d = 1; d < rows; d++) { hit(st, r - d, c, cause, src); hit(st, r + d, c, cause, src); }
+  const hitRow = (st, r, c, cause, src) => hitBeam(st, r, c, 0, 1, cause, src);
+  const hitCol = (st, r, c, cause, src) => hitBeam(st, r, c, 1, 0, cause, src);
+  // frosting / chocolate / licorice next to a matched cell lose a layer (once per step each)
+  function hitNear(st, cells) {
+    for (const [r, c] of cells) for (const [dr, dc] of DIRS) {
+      const y = r + dr, x = c + dc;
+      if (!isCell(y, x)) continue;
+      const q = grid[y][x];
+      if (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice')) hit(st, y, x, 'near', { r, c });
+    }
   }
   function hitSquare(st, r, c, rad, cause, src) {
     for (let d = 0; d <= rad; d++)
@@ -398,14 +503,17 @@ export function createEngine(opts = {}) {
   }
   // fish target: a piece on jelly; else a piece the collect goal still needs; else a normal piece; else any piece
   function fishTarget(st, src) {
-    const tiers = [[], [], [], []];
+    const tiers = [[], [], [], [], [], []];
     forCells((r, c) => {
       const p = grid[r][c], k = key(r, c);
-      if (!p || st.done.has(k) || st.prot.has(k) || (r === src.r && c === src.c)) return;
+      if (!p || p.block === 'dino' || st.done.has(k) || st.prot.has(k) || (r === src.r && c === src.c)) return;
+      const underDino = r > 0 && grid[r - 1][c] && grid[r - 1][c].block === 'dino';
       if (jel[r][c] > 0) tiers[0].push({ r, c });
       else if (collect && p.kind >= 0 && collect[p.kind] > (cleared[p.kind] || 0)) tiers[1].push({ r, c });
-      else if (p.special === NONE) tiers[2].push({ r, c });
-      else tiers[3].push({ r, c });
+      else if (underDino) tiers[2].push({ r, c });                       // clear the way for a dino
+      else if (p.block || lock[r][c]) tiers[3].push({ r, c });            // frosting, chocolate, licorice, cages
+      else if (p.special === NONE) tiers[4].push({ r, c });
+      else tiers[5].push({ r, c });
     });
     const t = tiers.find(x => x.length);
     return t ? t[rand(t.length)] : null;
@@ -418,8 +526,10 @@ export function createEngine(opts = {}) {
       st.effects.push({ fx: 'fish', r: src.r, c: src.c, to: { r: t.r, c: t.c }, carry });
       hit(st, t.r, t.c, 'fish', src);
       if (carry === 'h' || carry === 'v') {
-        st.effects.push({ fx: 'line', dir: carry, r: t.r, c: t.c });
-        if (carry === 'h') hitRow(st, t.r, t.c, 'combo', t); else hitCol(st, t.r, t.c, 'combo', t);
+        const f = { fx: 'line', dir: carry, r: t.r, c: t.c };
+        st.effects.push(f);
+        const rc = carry === 'h' ? hitRow(st, t.r, t.c, 'combo', t) : hitCol(st, t.r, t.c, 'combo', t);
+        if (rc) f.reach = rc;
       } else if (carry === 'wrap') {
         st.effects.push({ fx: 'blast', r: t.r, c: t.c, radius: 1 });
         hitSquare(st, t.r, t.c, 1, 'combo', t);
@@ -431,8 +541,8 @@ export function createEngine(opts = {}) {
       const { r, c, special } = st.queue.shift();
       const src = { r, c };
       if (special === 'fish') launchFish(st, src, 1);
-      else if (special === 'h') { st.effects.push({ fx: 'line', dir: 'h', r, c }); hitRow(st, r, c, 'h', src); }
-      else if (special === 'v') { st.effects.push({ fx: 'line', dir: 'v', r, c }); hitCol(st, r, c, 'v', src); }
+      else if (special === 'h') { const f = { fx: 'line', dir: 'h', r, c }; st.effects.push(f); const rc = hitRow(st, r, c, 'h', src); if (rc) f.reach = rc; }
+      else if (special === 'v') { const f = { fx: 'line', dir: 'v', r, c }; st.effects.push(f); const rc = hitCol(st, r, c, 'v', src); if (rc) f.reach = rc; }
       else if (special === 'wrap') { st.effects.push({ fx: 'blast', r, c, radius: 1 }); hitSquare(st, r, c, 1, 'wrap', src); }
       else if (special === 'bomb') {
         const k = commonKind(st);
@@ -447,7 +557,7 @@ export function createEngine(opts = {}) {
     let gained = 0;
     for (const [k, value] of st.pts) { points.push({ r: Math.floor(k / cols), c: k % cols, value }); gained += value; }
     return ev({ t: 'clear', cascade: st.cascade, groups: st.groups, removed: st.removed, effects: st.effects,
-      created: st.created, jellyHits: st.jellyHits, points, gained });
+      created: st.created, jellyHits: st.jellyHits, unlocks: st.unlocks, blockerHits: st.blockerHits, points, gained });
   }
 
   function matchStep(groups, cascade, swapped) {
@@ -461,6 +571,7 @@ export function createEngine(opts = {}) {
     }
     for (const { g, at } of plans)
       for (const [r, c] of g.cells) if (!at || at.r !== r || at.c !== c) hit(st, r, c, 'match');
+    for (const { g } of plans) hitNear(st, g.cells);
     for (const { g, cls, at } of plans) {
       if (!at) continue;
       const { r, c } = at;
@@ -492,6 +603,7 @@ export function createEngine(opts = {}) {
   function comboSteps(a, b, events) {
     const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
     const st = newStep(1);
+    let again = null;
     const center = { r: b.r, c: b.c };
     if (pa.special === 'bomb' && pb.special === 'bomb') {
       hit(st, a.r, a.c, 'combo', center, true);
@@ -506,7 +618,7 @@ export function createEngine(opts = {}) {
         const cells = [];
         forCells((r, c) => {
           const p = grid[r][c];
-          if (p && p.kind === K && p.special === NONE) {
+          if (p && p.kind === K && p.special === NONE && !lock[r][c]) {
             p.special = other.special === 'wrap' || other.special === 'fish' ? other.special : rng() < 0.5 ? 'h' : 'v';
             cells.push({ r, c, piece: cp(p) });
           }
@@ -523,72 +635,289 @@ export function createEngine(opts = {}) {
       hit(st, a.r, a.c, 'combo', center, true);
       hit(st, b.r, b.c, 'combo', center, true);
       if (other === 'fish') launchFish(st, center, 3);
-      else launchFish(st, center, 1, other);
+      else launchFish(st, center, 3, other);           // 3 隻強化的飛天玩偶，各自帶著條紋 / 包裝飛過去
     } else {
       const stripes = [pa.special, pb.special].filter(s => s === 'h' || s === 'v').length;
       hit(st, a.r, a.c, 'combo', center, true);
       hit(st, b.r, b.c, 'combo', center, true);
       if (stripes === 2) {
-        st.effects.push({ fx: 'line', dir: 'h', r: center.r, c: center.c });
-        st.effects.push({ fx: 'line', dir: 'v', r: center.r, c: center.c });
-        hitRow(st, center.r, center.c, 'combo', center);
-        hitCol(st, center.r, center.c, 'combo', center);
+        const fh = { fx: 'line', dir: 'h', r: center.r, c: center.c }, fv = { fx: 'line', dir: 'v', r: center.r, c: center.c };
+        st.effects.push(fh, fv);
+        const rh = hitRow(st, center.r, center.c, 'combo', center), rv = hitCol(st, center.r, center.c, 'combo', center);
+        if (rh) fh.reach = rh;
+        if (rv) fv.reach = rv;
       } else if (stripes === 1) {
-        for (let d = -1; d <= 1; d++) if (center.r + d >= 0 && center.r + d < rows)
-          st.effects.push({ fx: 'line', dir: 'h', r: center.r + d, c: center.c });
-        for (let d = -1; d <= 1; d++) if (center.c + d >= 0 && center.c + d < cols)
-          st.effects.push({ fx: 'line', dir: 'v', r: center.r, c: center.c + d });
+        const fx = { h: [], v: [] };
+        for (let d = -1; d <= 1; d++) if (center.r + d >= 0 && center.r + d < rows) {
+          const f = { fx: 'line', dir: 'h', r: center.r + d, c: center.c }; st.effects.push(f); fx.h[d + 1] = f;
+        }
+        for (let d = -1; d <= 1; d++) if (center.c + d >= 0 && center.c + d < cols) {
+          const f = { fx: 'line', dir: 'v', r: center.r, c: center.c + d }; st.effects.push(f); fx.v[d + 1] = f;
+        }
         for (let d = -1; d <= 1; d++) {
-          if (center.r + d >= 0 && center.r + d < rows) hitRow(st, center.r + d, center.c, 'combo', center);
-          if (center.c + d >= 0 && center.c + d < cols) hitCol(st, center.r, center.c + d, 'combo', center);
+          if (fx.h[d + 1]) { const rc = hitRow(st, center.r + d, center.c, 'combo', center); if (rc) fx.h[d + 1].reach = rc; }
+          if (fx.v[d + 1]) { const rc = hitCol(st, center.r, center.c + d, 'combo', center); if (rc) fx.v[d + 1].reach = rc; }
         }
       } else {
         st.effects.push({ fx: 'blast', r: center.r, c: center.c, radius: 2 });
         hitSquare(st, center.r, center.c, 2, 'combo', center);
+        again = center;
       }
     }
     runQueue(st);
     events.push(finishStep(st));
+    return again;
+  }
+  // wrapped + wrapped: after the refill, the same 5×5 blast once more
+  function secondBlast(center, events, cascade) {
+    const st = newStep(cascade);
+    st.effects.push({ fx: 'blast', r: center.r, c: center.c, radius: 2 });
+    hitSquare(st, center.r, center.c, 2, 'combo', center);
+    runQueue(st);
+    events.push(finishStep(st));
+  }
+  // a player combo: the combo itself, the refill, and (wrapped + wrapped) the second blast; returns the next cascade
+  function playCombo(a, b, events) {
+    const again = comboSteps(a, b, events);
+    fall(events);
+    if (!again) return 2;
+    secondBlast(again, events, 2);
+    fall(events);
+    return 3;
   }
 
   // ---- gravity + refill ----
+  // spawner of each column = its top cell; new pieces only enter there
+  const spawnRow = [];
+  for (let c = 0; c < cols; c++) { let r = 0; while (r < rows && !cellMask[r][c]) r++; spawnRow.push(r < rows ? r : -1); }
+  // gravity graph: what a cell falls into (a portal sends the bottom of one column to the top of another)
+  const portalOut = new Map(), portalIn = new Map();
+  for (const q of portalsIn) if (isCell(q.from.r, q.from.c) && isCell(q.to.r, q.to.c)) {
+    portalOut.set(key(q.from.r, q.from.c), { r: q.to.r, c: q.to.c });
+    portalIn.set(key(q.to.r, q.to.c), { r: q.from.r, c: q.from.c });
+  }
+  // (a portal exit is fed only by its portal, not by the cell above it)
+  const below = (r, c) => portalOut.get(key(r, c)) || (isCell(r + 1, c) && !portalIn.has(key(r + 1, c)) ? { r: r + 1, c } : null);
+  const above = (r, c) => portalIn.get(key(r, c)) || (isCell(r - 1, c) && !portalOut.has(key(r - 1, c)) ? { r: r - 1, c } : null);
+  // chains: from a cell nothing falls into, following `below` (each cell is in exactly one chain)
+  const chains = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (!cellMask[r][c] || above(r, c)) continue;
+    const ch = [], seen = new Set();
+    for (let q = { r, c }; q && !seen.has(key(q.r, q.c)); q = below(q.r, q.c)) { seen.add(key(q.r, q.c)); ch.push(q); }
+    chains.push(ch);
+  }
+  // column by column, the lower part of a column first
+  chains.sort((x, y) => x[0].c - y[0].c || y[0].r - x[0].r);
+  const isSpawner = q => q.r === spawnRow[q.c] && !above(q.r, q.c);
+  // exits worth drawing: not the end of a short column top that dinos never drop into (they still work as exits)
+  const shownExits = () => {
+    const out = exitAt.map(row => row.slice()), ok = dinoCol();
+    for (const ch of chains) {
+      const end = ch[ch.length - 1];
+      if (isSpawner(ch[0]) && !ok[ch[0].c] && !ch.some(q => immovable(q.r, q.c))) out[end.r][end.c] = false;
+    }
+    return out;
+  };
+  // columns a dino may drop into: the spawner's chain is at least 4 cells long (or the longest there is)
+  let dinoCols = null;
+  const dinoCol = () => {
+    if (dinoCols) return dinoCols;
+    const len = new Array(cols).fill(0);
+    for (const ch of chains) if (isSpawner(ch[0])) len[ch[0].c] = ch.length;
+    const need = Math.min(4, Math.max(...len));
+    return (dinoCols = len.map(n => n > 0 && n >= need));
+  };
   function pickKind(r, c) {
-    if (rng() < antiCascade) {
+    if (antiCascade > 0 && rng() < antiCascade) {
       const safe = kinds.filter(k => !wouldMatch(r, c, k));
       if (safe.length) return safe[rand(safe.length)];
+    }
+    if (biasNow > 0 && rng() < biasNow) {
+      // 爽感輔助：照旁邊已經有的顏色（下、左、右、上），比較容易接著連消
+      const nb = [];
+      for (const [dr, dc] of [[1, 0], [0, -1], [0, 1], [-1, 0]]) { const k = kAt(r + dr, c + dc); if (k >= 0 && kinds.includes(k)) nb.push(k); }
+      if (nb.length) return nb[rand(nb.length)];
     }
     return kinds[rand(kinds.length)];
   }
   function fall(events) {
-    const moves = [], spawnCells = [];
-    for (let c = 0; c < cols; c++) {
-      const col = [];
-      for (let r = 0; r < rows; r++) if (cellMask[r][c]) col.push(r);
-      let w = col.length - 1;
-      for (let i = col.length - 1; i >= 0; i--) {
-        const r = col[i], p = grid[r][c];
-        if (!p) continue;
-        const tr = col[w--];
-        if (tr !== r) { grid[tr][c] = p; grid[r][c] = null; moves.push({ id: p.id, from: { r, c }, to: { r: tr, c } }); }
+    const paths = new Map(), starts = new Map(), spawned = [], count = new Array(cols).fill(0);
+    // walk a piece from ch[y] to ch[w] (marking portal jumps), recording the path
+    const walk = (t, ch, y, w) => {
+      for (let i = y + 1; i <= w; i++) {
+        const a = ch[i - 1], b = ch[i];
+        if (b.c === a.c && b.r === a.r + 1) continue;
+        const last = t[t.length - 1];
+        if (last.r !== a.r || last.c !== a.c) t.push({ r: a.r, c: a.c });
+        t.push({ r: b.r, c: b.c, warp: true });
       }
-      for (let i = w; i >= 0; i--) spawnCells.push({ r: col[i], c, j: w - i });
+      const to = ch[w], last = t[t.length - 1];
+      if (last.r !== to.r || last.c !== to.c) t.push({ r: to.r, c: to.c });
+    };
+    const move = (q, ch, y, w) => {
+      const from = ch[y], to = ch[w];
+      if (!paths.has(q)) { paths.set(q, [{ r: from.r, c: from.c }]); starts.set(q, { r: from.r, c: from.c }); }
+      walk(paths.get(q), ch, y, w);
+      grid[to.r][to.c] = q; grid[from.r][from.c] = null;
+    };
+    const spawnInto = (ch, y) => {
+      const head = ch[0], j = count[head.c]++;
+      const p = newPiece(-2);                         // colour chosen after everything has landed
+      const t = [{ r: head.r - 1 - j, c: head.c }];
+      walk(t, ch, 0, y);
+      grid[ch[y].r][ch[y].c] = p;
+      paths.set(p, t);
+      spawned.push({ p, c: head.c, j });
+    };
+    // gravity along every chain; frosting, chocolate and cages split a chain (nothing passes them)
+    function settleColumns() {
+      let moved = false;
+      for (const ch of chains) {
+        let i = ch.length - 1;
+        while (i >= 0) {
+          if (immovable(ch[i].r, ch[i].c)) { i--; continue; }
+          let top = i;
+          while (top - 1 >= 0 && !immovable(ch[top - 1].r, ch[top - 1].c)) top--;
+          let w = i;
+          for (let y = i; y >= top; y--) {
+            const q = grid[ch[y].r][ch[y].c];
+            if (!q) continue;
+            if (y !== w) { move(q, ch, y, w); moved = true; }
+            w--;
+          }
+          if (top === 0 && isSpawner(ch[0])) for (let y = w; y >= top; y--) { spawnInto(ch, y); moved = true; }
+          i = top - 1;
+        }
+      }
+      return moved;
     }
-    spawnCells.sort((x, y) => y.r - x.r || x.c - y.c);
-    const spawns = [];
-    for (const s of spawnCells) {
-      const p = newPiece(pickKind(s.r, s.c));
-      grid[s.r][s.c] = p;
-      spawns.push({ piece: cp(p), from: { r: -1 - s.j, c: s.c }, to: { r: s.r, c: s.c } });
+    // a cell nothing can fall into from straight above (hole, frosting, chocolate or a cage above it):
+    // a resting piece slides in from the upper-left / upper-right
+    function slideOne() {
+      for (let r = rows - 1; r >= 1; r--) for (let c = 0; c < cols; c++) {
+        if (!cellMask[r][c] || grid[r][c]) continue;
+        const up = above(r, c);
+        if (up && !immovable(up.r, up.c)) continue;
+        const order = (r + c) % 2 ? [-1, 1] : [1, -1];
+        for (const d of order) {
+          const sc = c + d;
+          if (!movableAt(r - 1, sc)) continue;
+          const bl = below(r - 1, sc);
+          if (bl && !grid[bl.r][bl.c] && !immovable(bl.r, bl.c)) continue;   // that piece can still fall straight down
+          const q = grid[r - 1][sc];
+          if (!paths.has(q)) { paths.set(q, [{ r: r - 1, c: sc }]); starts.set(q, { r: r - 1, c: sc }); }
+          paths.get(q).push({ r, c });
+          grid[r][c] = q; grid[r - 1][sc] = null;
+          return true;
+        }
+      }
+      return false;
     }
+    for (let guard = 0; guard < 4000; guard++) {
+      if (settleColumns()) continue;
+      if (slideOne()) continue;
+      // nothing can reach a cell any more: a new piece appears there directly (dropping in from above it)
+      let filled = false;
+      forCells((r, c) => {
+        if (filled || grid[r][c]) return;
+        const j = count[c]++;
+        const p = newPiece(-2);
+        let top = r;
+        while (top - 1 >= 0 && cellMask[top - 1][c]) top--;
+        grid[r][c] = p;
+        paths.set(p, [{ r: top - 1 - j, c }, { r, c }]);
+        spawned.push({ p, c, j });
+        filled = true;
+      });
+      if (!filled) break;
+    }
+    // colours of the new pieces, bottom-up (so the cascade-friendly refill sees what is below)
+    const fresh = spawned.map(sp => ({ sp, at: paths.get(sp.p)[paths.get(sp.p).length - 1] }))
+      .sort((x, y) => y.at.r - x.at.r || x.at.c - y.at.c);
+    // a dino drops in at the top while the goal still needs more (the highest new piece in a column with a real way
+    // down — at least 4 cells to its exit — becomes one)
+    if (dinoOpt && fresh.length && dinosSpawned < dinoOpt.total && dinosOnBoard < dinoOpt.onBoard && rng() < dinoOpt.rate) {
+      const ok = fresh.filter(x => dinoCol()[x.sp.c]);
+      if (ok.length) {
+        const top = ok.reduce((m, x) => (x.at.r < m.at.r ? x : m), ok[0]);
+        Object.assign(top.sp.p, { kind: BLOCK_KIND.dino, block: 'dino', hp: 0 });
+        dinosSpawned++; dinosOnBoard++;
+      }
+    }
+    for (const { sp, at } of fresh) {
+      if (sp.p.block) continue;
+      if (licOpt && licoriceLeft < licOpt.max && rng() < licOpt.rate) { Object.assign(sp.p, { kind: BLOCK_KIND.licorice, block: 'licorice', hp: 1 }); licoriceLeft++; continue; }
+      sp.p.kind = pickKind(at.r, at.c);
+    }
+    const straight = pts => pts.every(q => q.c === pts[0].c && !q.warp);
+    const moves = [], spawns = [];
+    for (const [p, pts] of paths) {
+      if (spawned.some(sp => sp.p === p)) continue;
+      const to = pts[pts.length - 1], from = starts.get(p);
+      if (from.r === to.r && from.c === to.c) continue;
+      const m = { id: p.id, from: { ...from }, to: { ...to } };
+      if (!straight(pts)) m.path = pts.map(q => ({ ...q }));
+      moves.push(m);
+    }
+    // pieces that stayed in their column stack above it -1, -2, … (lowest first); ones that slid sideways keep their path
+    const stack = new Array(cols).fill(0);
+    const order = spawned.slice().sort((x, y) => {
+      const a = paths.get(x.p), b = paths.get(y.p);
+      return b[b.length - 1].r - a[a.length - 1].r;
+    });
+    for (const sp of order) {
+      const pts = paths.get(sp.p), to = pts[pts.length - 1];
+      const o = { piece: cp(sp.p), from: { r: -1 - sp.j, c: sp.c }, to: { ...to } };
+      if (!straight(pts)) o.path = pts.map(q => ({ ...q }));
+      else o.from.r = -1 - stack[sp.c]++;
+      spawns.push(o);
+    }
+    spawns.sort((x, y) => y.to.r - x.to.r || x.to.c - y.to.c);
     if (moves.length || spawns.length) events.push(ev({ t: 'fall', moves, spawns }));
   }
 
-  // matches -> clear -> fall, repeated; returns the last cascade number used
+  // dinos standing on an exit leave the board
+  function collectDinos(events) {
+    const cells = [];
+    forCells((r, c) => {
+      const p = grid[r][c];
+      if (p && p.block === 'dino' && exitAt[r][c]) { cells.push({ r, c, piece: cp(p) }); grid[r][c] = null; dinosOnBoard--; dinosOut++; }
+    });
+    if (!cells.length) return false;
+    events.push(ev({ t: 'exit', cells }));
+    return true;
+  }
+  // after a move that broke no chocolate: one chocolate grows into a neighbouring normal piece
+  function spreadChoco(events) {
+    const cand = [];
+    forCells((r, c) => {
+      const p = grid[r][c];
+      if (!p || p.block !== 'choco') return;
+      for (const [dr, dc] of DIRS) {
+        const y = r + dr, x = c + dc;
+        if (!isCell(y, x) || lock[y][x]) continue;
+        const q = grid[y][x];
+        if (q && !q.block && q.kind >= 0 && q.special === NONE) cand.push({ from: { r, c }, to: { r: y, c: x } });
+      }
+    });
+    if (!cand.length) return;
+    const pick = cand[rand(cand.length)], was = grid[pick.to.r][pick.to.c], np = newBlock('choco', 1);
+    grid[pick.to.r][pick.to.c] = np;
+    chocoLeft++;
+    events.push(ev({ t: 'spread', from: pick.from, to: pick.to, piece: cp(np), was: cp(was) }));
+  }
+
+  // matches -> clear -> fall, repeated; when nothing matches, dinos standing on exits leave (then gravity, and
+  // matching again). Returns the last cascade number used
   function settle(events, cascade, swapped) {
     let last = cascade - 1;
     for (let guard = 0; guard < 200; guard++) {
       const groups = findGroups();
-      if (!groups.length) break;
+      if (!groups.length) {
+        if (collectDinos(events)) { fall(events); continue; }
+        break;
+      }
       events.push(matchStep(groups, cascade, swapped));
       swapped = null;
       fall(events);
@@ -600,20 +929,31 @@ export function createEngine(opts = {}) {
   // ---- moves ----
   function pairValid(r1, c1, r2, c2) {
     const p = grid[r1][c1], q = grid[r2][c2];
-    if (!p || !q) return false;
+    if (!p || !q || !canSwap(r1, c1) || !canSwap(r2, c2)) return false;
     if (isComboPair(p, q)) return true;
     grid[r1][c1] = q; grid[r2][c2] = p;
     const ok = matchAt(r1, c1) || matchAt(r2, c2);
     grid[r1][c1] = p; grid[r2][c2] = q;
     return ok;
   }
-  function hasValidMove() {
+  function validMoves(limit = 1) {
+    let n = 0;
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       if (!cellMask[r][c]) continue;
-      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1)) return true;
-      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c)) return true;
+      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1) && ++n >= limit) return n;
+      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c) && ++n >= limit) return n;
     }
-    return false;
+    return n;
+  }
+  function hasValidMove() { return validMoves(1) >= 1; }
+  // every valid swap (simulation bots pick from these; they know cages, frosting and blockers this way)
+  function listMoves() {
+    const out = [];
+    forCells((r, c) => {
+      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1)) out.push({ a: { r, c }, b: { r, c: c + 1 } });
+      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c)) out.push({ a: { r, c }, b: { r: r + 1, c } });
+    });
+    return out;
   }
   const COMBO_VALUE = { 'bomb+bomb': 1000, 'bomb+wrap': 900, 'bomb+h': 850, 'bomb+v': 850, 'bomb+fish': 800, 'wrap+wrap': 700,
     'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600,
@@ -621,8 +961,24 @@ export function createEngine(opts = {}) {
   function cellValue(r, c) {
     const { h, v } = lineLens(r, c);
     const sq = squareOf(r, c);
-    // specials in the match fire (+40); cells on jelly help the jelly goal (+35)
-    const sp = (y, x) => (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+    // specials in the match fire (+40); cells on jelly help the jelly goal (+35); with board mechanics also a cage
+    // opened (+35), frosting / chocolate / a swirl next to it (+25 each) and a dino above it that will drop (+45)
+    const mech = frostLeft || chocoLeft || licoriceLeft || locksLeft || dinosOnBoard;
+    const sp = (y, x) => {
+      let v = (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+      if (!mech) return v;
+      if (lock[y][x]) v += 35;
+      for (const [dr, dc] of DIRS) {
+        const q = isCell(y + dr, x + dc) ? grid[y + dr][x + dc] : null;
+        if (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice')) v += 25;
+      }
+      for (let u = y - 1; u >= 0 && isCell(u, x); u--) {
+        const q = grid[u][x];
+        if (lock[u][x] || (q && (q.block === 'frost' || q.block === 'choco'))) break;
+        if (q && q.block === 'dino') { v += 45; break; }
+      }
+      return v;
+    };
     const sqPart = () => {           // the square's other three cells
       let s = 0;
       for (const [y, x] of [[sq.r, sq.c], [sq.r, sq.c + 1], [sq.r + 1, sq.c], [sq.r + 1, sq.c + 1]]) if (y !== r || x !== c) s += sp(y, x);
@@ -645,7 +1001,7 @@ export function createEngine(opts = {}) {
   }
   function swapValue(r1, c1, r2, c2) {
     const p = grid[r1][c1], q = grid[r2][c2];
-    if (!p || !q) return -1;
+    if (!p || !q || !canSwap(r1, c1) || !canSwap(r2, c2)) return -1;
     if (isComboPair(p, q)) {
       if (p.special !== NONE && q.special !== NONE) return COMBO_VALUE[[p.special, q.special].sort().join('+')] || 600;
       const other = p.special === 'bomb' ? q : p;
@@ -672,11 +1028,12 @@ export function createEngine(opts = {}) {
     return best;
   }
 
-  function stableAndPlayable() { return !findRuns().length && !findSquares().length && hasValidMove(); }
+  // stable (no match yet) and at least `need` valid moves (shuffles and the first board want 2)
+  function stableAndPlayable(need = 2) { return !findRuns().length && !findSquares().length && validMoves(need) >= need; }
 
   function shuffleInternal() {
     const cells = [];
-    forCells((r, c) => cells.push([r, c]));
+    forCells((r, c) => { const p = grid[r][c]; if (p && !p.block && !lock[r][c]) cells.push([r, c]); });
     const pieces = [];
     const from = new Map();
     for (const [r, c] of cells) { const p = grid[r][c]; if (p) { pieces.push(p); from.set(p.id, { r, c }); } }
@@ -694,7 +1051,7 @@ export function createEngine(opts = {}) {
       ok = stableAndPlayable();
     }
     // last resort: keep ids/positions/specials, re-roll the kinds of normal pieces
-    for (let attempt = 0; attempt < 100 && !ok; attempt++) {
+    for (let attempt = 0; attempt < 200 && !ok; attempt++) {
       const normals = cells.filter(([r, c]) => grid[r][c] && grid[r][c].special === NONE);
       const saved = normals.map(([r, c]) => grid[r][c]);
       for (const [r, c] of normals) grid[r][c] = null;
@@ -703,13 +1060,43 @@ export function createEngine(opts = {}) {
         saved[i].kind = safe.length ? safe[rand(safe.length)] : kinds[rand(kinds.length)];
         grid[r][c] = saved[i];
       });
-      ok = stableAndPlayable();
+      ok = stableAndPlayable(attempt < 150 ? 2 : 1);
     }
     const moves = [];
     // piece = the piece after the shuffle (the last resort may have changed its kind)
     for (const [r, c] of cells) { const p = grid[r][c]; if (p) moves.push({ id: p.id, from: { ...from.get(p.id) }, to: { r, c }, piece: { ...p } }); }
     return ev({ t: 'shuffle', moves });
   }
+
+  // ---- obstacles (applied over the starting pieces) ----
+  function applyObstacles() {
+    if (obsIn) forCells((r, c) => {
+      const ch = obsIn[r] ? obsIn[r][c] : undefined;
+      if (!ch || ch === '.') return;
+      if (ch === 'L') { lock[r][c] = 1; const p = grid[r][c]; if (p && (p.block || p.special !== NONE)) grid[r][c] = newPiece(kinds[rand(kinds.length)]); return; }
+      if (ch === 'E') { exitAt[r][c] = true; return; }
+      if (ch >= '1' && ch <= '3') grid[r][c] = newBlock('frost', +ch);
+      else if (ch === 'C') grid[r][c] = newBlock('choco', 1);
+      else if (ch === 'S') grid[r][c] = newBlock('licorice', 1);
+      else if (ch === 'D') grid[r][c] = newBlock('dino', 0);
+    });
+    frostLeft = chocoLeft = licoriceLeft = locksLeft = dinosOnBoard = 0;
+    forCells((r, c) => {
+      const p = grid[r][c];
+      if (lock[r][c]) locksLeft++;
+      if (!p || !p.block) return;
+      if (p.block === 'frost') frostLeft += p.hp;
+      else if (p.block === 'choco') chocoLeft++;
+      else if (p.block === 'licorice') licoriceLeft++;
+      else if (p.block === 'dino') dinosOnBoard++;
+    });
+    dinosSpawned = dinosStart = dinosOnBoard;
+    // dinos but no exit given: every cell a dino cannot fall out of is an exit — the bottom of each column and the
+    // cell above a hole (not a portal entrance: dinos go through those)
+    if ((dinoOpt || dinosOnBoard) && !exitAt.some(row => row.some(Boolean)))
+      forCells((r, c) => { if (!below(r, c)) exitAt[r][c] = true; });
+  }
+  const clearObstacles = () => { for (const row of lock) row.fill(0); for (const row of exitAt) row.fill(false); };
 
   // ---- initial board ----
   if (layoutToks) {
@@ -725,15 +1112,18 @@ export function createEngine(opts = {}) {
       const safe = kinds.filter(k => !wouldMatch(r, c, k));
       grid[r][c] = newPiece(safe.length ? safe[rand(safe.length)] : kinds[rand(kinds.length)]);
     }
+    applyObstacles();
   } else {
     for (let attempt = 0; attempt < 300; attempt++) {
       nextId = 1;
+      clearObstacles();
       forCells((r, c) => { grid[r][c] = null; });
       forCells((r, c) => {
         const safe = kinds.filter(k => !wouldMatch(r, c, k));
         grid[r][c] = newPiece(safe.length ? safe[rand(safe.length)] : kinds[rand(kinds.length)]);
       });
-      if (stableAndPlayable()) break;
+      applyObstacles();
+      if (stableAndPlayable(attempt < 200 ? 2 : 1)) break;
     }
   }
 
@@ -743,17 +1133,26 @@ export function createEngine(opts = {}) {
     isCell,
     cell: (r, c) => (isCell(r, c) ? cp(grid[r][c]) : null),
     jellyAt: (r, c) => (isCell(r, c) ? jel[r][c] : 0),
-    snapshot: () => ({ rows, cols, mask: cellMask.map(row => row.slice()), grid: gridCopy(), jelly: jellyCopy() }),
+    snapshot: () => ({ rows, cols, mask: cellMask.map(row => row.slice()), grid: gridCopy(), jelly: jellyCopy(),
+      lock: lock.map(row => row.slice()), exits: shownExits(), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })) }),
     get score() { return score; },
-    get stats() { return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax }; },
+    get stats() {
+      return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax,
+        dinosOut, dinosTotal: dinoOpt ? Math.max(dinoOpt.total, dinosStart) : dinosStart, frostLeft, chocoLeft, licoriceLeft, locksLeft };
+    },
+    lockAt: (r, c) => (isCell(r, c) ? lock[r][c] : 0),
+    isExit: (r, c) => isCell(r, c) && exitAt[r][c],
+    portals: () => portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })),
     isAdjacent: (a, b) => !!a && !!b && Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1,
 
     swap(a, b) {
       if (!a || !b || !isCell(a.r, a.c) || !isCell(b.r, b.c) || !engine.isAdjacent(a, b) ||
-        !grid[a.r][a.c] || !grid[b.r][b.c]) return { ok: false, events: [], gained: 0 };
+        !grid[a.r][a.c] || !grid[b.r][b.c] || !canSwap(a.r, a.c) || !canSwap(b.r, b.c)) return { ok: false, events: [], gained: 0 };
       a = { r: a.r, c: a.c }; b = { r: b.r, c: b.c };
       const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
       const combo = isComboPair(pa, pb);
+      const chocoBefore = chocoLeft;
+      chocoBroken = 0;
       grid[a.r][a.c] = pb; grid[b.r][b.c] = pa;
       if (!combo && !matchAt(a.r, a.c) && !matchAt(b.r, b.c)) {
         const e1 = ev({ t: 'swap', a: { ...a }, b: { ...b } });
@@ -763,9 +1162,10 @@ export function createEngine(opts = {}) {
       }
       const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
       let cascade = 1;
-      if (combo) { comboSteps(a, b, events); fall(events); cascade = 2; }
+      if (combo) cascade = playCombo(a, b, events);
       const last = settle(events, cascade, combo ? null : [b, a]);
       cascadesMax = Math.max(cascadesMax, last);
+      if (chocoBefore > 0 && chocoBroken === 0 && chocoLeft > 0) spreadChoco(events);
       if (!hasValidMove()) events.push(shuffleInternal());
       const gained = events.reduce((s, e) => s + (e.gained || 0), 0);
       score += gained;
@@ -775,7 +1175,7 @@ export function createEngine(opts = {}) {
     // ---- 道具（Candy Crush 的 booster；都不算步數） ----
     // smash(cell)：棒棒糖槌，敲掉一顆（特殊方塊會發動），之後照常掉落、連鎖
     smash(cell) {
-      if (!cell || !isCell(cell.r, cell.c) || !grid[cell.r][cell.c]) return { ok: false, events: [], gained: 0 };
+      if (!cell || !isCell(cell.r, cell.c) || !grid[cell.r][cell.c] || grid[cell.r][cell.c].block === 'dino') return { ok: false, events: [], gained: 0 };
       const events = [];
       const st = newStep(1);
       hit(st, cell.r, cell.c, 'combo', { r: cell.r, c: cell.c });
@@ -791,14 +1191,14 @@ export function createEngine(opts = {}) {
     // freeSwap(a, b)：自由交換，相鄰兩顆不用湊成三連也能換；兩個特殊方塊照樣組合技
     freeSwap(a, b) {
       if (!a || !b || !isCell(a.r, a.c) || !isCell(b.r, b.c) || !engine.isAdjacent(a, b) ||
-        !grid[a.r][a.c] || !grid[b.r][b.c]) return { ok: false, events: [], gained: 0 };
+        !grid[a.r][a.c] || !grid[b.r][b.c] || !canSwap(a.r, a.c) || !canSwap(b.r, b.c)) return { ok: false, events: [], gained: 0 };
       a = { r: a.r, c: a.c }; b = { r: b.r, c: b.c };
       const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
       const combo = isComboPair(pa, pb);
       grid[a.r][a.c] = pb; grid[b.r][b.c] = pa;
       const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
       let cascade = 1;
-      if (combo) { comboSteps(a, b, events); fall(events); cascade = 2; }
+      if (combo) cascade = playCombo(a, b, events);
       cascadesMax = Math.max(cascadesMax, settle(events, cascade, combo ? null : [b, a]));
       if (!hasValidMove()) events.push(shuffleInternal());
       const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
@@ -810,7 +1210,7 @@ export function createEngine(opts = {}) {
       const cells = [];
       for (let i = 0; i < n; i++) {
         const normals = [];
-        forCells((r, c) => { const q = grid[r][c]; if (q && q.kind >= 0 && q.special === NONE) normals.push({ r, c }); });
+        forCells((r, c) => { const q = grid[r][c]; if (q && q.kind >= 0 && q.special === NONE && !lock[r][c]) normals.push({ r, c }); });
         if (!normals.length) break;
         const { r, c } = normals[rand(normals.length)];
         grid[r][c].special = 'wrap';
@@ -832,6 +1232,7 @@ export function createEngine(opts = {}) {
 
     findHint,
     hasValidMove,
+    listMoves,
     shuffle: () => [shuffleInternal()],
 
     addScore(points) {
@@ -842,6 +1243,7 @@ export function createEngine(opts = {}) {
 
     sugarCrush(movesLeft) {
       const events = [];
+      biasNow = 0;
       let left = Math.max(0, Math.floor(movesLeft || 0));
       // waves: convert up to SUGAR_WAVE moves into striped pieces (3,000 each), fire exactly those, let it settle
       while (left > 0) {
@@ -850,7 +1252,7 @@ export function createEngine(opts = {}) {
         const lit = [];
         for (let i = 0; i < wave; i++) {
           const normals = [];
-          forCells((r, c) => { const p = grid[r][c]; if (p && p.kind >= 0 && p.special === NONE) normals.push({ r, c }); });
+          forCells((r, c) => { const p = grid[r][c]; if (p && p.kind >= 0 && p.special === NONE && !lock[r][c]) normals.push({ r, c }); });
           if (!normals.length) {
             events.push(ev({ t: 'transform', cells: [], sugar: true, gained: SUGAR_MOVE_POINTS, points: [] }));
             continue;
@@ -871,15 +1273,16 @@ export function createEngine(opts = {}) {
         settle(events, 2, null);
       }
       // then every special still on the board (left by the player or made by cascades) fires, until none is left
-      for (let round = 0; round < 30; round++) {
+      for (let round = 0; round < 60; round++) {
         const st = newStep(1);
-        forCells((r, c) => { const p = grid[r][c]; if (p && p.special !== NONE) hit(st, r, c, p.special, { r, c }); });
+        forCells((r, c) => { const p = grid[r][c]; if (isSpecial(p) && !lock[r][c]) hit(st, r, c, p.special, { r, c }); });
         if (!st.removed.length) break;
         runQueue(st);
         events.push(finishStep(st));
         fall(events);
         settle(events, 2, null);
       }
+      biasNow = cascadeBias;
       const gained = events.reduce((s, e) => s + (e.gained || 0), 0);
       score += gained;
       return { events, gained };

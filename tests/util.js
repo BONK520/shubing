@@ -61,19 +61,23 @@ export function squaresIn(board) {
 // everything that would clear: runs of 3+ and 2×2 squares
 export const matchesIn = board => [...runsIn(board), ...squaresIn(board)];
 
-export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}` : '-');
+export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}${p.block ? ':' + p.block + p.hp : ''}` : '-');
 export const boardStr = b => b.map(row => row.map(pieceStr).join(' ')).join('\n');
 export const sameBoard = (a, b) => boardStr(a) === boardStr(b);
-export const kindStr = b => b.map(row => row.map(p => (!p ? '.' : p.special === 'bomb' ? 'B' : p.kind + (p.special === 'none' ? ' ' : p.special[0]))).join('')).join('\n');
+const BLOCK_CH = { dino: 'D', frost: 'F', choco: 'C', licorice: 'S' };
+export const kindStr = b => b.map(row => row.map(p => (!p ? '.' : p.block ? BLOCK_CH[p.block] + (p.block === 'frost' ? p.hp : ' ') : p.special === 'bomb' ? 'B' : p.kind + (p.special === 'none' ? ' ' : p.special[0]))).join('')).join('\n');
+// pieces that never move: frosting, chocolate, anything in a cage
+export const isFixed = (p, locked) => !!locked || (!!p && (p.block === 'frost' || p.block === 'choco'));
 
 const fail = msg => { throw new Error(msg); };
 const copyBoard = b => b.map(row => row.map(p => (p ? { ...p } : null)));
 
 // Apply events to `board0` the way a renderer would, checking each step against ev.board/ev.jelly.
-export function replayEvents(board0, jelly0, events) {
+export function replayEvents(board0, jelly0, events, lock0 = null) {
   const g = copyBoard(board0);
   const j = jelly0.map(r => r.slice());
   const R = g.length, C = g[0].length;
+  const L = lock0 ? lock0.map(r => r.slice()) : g.map(r => r.map(() => 0));
   const at = (p, what) => {
     if (!p || p.r < 0 || p.r >= R || p.c < 0 || p.c >= C) fail(`${what}: bad coord ${JSON.stringify(p)}`);
     return p;
@@ -82,19 +86,34 @@ export function replayEvents(board0, jelly0, events) {
     const where = `event #${i} (${e.t})`;
     if (e.t === 'swap' || e.t === 'swapBack') {
       at(e.a, where); at(e.b, where);
+      if (isFixed(g[e.a.r][e.a.c], L[e.a.r][e.a.c]) || isFixed(g[e.b.r][e.b.c], L[e.b.r][e.b.c])) fail(`${where}: swaps a piece that cannot move`);
       const t = g[e.a.r][e.a.c]; g[e.a.r][e.a.c] = g[e.b.r][e.b.c]; g[e.b.r][e.b.c] = t;
     } else if (e.t === 'transform') {
       for (const x of e.cells) {
         at(x, where);
         const cur = g[x.r][x.c];
         if (!cur || cur.id !== x.piece.id) fail(`${where}: transform changes the piece at ${x.r},${x.c} (${pieceStr(cur)} -> ${pieceStr(x.piece)})`);
+        if (cur.block) fail(`${where}: transform of a ${cur.block}`);
         g[x.r][x.c] = { ...x.piece };
       }
     } else if (e.t === 'clear') {
+      for (const x of e.unlocks || []) {
+        at(x, where);
+        if (!L[x.r][x.c]) fail(`${where}: unlock at ${x.r},${x.c} without a cage`);
+        L[x.r][x.c] = 0;
+      }
+      for (const x of e.blockerHits || []) {
+        at(x, where);
+        const cur = g[x.r][x.c];
+        if (!cur || cur.block !== x.block || x.left !== cur.hp - 1 || x.left < 1) fail(`${where}: blocker hit ${JSON.stringify(x)} on ${pieceStr(cur)}`);
+        g[x.r][x.c] = { ...cur, hp: x.left };
+      }
       for (const x of e.removed) {
         at(x, where);
         const cur = g[x.r][x.c];
         if (!cur || cur.id !== x.piece.id) fail(`${where}: removed ${pieceStr(x.piece)} at ${x.r},${x.c} but board has ${pieceStr(cur)}`);
+        if (cur.block === 'dino') fail(`${where}: a dino was destroyed`);
+        if (L[x.r][x.c]) fail(`${where}: removed a caged piece at ${x.r},${x.c}`);
         g[x.r][x.c] = null;
       }
       for (const x of e.jellyHits) { at(x, where); j[x.r][x.c] = x.left; }
@@ -110,7 +129,11 @@ export function replayEvents(board0, jelly0, events) {
         at(m.from, where); at(m.to, where);
         const cur = g[m.from.r][m.from.c];
         if (!cur || cur.id !== m.id) fail(`${where}: move of id ${m.id} from ${m.from.r},${m.from.c} but board has ${pieceStr(cur)}`);
-        if (e.t === 'fall' && (m.to.c !== m.from.c || m.to.r <= m.from.r)) fail(`${where}: fall move not straight down ${JSON.stringify(m)}`);
+        if (isFixed(cur, L[m.from.r][m.from.c]) || L[m.to.r][m.to.c]) fail(`${where}: moves a fixed piece / into a cage ${JSON.stringify(m)}`);
+        if (e.t === 'fall') {
+          if (m.path) checkPath(m.path, m.from, m.to, where, m);
+          else if (m.to.c !== m.from.c || m.to.r <= m.from.r) fail(`${where}: fall move not straight down ${JSON.stringify(m)}`);
+        }
         lifted.push([m, cur]);
         g[m.from.r][m.from.c] = null;
       }
@@ -120,19 +143,49 @@ export function replayEvents(board0, jelly0, events) {
       }
       for (const s of e.spawns || []) {
         at(s.to, where);
-        if (!(s.from.r < 0) || s.from.c !== s.to.c) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
+        if (!(s.from.r < 0)) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
+        if (s.path) checkPath(s.path.slice(1), s.path[1], s.to, where, s);
+        else if (s.from.c !== s.to.c) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
         if (g[s.to.r][s.to.c]) fail(`${where}: spawn lands on occupied ${s.to.r},${s.to.c}`);
         g[s.to.r][s.to.c] = { ...s.piece };
       }
+    } else if (e.t === 'exit') {
+      if (!e.cells.length) fail(`${where}: empty exit`);
+      for (const x of e.cells) {
+        at(x, where);
+        const cur = g[x.r][x.c];
+        if (!cur || cur.block !== 'dino' || cur.id !== x.piece.id) fail(`${where}: exit of ${pieceStr(x.piece)} but board has ${pieceStr(cur)}`);
+        g[x.r][x.c] = null;
+      }
+    } else if (e.t === 'spread') {
+      at(e.from, where); at(e.to, where);
+      const src = g[e.from.r][e.from.c], cur = g[e.to.r][e.to.c];
+      if (!src || src.block !== 'choco') fail(`${where}: spread from ${pieceStr(src)}`);
+      if (Math.abs(e.from.r - e.to.r) + Math.abs(e.from.c - e.to.c) !== 1) fail(`${where}: spread not to a neighbour`);
+      if (!cur || cur.block || cur.special !== 'none' || cur.kind < 0 || L[e.to.r][e.to.c] || cur.id !== e.was.id) fail(`${where}: spread over ${pieceStr(cur)}`);
+      if (e.piece.block !== 'choco') fail(`${where}: spread makes ${pieceStr(e.piece)}`);
+      g[e.to.r][e.to.c] = { ...e.piece };
     } else fail(`${where}: unknown event type`);
     if (!e.board || !e.jelly) fail(`${where}: missing board/jelly`);
+    if (e.lock && JSON.stringify(L) !== JSON.stringify(e.lock)) fail(`${where}: replayed cages differ from ev.lock`);
     if (!sameBoard(g, e.board)) fail(`${where}: replayed board differs from ev.board\nreplayed:\n${boardStr(g)}\nev.board:\n${boardStr(e.board)}`);
     if (JSON.stringify(j) !== JSON.stringify(e.jelly)) fail(`${where}: replayed jelly differs from ev.jelly`);
   });
-  return { board: g, jelly: j };
+  return { board: g, jelly: j, lock: L };
 }
 
-const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish']);
+// a fall path: from → … → to, every step either straight down the same column, one cell diagonally down,
+// or a portal jump (marked warp: true)
+function checkPath(pts, from, to, where, m) {
+  const f = pts[0], l = pts[pts.length - 1];
+  if (!f || f.r !== from.r || f.c !== from.c || l.r !== to.r || l.c !== to.c) fail(`${where}: path ends wrong ${JSON.stringify(m)}`);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const ok = b.warp === true || (b.c === a.c && b.r > a.r) || (b.r === a.r + 1 && Math.abs(b.c - a.c) === 1);
+    if (!ok) fail(`${where}: bad path step ${JSON.stringify(a)} -> ${JSON.stringify(b)} in ${JSON.stringify(m)}`);
+  }
+}
+const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish', 'near']);
 const SHAPES = new Set(['3', '4', '5', 'L', 'T', 'square']);
 const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb', 'fish']);
 
@@ -145,7 +198,8 @@ export function newCtx(engine) {
   const snap = engine.snapshot();
   let maxId = 0;
   for (const row of snap.grid) for (const p of row) if (p) maxId = Math.max(maxId, p.id);
-  return { score: engine.score, maxId, gone: new Set(), cleared: { ...engine.stats.cleared }, specialsMade: engine.stats.specialsMade, shuffles: 0, moves: 0, clears: 0 };
+  return { score: engine.score, maxId, gone: new Set(), cleared: { ...engine.stats.cleared }, specialsMade: engine.stats.specialsMade, shuffles: 0, moves: 0, clears: 0,
+    exits: 0, spreads: 0, unlocks: 0, blockerHits: 0 };
 }
 
 export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
@@ -156,7 +210,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     if (!(evs.length === 0 || (evs.length === 2 && evs[0].t === 'swap' && evs[1].t === 'swapBack'))) fail('invalid swap: bad events');
     if (!sameBoard(after.grid, before.grid)) fail('invalid swap changed the board');
     if (res.gained !== 0 || engine.score !== ctx.score) fail('invalid swap changed the score');
-    if (evs.length) replayEvents(before.grid, before.jelly, evs);
+    if (evs.length) replayEvents(before.grid, before.jelly, evs, before.lock);
     return;
   }
   // grammar
@@ -172,8 +226,15 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       expectCascade = e.cascade + 1;
       sawClear = true;
       if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('clear not followed by fall');
+    } else if (e.t === 'exit') {
+      if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('exit not followed by fall');
+      ctx.exits += e.cells.length;
     } else if (e.t === 'fall') {
-      if (!evs[i - 1] || evs[i - 1].t !== 'clear') fail('fall not preceded by clear');
+      if (!evs[i - 1] || (evs[i - 1].t !== 'clear' && evs[i - 1].t !== 'exit')) fail('fall not preceded by clear / exit');
+    } else if (e.t === 'spread') {
+      const rest = evs.slice(i + 1).map(x => x.t).join(',');
+      if (sugar || !(rest === '' || rest === 'shuffle')) fail(`spread must end the move (then maybe a shuffle), got ${rest}`);
+      ctx.spreads++;
     } else if (e.t === 'shuffle') {
       if (sugar || i !== evs.length - 1) fail('shuffle must be the last event of a move');
       ctx.shuffles++;
@@ -195,7 +256,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const p = e.board[r][c];
       if (!mask[r][c] && p) fail(`${e.t}: piece in hole ${r},${c}`);
-      if (mask[r][c] && !p && e.t !== 'clear') fail(`${e.t}: empty cell ${r},${c} after ${e.t}`);
+      if (mask[r][c] && !p && e.t !== 'clear' && e.t !== 'exit') fail(`${e.t}: empty cell ${r},${c} after ${e.t}`);
       if (p) {
         if (ids.has(p.id)) fail(`${e.t}: duplicate id ${p.id}`);
         ids.add(p.id);
@@ -206,6 +267,14 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     if (e.t === 'clear') {
       for (const f of ['groups', 'removed', 'effects', 'created', 'jellyHits', 'points']) if (!Array.isArray(e[f])) fail(`clear.${f} missing`);
       const seen = new Set();
+      for (const f of ['unlocks', 'blockerHits']) if (e[f] && !Array.isArray(e[f])) fail(`clear.${f} not an array`);
+      ctx.unlocks += (e.unlocks || []).length;
+      ctx.blockerHits += (e.blockerHits || []).length;
+      for (const x of [...(e.unlocks || []), ...(e.blockerHits || [])]) {
+        const k = x.r * cols + x.c;
+        if (seen.has(k)) fail(`clear hits ${x.r},${x.c} twice`);
+        seen.add(k);
+      }
       for (const x of e.removed) {
         const k = x.r * cols + x.c;
         if (seen.has(k)) fail(`clear removes ${x.r},${x.c} twice`);
@@ -220,6 +289,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
           (f.fx === 'bomb' && Array.isArray(f.targets)) || f.fx === 'board' ||
           (f.fx === 'fish' && f.to && Number.isInteger(f.to.r) && Number.isInteger(f.to.c) && [null, 'h', 'v', 'wrap'].includes(f.carry));
         if (!okFx) fail(`bad effect ${JSON.stringify(f)}`);
+        if (f.reach && !(f.fx === 'line' && Array.isArray(f.reach) && f.reach.length === 2)) fail(`bad beam reach ${JSON.stringify(f)}`);
       }
       ctx.specialsMade += e.created.length;
       const pts = e.points.reduce((s, p) => s + p.value, 0);
@@ -234,11 +304,13 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       for (const p of e.points) if (!e.cells.some(x => x.r === p.r && x.c === p.c)) fail('sugar transform point label not on the converted cell');
       gainedSum += e.gained;
     } else if (e.gained !== undefined) fail(`${e.t} has gained`);
+    if (e.t === 'exit') for (const x of e.cells) ctx.gone.add(x.piece.id);
+    if (e.t === 'spread') { ctx.gone.add(e.was.id); if (e.piece.id <= ctx.maxId) fail(`spread reuses id ${e.piece.id}`); }
     if (e.t === 'fall') {
       const byCol = {};
       for (const s of e.spawns) {
         if (s.piece.id <= ctx.maxId) fail(`spawn reuses id ${s.piece.id}`);
-        (byCol[s.to.c] = byCol[s.to.c] || []).push(s);
+        if (!s.path) (byCol[s.to.c] = byCol[s.to.c] || []).push(s);   // pieces that slid sideways have their own path
       }
       for (const list of Object.values(byCol)) {
         list.sort((x, y) => y.to.r - x.to.r);
@@ -249,8 +321,9 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
   }
   if (gainedSum !== res.gained) fail(`gained ${res.gained} != sum of event gains ${gainedSum}`);
   // replay
-  const rep = replayEvents(before.grid, before.jelly, evs);
+  const rep = replayEvents(before.grid, before.jelly, evs, before.lock);
   if (!sameBoard(rep.board, after.grid)) fail('replay does not reach the final board');
+  if (after.lock && JSON.stringify(rep.lock) !== JSON.stringify(after.lock)) fail('replay does not reach the final cages');
   if (JSON.stringify(rep.jelly) !== JSON.stringify(after.jelly)) fail('replay does not reach the final jelly');
   // final board
   const ids = new Set();
@@ -272,5 +345,12 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
   if (st.specialsMade !== ctx.specialsMade) fail(`specialsMade ${st.specialsMade} != ${ctx.specialsMade}`);
   const jl = after.jelly.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0);
   if (st.jellyLeft !== jl) fail(`jellyLeft ${st.jellyLeft} != ${jl}`);
+  if (st.frostLeft !== undefined) {
+    const cnt = { frost: 0, choco: 0, licorice: 0, dino: 0 };
+    for (const row of after.grid) for (const p of row) if (p && p.block) cnt[p.block] += p.block === 'frost' ? p.hp : 1;
+    const locks = after.lock ? after.lock.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0) : 0;
+    if (st.frostLeft !== cnt.frost || st.chocoLeft !== cnt.choco || st.licoriceLeft !== cnt.licorice || st.locksLeft !== locks)
+      fail(`blocker stats ${JSON.stringify(st)} vs board ${JSON.stringify(cnt)} locks ${locks}`);
+  }
   ctx.moves++;
 }
