@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123n") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123n") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123o") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123o") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -479,21 +479,44 @@ svg use { pointer-events: none; }
   box-shadow: 0 3px 0 rgba(107, 45, 74, .25);
 }
 .map-sign b { display: block; font-size: 10px; letter-spacing: .12em; color: #b46a8b; }
-/* 駐站娃娃：遊戲裡原本的玩具，站在兩關中間、路的另一側；還沒走到的站是灰色的 */
-.map-doll { position: absolute; width: 76px; margin-left: -38px; transform: translateY(-62%); text-align: center; pointer-events: none; }
-.map-doll img {
-  display: block; width: 62px; height: 62px; margin: 0 auto; object-fit: contain; position: relative; z-index: 1;
-  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff);
-  animation: dollBob 2.8s ease-in-out infinite;
+/* 駐站娃娃（js/mapart.js 的 SPOTS）：放在路彎得最外面那一段的另一側，還沒走到的站是灰色的
+   .ph 雲台合照：合照貼紙站在雲朵台上慢慢晃；.pk 雲後探頭：2～3 隻娃娃躲在立體雲後面探頭 */
+.map-spot { position: absolute; pointer-events: none; transform: translate(-50%, -100%); }
+.map-spot.ph img {
+  position: relative; z-index: 1; display: block; width: 100%; height: 100%; object-fit: contain;
+  transform-origin: 50% 100%; animation: stk-sway 4.6s ease-in-out infinite; animation-delay: calc(var(--k, 0) * -.7s);
+  filter: drop-shadow(0 0 6px rgba(255, 200, 240, .7));
 }
-.map-doll i { display: block; width: 50px; height: 10px; margin: -8px auto 0; border-radius: 50%; background: rgba(60, 20, 40, .16); }
-.map-doll span {
-  display: inline-block; margin-top: 2px; padding: 2px 8px 3px; border-radius: 999px;
-  background: rgba(255, 250, 246, .94); color: #6b2d4a; font-weight: 700; font-size: 10.5px; line-height: 1.2; white-space: nowrap;
+.map-spot.ph::before { /* 雲朵台 */
+  content: ''; position: absolute; left: -10%; right: -10%; bottom: -12%; height: 24%; border-radius: 50%;
+  background: radial-gradient(ellipse 70% 80% at 50% 30%, #fff 0%, #fff4ee 45%, #f6d9d6 100%);
+  box-shadow: inset 0 2px 0 #fff, inset 0 -4px 6px rgba(220, 140, 150, .35), 0 5px 0 #efc0c4, 0 8px 0 #d8999f, 7px 15px 14px rgba(82, 29, 47, .3);
 }
-.map-doll.lock img { filter: grayscale(1) brightness(1.08) opacity(.6); animation: none; }
-.map-doll.lock span { color: #8d8b98; }
-@keyframes dollBob { 50% { transform: translateY(-4px); } }
+.map-spot.ph::after { /* 貼紙落在台上的影子 */
+  content: ''; position: absolute; left: 24%; right: 14%; bottom: -3%; height: 9%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(66, 24, 38, .5) 0%, rgba(66, 24, 38, .22) 45%, rgba(66, 24, 38, 0) 72%);
+}
+.map-spot.pk img {
+  position: absolute; top: 0; width: 50px; height: 50px; object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(255, 210, 245, .85));
+  animation: peek 3.4s ease-in-out infinite; animation-delay: var(--k, 0s);
+}
+.map-spot.pk i { /* 前面的立體雲，一高一低 */
+  position: absolute; bottom: 0; z-index: 1; display: block; width: 86px; height: 45px;
+  background: var(--cloud) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(143, 51, 82, .2));
+}
+.map-spot.lock img { filter: grayscale(1) brightness(1.08) opacity(.6); animation: none; }
+.map-spot.lock::before { filter: grayscale(1); }
+/* 天空和夢幻工廠慢慢飄過的立體雲（在 .map-art 裡面，超出畫面的部分被裁掉，不會橫向捲動） */
+.map-art svg.ma-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.map-art .ma-drift {
+  position: absolute; z-index: 2; left: -140px; pointer-events: none;
+  background: var(--cloud) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, .75)) drop-shadow(4px 8px 7px rgba(143, 51, 82, .18));
+  animation: ma-drift var(--d) linear infinite; animation-delay: var(--k);
+}
+@keyframes ma-drift { from { transform: translateX(0); } to { transform: translateX(var(--w)); } }
 /* 右上角：畫面中間是哪一站 */
 .map-here {
   margin-left: auto; min-width: 0; max-width: calc(100% - 128px); overflow: hidden; text-overflow: ellipsis;
@@ -503,7 +526,7 @@ svg use { pointer-events: none; }
 }
 .map-here:empty { visibility: hidden; }
 .map-here small { display: block; font-size: 11px; color: #b46a8b; }
-@media (prefers-reduced-motion: reduce) { .map-doll img { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .map-spot.ph img, .map-spot.pk img { animation: none; } .map-art .ma-drift { animation: none; transform: translateX(var(--x)); } }
 
 @keyframes peek { 0%, 100% { translate: 0 6px; rotate: -4deg; } 50% { translate: 0 -2px; rotate: 4deg; } }
 @keyframes sway { 0%, 100% { rotate: -6deg; } 50% { rotate: 6deg; } }

@@ -1,7 +1,5 @@
-// 薯餅蛋蛋島 — 關卡地圖的 24 站背景：每站的底色和物件、兩站交界的銜接物、站牌、駐站娃娃
+// 薯餅蛋蛋島 — 關卡地圖的 24 站背景：每站的底色和物件、兩站交界的銜接物、站牌、駐站娃娃（雲台合照／雲後探頭）
 // 畫法照 shubing夜間/草稿/大地圖示意/island-map.html 的 A 樣式（完整風景）搬過來；全部用程式畫 SVG，不用另外載圖
-import { PIECES } from './pieces.js?v=20261123n';
-
 function rngOf(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const pick = (r, a) => a[Math.floor(r() * a.length)];
 
@@ -35,7 +33,7 @@ const PR = {
   donut: r => sh(18) + `<path d="${ring(0, -16, 18, 6)}" fill="#e3a160" fill-rule="evenodd"/><path d="${ring(0, -18, 15, 7)}" fill="${pick(r, ['#ff9fc6', '#c4a3ff', '#8fd6ff'])}" fill-rule="evenodd"/>${[[-9, -24, 20], [8, -26, -30], [10, -13, 60], [-10, -12, 10], [0, -30, 80]].map(([x, y, a]) => `<rect x="${x}" y="${y}" width="5" height="1.8" rx=".9" fill="${pick(r, ['#fff', '#ffd45c', '#5bb8ff'])}" transform="rotate(${a} ${x} ${y})"/>`).join('')}`,
   cookie: r => `<ellipse cx="0" cy="-7" rx="17" ry="9" fill="#d99a55"/><ellipse cx="0" cy="-9" rx="17" ry="9" fill="#efb96f"/>${[[-8, -10], [5, -6], [6, -13], [-2, -12], [-10, -6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#7a4a2b"/>`).join('')}`,
   sprinkle: r => `<rect x="-4" y="-1" width="8" height="3" rx="1.5" fill="${pick(r, ['#ff8fb8', '#5bb8ff', '#ffd45c', '#7fd6a6'])}" transform="rotate(${Math.floor(r() * 180)})"/>`,
-  cloud: r => `<g fill="#fff" opacity=".95"><circle cx="-15" cy="-10" r="11"/><circle cx="0" cy="-17" r="15"/><circle cx="16" cy="-11" r="11"/><rect x="-26" y="-12" width="52" height="12" rx="6"/></g>`,
+  cloud: r => `<use href="#ma-cloud" x="-32" y="-30" width="64" height="34"/>`,   // 遊戲裡那朵立體雲（定義在 CLOUD_DEFS）
   balloon: r => `<path d="M0-26Q-4-12 2 0" stroke="#c49ab0" stroke-width="1.4" fill="none"/><ellipse cx="0" cy="-40" rx="12" ry="15" fill="${pick(r, PINKS)}"/><ellipse cx="-4" cy="-45" rx="3" ry="5" fill="#fff" opacity=".6"/><path d="M-3-25h6l-3 3z" fill="#c49ab0"/>`,
   bird: r => `<path d="M-10-4Q-5-10 0-4Q5-10 10-4" stroke="#8a6a9a" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
   tulip: r => { const c = pick(r, ['#ff6b8a', '#ffb02e', '#b99bff', '#ff8fb8']); return `<path d="M0 0V-20" stroke="#5fb37a" stroke-width="3"/><ellipse cx="-5" cy="-8" rx="6" ry="2.5" fill="#6cc48a" transform="rotate(30 -5 -8)"/><path d="M-8-30Q-9-18 0-18Q9-18 8-30L4-25L0-31L-4-25Z" fill="${c}"/>`; },
@@ -161,14 +159,24 @@ function bridge(type, W, gx, rng, a, b) {
       for (let i = 0; i < 26; i++) s += `<g transform="translate(${(rng() * W).toFixed(1)} ${(cy + 10 + rng() * 70).toFixed(1)})">${PR.sprinkle(rng)}</g>`;
       return s;
     }
-    case 'clouds': case 'starband': {
-      for (let x = -10; x < W + 20; x += 34) s += `<circle cx="${x}" cy="${cy + 8 + rng() * 14}" r="${22 + rng() * 10}" fill="#fff" opacity="${type === 'clouds' ? .95 : .7}"/>`;
-      if (type === 'starband') for (let i = 0; i < 9; i++) s += `<path d="${star(rng() * W, cy - 30 + rng() * 30, 7, 3)}" fill="#ffd45c"/>`;
+    case 'clouds': { // 兩排立體雲，路從中間的空隙穿過去
+      for (let row = 0; row < 2; row++) for (let x = -50 + row * 40; x < W + 40; x += 78 + rng() * 14) {
+        const w = 96 + rng() * 34; if (gap(x + w / 2, 30 + w / 2)) continue;
+        s += `<use href="#ma-cloud" x="${x.toFixed(1)}" y="${(cy - 46 + row * 30 + rng() * 10).toFixed(1)}" width="${w.toFixed(1)}" height="${(w * .525).toFixed(1)}"/>`;
+      }
+      return s;
+    }
+    case 'starband': { // 一排淡淡的立體雲，上面飄著星星
+      for (let x = -40; x < W + 30; x += 70 + rng() * 12) {
+        const w = 82 + rng() * 26; if (gap(x + w / 2, 26 + w / 2)) continue;
+        s += `<use href="#ma-cloud" x="${x.toFixed(1)}" y="${(cy - 14 + rng() * 12).toFixed(1)}" width="${w.toFixed(1)}" height="${(w * .525).toFixed(1)}" opacity=".75"/>`;
+      }
+      for (let i = 0; i < 9; i++) s += `<path d="${star(rng() * W, cy - 30 + rng() * 30, 7, 3)}" fill="#ffd45c"/>`;
       return s;
     }
     case 'rainbow': {
       const cx = W * .22; ['#ff9fb8', '#ffc98a', '#fff09a', '#a8e6b4', '#9fd2ff', '#c8b0ff'].forEach((c, i) => { s += `<path d="M${cx - 130 + i * 9} ${cy + 40}A${130 - i * 9} ${110 - i * 9} 0 0 1 ${cx + 130 - i * 9} ${cy + 40}" stroke="${c}" stroke-width="9" fill="none" opacity=".9"/>`; });
-      for (const x of [cx - 128, cx + 128]) s += `<circle cx="${x - 14}" cy="${cy + 44}" r="15" fill="#fff"/><circle cx="${x + 6}" cy="${cy + 38}" r="19" fill="#fff"/><circle cx="${x + 24}" cy="${cy + 46}" r="13" fill="#fff"/>`;
+      for (const x of [cx - 128, cx + 128]) s += `<use href="#ma-cloud" x="${(x - 44).toFixed(1)}" y="${cy + 12}" width="92" height="48"/>`;   // 彩虹兩端落在立體雲上
       return s;
     }
     case 'blocks': for (let x = 4; x < W; x += 27) if (!gap(x + 12, 36)) s += `<g transform="translate(${x + 12} ${cy + 18 + (rng() < .3 ? -26 : 0)})">${PR.block(rng)}</g>`; return s;
@@ -233,6 +241,16 @@ function bridge(type, W, gx, rng, a, b) {
 /* ---------- 放進遊戲的部分 ---------- */
 // 座標跟 main.js 的 MAP_GAP / MAP_BOTTOM 一樣（第 i 關在 H - 110 - i × 116，i 從 0 起算）
 const GAP = 116, BOT = 110;
+// 立體雲（跟 style.css 的 --cloud 同一朵：上白下淡紫、底部柔和陰影），地圖上的雲都用這個 <use href="#ma-cloud">
+const CLOUD_DEFS = '<svg class="ma-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>'
+  + '<linearGradient id="ma-cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f8f5ff"/><stop offset="1" stop-color="#cbbfff"/></linearGradient>'
+  + '<clipPath id="ma-cc"><circle cx="42" cy="54" r="24"/><circle cx="72" cy="38" r="30"/><circle cx="106" cy="42" r="26"/><circle cx="130" cy="56" r="20"/><rect x="20" y="50" width="128" height="28" rx="14"/></clipPath>'
+  + '<filter id="ma-cb" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>'
+  + '<filter id="ma-cs" x="-20%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#fff" flood-opacity=".75"/><feDropShadow dx="4" dy="7" stdDeviation="3.5" flood-color="#8f3352" flood-opacity=".2"/></filter>'
+  + '<symbol id="ma-cloud" viewBox="0 0 160 84" overflow="visible"><g filter="url(#ma-cs)"><g clip-path="url(#ma-cc)"><rect width="160" height="84" fill="url(#ma-cg)"/>'
+  + '<ellipse cx="86" cy="88" rx="78" ry="22" fill="#8b76ef" opacity=".5" filter="url(#ma-cb)"/><ellipse cx="68" cy="17" rx="22" ry="9" fill="#fff" filter="url(#ma-cb)"/>'
+  + '<ellipse cx="108" cy="24" rx="15" ry="7" fill="#fff" opacity=".85" filter="url(#ma-cb)"/><ellipse cx="40" cy="36" rx="12" ry="6" fill="#fff" opacity=".8" filter="url(#ma-cb)"/></g></g></symbol>'
+  + '</defs></svg>';
 const sinX = t => 50 + 27 * Math.sin(t * 1.05 + 0.4);
 
 // 路的橫向位置（%）：跟 main.js 的 smoothPath 是同一條曲線（關卡點之間的三次貝茲）。t 是第幾關，可以有小數
@@ -261,22 +279,37 @@ export function mapStations(n, H) {
 }
 export function stationAt(st, y) { return st.find(r => y >= r.top && y < r.bottom) || st[0]; }
 
-// 駐站娃娃：遊戲裡原本的 8 隻，每站一隻（第 1 站和最後一站兩隻）
-const DOLL_NAME = Object.fromEntries(PIECES.map(p => [p.id, p.name]));
-DOLL_NAME.dino = '龍龍';
-const DOLLS = [['egg', 'sloth'], ['dog'], ['piggy'], ['sloth'], ['moodeng'], ['egg'], ['nyanko'], ['snoopy'], ['piggy'], ['dog'], ['snoopy'], ['nyanko'],
-  ['dino'], ['sloth'], ['moodeng'], ['dino'], ['nyanko'], ['dog'], ['piggy'], ['snoopy'], ['dino'], ['egg'], ['moodeng'], ['sloth', 'egg']];
-// 娃娃站在兩關中間、路的另一側
+// 駐站娃娃，兩種擺法輪流出現（第 1 站和最後一站各兩組，其他站一組）：
+//   ph＝雲台合照：assets/deco 的合照貼紙站在雲朵台上，慢慢左右晃
+//   pk＝雲後探頭：2～3 隻娃娃躲在立體雲後面探頭，前面的雲一高一低
+// [寬度 px, 高÷寬]
+const PHOTO = { group: [100, 676 / 720], pig: [56, 360 / 292], sloth_bed: [92, 370 / 512], sloth_orange: [80, 512 / 500], sloth_pig: [86, 403 / 512], snoopy_sloth: [64, 512 / 348] };
+const SPOTS = [
+  [['ph', 'group'], ['pk', 'egg', 'sloth']], [['pk', 'dog', 'piggy']], [['ph', 'pig']], [['ph', 'sloth_orange']],
+  [['pk', 'moodeng', 'egg', 'dog']], [['ph', 'snoopy_sloth']], [['pk', 'nyanko', 'snoopy']], [['ph', 'sloth_pig']],
+  [['pk', 'piggy', 'dino']], [['ph', 'sloth_bed']], [['pk', 'snoopy', 'dog']], [['ph', 'group']],
+  [['pk', 'dino', 'sloth', 'nyanko']], [['ph', 'snoopy_sloth']], [['pk', 'moodeng', 'piggy']], [['pk', 'dino', 'egg']],
+  [['ph', 'pig']], [['ph', 'sloth_orange']], [['pk', 'piggy', 'nyanko']], [['ph', 'sloth_pig']],
+  [['pk', 'dino', 'dog']], [['ph', 'sloth_bed']], [['pk', 'moodeng', 'snoopy', 'egg']], [['ph', 'group'], ['pk', 'sloth', 'egg']]];
+// 每組放在那一段路彎得最外面的地方（離中線最遠），擺在路的另一側（23% 或 77%）
+// 回傳的 y 是娃娃的底邊；關卡還沒做到的那一段不放
 function dollSpots(st, n, H) {
   const out = [];
   st.forEach(r => {
-    const ids = DOLLS[r.k - 1] || [];
-    const offs = ids.length === 2 ? (r.to - r.from >= 10 ? [3, 9] : [1, 3]) : [2];
-    ids.forEach((id, j) => {
-      const i = r.from - 1 + offs[j];
-      if (i > r.to - 2) return;                 // 這站的關卡還沒做到那裡
-      const y = H - BOT - i * GAP - GAP / 2;
-      out.push({ id, y, pct: roadX(i + .5, n) > 50 ? 19 : 81, from: r.from });
+    const list = SPOTS[r.k - 1] || [];
+    const t0 = r.from - 1, span = (r.to - r.from + 1) / list.length, tEnd = Math.min(r.to, n) - 1 + .4;
+    list.forEach((sp, j) => {
+      const a = t0 + span * j + .3, b = Math.min(t0 + span * (j + 1) - .3, tEnd);
+      if (a > b) return;
+      // 這段路彎得最外面的地方；一段裡有好幾個一樣彎的，挑最靠近這段中間的，娃娃才會平均分開（第1站第一組也會落在剛進遊戲看得到的地方）
+      const mid = (a + b) / 2, dx = t => Math.abs(roadX(t, n) - 50);
+      let far = 0, best = Math.min(mid, b);
+      for (let t = a; t <= b + 1e-9; t += .1) far = Math.max(far, dx(t));
+      for (let t = a; t <= b + 1e-9; t += .1) if (dx(t) >= far - 1.5 && (dx(best) < far - 1.5 || Math.abs(t - mid) < Math.abs(best - mid))) best = t;
+      const pct = roadX(best, n) > 50 ? 23 : 77;
+      let w, h;
+      if (sp[0] === 'ph') { w = PHOTO[sp[1]][0]; h = Math.round(w * PHOTO[sp[1]][1]); } else { w = 36 * (sp.length - 1) + 50; h = 76; }
+      out.push({ sp, y: Math.round(H - BOT - best * GAP + h / 2), pct, w, h, from: r.from, k: out.length });
     });
   });
   return out;
@@ -292,7 +325,7 @@ function signSpots(st, n, H) {
 export function mapArtHTML(W, n, H) {
   const st = mapStations(n, H), spots = dollSpots(st, n, H), signs = signSpots(st, n, H);
   const tOfY = y => (H - BOT - y) / GAP;
-  let html = '';
+  let html = CLOUD_DEFS;
   st.forEach((r, k) => {
     const h = r.bottom - r.top, rng = rngOf(k * 977 + 13);
     const stops = r.stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('');
@@ -308,7 +341,7 @@ export function mapArtHTML(W, n, H) {
           const y = r.top + ly, x = W * (.05 + rng() * .9);
           if (Math.abs(x - W * roadX(tOfY(y), n) / 100) < W * .17) continue;
           if (placed.some(p => Math.hypot(p[0] - x, p[1] - ly) < 46)) continue;
-          if (spots.some(s => Math.abs(W * s.pct / 100 - x) < 66 && Math.abs(s.y - 10 - y) < 72)) continue;
+          if (spots.some(s => Math.abs(W * s.pct / 100 - x) < s.w / 2 + 22 && y > s.y - s.h - 26 && y < s.y + 30)) continue;
           // 站牌（離邊 5%、寬約 96px）和最上面「更多關卡製作中」的立牌前面不放
           if (signs.some(g => Math.abs(g.y - y + 16) < 34 && (g.left ? x < W * .05 + 112 : x > W * .95 - 112))) continue;
           if (y < 150 && Math.abs(x - W / 2) < 130) continue;
@@ -325,6 +358,15 @@ export function mapArtHTML(W, n, H) {
       html += `<svg class="ma-bridge" style="top:${by - 90}px;height:180px" viewBox="0 0 ${W} 180"><defs><linearGradient id="ma-fg${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".14" stop-color="#fff"/><stop offset=".86" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="ma-fm${k}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="180"><rect width="${W}" height="180" fill="url(#ma-fg${k})"/></mask></defs><g mask="url(#ma-fm${k})">${bridge(r.bridge, W, gx, rngOf(k * 31 + 7), r, st[k + 1])}</g></svg>`;
     }
   });
+  // 天空和夢幻工廠有幾朵立體雲慢慢飄過去（減少動態時停在畫面裡的 --x，不會停在畫面外）
+  [[6, 4], [23, 3]].forEach(([k, cnt]) => {
+    const r = st[k]; if (!r) return;
+    const rng = rngOf(k * 53 + 5), span = W + 280;
+    for (let j = 0; j < cnt; j++) {
+      const w = 70 + rng() * 50, y = r.top + 40 + (r.bottom - r.top - 120) * (j + rng() * .6) / cnt, d = 46 + rng() * 30, f = rng();
+      html += `<div class="ma-drift" style="top:${y.toFixed(0)}px;width:${w.toFixed(0)}px;height:${(w * .525).toFixed(0)}px;--w:${span}px;--x:${(140 + f * (W - w)).toFixed(0)}px;--d:${d.toFixed(0)}s;--k:${(-f * d).toFixed(1)}s"></div>`;
+    }
+  });
   return html;
 }
 
@@ -336,8 +378,15 @@ export function mapSignsHTML(n, H, unlocked) {
     html += `<div class="map-sign" style="top:${g.y}px;${g.left ? 'left:5%' : 'right:5%'}"><b>第${g.r.k}站</b>${g.r.name}</div>`;
   });
   dollSpots(st, n, H).forEach(s => {
-    const lock = s.from > unlocked;
-    html += `<div class="map-doll${lock ? ' lock' : ''}" style="left:${s.pct}%;top:${s.y}px"><img src="assets/sprites/${s.id}_n.png" alt="" decoding="async" draggable="false"><i></i><span>${DOLL_NAME[s.id] || ''}</span></div>`;
+    const lock = s.from > unlocked ? ' lock' : '', pos = `left:${s.pct}%;top:${s.y}px;width:${s.w}px;height:${s.h}px;--k:${s.k}`;
+    if (s.sp[0] === 'ph') {
+      html += `<div class="map-spot ph${lock}" style="${pos}"><img src="assets/deco/${s.sp[1]}.webp" alt="" decoding="async" draggable="false"></div>`;
+      return;
+    }
+    const ids = s.sp.slice(1), m = ids.length;
+    const imgs = ids.map((id, j) => `<img src="assets/sprites/${id}_n.png" alt="" decoding="async" draggable="false" style="left:${(s.w - 36 * m - 14) / 2 + 36 * j}px;--k:${(-j * 1.1 - s.k * .4).toFixed(1)}s">`).join('');
+    const clouds = ids.map((_, j) => `<i style="left:${((s.w - 36 * (m - 1) - 86) / 2 + 36 * j).toFixed(0)}px;bottom:${j % 2 * 5}px"></i>`).join('');
+    html += `<div class="map-spot pk${lock}" style="${pos}">${imgs}${clouds}</div>`;
   });
   return html;
 }
