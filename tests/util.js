@@ -157,6 +157,22 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
         if (!cur || cur.block !== 'dino' || cur.id !== x.piece.id) fail(`${where}: exit of ${pieceStr(x.piece)} but board has ${pieceStr(cur)}`);
         g[x.r][x.c] = null;
       }
+    } else if (e.t === 'tick') {
+      if (!e.cells.length) fail(`${where}: empty tick`);
+      for (const x of e.cells) {
+        at(x, where);
+        const cur = g[x.r][x.c];
+        if (!cur || cur.block !== 'alarm' || x.hp !== cur.hp - 1 || x.hp < 0) fail(`${where}: tick ${JSON.stringify(x)} on ${pieceStr(cur)}`);
+        g[x.r][x.c] = { ...cur, hp: x.hp };
+      }
+    } else if (e.t === 'alarm') {
+      if (!e.cells.length) fail(`${where}: empty alarm`);
+      for (const x of e.cells) {
+        at(x, where);
+        const cur = g[x.r][x.c];
+        if (!cur || cur.block !== 'alarm' || cur.hp !== 0 || cur.id !== x.piece.id) fail(`${where}: alarm burst of ${pieceStr(x.piece)} but board has ${pieceStr(cur)}`);
+        g[x.r][x.c] = null;
+      }
     } else if (e.t === 'spread') {
       at(e.from, where); at(e.to, where);
       const src = g[e.from.r][e.from.c], cur = g[e.to.r][e.to.c];
@@ -230,7 +246,15 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('exit not followed by fall');
       ctx.exits += e.cells.length;
     } else if (e.t === 'fall') {
-      if (!evs[i - 1] || (evs[i - 1].t !== 'clear' && evs[i - 1].t !== 'exit')) fail('fall not preceded by clear / exit');
+      if (!evs[i - 1] || !['clear', 'exit', 'alarm'].includes(evs[i - 1].t)) fail('fall not preceded by clear / exit / alarm');
+    } else if (e.t === 'tick') {
+      // alarms count down once, after the move has settled (then maybe burst, fall and cascade)
+      if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'tick')) fail('tick must come once, after the move');
+      if (evs[i - 1] && evs[i - 1].t !== 'fall') fail(`tick after ${evs[i - 1].t}`);
+    } else if (e.t === 'alarm') {
+      if (!evs[i - 1] || evs[i - 1].t !== 'tick') fail('alarm not preceded by tick');
+      if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('alarm not followed by fall');
+      ctx.alarms = (ctx.alarms || 0) + e.cells.length;
     } else if (e.t === 'spread') {
       const rest = evs.slice(i + 1).map(x => x.t).join(',');
       if (sugar || !(rest === '' || rest === 'shuffle')) fail(`spread must end the move (then maybe a shuffle), got ${rest}`);
@@ -256,7 +280,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       const p = e.board[r][c];
       if (!mask[r][c] && p) fail(`${e.t}: piece in hole ${r},${c}`);
-      if (mask[r][c] && !p && e.t !== 'clear' && e.t !== 'exit') fail(`${e.t}: empty cell ${r},${c} after ${e.t}`);
+      if (mask[r][c] && !p && e.t !== 'clear' && e.t !== 'exit' && e.t !== 'alarm') fail(`${e.t}: empty cell ${r},${c} after ${e.t}`);
       if (p) {
         if (ids.has(p.id)) fail(`${e.t}: duplicate id ${p.id}`);
         ids.add(p.id);
@@ -305,6 +329,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       gainedSum += e.gained;
     } else if (e.gained !== undefined) fail(`${e.t} has gained`);
     if (e.t === 'exit') for (const x of e.cells) ctx.gone.add(x.piece.id);
+    if (e.t === 'alarm') for (const x of e.cells) ctx.gone.add(x.piece.id);
     if (e.t === 'spread') { ctx.gone.add(e.was.id); if (e.piece.id <= ctx.maxId) fail(`spread reuses id ${e.piece.id}`); }
     if (e.t === 'fall') {
       const byCol = {};

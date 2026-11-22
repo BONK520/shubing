@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123i';
-import { SLOGANS } from './slogans.js?v=20261123i';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123i';
-import { blockerCanvas } from './blockers.js?v=20261123i';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123i';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123j';
+import { SLOGANS } from './slogans.js?v=20261123j';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123j';
+import { blockerCanvas } from './blockers.js?v=20261123j';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123j';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123i';
+const MOD_V = '?v=20261123j';
 
 window.__plushBooted = true;
 
@@ -352,6 +352,7 @@ const INTRO = {
   choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco') },
   lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl') },
   portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
+  alarm: { name: '鬧鐘', text: '每走一步，鬧鐘就少一格；數到0會爆開，扣掉3步！在旁邊配對或用特效就能拆掉。', icon: () => blockerImg('alarm') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
 };
 function levelMechs(lvl) {
@@ -363,6 +364,7 @@ function levelMechs(lvl) {
   if (obs.includes('C')) out.add('choco');
   if (obs.includes('S') || lvl.licorice) out.add('lic');
   if (obs.includes('D') || goalPartsOf(lvl).some(p => p.kind === 'dino')) out.add('dino');
+  if (obs.includes('A') || lvl.alarm) out.add('alarm');
   if (lvl.portals && lvl.portals.length) out.add('portal');
   if (goalPartsOf(lvl).some(p => p.kind === 'order')) out.add('order');
   return Object.keys(INTRO).filter(k => out.has(k));
@@ -1442,7 +1444,8 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
-  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino' };
+  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino',
+  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];
@@ -1456,6 +1459,8 @@ function onCue(name, data, token) {
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
     case 'cage': case 'frost': case 'choco': buzzLater(d, 12, 60); break;
     case 'dino': buzzLater(d, [12, 30, 12], 80); break;
+    case 'alarm': buzzLater(d, [30, 40, 30, 40, 30], 80); break;
+    case 'alarmoff': buzzLater(d, 12, 60); break;
   }
 }
 
@@ -1561,6 +1566,10 @@ function starBurst(icon) {
 function onEvent(ev, token) {
   if (token !== session || !ev) return;
   switch (ev.t) {
+    case 'alarm':
+      dispMoves = Math.max(movesLeft, dispMoves - 3 * ((ev.cells && ev.cells.length) || 1));
+      renderMoves();
+      break;
     case 'transform':
       if (ev.gained) { dispScore += ev.gained; renderScore(); }
       if (sugarMode) {
@@ -1730,6 +1739,8 @@ async function doSwap(a, b) {
   }
   movesLeft--;
   dispMoves = movesLeft;
+  // 鬧鐘數到 0 爆開：一個扣 3 步（不夠扣就變 0，照平常步數用完的流程走）。畫面上的步數等爆開那一刻才扣
+  if (res.alarms) movesLeft = Math.max(0, movesLeft - 3 * res.alarms);
   renderMoves();
   try {
     await R.play(res.events, opts);
@@ -1747,7 +1758,7 @@ function afterMove() {
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
   if (movesLeft <= 0) { loseFlow(); return; }
-  if (movesLeft === 5 && !lowWarned) { lowWarned = true; toast('只剩 5 步了！', 1300); }
+  if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); }
   scheduleHint();
 }
 

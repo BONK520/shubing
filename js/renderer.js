@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123i';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123i';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123i';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123j';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123j';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123j';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -58,6 +58,7 @@ const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
 const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
 const DINO_GLOW = [110, 240, 150];       // 龍龍：綠色的光
+const ALARM_RED = [255, 84, 120];        // 鬧鐘爆開：紅色的圈和「-3步」
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40], SPARK_GOLD = [255, 186, 60];
 // 盤面主題（衣櫃的「棋盤背景主題」）：玻璃、格子、內壁影子、外框顏色、裝飾。預設是「夢幻馬卡龍」：
 // 半透明的奶白 → 淡薰衣草毛玻璃，粉白 / 淡紫交錯的格子，奶油粉外框
@@ -2243,7 +2244,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const ch = charge && it.piece && charge.ids.has(it.piece.id) ? { t: charge.t, dur: charge.dur, S: charge.S, x: charge.at.c, y: charge.at.r } : null;
       ghosts.push({ kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, x: gx, y: gy, t0: t0 + tm,
         dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase, charge: ch });
-      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
+      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : p.block === 'alarm' ? 'alarmoff' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
       lastPop = Math.max(lastPop, tm);
     }
 
@@ -2654,8 +2655,44 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     await wait(560);
   }
 
+  // 鬧鐘倒數一格：數字換掉、彈一下
+  async function animTick(ev) {
+    const t = now();
+    let hot = false;
+    for (const q of ev.cells || []) {
+      const v = q && cellV(q);
+      if (!v) continue;
+      v.hp = q.hp | 0; v.landT = t; v.landAmp = q.hp <= 3 ? 0.2 : 0.12;
+      if (q.hp <= 3) hot = true;
+    }
+    cue(hot ? 'tickhot' : 'tick', 0);
+    await wait(170);
+  }
+  // 鬧鐘數到 0：爆開（紅圈、碎片、「-3步」），那一格空出來
+  async function animAlarm(ev) {
+    const t = now();
+    let i = 0;
+    for (const q of ev.cells || []) {
+      if (!q) continue;
+      const v = (q.piece && visuals.get(q.piece.id)) || cellV(q), t1 = t + i * 120;
+      i++;
+      if (v) { visuals.delete(v.id); if (cellMap[q.r] && cellMap[q.r][q.c] === v) cellMap[q.r][q.c] = null; }
+      ghosts.push({ kind: -7, special: 'none', block: 'alarm', hp: 0, x: q.c, y: q.r, t0: t1, dur: POP_MS + 80, to: null, fired: false, heavy: false, phase: v ? v.phase : 0, charge: null });
+      at(t1, tt => {
+        fx.push({ type: 'ring', x: q.c + 0.5, y: q.r + 0.5, R: 1.6, t0: tt, dur: 520, col: ALARM_RED });
+        sparkle(q.c + 0.5, q.r + 0.5, 8, tt, 0.45);
+        addText('-3步', q.c + 0.5, q.r + 0.1, tt + 100, ALARM_RED, true);
+      });
+      shake(3, 320, t1);
+      cue('alarm', t1 - t, { r: q.r, c: q.c });
+    }
+    await wait(Math.max(560, (i - 1) * 120 + 560));
+  }
+
   function animateEvent(ev, next) {
     switch (ev && ev.t) {
+      case 'tick': return animTick(ev);
+      case 'alarm': return animAlarm(ev);
       case 'exit': return animExit(ev);
       case 'spread': return animSpread(ev);
       case 'swap': return animSwap(ev, false, next);
@@ -3046,6 +3083,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else if (type === 'choco') paintChoco(g, S);
       else if (type === 'licorice') paintSwirl(g, S);
       else if (type === 'cage') paintCage(g, S);
+      else if (type === 'alarm') paintAlarm(g, S, hp);
       else if (type === 'exit') paintExitArrow(g, S);
       blockCache.set(key, c);
     }
@@ -3124,6 +3162,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.scale((turn >= 0 ? 1 : -1) * (0.35 + 0.65 * Math.abs(turn)), 1);
       const bw = cs * 0.9 * s * sx, bh = cs * 0.9 * s * sy;
       ctx.drawImage(img, -bw / 2, -bh * 0.54, bw, bh);
+      ctx.restore();
+    } else if (block === 'alarm') {
+      // 鬧鐘：平常偶爾歪一下頭；剩 3 步以下一陣一陣地抖（以底部為軸）
+      const u = ((t / 900 + phase * 0.31) % 1 + 1) % 1;
+      const a = hp <= 3 ? (u < 0.4 ? Math.sin(t / 32) * 0.16 : 0) : Math.sin(t / 1100 + phase) * 0.05;
+      ctx.save();
+      ctx.translate(cx, cy + h / 2);
+      ctx.rotate(a);
+      ctx.drawImage(blockSprite('alarm', hp), -w / 2, -h, w, h);
       ctx.restore();
     } else if (block === 'licorice') {
       ctx.save();

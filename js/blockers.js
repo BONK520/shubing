@@ -190,6 +190,59 @@ export function paintSwirl(g, S) {
   g.beginPath(); g.arc(cx, cy, R * 0.78, Math.PI * 1.1, Math.PI * 1.42); g.stroke();
 }
 
+// ---------------- 鬧鐘：紅色圓鐘 + 頭上兩個金色鈴鐺，錶面上是還剩幾步（hp）；剩 3 步以下數字變紅 ----------------
+const NUM_FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", system-ui, sans-serif';
+export function paintAlarm(g, S, hp = 9) {
+  const cx = S / 2, cy = S * 0.54, R = S * 0.33, hot = hp <= 3;
+  g.fillStyle = 'rgba(10,8,30,0.35)';
+  g.beginPath(); g.ellipse(cx + S * 0.01, cy + R + S * 0.05, R * 0.95, S * 0.06, 0, 0, Math.PI * 2); g.fill();
+  // 小腳
+  g.fillStyle = '#6a1f35';
+  for (const sx of [-1, 1]) {
+    g.beginPath(); g.ellipse(cx + sx * R * 0.62, cy + R * 0.98, S * 0.06, S * 0.035, sx * 0.5, 0, Math.PI * 2); g.fill();
+  }
+  // 鈴鐺和中間的小槌子
+  g.lineWidth = S * 0.035; g.strokeStyle = '#6a1f35'; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(cx, cy - R * 1.02); g.lineTo(cx, cy - R * 1.22); g.stroke();
+  for (const sx of [-1, 1]) {
+    const bx = cx + sx * R * 0.68, by = cy - R * 0.86;
+    g.save(); g.translate(bx, by); g.rotate(sx * 0.55);
+    const bg = g.createRadialGradient(-S * 0.03, -S * 0.04, S * 0.01, 0, 0, S * 0.13);
+    bg.addColorStop(0, '#fff3b0'); bg.addColorStop(0.5, '#ffc93a'); bg.addColorStop(1, '#d98a00');
+    g.fillStyle = bg;
+    g.beginPath(); g.arc(0, 0, S * 0.12, Math.PI, 0); g.lineTo(S * 0.12, S * 0.02); g.lineTo(-S * 0.12, S * 0.02); g.closePath(); g.fill();
+    g.lineWidth = S * 0.022; g.strokeStyle = '#7a4a00'; g.stroke();
+    g.restore();
+  }
+  // 鐘身
+  const body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R * 1.05);
+  body.addColorStop(0, '#ff9ab0'); body.addColorStop(0.55, '#ff4f78'); body.addColorStop(1, '#c4224d');
+  g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+  g.lineWidth = S * 0.03; g.strokeStyle = '#6a1f35'; g.stroke();
+  // 錶面和刻度
+  const F = R * 0.76;
+  const face = g.createRadialGradient(cx - F * 0.3, cy - F * 0.3, F * 0.1, cx, cy, F);
+  face.addColorStop(0, '#ffffff'); face.addColorStop(1, hot ? '#ffd6df' : '#fff1e6');
+  g.fillStyle = face; g.beginPath(); g.arc(cx, cy, F, 0, Math.PI * 2); g.fill();
+  g.lineWidth = S * 0.016; g.strokeStyle = 'rgba(106,31,53,0.45)'; g.stroke();
+  g.fillStyle = 'rgba(106,31,53,0.5)';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    g.beginPath(); g.arc(cx + Math.cos(a) * F * 0.84, cy + Math.sin(a) * F * 0.84, S * (i % 3 ? 0.01 : 0.016), 0, Math.PI * 2); g.fill();
+  }
+  // 還剩幾步
+  const txt = String(Math.max(0, hp | 0));
+  g.font = `900 ${Math.round(S * (txt.length > 1 ? 0.3 : 0.36))}px ${NUM_FONT}`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineJoin = 'round'; g.lineWidth = S * 0.04; g.strokeStyle = '#ffffff';
+  g.strokeText(txt, cx, cy + S * 0.012);
+  g.fillStyle = hot ? '#e8173f' : '#5a2440';
+  g.fillText(txt, cx, cy + S * 0.012);
+  // 左上的亮光
+  g.lineWidth = S * 0.025; g.strokeStyle = 'rgba(255,255,255,0.8)';
+  g.beginPath(); g.arc(cx, cy, R * 0.9, Math.PI * 1.08, Math.PI * 1.38); g.stroke();
+}
+
 // ---------------- 龍龍出口：綠色往下的箭頭（S = 箭頭大小）----------------
 export function paintExitArrow(g, S) {
   const pts = [[0.5, 0.92], [0.94, 0.42], [0.68, 0.42], [0.68, 0.08], [0.32, 0.08], [0.32, 0.42], [0.06, 0.42]].map(([x, y]) => [x * S, y * S]);
@@ -210,6 +263,7 @@ export const CRUMBS = {
   frost: hp => [FROST_LAYERS[Math.max(0, Math.min(2, hp - 1))], '#fffdf8', '#ffe6f0'],
   choco: () => ['#8a4f2b', '#5a2c12', '#c48a5c'],
   licorice: () => ['#2a1f33', '#c0479a', '#5a4566'],
+  alarm: () => ['#ff4f78', '#ffc93a', '#ffffff'],
   cage: () => ['#ffffff', '#c6cfdb', '#ffd24a'],
 };
 
@@ -312,6 +366,7 @@ export function blockerCanvas(type, px) {
   } else if (type.startsWith('frost')) paintFrost(g, S, +(type.slice(5) || 1));
   else if (type === 'choco') paintChoco(g, S);
   else if (type === 'swirl') paintSwirl(g, S);
+  else if (type === 'alarm') paintAlarm(g, S, 9);
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
   else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));

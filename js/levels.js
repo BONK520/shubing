@@ -1188,6 +1188,61 @@ const WINDUP = [   // 發條兔（第 105 關）
   '#######',
   '.##.##.',
 ];
+const ALARMCLOCK = [   // 鬧鐘（第 106 關）
+  '.##.##.',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#...#.',
+];
+const POCKETWATCH = [   // 懷錶（第 107 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '.......',
+];
+const CUCKOO = [   // 布穀鐘（第 108 關）
+  '...#...',
+  '..###..',
+  '.#####.',
+  '#######',
+  '##...##',
+  '#######',
+  '#######',
+  '.#.#.#.',
+  '.#.#.#.',
+];
+const CLOCKTOWER = [   // 鐘樓（第 109 關）
+  '..###..',
+  '..###..',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+];
+const TIMEMACHINE = [   // 時光機（第 110 關）
+  '#######',
+  '#.###.#',
+  '#######',
+  '.#####.',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+];
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -3414,6 +3469,92 @@ export const LEVELS = [
     dinos: { onBoard: 1, rate: 0.4 },
     hint: '王關！先做特殊方塊，再救龍龍',
   },
+  // ---- 第 22 章 鐘錶店（106–110）：倒數鬧鐘 ----
+  {
+    id: 106, rows: 9, cols: 7, moves: 11, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'collect', items: { dog: 40 } }, stars: [11000, 22000, 33000],
+    mask: ALARMCLOCK, jelly: null,
+    seed: 10615,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.A...A.',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    alarm: { timer: 8 },
+    hint: '鬧鐘數到0會爆開，扣3步。先把它消掉！',
+  },
+  {
+    id: 107, rows: 9, cols: 7, moves: 12, kinds: ['sloth', 'dog', 'egg', 'moodeng'],
+    goal: { type: 'jelly' }, stars: [23000, 46000, 69000],
+    mask: POCKETWATCH,
+    jelly: [
+      '.......',
+      '..111..',
+      '.11111.',
+      '1122211',
+      '1122211',
+      '1122211',
+      '.11111.',
+      '..111..',
+      '.......',
+    ],
+    seed: 10715,
+    alarm: { timer: 7, rate: 0.04, max: 1 },
+    hint: '一邊清果凍，一邊順手拆鬧鐘',
+  },
+  {
+    id: 108, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'clear', what: ['frost'] }, stars: [9000, 18000, 27000],
+    mask: CUCKOO, jelly: null,
+    seed: 10815,
+    obstacles: [
+      '.......',
+      '.......',
+      '..A.A..',
+      '..111..',
+      '.......',
+      '.......',
+      '2.1.1.2',
+      '.1.1.1.',
+      '.1.1.1.',
+    ],
+    alarm: { timer: 10 },
+    hint: '鬧鐘被糖霜擋住，先打開一條路',
+  },
+  {
+    id: 109, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'score', target: 28000 }, stars: [28000, 44000, 61000],
+    mask: CLOCKTOWER, jelly: null,
+    seed: 10915,
+    alarm: { timer: 12, rate: 0.06, max: 2 },
+    hint: '分數關！一邊拿分一邊拆鬧鐘',
+  },
+  {
+    id: 110, rows: 9, cols: 7, moves: 12, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'mix', items: { egg: 25 }, dinos: 2 }, stars: [14000, 28000, 42000],
+    mask: TIMEMACHINE, jelly: null,
+    seed: 11015,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.A...A.',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    alarm: { timer: 8, rate: 0.02, max: 2 },
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '王關！龍龍和鬧鐘一起來',
+  },
 ];
 
 // ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
@@ -3429,9 +3570,11 @@ export function isScoreLevel(L) {
 
 // ---------- 盤面機關和目標（2026-11）----------
 // 關卡可以再加（js/engine.js 的 createEngine 選項，見那邊的說明）：
-//   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 龍龍、E 龍龍出口、. 沒有
+//   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 龍龍、E 龍龍出口、
+//                                  A 鬧鐘、. 沒有
 //   portals: [[r1, c1, r2, c2], …] 傳送門：(r1, c1) 下面掉出去的，從 (r2, c2) 上面進來
 //   licorice: { rate, max }        補位時偶爾掉下甘草漩渦糖
+//   alarm: { timer, rate, max }    鬧鐘：timer = 起始數字（每走一步少 1，數到 0 爆開扣 3 步）；rate / max = 補位時掉下鬧鐘
 //   dinos: { onBoard, rate }       龍龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
 // 目標 goal.type：
 //   'collect' { items }、'jelly'、'score'（原本的三種）
@@ -3467,6 +3610,7 @@ export function mechOpts(L) {
   if (Array.isArray(L.obstacles)) o.obstacles = L.obstacles;
   if (Array.isArray(L.portals)) o.portals = L.portals;
   if (L.licorice) o.licorice = { ...L.licorice };
+  if (L.alarm) o.alarm = { ...L.alarm };
   const d = goalParts(L).find(p => p.kind === 'dino');
   if (d) o.dinos = { total: d.need, onBoard: 2, rate: 0.35, ...(L.dinos || {}) };
   return o;
@@ -3605,13 +3749,13 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
 
     // 盤面機關
     const obs = L.obstacles;
-    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, frost: 0 };
+    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, frost: 0 };
     if (obs != null) {
       if (!Array.isArray(obs) || obs.length !== ROWS || !obs.every(r => typeof r === 'string' && r.length === COLS)) bad(`obstacles 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       else for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const ch = obs[r][c];
         if (ch === '.') continue;
-        if (!'LCSDE123'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
+        if (!'LCSDEA123'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
         if (!isCell(r, c)) { bad(`obstacles (${r},${c}) 放在洞上`); continue; }
         if ('123'.includes(ch)) has.frost += +ch; else has[ch]++;
         const jl = L.jelly && L.jelly[r] && L.jelly[r][c] && L.jelly[r][c] !== '.';
@@ -3626,6 +3770,13 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       else if (isCell(q[2] - 1, q[3])) bad(`portal ${JSON.stringify(q)} 的出口上面還有格子`);
     }
     if (L.licorice != null && !(L.licorice.rate > 0 && L.licorice.rate <= 0.2 && L.licorice.max >= 1 && L.licorice.max <= 8)) bad('licorice 要 { rate: 0–0.2, max: 1–8 }');
+    if (L.alarm != null) {
+      const a = L.alarm, rate = a.rate ?? 0, max = a.max ?? 2;
+      if (!(Number.isInteger(a.timer) && a.timer >= 3 && a.timer <= 30)) bad('alarm.timer 要是 3–30 的整數');
+      if (!(rate >= 0 && rate <= 0.2 && Number.isInteger(max) && max >= 1 && max <= 4)) bad('alarm 要 { rate: 0–0.2, max: 1–4 }');
+      if (!has.A && !(rate > 0)) bad('有 alarm 設定，盤面上卻沒有鬧鐘，也不會掉鬧鐘');
+    }
+    if (has.A && L.alarm == null) bad('盤面上有鬧鐘（A），要寫 alarm: { timer }');
     const parts = goalParts(L);
     for (const part of parts) {
       if (part.kind === 'dino' && !(Number.isInteger(part.need) && part.need > 0 && part.need <= 8)) bad('救龍龍的數量要 1–8');

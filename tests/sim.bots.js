@@ -62,11 +62,12 @@ export function goalMet(level, e) {
 export const PROFILES = {
   // weights are in "cells" (1 = one plain piece cleared); urgency: jelly weight × (1 + urgency / jelly left)
   // board mechanics: block = one layer of a goal blocker (frosting / chocolate / cage), chocoAny = clearing chocolate
-  // that is not a goal (it would spread), dino = one row a dino moves down
+  // that is not a goal (it would spread), dino = one row a dino moves down, alarm = taking out an alarm clock
+  // (worth more the closer it is to bursting)
   casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3,
-    block: 2, chocoAny: 1, dino: 2.5, order: 3 },
+    block: 2, chocoAny: 1, dino: 2.5, order: 3, alarm: 2 },
   decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5,
-    block: 3, chocoAny: 1.5, dino: 4, order: 8 },
+    block: 3, chocoAny: 1.5, dino: 4, order: 8, alarm: 4 },
 };
 
 // top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
@@ -137,6 +138,7 @@ function bestMove(s, moves, level, e, W, rnd) {
     cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
     licorice: 0.4,
   };
+  const blkV = q => (q.block === 'alarm' ? W.alarm * (q.hp <= 2 ? 3 : q.hp <= 4 ? 1.5 : 0.6) : BLK[q.block]);
   // 訂單：還要做的特殊方塊 / 組合（做出來加分；組合訂單也會想先做出那兩種特殊方塊）
   const orderNeed = {};
   for (const q of parts) if (q.kind === 'order' && partLeft(q, st, kindOf) > 0) orderNeed[q.what] = true;
@@ -159,7 +161,7 @@ function bestMove(s, moves, level, e, W, rnd) {
     for (const k of hitCells) {
       const y = (k / C) | 0, x = k % C, q = g[y][x];
       if (LK && LK[y][x]) v += BLK.cage;
-      if (q && q.block && BLK[q.block] && area.has(k)) { v += BLK[q.block]; seen.add(k); }
+      if (q && q.block && blkV(q) && area.has(k)) { v += blkV(q); seen.add(k); }
     }
     // a match also hits frosting / chocolate / swirls next to it
     for (const k of matched) {
@@ -168,7 +170,7 @@ function bestMove(s, moves, level, e, W, rnd) {
         const yy = y + dy, xx = x + dx, kk = yy * C + xx;
         if (!isCell(yy, xx) || seen.has(kk) || hitCells.has(kk)) continue;
         const q = g[yy][xx];
-        if (q && q.block && BLK[q.block]) { v += BLK[q.block]; seen.add(kk); }
+        if (q && q.block && blkV(q)) { v += blkV(q); seen.add(kk); }
       }
     }
     // dinos drop by the number of cleared cells below them in their column
@@ -308,7 +310,7 @@ export function playLevel(level, profile, attempt, salt = 0) {
     if (!mv) throw new Error(`L${level.id}: no valid move`);
     const res = e.swap(mv.a, mv.b);
     if (!res.ok) throw new Error(`L${level.id}: bot made an invalid move`);
-    movesLeft--;
+    movesLeft = Math.max(0, movesLeft - 1 - 3 * (res.alarms || 0));
     done = goalMet(level, e);
   }
   const atGoal = e.score;

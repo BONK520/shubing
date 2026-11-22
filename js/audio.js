@@ -592,6 +592,26 @@ const SFX = {
     tone(320, t, { dur: 0.16, attack: 0.003, gain: 0.08, to: 160, glide: 0.14, vibrato: 18 });
     pop(t, 900, 400, 0.05, 0.05);
   },
+  // 鬧鐘走一格：輕輕的「滴答」；剩 3 步以下高一點、兩下
+  tick(t) {
+    tone(1900, t, { dur: 0.025, attack: 0.001, gain: 0.03, type: 'square', lp: 4200 });
+    tone(1400, t + 0.09, { dur: 0.025, attack: 0.001, gain: 0.025, type: 'square', lp: 3600 });
+  },
+  tickhot(t) {
+    bell(96, t, 0.035, 0.12); bell(96, t + 0.1, 0.03, 0.12);
+    tone(2300, t, { dur: 0.03, attack: 0.001, gain: 0.03, type: 'square', lp: 5000 });
+  },
+  // 鬧鐘爆開：「鈴鈴鈴」一串 + 「砰」
+  alarm(t) {
+    for (let i = 0; i < 8; i++) bell(i % 2 ? 98 : 101, t + i * 0.045, 0.05, 0.12);
+    pop(t + 0.02, 420, 140, 0.12, 0.12);
+    noise(t, { dur: 0.18, attack: 0.002, gain: 0.08, type: 'bandpass', f0: 2600, f1: 900, q: 1.1 });
+  },
+  // 鬧鐘被拆掉：小小的「叮」+ 彈一下
+  alarmoff(t) {
+    bell(91, t, 0.06, 0.3);
+    pop(t, 760, 360, 0.05, 0.06);
+  },
   // 巧克力蔓延：黏黏的「咕嚕」
   spread(t) {
     tone(140, t, { dur: 0.3, attack: 0.02, gain: 0.1, to: 90, glide: 0.25, lp: 600, vibrato: 25 });

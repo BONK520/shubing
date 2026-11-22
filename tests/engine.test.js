@@ -55,7 +55,7 @@ test('API surface, isCell / cell / snapshot copies', () => {
   const st = e.stats;
   deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0,
     made: { stripe: 0, wrap: 0, bomb: 0, fish: 0 }, combos: {}, comboCount: 0, chocoGot: 0,
-    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0 });
+    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0, alarmsLeft: 0, alarmsBurst: 0, shellLeft: 0 });
   st.cleared[0] = 50;
   eq(e.stats.cleared[0], 0, 'stats is a copy');
   ok(e.isAdjacent(P(2, 2), P(2, 3)) && e.isAdjacent(P(2, 2), P(1, 2)), 'adjacent');
@@ -857,6 +857,77 @@ test('licorice swirl: never matches, can be swapped, removed by a match next to 
   eq(bb(r3)[2][7].id, behind, 'still there');
 });
 
+test('alarm: a match next to it takes it out (no tick for it); otherwise it counts down once per move', () => {
+  // the match at row 3 is next to the alarm at (2,2): it goes, nothing is left to tick
+  const e = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['......', '......', '..A...', '......', '......', '......'], { alarm: { timer: 5 } });
+  eq(e.stats.alarmsLeft, 1);
+  eq(e.cell(2, 2).block, 'alarm'); eq(e.cell(2, 2).hp, 5);
+  ok(e.cell(2, 2).kind < 0, 'alarms have no colour');
+  const aid = e.cell(2, 2).id;
+  const res = play(e, P(3, 3), P(3, 2));
+  ok(firstClear(res).removed.some(x => x.piece.id === aid && x.cause === 'near'), 'the alarm next to the match is removed');
+  eq(evOf(res, 'tick').length, 0, 'nothing ticks');
+  eq(res.alarms, 0);
+  eq(e.stats.alarmsLeft, 0); eq(e.stats.alarmsBurst, 0);
+  // far away: it ticks 5 -> 4
+  const e2 = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['A.....', '......', '......', '......', '......', '......'], { alarm: { timer: 5 } });
+  const a2 = e2.cell(0, 0).id;
+  const r2 = play(e2, P(5, 3), P(5, 2));
+  const tk = evOf(r2, 'tick');
+  eq(tk.length, 1);
+  eq(tk[0].cells.length, 1); eq(tk[0].cells[0].hp, 4);
+  const at = tk[0].cells[0];
+  eq(e2.cell(at.r, at.c).id, a2, 'the tick names the alarm where it stands (it fell one row)');
+  eq(e2.cell(at.r, at.c).hp, 4);
+  eq(r2.alarms, 0);
+});
+
+test('alarm: at 0 it bursts (alarm event, fall, cascade numbering goes on), swap() returns how many burst', () => {
+  const e = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['A.....', '......', '......', '......', '......', '......'], { alarm: { timer: 1 } });
+  const id = e.cell(0, 0).id;
+  const res = play(e, P(5, 3), P(5, 2));
+  const types = res.events.map(x => x.t);
+  const ti = types.indexOf('tick');
+  ok(ti > 0 && types[ti + 1] === 'alarm' && types[ti + 2] === 'fall', `tick -> alarm -> fall: ${types.join(',')}`);
+  deq(evOf(res, 'alarm')[0].cells.map(x => [x.r, x.c, x.piece.id]), [[1, 0, id]], 'it fell one row, then burst');
+  eq(res.alarms, 1);
+  eq(e.stats.alarmsLeft, 0); eq(e.stats.alarmsBurst, 1);
+  ok(!e.snapshot().grid.flat().some(p => p && p.block === 'alarm'), 'gone from the board');
+  // boosters do not tick alarms
+  const e2 = mo(['______', '______', '______', '______', '______', '______'],
+    ['A.....', '......', '......', '......', '......', '......'], { alarm: { timer: 2 } });
+  e2.smash(P(4, 4));
+  eq(e2.cell(0, 0).hp, 2, 'smash does not tick');
+});
+
+test('alarm: spawns from the top at the given rate, never more than max on the board; every invariant holds', () => {
+  let maxSeen = 0, bursts = 0, ticks = 0, spawned = 0;
+  for (let g = 0; g < Math.max(4, FUZZ); g++) {
+    const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 700 + g * 37, alarm: { timer: 4, rate: 0.15, max: 2 } });
+    const ctx = newCtx(e);
+    for (let m = 0; m < 40; m++) {
+      const h = e.findHint();
+      if (!h) break;
+      const before = e.snapshot();
+      const res = e.swap(h.a, h.b);
+      checkResult(e, before, res, ctx);
+      eq(res.alarms, evOf(res, 'alarm').reduce((n, x) => n + x.cells.length, 0), 'alarms = burst count');
+      ticks += evOf(res, 'tick').length;
+      const n = e.snapshot().grid.flat().filter(p => p && p.block === 'alarm').length;
+      ok(n <= 2, `at most 2 alarms on the board (${n})`);
+      eq(e.stats.alarmsLeft, n, 'alarmsLeft matches the board');
+      maxSeen = Math.max(maxSeen, n);
+      bursts += res.alarms;
+    }
+    spawned += e.stats.alarmsBurst;
+  }
+  note(`alarm fuzz: max on board ${maxSeen}, ticks ${ticks}, bursts ${bursts}`);
+  ok(maxSeen >= 1 && ticks > 0, 'alarms spawned and ticked');
+});
+
 test('dino: falls onto the exit row and leaves (exit event, then a refill); cannot be destroyed', () => {
   const e = mo(['______', '______', '______', '______', '______', '00_0__'],
     ['......', '......', '......', '......', '..D...', '......']);
@@ -987,7 +1058,7 @@ test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, dinos 
       obstacles.push(s);
     }
     const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, rows: cfg.rows, cols: cfg.cols, mask: cfg.mask || null, obstacles, portals: cfg.portals,
-      dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 } });
+      dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 }, alarm: { timer: 6, rate: 0.03, max: 2 } });
     const ctx = newCtx(e);
     for (let m = 0; m < 40; m++) {
       const h = e.findHint();
