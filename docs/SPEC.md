@@ -297,6 +297,16 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - `ar` with `ar-modes="webxr scene-viewer quick-look"`, `src` = GLB, `ios-src` = USDZ, camera-controls, auto-rotate,
   soft shadow. Shows 「這是暫代模型」 for placeholders. Back link to `index.html`. zh-TW labels.
 
+## 8a. Gravity, refill and combos (2026-11)
+
+- Holes stop pieces; new pieces enter only at each column's top cell. A cell under a hole is filled by a resting piece
+  sliding diagonally from the upper-left / upper-right (`fall` moves / spawns carry `path` when not straight down);
+  an unreachable cell gets a new piece directly.
+- Refill colours are chosen after landing, bottom-up; `cascadeBias` (default 0.18) copies a neighbour's colour,
+  `antiCascade` defaults to 0. sugarCrush turns the bias off.
+- First board and shuffles have at least 2 valid moves.
+- Combos: wrapped + wrapped = 5×5, refill, 5×5 again (second clear has cascade 2); fish + striped / wrapped = 3 carrying fish.
+
 ## 8b. Wardrobe (three-star cosmetics) — `js/cosmetics.js`
 
 - `DEBUG_UNLOCK_ALL_COSMETICS` (top of the file): `true` unlocks every cosmetic for previewing; ship with `false`.
