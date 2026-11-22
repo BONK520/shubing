@@ -1516,6 +1516,12 @@ svg.on .hi { opacity: .9; }
 }
 .coin.big { width: 46px; height: 46px; box-shadow: inset 0 -4px 0 rgba(150, 80, 0, .45), 0 0 0 3px #b86e00, 0 4px 8px rgba(120, 60, 0, .35); }
 
+/* 手機窄螢幕（≤ 480px）：第 1 關貼著地圖最底下，會跟右下角的衣櫃按鈕、造型幣、左邊的頭像擠在一起。
+   地圖最底下多留一段空白，讓第 1 關停在衣櫃按鈕上面（加在 .map-deco 後面，地圖貼紙的位置不受影響） */
+@media (max-width: 480px) {
+  .map-scroll::after { content: ''; display: block; height: calc(64px + var(--safe-b)); }
+}
+
 /* 地圖右下角的大按鈕 */
 .closet-fab {
   position: absolute; z-index: 6; right: calc(14px + var(--safe-r)); bottom: calc(18px + var(--safe-b));
@@ -1607,7 +1613,8 @@ svg.on .hi { opacity: .9; }
 .cl-item.can .ci-state { color: #c26a00; }
 .cl-sub { align-self: flex-start; font-size: 16px; font-weight: 900; color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
 .cl-sub small { font-size: 12px; color: var(--ink-soft); font-weight: 800; }
-.cl-chests { display: flex; gap: 8px; width: 100%; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: none; }
+/* flex: none：有 overflow-x 的 flex 子項目會被壓扁（手機上只剩 20px 高），保持原本高度，放不下時由 .cl-scroll 往下捲 */
+.cl-chests { flex: none; display: flex; gap: 8px; width: 100%; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: none; }
 .cl-chest { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 58px; padding: 0; border: 0; background: none; cursor: pointer; }
 .cc-box {
   position: relative; width: 50px; height: 40px; border-radius: 8px 8px 10px 10px;

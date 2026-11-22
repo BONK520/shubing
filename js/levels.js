@@ -1,5 +1,5 @@
 // 毛絨消消樂 — 關卡資料（docs/SPEC.md §4）
-// 盤面都是 8×8。mask：'.' = 洞，其他字元 = 格子；jelly：數字 = 果凍層數（0–2），'.' = 0。
+// 盤面都是 9 列 × 7 欄（rows 9、cols 7）。mask：'.' = 洞，其他字元 = 格子；jelly：數字 = 果凍層數（0–2），'.' = 0。
 // 2026-11 機關重編排（每一關的造型盤面和章節不變，加上機關 / 換目標；產生方式見 docs/SPEC.md §4a）：
 //   第一次出現：冰果凍 7、龍龍 10、鐵籠子 12、多層糖霜 16、巧克力 22、甘草漩渦糖 26、傳送門 31（main.js 跳教學小卡）。
 //   第 31 關以後每章五關輪流：救龍龍（隔章換成傳送門 + 甘草收集）→ 冰果凍 + 鐵籠子 / 傳送門 → 清糖霜 + 籠子（隔章換成
@@ -1138,7 +1138,7 @@ export const LEVELS = [
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
     goal: { type: 'collect', items: { sloth: 30 } }, stars: [22000, 44000, 66000],
     mask: null, jelly: null, seed: 123,
-    hint: '把三個一樣的連成一排，收集 15 個薯餅！',
+    hint: '把三個一樣的連成一排，收集 30 個薯餅！',
   },
   {
     id: 2, rows: 9, cols: 7, moves: 19, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'piggy'],
@@ -3390,7 +3390,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
     let cells = null;
     if (L.mask != null) {
       if (!Array.isArray(L.mask) || L.mask.length !== ROWS || !L.mask.every(r => typeof r === 'string' && r.length === COLS)) {
-        bad('mask 要是 8 個長度 8 的字串');
+        bad(`mask 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       } else {
         cells = L.mask.map(r => [...r].map(ch => ch !== '.'));
       }
@@ -3412,13 +3412,13 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
     }
     if (dead.length) bad(`這些格子永遠湊不成三連：${dead.join(' ')}`);
     // 每一欄的格子要能從上面補到（中間有洞沒關係，方塊會穿過去）
-    // → 只要盤面的格子都在 0..7 就一定補得到，這裡不用另外檢查。
+    // → 只要盤面的格子都在 0..ROWS-1 就一定補得到，這裡不用另外檢查。
 
     // jelly
     let layers = 0;
     if (L.jelly != null) {
       if (!Array.isArray(L.jelly) || L.jelly.length !== ROWS || !L.jelly.every(r => typeof r === 'string' && r.length === COLS)) {
-        bad('jelly 要是 8 個長度 8 的字串');
+        bad(`jelly 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       } else {
         for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
           const ch = L.jelly[r][c];
