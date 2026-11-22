@@ -896,7 +896,7 @@ const starsFor = (lvl, score) => (levMod.starsFor ? levMod.starsFor(lvl, score) 
 function goalText(lvl) {
   const g = lvl.goal || {};
   if (g.type === 'collect') {
-    // 名字和數量之間用不斷行空格（ ），配合 .goal-text 的 keep-all：只會在「收集」後面或「、」後面換行，名字不會被拆開
+    // 名字和數量之間用不斷行空格（ ）：關卡開始的橫幅換行時，名字和數量不會被拆開
     return '收集 ' + Object.entries(g.items || {}).map(([id, n]) => `${(pieceById(id) || { name: id }).name} ×${n}`).join('、');
   }
   if (g.type === 'jelly') return '把果凍全部清掉！';
@@ -993,7 +993,10 @@ function openStartCard(i) {
     gb.appendChild(ic); gb.appendChild(numEl('b', fmt(scoreTarget(lvl))));
     g.appendChild(gb);
   }
-  $('#ms-goal-text').textContent = goalText(lvl);
+  // 目標只寫一次：一到兩個目標時數字放大、放在圖示右邊（.row）；三個以上維持上下排，不然窄螢幕放不下
+  g.setAttribute('aria-label', '目標：' + goalText(lvl));
+  g.classList.toggle('row', g.children.length <= 2);
+  g.classList.toggle('many', g.children.length > 3); // 四、五個目標：窄螢幕也要能換行
   setNum($('#ms-moves'), lvl.moves);
   const hint = lvl.hint || '';
   $('#ms-hint-box').hidden = !hint;

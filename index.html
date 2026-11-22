@@ -225,8 +225,8 @@
     <div class="card-stars" id="ms-stars"></div>
     <div class="goal-box">
       <div class="goal-box-lbl">目標</div>
-      <div class="goal-big" id="ms-goal"></div>
-      <div class="goal-text" id="ms-goal-text"></div>
+      <!-- 改版 2026-11：目標只寫一次（圖示旁邊的大數字），下面重複的「收集 XX ×30」拿掉；完整的一句放在 aria-label -->
+      <div class="goal-big" id="ms-goal" role="group"></div>
     </div>
     <div class="moves-line">有 <b id="ms-moves" data-t="20">20</b> 步可以用</div>
     <div class="hint-bubble" id="ms-hint-box">

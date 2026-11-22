@@ -820,9 +820,21 @@ svg.on .hi { opacity: .9; }
 .goal-big .gb .ic svg { width: 64px; height: 64px; fill: url(#g-gold); stroke: #fff; stroke-width: 1.6; paint-order: stroke; filter: drop-shadow(0 3px 3px rgba(150, 90, 0, .3)); }
 .goal-big .gb .ic .jelly-ic { width: 58px; height: 58px; border-radius: 14px; }
 .goal-big .gb b { font-size: 24px; font-weight: 900; color: #fff; }   /* 描邊和厚度在「遊戲感的字」那段 */
-.goal-text { /* 「收集 皮蛋 ×17、薯餅 ×17…」：只在空格和「、」後面換行（名字和數量之間是不斷行空格） */
-  font-weight: 800; font-size: 17px; color: var(--ink); text-align: center; text-wrap: balance;
-  word-break: keep-all; overflow-wrap: break-word; line-break: strict;
+/* 改版 2026-11：一到兩個目標時，數字放大放在圖示右邊（目標只寫一次，原本下面那行「收集 XX ×30」拿掉了） */
+.goal-big.row { gap: 8px 10px; flex-wrap: wrap; }
+.goal-big.row .gb { flex-direction: row; gap: 3px; }
+.goal-big.row .gb b { font-size: 26px; }
+.goal-big.row .gb:not(:only-child) .ic { width: 52px; height: 52px; }
+.goal-big.row .gb:not(:only-child) .ic svg { width: 88%; height: 88%; }
+.goal-big.row .gb:not(:only-child) .ic .jelly-ic { width: 80%; height: 80%; }
+.goal-big.row .gb:only-child { gap: 8px; }
+.goal-big.row .gb:only-child b { font-size: 42px; }
+/* 四、五個目標（混合關）一定要能換行；下面 360 寬和桌機的 nowrap 是給三個目標用的 */
+.goal-big.many { flex-wrap: wrap; }
+/* 窄螢幕（360 寬）兩個目標還要再小一點，數字太長時第二個自動換到下一行，不會超出粉色框 */
+@media (max-width: 370px) {
+  .goal-big.row .gb:not(:only-child) .ic { width: 46px; height: 46px; }
+  .goal-big.row .gb:not(:only-child) b { font-size: 23px; }
 }
 .moves-line { font-weight: 800; font-size: 17px; color: var(--ink-soft); }
 .moves-line b { font-size: 28px; color: #fff; margin: 0 4px; }
