@@ -6,7 +6,7 @@ export const PIECES = [
   { id: 'dog',     name: '皮蛋',     color: '#7b3ff2', scan: true  },  // 深邃亮紫（灰黑色的皮蛋在亮紫上最清楚）
   { id: 'sloth',   name: '薯餅',     color: '#ff7a12', scan: true  },  // 鮮明橘
   { id: 'egg',     name: '蛋黃哥',   color: '#ffc81a', scan: true  },  // 鮮豔金黃
-  { id: 'dino',    name: '小恐龍',   color: '#18c25a', scan: false, photo: true },  // 亮翠綠
+  { id: 'piggy',   name: '存錢豬',   color: '#18c25a', scan: false, photo: true },  // 亮翠綠（粉白色的存錢豬在綠底上最清楚）
   { id: 'nyanko',  name: '貓咪老師', color: '#2563eb', scan: false, photo: true },  // 濃郁寶藍（白貓在寶藍上一眼就看到）
   { id: 'moodeng', name: '彈跳豬',   color: '#ff3fb0', scan: false, photo: true },  // 桃紅
   { id: 'snoopy',  name: '史努比',   color: '#e8263c', scan: false, photo: true },  // 正紅（白狗在紅底上最清楚）

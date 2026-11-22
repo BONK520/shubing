@@ -75,7 +75,7 @@ export const TOY_FACE = {
   dog:     { x: 0.5,  top: 0.03, eyes: 0.55, cheeks: 0.7,  w: 0.72 },
   sloth:   { x: 0.5,  top: 0.02, eyes: 0.33, cheeks: 0.44, w: 0.4 },
   egg:     { x: 0.5,  top: 0.02, eyes: 0.27, cheeks: 0.37, w: 0.72 },
-  dino:    { x: 0.62, top: 0.06, eyes: 0.7,  cheeks: 0.84, w: 0.6 },
+  piggy:   { x: 0.3,  top: 0.26, eyes: 0.4,  cheeks: 0.6,  w: 0.5 },   // 存錢豬：頭在照片左邊
   nyanko:  { x: 0.5,  top: 0.03, eyes: 0.33, cheeks: 0.5,  w: 0.82 },
   moodeng: { x: 0.5,  top: 0.05, eyes: 0.3,  cheeks: 0.62, w: 0.86 },
   snoopy:  { x: 0.46, top: 0.04, eyes: 0.5,  cheeks: 0.64, w: 0.72 },
@@ -100,7 +100,7 @@ export const ACCESSORY_TUNING = {
              bow: { offsetX: 0, offsetY: 0.03, scale: 1.15 }, shades: { offsetX: 0, offsetY: 0, scale: 1.1 }, blush: { offsetX: 0, offsetY: 0, scale: 1.2 } },
   egg:     { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
              bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  dino:    { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
+  piggy:    { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
              bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
   nyanko:  { crown: { offsetX: 0, offsetY: 0.02, scale: 1 }, chef: { offsetX: 0, offsetY: 0.02, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
              bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },

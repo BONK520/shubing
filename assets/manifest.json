@@ -46,8 +46,8 @@
       ]
     },
     {
-      "id": "dino",
-      "sprite": "assets/sprites/dino.png",
+      "id": "piggy",
+      "sprite": "assets/sprites/piggy.png",
       "clean": "assets/sprites/dino_n.png",
       "photo": true
     },

@@ -609,7 +609,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else g.fillRect(x + o, y - T, band, T * 3);
     }
   }
-  const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', dino: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };   // 顏色在 pieces.js
+  const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', piggy: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };   // 顏色在 pieces.js
   const SHAPE_CYCLE = ['ball', 'square', 'egg', 'flower', 'hex', 'bean', 'heart'];
   function shapeOf(kind) { const id = pieceInfo(kind).id; return SHAPE_OF[id] || SHAPE_CYCLE[((kind % 7) + 7) % 7]; }
   const CANDY_R = 0.485;    // 糖果半徑 / 格（底座大一點，玩偶周圍露出一整圈顏色）
