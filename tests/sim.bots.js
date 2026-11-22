@@ -15,7 +15,7 @@
 //            稍微偏好在下面消（比較容易連鎖）
 import { createEngine } from '../js/engine.js';
 import { PIECES } from '../js/pieces.js';
-import { isScoreLevel, passScore, starsFor } from '../js/levels.js';
+import { isScoreLevel, passScore, starsFor, mechOpts, goalDone } from '../js/levels.js';
 
 export { isScoreLevel, passScore, starsFor };
 
@@ -46,6 +46,7 @@ export function makeEngine(level, attempt) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed: seedFor(level, attempt) };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
+  Object.assign(opts, mechOpts(level));                    // 盤面機關（鐵籠子、糖霜、巧克力、甘草、小恐龍、傳送門）
   if (level.goal && level.goal.type === 'collect') {      // 跟 main.js 一樣：小魚優先游去目標還要收集的毛絨
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
@@ -54,10 +55,7 @@ export function makeEngine(level, attempt) {
 }
 // main.js goalMet()（目標關；分數關沒有「提早達成」）
 export function goalMet(level, e) {
-  const g = level.goal || {};
-  if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (e.stats.cleared[kindOf(id)] || 0) >= n);
-  if (g.type === 'jelly') return e.stats.jellyLeft <= 0;
-  return e.score >= passScore(level);          // 分數關：到了目標就結束
+  return goalDone(level, e.stats, e.score, kindOf);     // 分數關：到了目標就結束
 }
 
 // ---------- players ----------

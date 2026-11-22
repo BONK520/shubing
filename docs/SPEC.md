@@ -307,6 +307,37 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - First board and shuffles have at least 2 valid moves.
 - Combos: wrapped + wrapped = 5×5, refill, 5×5 again (second clear has cascade 2); fish + striped / wrapped = 3 carrying fish.
 
+## 8c. Board mechanics (Candy Crush blockers, 2026-11) — `js/engine.js`, `js/blockers.js`
+
+Composable per level. Level fields (passed to the engine by `mechOpts(level)` in `js/levels.js`):
+- `obstacles`: one string per row. `L` cage (licorice lock: the piece cannot be swapped or fall and stops what falls
+  onto it; a match through it or any effect breaks it, the piece stays), `1`/`2`/`3` frosting layers (never moves; a
+  match next to it or an effect removes a layer), `C` chocolate (1 layer; after a move that broke none, one chocolate
+  grows into a neighbouring normal piece), `S` licorice swirl (falls, swappable, never matches; removed by a match next
+  to it or an effect; stops striped beams), `D` dino, `E` dino exit, `.` nothing.
+- `portals: [[r1, c1, r2, c2], …]`: what falls out of the bottom of (r1, c1) comes in at the top of (r2, c2).
+- `licorice: { rate, max }`: new pieces are sometimes swirls. `dinos: { onBoard, rate }`: how dinos drop in.
+- Dinos (the old dino plush photo, `assets/sprites/dino_n.png`) fall, slide and can be swapped, but cannot be matched or
+  destroyed; one standing on an exit leaves the board. With dinos and no `E`, every column's bottom cell (not a
+  portal entrance) is an exit.
+
+Goals (`goal.type`): `collect`, `jelly`, `score`, plus `dino { count }`, `clear { what: ['frost', 'choco', 'cage'] }`
+and `mix { items?, jelly?, dinos?, clear? }`. `goalParts`, `partLeft`, `goalDone` in `js/levels.js` are shared by the
+game and the simulator.
+
+Engine events and fields: every event has `lock` (cage layer); `clear` adds `unlocks [{ r, c }]` and
+`blockerHits [{ r, c, block: 'frost', left }]`; a removed blocker is in `removed` (`piece.block`, cause `near` for a
+neighbouring match); line effects cut by a swirl carry `reach [lo, hi]`; `exit { cells }` (then a `fall`);
+`spread { from, to, piece, was }` (last event of a move, before an auto-shuffle); fall paths mark portal jumps with
+`warp: true`. Pieces of these kinds carry `block` (`dino` / `frost` / `choco` / `licorice`) and `hp`.
+`stats` adds `dinosOut`, `dinosTotal`, `frostLeft` (layers), `chocoLeft`, `licoriceLeft`, `locksLeft`.
+Plain levels give exactly the same events as before.
+
+Renderer: blockers are drawn from `js/blockers.js` (canvas, cached per cell size); cages break in two halves; frosting
+and chocolate crumble; chocolate spread grows from the neighbour and melts the eaten piece; dinos (mint rescue bubble,
+look around) hop out at exits (cues `dino`, `dinoout` → main.js flies them to the HUD); green arrows under exits; portal
+rings on the cell edges; falling pieces drop out of a portal entrance and come in above the exit.
+
 ## 8b. Wardrobe (three-star cosmetics) — `js/cosmetics.js`
 
 - `DEBUG_UNLOCK_ALL_COSMETICS` (top of the file): `true` unlocks every cosmetic for previewing; ship with `false`.

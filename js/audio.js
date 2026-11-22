@@ -564,6 +564,42 @@ const SFX = {
     marimba(m - 12, t, 0.08, 0.35);
     sparkle(t + 0.05, 3 + i * 2, 0.035, 96);
   },
+  // ---- 盤面機關 ----
+  // 鐵籠子打開：「鏘」一聲金屬 + 一點亮晶晶
+  cage(t) {
+    bell(93, t, 0.07, 0.35); bell(98, t + 0.015, 0.04, 0.25);
+    tone(2400, t, { dur: 0.08, attack: 0.001, gain: 0.035, to: 1800, glide: 0.06, type: 'square', lp: 5000 });
+    noise(t, { dur: 0.06, attack: 0.001, gain: 0.06, type: 'highpass', f0: 4000, q: 0.8 });
+    pop(t + 0.03, 700, 300, 0.05, 0.06);
+  },
+  // 糖霜掉一層：軟軟的「噗嚓」
+  frost(t) {
+    noise(t, { dur: 0.09, attack: 0.003, gain: 0.1, type: 'lowpass', f0: 2200, f1: 500, q: 0.7 });
+    crunch(t, 0.75, 0.18);
+    pop(t, 520, 300, 0.05, 0.07);
+  },
+  // 巧克力碎掉：低一點的「咔」
+  choco(t) {
+    crunch(t, 0.6, 0.24);
+    tone(180, t, { dur: 0.1, attack: 0.002, gain: 0.08, to: 110, glide: 0.08 });
+  },
+  // 甘草漩渦糖：彈彈的「啵嗯」
+  swirl(t) {
+    tone(320, t, { dur: 0.16, attack: 0.003, gain: 0.08, to: 160, glide: 0.14, vibrato: 18 });
+    pop(t, 900, 400, 0.05, 0.05);
+  },
+  // 巧克力蔓延：黏黏的「咕嚕」
+  spread(t) {
+    tone(140, t, { dur: 0.3, attack: 0.02, gain: 0.1, to: 90, glide: 0.25, lp: 600, vibrato: 25 });
+    noise(t, { dur: 0.25, attack: 0.03, gain: 0.05, type: 'lowpass', f0: 700, f1: 250, q: 1.2 });
+    bubble(52, t + 0.18, 0.06);
+  },
+  // 小恐龍救出來：開心的上行琶音 + 亮晶晶
+  dino(t) {
+    [72, 76, 79, 84].forEach((m, i) => marimba(m, t + i * 0.06, 0.1, 0.3));
+    bell(91, t + 0.24, 0.06, 0.6);
+    sparkle(t + 0.2, 5, 0.035, 96);
+  },
   sugar(t) {
     const brass = (m, at, dur, g = 0.07) => {
       tone(mtof(m), at, { type: 'sawtooth', lp: 1700, q: 0.8, attack: 0.03, gain: g, dur, release: 0.25, detune: -6 });

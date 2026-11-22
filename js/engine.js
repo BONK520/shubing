@@ -1041,9 +1041,13 @@ export function createEngine(opts = {}) {
       else if (p.block === 'dino') dinosOnBoard++;
     });
     dinosSpawned = dinosStart = dinosOnBoard;
-    // dinos but no exit given: the bottom cell of every column is an exit
+    // dinos but no exit given: the bottom cell of every column is an exit (not a portal entrance: dinos go through those)
     if ((dinoOpt || dinosOnBoard) && !exitAt.some(row => row.some(Boolean)))
-      for (let c = 0; c < cols; c++) { let r = rows - 1; while (r >= 0 && !cellMask[r][c]) r--; if (r >= 0) exitAt[r][c] = true; }
+      for (let c = 0; c < cols; c++) {
+        let r = rows - 1;
+        while (r >= 0 && !cellMask[r][c]) r--;
+        if (r >= 0 && !portalOut.has(key(r, c))) exitAt[r][c] = true;
+      }
   }
   const clearObstacles = () => { for (const row of lock) row.fill(0); for (const row of exitAt) row.fill(false); };
 

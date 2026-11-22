@@ -21,6 +21,7 @@
 
 import { SLOGANS, cascadeSlogan } from './slogans.js';
 import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -55,6 +56,7 @@ const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 11
 const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
 const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
+const DINO_GLOW = [110, 240, 150];       // 小恐龍：綠色的光
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40], SPARK_GOLD = [255, 186, 60];
 // 盤面主題（衣櫃的「棋盤背景主題」）：玻璃、格子、內壁影子、外框顏色、裝飾。預設是「夢幻馬卡龍」：
 // 半透明的奶白 → 淡薰衣草毛玻璃，粉白 / 淡紫交錯的格子，奶油粉外框
@@ -278,6 +280,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const jellyFx = new Map();        // key -> { t0, from }
   let selected = null, hintPair = null, dragState = null;
   let fallSeq = 0;
+  // 盤面機關：鐵籠子（每格 0 / 1）、小恐龍出口、傳送門
+  let locks = [], exitCells = [], portalList = [];
+  const blockCache = new Map(), crumbCache = new Map();
+  let blockS = 0;
   // ---- 流程 ----
   let gen = 0, busyCount = 0, destroyed = false;
   let queue = Promise.resolve(), bannerQueue = Promise.resolve();
@@ -1689,7 +1695,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   // ================= 盤面同步 =================
   function make2D(r, c, v) { return Array.from({ length: r }, () => new Array(c).fill(v)); }
   function newVisual(p, r, c) {
-    return { id: p.id, kind: p.kind, special: p.special || 'none', r, c, mv: null,
+    return { id: p.id, kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, r, c, mv: null,
       landT: -1e9, landAmp: 0, popT: -1e9, hideUntil: 0, morph: null, phase: Math.random() * Math.PI * 2 };
   }
   function cellV(q) { return q && cellMap[q.r] ? cellMap[q.r][q.c] || null : null; }
@@ -1717,12 +1723,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   // 動畫還在跑、而且終點就是這一格：保留（掉到一半的方塊繼續掉）；其他情況直接放到格子上
   function mvEndsAt(m, r, c) { return m && Math.abs(m.x1 - c) < 1e-6 && Math.abs(m.y1 - r) < 1e-6; }
-  function syncBoard(grid, jel) {
+  function syncBoard(grid, jel, lk) {
     if (!Array.isArray(grid) || !grid.length) return;
     const R = grid.length, C = (grid[0] || []).length;
     if (R !== rows || C !== cols) {
-      rows = R; cols = C; mask = make2D(R, C, true); jelly = make2D(R, C, 0); geom();
+      rows = R; cols = C; mask = make2D(R, C, true); jelly = make2D(R, C, 0); locks = make2D(R, C, 0); geom();
     }
+    if (Array.isArray(lk)) locks = lk.map(row => row.slice());
     const nv = new Map();
     cellMap = make2D(rows, cols, null);
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -1732,7 +1739,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (!v || nv.has(p.id)) v = newVisual(p, r, c);
       if (!mvEndsAt(v.mv, r, c)) v.mv = null;
       if (v.morph && (v.kind !== p.kind || v.special !== (p.special || 'none'))) v.morph = null;
-      v.kind = p.kind; v.special = p.special || 'none'; v.r = r; v.c = c;
+      v.kind = p.kind; v.special = p.special || 'none'; v.block = p.block || null; v.hp = p.hp | 0; v.r = r; v.c = c;
       nv.set(p.id, v);
       cellMap[r][c] = v;
     }
@@ -1745,11 +1752,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     abortWaits();
     sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
+    locks = []; exitCells = []; portalList = [];
     if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
     rows = R; cols = C;
     mask = readMask(snap.mask, R, C);
     jelly = readJelly(snap.jelly, R, C);
+    locks = Array.isArray(snap.lock) ? snap.lock.map(row => (row || []).slice()) : make2D(R, C, 0);
+    if (Array.isArray(snap.exits)) for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (snap.exits[r] && snap.exits[r][c]) exitCells.push({ r, c });
+    if (Array.isArray(snap.portals)) portalList = snap.portals.filter(q => q && q.from && q.to).map(q => ({ from: { ...q.from }, to: { ...q.to } }));
     visuals = new Map();
     syncBoard(snap.grid, null);
     if (!W) layout(); else geom();
@@ -2093,15 +2104,22 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
     // --- 每顆被消掉的方塊什麼時候爆 ---
     const remT = new Map();
-    for (const it of removed) {
-      const k = key(it.r, it.c);
-      let tm = it.cause === 'match' ? (matchT.get(k) || 0) : Infinity;
+    // 被打到的時間：配對的那一刻、效果掃到的那一刻；旁邊的配對（糖霜 / 巧克力 / 甘草）跟著鄰格一起
+    const hitAt = (r, c, cause) => {
+      const k = key(r, c);
+      let tm = cause === 'match' || cause === 'any' ? (matchT.has(k) ? matchT.get(k) : Infinity) : Infinity;
       for (const x of E) {
-        const tr = travel(x.e, it.r, it.c);
+        const tr = travel(x.e, r, c);
         if (tr >= 0) tm = Math.min(tm, x.start + tr);
       }
-      remT.set(k, tm === Infinity ? 0 : tm);
-    }
+      if (tm === Infinity && (cause === 'near' || cause === 'any'))
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = key(r + dr, c + dc); if (matchT.has(n)) tm = Math.min(tm, matchT.get(n) + 40); }
+      return tm === Infinity ? 0 : tm;
+    };
+    for (const it of removed) remT.set(key(it.r, it.c), hitAt(it.r, it.c, it.cause));
+    const unlocks = (ev.unlocks || []).filter(Boolean), bhits = (ev.blockerHits || []).filter(Boolean);
+    for (const q of unlocks) remT.set(key(q.r, q.c), Math.max(remT.get(key(q.r, q.c)) || 0, hitAt(q.r, q.c, 'any')));
+    for (const q of bhits) remT.set(key(q.r, q.c), Math.max(remT.get(key(q.r, q.c)) || 0, hitAt(q.r, q.c, 'any')));
     for (const x of E) {     // 彩色炸彈本身等閃電放完才消失
       if (x.e.fx !== 'bomb') continue;
       const n = (x.e.targets || []).length, k = key(x.r, x.c);
@@ -2141,8 +2159,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const m = it.cause === 'match' ? mergeTo.get(k) : null;
       const tm = tOf(it.r, it.c);
       const ch = charge && it.piece && charge.ids.has(it.piece.id) ? { t: charge.t, dur: charge.dur, S: charge.S, x: charge.at.c, y: charge.at.r } : null;
-      ghosts.push({ kind: p.kind, special: p.special || 'none', x: gx, y: gy, t0: t0 + tm,
+      ghosts.push({ kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, x: gx, y: gy, t0: t0 + tm,
         dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase, charge: ch });
+      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
       lastPop = Math.max(lastPop, tm);
     }
 
@@ -2153,6 +2172,30 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     for (const jh of ev.jellyHits || []) if (jh) cue('jellyhit', tOf(jh.r, jh.c) + POP_HIT, { r: jh.r, c: jh.c });
 
+    // --- 鐵籠子打開：籠子裂成兩半飛走，玩偶留在原地 ---
+    for (const q of unlocks) {
+      const tm = tOf(q.r, q.c);
+      at(t0 + tm, tt => {
+        if (locks[q.r]) locks[q.r][q.c] = 0;
+        fx.push({ type: 'cagebreak', r: q.r, c: q.c, t0: tt, dur: 560 });
+        crumbs(q.c + 0.5, q.r + 0.5, 'cage', 1, tt, 7);
+        sparkle(q.c + 0.5, q.r + 0.5, 5, tt, 0.35);
+        const v = cellV(q);
+        if (v) { v.landT = tt; v.landAmp = 0.12; }
+      });
+      cue('cage', tm, { r: q.r, c: q.c });
+    }
+    // --- 多層糖霜掉一層：碎屑 + 壓扁回彈，換成少一層的樣子 ---
+    for (const q of bhits) {
+      const tm = tOf(q.r, q.c);
+      at(t0 + tm, tt => {
+        const v = cellV(q);
+        crumbs(q.c + 0.5, q.r + 0.5, 'frost', (q.left | 0) + 1, tt, 10);
+        if (v) { v.hp = q.left | 0; v.landT = tt; v.landAmp = 0.16; }
+      });
+      cue('frost', tm, { r: q.r, c: q.c });
+    }
+
     // --- 特效 ---
     for (const x of E) {
       const st = x.start * f, at0 = t0 + st, e = x.e;
@@ -2161,7 +2204,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const col = sk >= 0 ? kindColor(sk) : [255, 226, 140];
       if (e.fx === 'line') {
         const h = e.dir !== 'v';
-        fx.push({ type: 'beam', dir: h ? 'h' : 'v', r: e.r, c: e.c, t0: at0, dur: 420, col,
+        fx.push({ type: 'beam', dir: h ? 'h' : 'v', r: e.r, c: e.c, t0: at0, dur: 420, col, lim: Array.isArray(e.reach) ? e.reach : null,
           sweep: Math.max(1, (h ? cols : rows)) * LINE_MS * f });
         fx.push({ type: 'flash', x: e.c + 0.5, y: e.r + 0.5, t0: at0, dur: 260, R: 1.25 });
         shake(2.5, 200, at0);
@@ -2326,7 +2369,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   function polyline(pts) {
     const cum = [0];
-    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + (pts[i].jump ? 0 : Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)));
     return { pts, cum, len: cum[cum.length - 1] };
   }
   function along(m, d) {
@@ -2392,7 +2435,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
           const pts = [{ x: x0, y: y0 }];
           const rest = it.spawn >= 0 ? it.path.slice(1) : it.path.slice(1);
           if (it.spawn < 0) { const p0 = it.path[0]; if (Math.abs(p0.c - x0) + Math.abs(p0.r - y0) > 0.01) pts.push({ x: p0.c, y: p0.r }); }
-          for (const q of rest) pts.push({ x: q.c, y: q.r });
+          for (const q of rest) {
+            if (q.warp) {
+              // 傳送門：從入口那一格往下掉出去（盤面外被裁掉），再從出口那一格的上面掉進來
+              const a = pts[pts.length - 1];
+              pts.push({ x: a.x, y: a.y + 1.05 });
+              pts.push({ x: q.c, y: q.r - 1.05, jump: true });
+            }
+            pts.push({ x: q.c, y: q.r });
+          }
           const pl = polyline(pts);
           if (pl.len <= 0.001) { v.mv = null; return; }
           const dur = fallDur(pl.len, vel);
@@ -2474,8 +2525,57 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     await wait(dur + 15);
   }
 
+  // 小恐龍走到出口：開心地跳兩下，第二下跳高飛走（main.js 接著讓牠沿弧線飛到上面的目標圖示）
+  async function animExit(ev) {
+    const t = now();
+    let i = 0;
+    for (const q of ev.cells || []) {
+      if (!q) continue;
+      const v = (q.piece && visuals.get(q.piece.id)) || cellV(q), t1 = t + i * 90;
+      i++;
+      if (v) {
+        v.mv = { t0: t1, dur: 520, x1: q.c, y1: q.r, top: true, path: u => {
+          const hop = u < 0.45 ? Math.sin(Math.PI * u / 0.45) * 0.35 : Math.sin(Math.PI * Math.min(1, (u - 0.45) / 0.55) * 0.5) * 1.2;
+          return { x: q.c, y: q.r - hop, s: u < 0.7 ? 1 + 0.15 * Math.sin(Math.PI * u / 0.7) : 1 - (u - 0.7) / 0.3 * 0.7 };
+        } };
+        at(t1 + 520, () => { visuals.delete(v.id); if (cellMap[q.r] && cellMap[q.r][q.c] === v) cellMap[q.r][q.c] = null; });
+      }
+      at(t1, tt => {
+        fx.push({ type: 'ring', x: q.c + 0.5, y: q.r + 0.5, R: 1.2, t0: tt, dur: 480, col: DINO_GLOW });
+        sparkle(q.c + 0.5, q.r + 0.5, 10, tt, 0.4);
+        addText('救出！', q.c + 0.5, q.r + 0.1, tt + 120, DINO_GLOW, true);
+      });
+      cue('dino', t1 - t, { r: q.r, c: q.c });
+      cue('dinoout', t1 - t + 420, { r: q.r, c: q.c });
+    }
+    await wait(Math.max(460, (i - 1) * 90 + 470));
+  }
+  // 巧克力蔓延：一團巧克力從旁邊那格長過去，把那一格的玩偶吃掉
+  async function animSpread(ev) {
+    const t = now(), f = ev.from, q = ev.to, p = ev.piece;
+    if (!f || !q || !p) return;
+    const old = (ev.was && visuals.get(ev.was.id)) || cellV(q);
+    if (old) {
+      visuals.delete(old.id);
+      if (cellMap[q.r] && cellMap[q.r][q.c] === old) cellMap[q.r][q.c] = null;
+      ghosts.push({ kind: old.kind, special: old.special, x: q.c, y: q.r, t0: t + 80, dur: 420, melt: true, phase: old.phase, fired: true });
+    }
+    const v = newVisual(p, q.r, q.c);
+    v.mv = { t0: t, dur: 480, x1: q.c, y1: q.r, path: u => {
+      const e = Math.min(1, easeOutBack(u, 2));
+      return { x: lerp(f.c, q.c, e), y: lerp(f.r, q.r, e), s: 0.4 + 0.6 * Math.min(1.06, easeOutBack(u, 2)) };
+    } };
+    visuals.set(p.id, v);
+    if (cellMap[q.r]) cellMap[q.r][q.c] = v;
+    at(t + 400, tt => { crumbs(q.c + 0.5, q.r + 0.5, 'choco', 1, tt, 6); v.landT = tt; v.landAmp = 0.12; });
+    cue('spread', 0, { r: q.r, c: q.c });
+    await wait(560);
+  }
+
   function animateEvent(ev, next) {
     switch (ev && ev.t) {
+      case 'exit': return animExit(ev);
+      case 'spread': return animSpread(ev);
       case 'swap': return animSwap(ev, false, next);
       case 'swapBack': return animSwap(ev, true, next);
       case 'transform': return animTransform(ev);
@@ -2499,7 +2599,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       try { await animateEvent(ev, next); } catch (e) { console.error('[renderer]', e); }
       curOpts = null;
       if (myGen !== gen || destroyed) return;
-      try { if (ev && ev.board) syncBoard(ev.board, ev.jelly); } catch (e) { console.error('[renderer] sync', e); }
+      try { if (ev && ev.board) syncBoard(ev.board, ev.jelly, ev.lock); } catch (e) { console.error('[renderer] sync', e); }
       requestDraw();
     }
   }
@@ -2850,6 +2950,188 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.globalAlpha = ga;
   }
   const RING_GOLD = [255, 205, 70], RING_BLUE = [140, 205, 255];
+  // ================= 盤面機關 =================
+  function blockSprite(type, hp = 1) {
+    const S = Math.max(8, Math.round(cs * dpr));
+    if (S !== blockS) { blockCache.clear(); blockS = S; }
+    const key = type + hp;
+    let c = blockCache.get(key);
+    if (!c) {
+      c = makeCanvas(S, S);
+      const g = c.getContext('2d');
+      if (type === 'frost') paintFrost(g, S, hp);
+      else if (type === 'choco') paintChoco(g, S);
+      else if (type === 'licorice') paintSwirl(g, S);
+      else if (type === 'cage') paintCage(g, S);
+      else if (type === 'exit') paintExitArrow(g, S);
+      blockCache.set(key, c);
+    }
+    return c;
+  }
+  // 小恐龍：原本那隻恐龍玩偶的實拍照片（main.js 載成 images 的 'dino'），細白邊
+  function dinoSprite() {
+    const S = Math.max(8, Math.round(cs * dpr));
+    if (S !== blockS) { blockCache.clear(); blockS = S; }
+    let c = blockCache.get('dino');
+    if (c) return c;
+    const all = imgsFor('dino'), im = usable(all.clean) ? all.clean : usable(all.sprite) ? all.sprite : null;
+    if (!im) return null;
+    c = outlined(vivid(scaled(im, Math.round(S * 0.9))));
+    blockCache.set('dino', c);
+    return c;
+  }
+  function dinoBubble() {
+    const S = Math.max(8, Math.round(cs * dpr));
+    if (S !== blockS) { blockCache.clear(); blockS = S; }
+    let c = blockCache.get('bubble');
+    if (c) return c;
+    const n = Math.round(S * 0.86), h = n / 2;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d');
+    const rg = g.createRadialGradient(h * 0.8, h * 0.7, n * 0.04, h, h, h);
+    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.55, '#d4fbe3'); rg.addColorStop(1, '#7fe3a8');
+    g.beginPath(); g.arc(h, h, h * 0.93, 0, Math.PI * 2); g.fillStyle = rg; g.fill();
+    g.lineWidth = n * 0.06; g.strokeStyle = '#2fbf6a'; g.stroke();
+    g.lineWidth = n * 0.022; g.strokeStyle = 'rgba(255,255,255,0.9)';
+    g.beginPath(); g.arc(h, h, h * 0.8, Math.PI * 1.1, Math.PI * 1.45); g.stroke();
+    blockCache.set('bubble', c);
+    return c;
+  }
+  function getCrumb(hex) {
+    let c = crumbCache.get(hex);
+    if (c) return c;
+    const n = 20;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d');
+    g.beginPath(); g.moveTo(n * 0.2, n * 0.35); g.lineTo(n * 0.6, n * 0.12); g.lineTo(n * 0.9, n * 0.5); g.lineTo(n * 0.55, n * 0.9); g.lineTo(n * 0.15, n * 0.7); g.closePath();
+    g.fillStyle = hex; g.fill(); g.lineWidth = 1.2; g.strokeStyle = 'rgba(40,20,30,0.45)'; g.stroke();
+    crumbCache.set(hex, c);
+    return c;
+  }
+  // 碎屑（糖霜 / 巧克力 / 甘草 / 籠子的碎片）往外噴、往下掉
+  function crumbs(x, y, type, hp, t, n = 9) {
+    const cols = (CRUMBS[type] || CRUMBS.frost)(hp);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, v = 1.6 + Math.random() * 2.3;
+      emit({ type: 1, img: getCrumb(cols[i % cols.length]), x: x + Math.cos(a) * 0.25, y: y + Math.sin(a) * 0.2, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.3,
+        g: 10, drag: 1.2, t0: t, life: 480 + Math.random() * 260, size: 0.17 + Math.random() * 0.12, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 10 });
+    }
+  }
+  // 一顆機關（糖霜 / 巧克力 / 甘草 / 小恐龍）：s 縮放、sx / sy 壓扁（以底部為準）
+  function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0) {
+    const ga = ctx.globalAlpha, w = cs * s * sx, h = cs * s * sy, dy = (1 - sy) * cs * s * 0.5;
+    if (block === 'dino') {
+      // 綠色的光一明一暗；東張西望（每隔幾秒轉頭）、輕輕彈跳
+      const k = 0.5 + 0.5 * Math.sin(t / 420 + phase), z = cs * (1.3 + 0.1 * k) * s;
+      ctx.globalAlpha = ga * (0.32 + 0.25 * k);
+      ctx.drawImage(getGlowCol(DINO_GLOW), cx - z / 2, cy - z / 2, z, z);
+      ctx.globalAlpha = ga;
+      const img = dinoSprite(), turn = Math.tanh(Math.sin(t / 1300 + phase * 3) * 4);
+      const bob = Math.abs(Math.sin(t / 380 + phase)) * cs * 0.045 * s;
+      if (!img) {
+        ctx.beginPath(); ctx.arc(cx, cy + dy, cs * 0.36 * s, 0, Math.PI * 2); ctx.fillStyle = '#5fd8a8'; ctx.fill();
+        return;
+      }
+      // 薄荷色的「救援泡泡」墊在後面：一眼看出牠不是普通的玩偶
+      const R0 = cs * 0.43 * s;
+      ctx.drawImage(dinoBubble(), cx - R0, cy + dy - R0, R0 * 2, R0 * 2);
+      ctx.save();
+      ctx.translate(cx, cy + dy - bob);
+      ctx.rotate(0.06 * Math.sin(t / 700 + phase));
+      ctx.scale((turn >= 0 ? 1 : -1) * (0.35 + 0.65 * Math.abs(turn)), 1);
+      const bw = cs * 0.9 * s * sx, bh = cs * 0.9 * s * sy;
+      ctx.drawImage(img, -bw / 2, -bh * 0.54, bw, bh);
+      ctx.restore();
+    } else if (block === 'licorice') {
+      ctx.save();
+      ctx.translate(cx, cy + dy);
+      ctx.rotate(t / 2600 + phase);
+      ctx.drawImage(blockSprite('licorice'), -w / 2, -h / 2, w, h);
+      ctx.restore();
+    } else {
+      ctx.drawImage(blockSprite(block, hp), cx - w / 2, cy - h / 2 + dy, w, h);
+      if (block === 'choco') {
+        // 巧克力表面偶爾冒一個泡泡，冒大了「啵」破掉
+        const u = ((t / 2300 + phase * 0.37) % 1 + 1) % 1;
+        if (u < 0.34) {
+          const q = u / 0.34, bx = cx + Math.sin(phase * 5.1) * cs * 0.2 * s, by = cy + dy + Math.cos(phase * 3.3) * cs * 0.18 * s;
+          const br = cs * 0.075 * s * (q < 0.85 ? q / 0.85 : 1 + (q - 0.85) * 2);
+          ctx.globalAlpha = ga * (q < 0.85 ? 0.9 : ((1 - q) / 0.15) * 0.9);
+          ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fillStyle = '#7a4322'; ctx.fill();
+          ctx.lineWidth = cs * 0.012; ctx.strokeStyle = 'rgba(255,220,190,0.6)'; ctx.stroke();
+          ctx.beginPath(); ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.28, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,240,225,0.8)'; ctx.fill();
+          ctx.globalAlpha = ga;
+        }
+      }
+    }
+    if (white > 0.01) {
+      const z = cs * 1.3 * s;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * white;
+      ctx.drawImage(getFlash(), cx - z / 2, cy - z / 2, z, z);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+    }
+  }
+  // 鐵籠子蓋在被關的玩偶上面；偶爾閃一下金屬光
+  function drawLocks(t) {
+    if (!locks.length) return;
+    let spr = null;
+    for (let r = 0; r < rows; r++) {
+      const lr = locks[r];
+      if (!lr) continue;
+      for (let c = 0; c < cols; c++) {
+        if (!lr[c]) continue;
+        spr = spr || blockSprite('cage');
+        const x = ox + c * cs, y = oy + r * cs;
+        ctx.drawImage(spr, x, y, cs, cs);
+        const u = ((t / 3400 + r * 0.37 + c * 0.61) % 1 + 1) % 1;
+        if (u < 0.1) {
+          const q = Math.sin(Math.PI * u / 0.1), sz = cs * 0.38 * q;
+          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.85 * q;
+          ctx.drawImage(getStarCol(WHITE), x + cs * 0.24 - sz / 2, y + cs * 0.2 - sz / 2, sz, sz);
+          ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        }
+      }
+    }
+  }
+  // 小恐龍出口：那一格下緣一個上下輕輕跳的綠色箭頭
+  function drawExits(t) {
+    if (!exitCells.length) return;
+    const spr = blockSprite('exit'), z = cs * 0.42, b = Math.sin(t / 260) * cs * 0.05;
+    for (const q of exitCells) {
+      const x = ox + (q.c + 0.5) * cs, y = oy + (q.r + 1) * cs + b;
+      ctx.drawImage(spr, x - z / 2, y - z * 0.3, z, z);
+    }
+  }
+  // 傳送門：入口在那一格的下緣（光點往裡面轉），出口在另一格的上緣（光點往外轉），一對一個顏色
+  function drawPortals(t) {
+    portalList.forEach((q, i) => {
+      const col = parseColor(PORTAL_COLORS[i % PORTAL_COLORS.length]);
+      portalRing(q.from.c + 0.5, q.from.r + 1, col, t, 1, i);
+      portalRing(q.to.c + 0.5, q.to.r, col, t, -1, i);
+    });
+  }
+  function portalRing(gx, gy, col, t, dir, i) {
+    const x = ox + gx * cs, y = oy + gy * cs, rx = cs * 0.44, ry = cs * 0.13, k = 0.5 + 0.5 * Math.sin(t / 300 + i);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.35 + 0.3 * k;
+    const z = cs * 1.15;
+    ctx.drawImage(getGlowCol(col), x - z / 2, y - z * 0.32, z, z * 0.64);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(14,8,40,0.88)'; ctx.fill();
+    ctx.lineWidth = cs * 0.065; ctx.strokeStyle = css(col, 1); ctx.stroke();
+    ctx.lineWidth = cs * 0.02; ctx.strokeStyle = css(WHITE, 0.85); ctx.stroke();
+    ctx.fillStyle = css(mixc(col, WHITE, 0.55), 0.95);
+    for (let j = 0; j < 6; j++) {
+      const u = ((t / 900 + j / 6) % 1 + 1) % 1, f = dir > 0 ? 1 - u : u;      // 入口往中間縮、出口往外擴
+      const a = t / 380 * dir + j * 1.047 + i;
+      ctx.globalAlpha = Math.sin(Math.PI * u);
+      ctx.beginPath(); ctx.arc(x + Math.cos(a) * rx * 0.85 * f, y + Math.sin(a) * ry * 0.85 * f, cs * 0.028, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function drawPieceAt(kind, special, cx, cy, s, sx, sy, t, phase, white = 0) {
     if (special === 'bomb' || kind < 0) {
       drawBomb(cx, cy, s * Math.sqrt(sx * sy), t, phase);
@@ -2955,6 +3237,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.drawImage(g, cx - gs / 2, cy - gs / 2, gs, gs);
       ctx.globalAlpha = 1;
     }
+    if (v.block) { drawBlock(v.block, v.hp, cx, cy, st.s, st.sx, st.sy, t, v.phase); return; }
     let kind = v.kind, special = v.special;
     if (v.morph) {
       if (t < v.morph.until) { kind = v.morph.kind; special = v.morph.special; } else v.morph = null;
@@ -2978,6 +3261,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     try { drawSelectedBody(v, cx, cy, s, t, age); } finally { ctx.restore(); }
   }
   function drawSelectedBody(v, cx, cy, s, t, age) {
+    if (v.block) { drawBlock(v.block, v.hp, cx, cy, s, 1, 1, t, v.phase); return; }
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     if (v.special === 'fish') drawWings(cx, cy - cs * 0.08 * s, cs * 0.66 * s, cs * 0.26 * s, 0.5 + 0.5 * Math.sin(age / 90), 1);   // 選著的飛天玩偶翅膀拍快一點
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
@@ -3067,6 +3351,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const [v, st] of still) drawVisual(v, st, t);
     for (const [v, st] of late) drawVisual(v, st, t);
     drawJellyRims(t);
+    drawLocks(t);
     if (falling.length) {
       // 同一欄掉落中的方塊不重疊（後面掉得比較快的會「頂」在前面那顆上面）
       for (let c = 0; c < cols; c++) fallCols[c] = null;
@@ -3092,6 +3377,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.restore();
     }
     for (const [v, st] of tops) drawVisual(v, st, t);
+    drawExits(t);
+    drawPortals(t);
     if (selSt) drawSelected(sel, selSt, t);
   }
 
@@ -3114,8 +3401,34 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         drawPieceAt(g.kind, g.special, x, y, 1 + (g.charge.S - 1) * e, 1, 1, t, g.phase, 0.6 * e);
         continue;
       }
-      if (p < 0) { drawPieceAt(g.kind, g.special, cx0, cy0, 1, 1, 1, t, g.phase); continue; }
+      if (p < 0) {
+        if (g.block) drawBlock(g.block, g.hp, cx0, cy0, 1, 1, 1, t, g.phase);
+        else drawPieceAt(g.kind, g.special, cx0, cy0, 1, 1, 1, t, g.phase);
+        continue;
+      }
+      if (g.melt) {
+        // 被巧克力吃掉：縮小、變成巧克力色
+        const e = easeInCubic(p), sc = 1 - 0.75 * e;
+        ctx.globalAlpha = 1 - p * p;
+        drawPieceAt(g.kind, g.special, cx0, cy0, sc, 1, 1, t, g.phase);
+        ctx.globalAlpha = Math.min(1, p * 1.6) * (1 - p * p);
+        const z = cs * sc;
+        ctx.drawImage(blockSprite('choco'), cx0 - z / 2, cy0 - z / 2, z, z);
+        ctx.globalAlpha = 1;
+        continue;
+      }
       if (!g.fired && g.charge) { g.x = g.charge.x; g.y = g.charge.y; g.charge = null; }
+      if (!g.fired && g.block) {
+        g.fired = true;
+        crumbs(g.x + 0.5, g.y + 0.5, g.block, g.hp, g.t0 + POP_HIT, 12);
+        fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
+      }
+      if (g.block) {
+        const q = POP_HIT / g.dur;
+        const sc = p < q ? 1 + 0.15 * easeOutCubic(p / q) : 1.15 * (1 - easeInCubic((p - q) / (1 - q)));
+        if (sc > 0.01) { ctx.globalAlpha = p < 0.6 ? 1 : 1 - (p - 0.6) / 0.4; drawBlock(g.block, g.hp, cx0, cy0, sc, 1, 1, t, g.phase, p < q ? 0.5 * p / q : 0); ctx.globalAlpha = 1; }
+        continue;
+      }
       if (!g.fired) {
         g.fired = true;
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
@@ -3200,7 +3513,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const hold = f.sweep / f.dur;
         const grow = Math.sin(Math.min(1, p / 0.12) * Math.PI / 2), fade = p > hold ? 1 - easeInCubic((p - hold) / (1 - hold)) : 1;
         const th = cs * (0.2 + 0.45 * grow) * fade;
-        const lo = h ? ox - cs * 0.2 : oy - cs * 0.2, hi = h ? ox + cols * cs + cs * 0.2 : oy + rows * cs + cs * 0.2;
+        let lo = h ? ox - cs * 0.2 : oy - cs * 0.2, hi = h ? ox + cols * cs + cs * 0.2 : oy + rows * cs + cs * 0.2;
+        if (f.lim) {      // 被甘草漩渦糖擋住：光束停在那一格
+          const base = h ? ox : oy;
+          lo = Math.max(lo, base + f.lim[0] * cs); hi = Math.min(hi, base + (f.lim[1] + 1) * cs);
+        }
         const c0 = h ? cx : cy, a0 = Math.max(lo, c0 - reach), a1 = Math.min(hi, c0 + reach);
         ctx.globalAlpha = fade;
         const img = getBeam(f.col, h ? 'h' : 'v');
@@ -3215,6 +3532,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
             if (h) ctx.drawImage(star, q - sz / 2, cy - sz / 2, sz, sz); else ctx.drawImage(star, cx - sz / 2, q - sz / 2, sz, sz);
           }
         }
+      } else if (f.type === 'cagebreak') {
+        // 籠子從中間裂開，左右兩半往外翻、往下掉
+        const spr = blockSprite('cage'), S2 = spr.width, x = ox + (f.c + 0.5) * cs, y = oy + (f.r + 0.5) * cs, e = easeOutCubic(p);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1 - p * p;
+        for (const d of [-1, 1]) {
+          ctx.save();
+          ctx.translate(x + d * cs * 0.5 * e, y - cs * 0.3 * Math.sin(Math.PI * Math.min(1, p * 1.4)) + cs * 0.7 * p * p);
+          ctx.rotate(d * 0.9 * e);
+          ctx.drawImage(spr, d < 0 ? 0 : S2 / 2, 0, S2 / 2, S2, d < 0 ? -cs / 2 : 0, -cs / 2, cs / 2, cs);
+          ctx.restore();
+        }
+        ctx.globalCompositeOperation = 'lighter';
       } else if (f.type === 'ring') {
         const x = ox + f.x * cs, y = oy + f.y * cs, e = easeOutCubic(p), R = cs * (0.3 + f.R * e);
         if (p < 0.4) {
@@ -3664,7 +3994,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return false;
   }
   function ambient() {
-    if (selected || hintPair) return true;
+    if (selected || hintPair || exitCells.length || portalList.length) return true;
     for (const v of visuals.values()) if (v.special !== 'none' || v.kind < 0) return true;
     return false;
   }
@@ -3735,7 +4065,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     window.removeEventListener('resize', onResize);
     for (const b of banners) { clearTimeout(b.timer); b.res(); }
     banners = []; ghosts = []; fx = []; parts = []; texts = []; sched = [];
-    tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
+    tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear(); blockCache.clear(); crumbCache.clear();
   }
 
   // 衣櫃的外觀：{ hat, fx, frame, theme }（沒給的不變）。換了就把方塊圖、盤面重畫

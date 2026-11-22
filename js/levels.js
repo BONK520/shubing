@@ -2374,7 +2374,61 @@ export const LEVELS = [
 //   星星 = 最終分數到了幾個門檻（過關至少 1 顆、最多 3 顆）。
 export function isScoreLevel(L) {
   const t = L && L.goal && L.goal.type;
-  return t !== 'collect' && t !== 'jelly';
+  return !GOAL_TYPES.includes(t);
+}
+
+// ---------- 盤面機關和目標（2026-11）----------
+// 關卡可以再加（js/engine.js 的 createEngine 選項，見那邊的說明）：
+//   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 小恐龍、E 小恐龍出口、. 沒有
+//   portals: [[r1, c1, r2, c2], …] 傳送門：(r1, c1) 下面掉出去的，從 (r2, c2) 上面進來
+//   licorice: { rate, max }        補位時偶爾掉下甘草漩渦糖
+//   dinos: { onBoard, rate }       小恐龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
+// 目標 goal.type：
+//   'collect' { items }、'jelly'、'score'（原本的三種）
+//   'dino' { count }                       救出 count 隻小恐龍
+//   'clear' { what: ['frost', 'choco', 'cage'] }   把這幾種機關全部清掉（糖霜算層數）
+//   'mix' { items?, jelly?, dinos?, clear? }       王關：好幾個目標同時達成
+const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'mix'];
+export function goalParts(L) {
+  const g = (L && L.goal) || {}, out = [];
+  const items = g.type === 'collect' || g.type === 'mix' ? g.items || {} : {};
+  for (const [id, n] of Object.entries(items)) out.push({ kind: 'collect', id, need: n });
+  if (g.type === 'jelly' || (g.type === 'mix' && g.jelly)) out.push({ kind: 'jelly' });
+  const dinos = g.type === 'dino' ? g.count : g.type === 'mix' ? g.dinos : 0;
+  if (dinos > 0) out.push({ kind: 'dino', need: dinos });
+  for (const w of (g.type === 'clear' ? g.what : g.type === 'mix' ? g.clear : null) || []) out.push({ kind: w });
+  if (!out.length) out.push({ kind: 'score' });
+  return out;
+}
+// 這一關要給引擎的機關選項
+export function mechOpts(L) {
+  const o = {};
+  if (!L) return o;
+  if (Array.isArray(L.obstacles)) o.obstacles = L.obstacles;
+  if (Array.isArray(L.portals)) o.portals = L.portals;
+  if (L.licorice) o.licorice = { ...L.licorice };
+  const d = goalParts(L).find(p => p.kind === 'dino');
+  if (d) o.dinos = { total: d.need, onBoard: 2, rate: 0.35, ...(L.dinos || {}) };
+  return o;
+}
+// 一個目標還差多少（stats = engine.stats；kindOf：毛絨 id → 方塊種類）
+export function partLeft(part, stats, kindOf) {
+  const st = stats || {};
+  switch (part.kind) {
+    case 'collect': return Math.max(0, part.need - ((st.cleared || {})[kindOf(part.id)] || 0));
+    case 'jelly': return Math.max(0, st.jellyLeft | 0);
+    case 'dino': return Math.max(0, part.need - (st.dinosOut | 0));
+    case 'frost': return Math.max(0, st.frostLeft | 0);
+    case 'choco': return Math.max(0, st.chocoLeft | 0);
+    case 'cage': return Math.max(0, st.locksLeft | 0);
+    default: return 0;
+  }
+}
+// 目標達成了沒（分數關：到了過關分數）
+export function goalDone(L, stats, score, kindOf) {
+  const parts = goalParts(L);
+  if (parts[0].kind === 'score') return score >= passScore(L);
+  return parts.every(p => partLeft(p, stats, kindOf) <= 0);
 }
 // 過關分數（分數關）/ 完成目標時保底的分數（目標關）
 export function passScore(L) {

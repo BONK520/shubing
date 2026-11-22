@@ -2,6 +2,7 @@
 import { PIECES, TRIO, spritePath, spinPath } from './pieces.js';
 import { SLOGANS } from './slogans.js';
 import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js';
+import { blockerCanvas } from './blockers.js';
 
 window.__plushBooted = true;
 
@@ -204,7 +205,7 @@ function loadImg(src, timeout = 12000) {
 async function loadImages(onProgress) {
   const jobs = [];
   let done = 0;
-  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 1;
+  const total = PIECES.length * 2 + PIECES.filter(p => !p.photo).length * 2 + 3;
   const track = p => p.then(v => { done++; onProgress(done / total); return v; });
   for (const p of PIECES) {
     const entry = { sprite: null, spin: null };
@@ -215,6 +216,11 @@ async function loadImages(onProgress) {
     jobs.push(track(loadImg(`assets/sprites/${p.id}_n.png`)).then(im => { entry.clean = im; }));
     if (!p.photo) jobs.push(track(loadImg(`assets/sprites/${p.id}_spin_n.webp`)).then(im => { entry.spinClean = im; }));
   }
+  // 小恐龍（「救出小恐龍」關卡的主角）：原本那隻恐龍玩偶的實拍照片
+  const dino = { sprite: null, clean: null };
+  images.set('dino', dino);
+  jobs.push(track(loadImg('assets/sprites/dino.png')).then(im => { dino.sprite = im; }));
+  jobs.push(track(loadImg('assets/sprites/dino_n.png')).then(im => { dino.clean = im; }));
   const trio = { sprite: null, spin: null };
   images.set(TRIO.id, trio);
   jobs.push(track(loadImg(spritePath(TRIO.id))).then(im => { trio.sprite = im; }));   // 圖還沒載好時的備用；彩色炸彈和口號用三隻各自的圖排成扇形（renderer 的 trioFan）
@@ -299,6 +305,25 @@ function starSvg(cls = '') {
   return s;
 }
 function jellyIcon(sm) { const d = document.createElement('span'); d.className = 'jelly-ic' + (sm ? ' sm' : ''); return d; }
+// 機關的小圖（目標圖示、開始卡、教學小卡）：js/blockers.js 畫一次存成圖片網址
+const blockerUrls = {};
+function blockerImg(type) {
+  const img = document.createElement('img');
+  img.alt = ''; img.draggable = false;
+  try { img.src = blockerUrls[type] || (blockerUrls[type] = blockerCanvas(type, 96).toDataURL()); } catch (e) { /* 畫不出來就空白 */ }
+  return img;
+}
+function dinoImg() {
+  const e = images.get('dino'), im = e && (e.clean || e.sprite);
+  const img = document.createElement('img');
+  img.alt = ''; img.draggable = false;
+  if (im) img.src = im.src;
+  return img;
+}
+// 目標的一個部分（levels.js goalParts）→ 圖示
+const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage') };
+const PART_NAME = { dino: '小恐龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
+const goalPartsOf = lvl => (levMod.goalParts ? levMod.goalParts(lvl) : [{ kind: 'score' }]);
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 // 立體數字：字面上亮下暗的漸層是 ::after 用 attr(data-t) 疊一份同樣的字（text-shadow 的描邊會蓋掉 background-clip 的漸層），
 // 所以數字要同時寫進 data-t（CSS 在「遊戲感的字」那段）
@@ -654,6 +679,11 @@ function goalBadge(lvl) {
     }
   } else if (g.type === 'jelly') {
     b.classList.add('jelly');
+  } else if (PART_ICON[(goalPartsOf(lvl)[0] || {}).kind]) {
+    // 機關關卡：第一個目標的小圖（小恐龍 / 糖霜 / 巧克力 / 籠子）
+    b.classList.add('toy', 'mech');
+    setToyColors(b, '#9fe8c0');
+    b.appendChild(PART_ICON[goalPartsOf(lvl)[0].kind]());
   } else {
     b.classList.add('score');
     b.appendChild(starSvg());
@@ -794,13 +824,26 @@ function goalText(lvl) {
     return '收集 ' + Object.entries(g.items || {}).map(([id, n]) => `${(pieceById(id) || { name: id }).name} ×${n}`).join('、');
   }
   if (g.type === 'jelly') return '把果凍全部清掉！';
+  if (['dino', 'clear', 'mix'].includes(g.type)) {
+    const out = [];
+    for (const part of goalPartsOf(lvl)) {
+      if (part.kind === 'collect') out.push(`收集 ${(pieceById(part.id) || { name: part.id }).name} ×${part.need}`);
+      else if (part.kind === 'jelly') out.push('清掉全部果凍');
+      else if (part.kind === 'dino') out.push(`救出 ${part.need} 隻小恐龍`);
+      else if (part.kind === 'frost') out.push('敲掉全部糖霜');
+      else if (part.kind === 'choco') out.push('清光巧克力');
+      else if (part.kind === 'cage') out.push('打開全部鐵籠子');
+    }
+    return out.join('、') + '！';
+  }
   return `拿到 ${fmt(scoreTarget(lvl))} 分`;
 }
 
 // ---------- 中文換行 ----------
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
-const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀'];
+const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
+  '小恐龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -849,6 +892,25 @@ function openStartCard(i) {
     const ic = el('span', 'ic'); ic.appendChild(jellyIcon());
     gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
     g.appendChild(gb);
+  } else if (['dino', 'clear', 'mix'].includes(goal.type)) {
+    for (const part of goalPartsOf(lvl)) {
+      const gb = el('div', 'gb');
+      const ic = el('span', 'ic');
+      if (part.kind === 'collect') {
+        const p = pieceById(part.id);
+        if (!p) continue;
+        gb.classList.add('toy'); setToyColors(gb, p.color);
+        ic.appendChild(toyEl(p, 30));
+        gb.appendChild(ic); gb.appendChild(numEl('b', '×' + part.need));
+      } else if (part.kind === 'jelly') {
+        ic.appendChild(jellyIcon());
+        gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
+      } else {
+        ic.appendChild(PART_ICON[part.kind]());
+        gb.appendChild(ic); gb.appendChild(numEl('b', part.kind === 'dino' ? '×' + part.need : PART_NAME[part.kind]));
+      }
+      g.appendChild(gb);
+    }
   } else {
     const gb = el('div', 'gb');
     const ic = el('span', 'ic'); ic.appendChild(starSvg());
@@ -876,6 +938,15 @@ let movesLeft = 0, dispMoves = 0;
 let dispScore = 0, shownScore = 0;
 let liveCleared = {};
 let jellyLive = 0, jellyCountsLayers = true;
+// 機關目標的即時數字：救出的小恐龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
+let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0 };
+function countBlocks(board, lock) {
+  const o = { frost: 0, choco: 0 };
+  let cage = 0;
+  for (const row of board || []) for (const p of row || []) if (p && p.block) { if (p.block === 'frost') o.frost += p.hp | 0; else if (p.block === 'choco') o.choco++; }
+  for (const row of lock || []) for (const v of row || []) if (v) cage++;
+  return { ...o, cage };
+}
 let selected = null;
 let moving = false;
 let sugarMode = false;
@@ -934,6 +1005,7 @@ async function startLevel(idx) {
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
   }
+  if (levMod.mechOpts) Object.assign(opts, levMod.mechOpts(level));     // 盤面機關
   engine = createEngine(opts);
 
   movesLeft = dispMoves = level.moves;
@@ -950,6 +1022,8 @@ async function startLevel(idx) {
   const statJ = engine.stats ? engine.stats.jellyLeft : layers;
   jellyCountsLayers = statJ === layers || layers === cells;
   jellyLive = statJ;
+  const st0 = engine.stats || {};
+  mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0 };
 
   setNum($('#hud-level'), idx + 1);
   buildGoal();
@@ -1075,6 +1149,22 @@ function buildGoal() {
     }
   } else if (g.type === 'jelly') {
     mkItem(jellyIcon(), 'jelly');
+  } else if (['dino', 'clear', 'mix'].includes(g.type)) {
+    for (const part of goalPartsOf(level)) {
+      if (part.kind === 'collect') {
+        const p = pieceById(part.id);
+        if (!p) continue;
+        const r = mkItem(toyEl(p, 20), 'collect');
+        r.k = kindOf(part.id); r.need = part.need;
+        r.gi.classList.add('toy');
+        setToyColors(r.gi, p.color);
+      } else if (part.kind === 'jelly') mkItem(jellyIcon(), 'jelly');
+      else {
+        const r = mkItem(PART_ICON[part.kind](), part.kind);
+        r.need = part.need || 0;
+        r.gi.setAttribute('aria-label', PART_NAME[part.kind]);
+      }
+    }
   } else {
     const r = mkItem(starSvg(), 'score');
     r.gi.classList.add('score-goal');
@@ -1098,6 +1188,12 @@ function renderGoal(init = false) {
       txt = String(left); done = left === 0;
     } else if (r.kind === 'jelly') {
       const left = Math.max(0, jellyLive + flyJelly);
+      txt = String(left); done = left <= 0;
+    } else if (r.kind === 'dino') {
+      const left = Math.max(0, r.need - mechLive.dino + flyDino);      // 飛到圖示了才扣
+      txt = String(left); done = left <= 0;
+    } else if (r.kind === 'frost' || r.kind === 'choco' || r.kind === 'cage') {
+      const left = Math.max(0, mechLive[r.kind]);
       txt = String(left); done = left <= 0;
     } else {
       const t = scoreTarget(level);
@@ -1207,18 +1303,21 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
-  combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish' };
+  combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
+  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];
   if (snd) audio.play(snd, data);
   const d = (data && data.delay) || 0;
-  if (name === 'gone' || name === 'jellyhit') { launchFlight(name, data, token); return; }
+  if (name === 'gone' || name === 'jellyhit' || name === 'dinoout') { launchFlight(name, data, token); return; }
   switch (name) {
     case 'pop': buzzLater(d, 10, 80); break;
     case 'special': buzzLater(d, 12, 60); break;
     case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
+    case 'cage': case 'frost': case 'choco': buzzLater(d, 12, 60); break;
+    case 'dino': buzzLater(d, [12, 30, 12], 80); break;
   }
 }
 
@@ -1226,15 +1325,15 @@ function onCue(name, data, token) {
 // 消掉關卡目標（玩偶 / 果凍）時，一顆發光的小玩偶沿著彎彎的貝茲曲線從那一格飛到上面的目標圖示；
 // 飛到了才扣數字，圖示和數字「ㄉㄨㄞ」一下、閃出星芒。onEvent 先把這一步要飛的數量記成一批（batch），
 // renderer 在每一顆爆開的那一刻送 'gone' / 'jellyhit'，從這一批領一個名額起飛。沒領完的 3 秒後自動結清，數字不會卡住。
-let flyIn = {}, flyJelly = 0, flyBatches = [], flyLive = 0, flyLayer = null;
+let flyIn = {}, flyJelly = 0, flyDino = 0, flyBatches = [], flyLive = 0, flyLayer = null;
 const FLY_MAX = 12;                 // 同時最多幾顆在飛（超過的直接算到）
 function resetFlights() {
   for (const b of flyBatches) clearTimeout(b.timer);
-  flyBatches = []; flyIn = {}; flyJelly = 0; flyLive = 0;
+  flyBatches = []; flyIn = {}; flyJelly = 0; flyDino = 0; flyLive = 0;
   if (flyLayer) flyLayer.textContent = '';
 }
-function queueFlights(before, jellyBefore) {
-  const b = { k: {}, jelly: 0, timer: 0 };
+function queueFlights(before, jellyBefore, dinoBefore = mechLive.dino) {
+  const b = { k: {}, jelly: 0, dino: 0, timer: 0 };
   let any = false;
   for (const r of goalRefs) {
     if (r.kind === 'collect') {
@@ -1243,6 +1342,9 @@ function queueFlights(before, jellyBefore) {
     } else if (r.kind === 'jelly') {
       const n = Math.max(0, jellyBefore - jellyLive);
       if (n > 0) { b.jelly = n; flyJelly += n; any = true; }
+    } else if (r.kind === 'dino') {
+      const n = Math.min(mechLive.dino - dinoBefore, Math.max(0, r.need - dinoBefore));
+      if (n > 0) { b.dino = n; flyDino += n; any = true; }
     }
   }
   if (!any) return;
@@ -1253,19 +1355,21 @@ function settleBatch(b) {
   clearTimeout(b.timer);
   for (const k in b.k) { flyIn[k] = Math.max(0, (flyIn[k] || 0) - b.k[k]); b.k[k] = 0; }
   if (b.jelly) { flyJelly = Math.max(0, flyJelly - b.jelly); b.jelly = 0; }
+  if (b.dino) { flyDino = Math.max(0, flyDino - b.dino); b.dino = 0; }
   flyBatches = flyBatches.filter(x => x !== b);
   renderGoal();
 }
 function launchFlight(name, data, token) {
-  const jelly = name === 'jellyhit', kind = data.kind;
-  const b = flyBatches.find(x => (jelly ? x.jelly > 0 : x.k[kind] > 0));
+  const jelly = name === 'jellyhit', dino = name === 'dinoout', kind = data.kind;
+  const b = flyBatches.find(x => (dino ? x.dino > 0 : jelly ? x.jelly > 0 : x.k[kind] > 0));
   if (!b) return;
-  if (jelly) b.jelly--; else b.k[kind]--;
-  const ref = goalRefs.find(r => (jelly ? r.kind === 'jelly' : r.kind === 'collect' && r.k === kind));
+  if (dino) b.dino--; else if (jelly) b.jelly--; else b.k[kind]--;
+  const ref = goalRefs.find(r => (dino ? r.kind === 'dino' : jelly ? r.kind === 'jelly' : r.kind === 'collect' && r.k === kind));
   const arrive = () => {
     if (token !== session) return;
-    if (jelly) flyJelly = Math.max(0, flyJelly - 1); else flyIn[kind] = Math.max(0, (flyIn[kind] || 0) - 1);
-    if (b.jelly <= 0 && Object.values(b.k).every(v => v <= 0)) { clearTimeout(b.timer); flyBatches = flyBatches.filter(x => x !== b); }
+    if (dino) flyDino = Math.max(0, flyDino - 1);
+    else if (jelly) flyJelly = Math.max(0, flyJelly - 1); else flyIn[kind] = Math.max(0, (flyIn[kind] || 0) - 1);
+    if (b.jelly <= 0 && b.dino <= 0 && Object.values(b.k).every(v => v <= 0)) { clearTimeout(b.timer); flyBatches = flyBatches.filter(x => x !== b); }
     renderGoal();
     if (ref) starBurst(ref.gi.querySelector('.ic'));
   };
@@ -1274,7 +1378,7 @@ function launchFlight(name, data, token) {
     const from = R && R.cellRect ? R.cellRect(data.r, data.c) : null;
     if (!ref || !from || flyLive >= FLY_MAX || document.hidden) { arrive(); return; }
     flyLive++;
-    flyToGoal(jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });
+    flyToGoal(dino ? 'dino' : jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });
   }, Math.max(0, data.delay || 0));
 }
 function flyToGoal(p, from, icon, done) {
@@ -1282,9 +1386,9 @@ function flyToGoal(p, from, icon, done) {
   const to = icon.getBoundingClientRect();
   const ex = to.left + to.width / 2, ey = to.top + to.height / 2, sx = from.x, sy = from.y;
   const sz = Math.max(24, Math.round(from.size * 0.92));
-  const f = el('div', 'flyer' + (p ? '' : ' jelly'));
+  const f = el('div', 'flyer' + (p === 'dino' ? ' dino' : p ? '' : ' jelly'));
   f.style.width = f.style.height = sz + 'px';
-  f.appendChild(p ? toyEl(p, 14) : jellyIcon());
+  f.appendChild(p === 'dino' ? dinoImg() : p ? toyEl(p, 14) : jellyIcon());
   flyLayer.appendChild(f);
   // 二次貝茲曲線：控制點往旁邊、往上拉，飛起來是一道彎彎的弧
   const dist = Math.hypot(ex - sx, ey - sy), side = (sx < ex ? -1 : 1) * Math.min(110, 40 + Math.abs(ex - sx) * 0.45);
@@ -1340,6 +1444,7 @@ function onEvent(ev, token) {
         if (k >= 0) liveCleared[k] = (liveCleared[k] || 0) + 1;
       }
       if (ev.jelly) jellyLive = sumJelly(ev.jelly, jellyCountsLayers);
+      if (ev.board) Object.assign(mechLive, countBlocks(ev.board, ev.lock));
       queueFlights(before, jellyBefore);
       dispScore += ev.gained || 0;
       renderScore();
@@ -1347,6 +1452,17 @@ function onEvent(ev, token) {
       if (cascade >= 2 || fx.size || (ev.created && ev.created.length)) cheer();
       break;
     }
+    case 'exit': {
+      // 小恐龍走到出口：飛到上面的目標圖示才扣數字
+      const dinoBefore = mechLive.dino;
+      mechLive.dino += (ev.cells || []).length;
+      queueFlights({ ...liveCleared }, jellyLive, dinoBefore);
+      break;
+    }
+    case 'spread':
+      if (ev.board) Object.assign(mechLive, countBlocks(ev.board, ev.lock));
+      renderGoal();
+      break;
     case 'shuffle': break;   // 「沒有可以消的了！」橫幅由 renderer 的洗牌動畫顯示
   }
 }
@@ -1358,6 +1474,7 @@ function syncFromEngine() {
     for (const k in st.cleared) liveCleared[k] = st.cleared[k];
   }
   if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
+  mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0 };
   dispScore = engine.score;
   renderScore();
   renderGoal();
@@ -1365,6 +1482,7 @@ function syncFromEngine() {
 
 function goalMet() {
   if (debugWin) return true;
+  if (levMod.goalDone) return levMod.goalDone(level, engine.stats, engine.score, kindOf);
   const g = level.goal || {};
   if (g.type === 'collect') return Object.entries(g.items || {}).every(([id, n]) => (engine.stats.cleared[kindOf(id)] || 0) >= n);
   if (g.type === 'jelly') return engine.stats.jellyLeft <= 0;
@@ -1783,6 +1901,19 @@ async function loseFlow() {
     }
   } else if (g.type === 'jelly') {
     txt.textContent = `還剩 ${Math.max(0, engine.stats.jellyLeft)} 塊果凍沒清掉`;
+  } else if (['dino', 'clear', 'mix'].includes(g.type) && levMod.partLeft) {
+    txt.appendChild(document.createTextNode('還差一點點：'));
+    txt.appendChild(document.createElement('br'));
+    for (const part of goalPartsOf(level)) {
+      const left = levMod.partLeft(part, engine.stats, kindOf);
+      if (!left) continue;
+      const row = el('span', 'row');
+      if (part.kind === 'collect') { const p = pieceById(part.id); if (p) row.appendChild(toyEl(p, 14)); }
+      else if (part.kind === 'jelly') row.appendChild(jellyIcon(true));
+      else row.appendChild(PART_ICON[part.kind]());
+      row.appendChild(document.createTextNode(`×${left}`));
+      txt.appendChild(row);
+    }
   } else {
     txt.textContent = `還差 ${fmt(Math.max(0, scoreTarget(level) - engine.score))} 分就過關了！`;
   }
