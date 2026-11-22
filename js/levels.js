@@ -1298,6 +1298,61 @@ const GEMCAVE = [   // 寶石洞（第 115 關）
   '#######',
   '#######',
 ];
+const CHOCPOT = [   // 巧克力壺（第 116 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+];
+const COCOAMUG = [   // 熱可可（第 117 關）
+  '#####..',
+  '#######',
+  '#####.#',
+  '#####.#',
+  '#######',
+  '#####..',
+  '#####..',
+  '#####..',
+  '.###...',
+];
+const CROISSANT = [   // 可頌（第 118 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '###.###',
+  '##...##',
+  '##...##',
+  '##...##',
+  '.#...#.',
+];
+const CHOCBAR = [   // 巧克力磚（第 119 關）
+  '###.###',
+  '###.###',
+  '###.###',
+  '#######',
+  '###.###',
+  '###.###',
+  '###.###',
+  '#######',
+  '###.###',
+];
+const CHOCCASTLE = [   // 巧克力城堡（第 120 關）
+  '#.#.#.#',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '###.###',
+  '###.###',
+];
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -3714,6 +3769,110 @@ export const LEVELS = [
     ],
     hint: '王關！多做幾個條紋就打得開',
   },
+  // ---- 第 24 章 巧克力工坊（116–120）：打不掉、會一直噴巧克力的巧克力壺 ----
+  {
+    id: 116, rows: 9, cols: 7, moves: 21, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'chocoGot', count: 12 }, stars: [25000, 50000, 75000],
+    mask: CHOCPOT, jelly: null,
+    seed: 11615,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '..CPC..',
+    ],
+    hint: '巧克力壺會一直噴巧克力，打掉它們！',
+  },
+  {
+    id: 117, rows: 9, cols: 7, moves: 14, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'jelly' }, stars: [25000, 50000, 75000],
+    mask: COCOAMUG,
+    jelly: [
+      '11111..',
+      '11111..',
+      '.......',
+      '.......',
+      '.......',
+      '22222..',
+      '22222..',
+      '11111..',
+      '.1.1...',
+    ],
+    seed: 11715,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '..P....',
+    ],
+    hint: '巧克力長太多，果凍就清不到了',
+  },
+  {
+    id: 118, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'dino', count: 2 }, stars: [17000, 34000, 51000],
+    mask: CROISSANT, jelly: null,
+    seed: 11815,
+    obstacles: [
+      '.......',
+      '.D.....',
+      '.......',
+      '...P...',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '巧克力會擋住龍龍往下掉',
+  },
+  {
+    id: 119, rows: 9, cols: 7, moves: 18, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'score', target: 9000 }, stars: [9000, 12000, 16000],
+    mask: CHOCBAR, jelly: null,
+    seed: 11915,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '...P...',
+      '.......',
+      '.......',
+      '.......',
+      '...P...',
+      '.......',
+    ],
+    hint: '分數關！別讓巧克力吃掉盤面',
+  },
+  {
+    id: 120, rows: 9, cols: 7, moves: 26, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'mix', chocoGot: 15, dinos: 2 }, stars: [42000, 84000, 126000],
+    mask: CHOCCASTLE, jelly: null,
+    seed: 12015,
+    obstacles: [
+      '.......',
+      '...D...',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      'PC...CP',
+    ],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '王關！打巧克力也順便幫龍龍開路',
+  },
 ];
 
 // ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
@@ -3730,10 +3889,14 @@ export function isScoreLevel(L) {
 // ---------- 盤面機關和目標（2026-11）----------
 // 關卡可以再加（js/engine.js 的 createEngine 選項，見那邊的說明）：
 //   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 龍龍、E 龍龍出口、
-//                                  A 鬧鐘、X / Y 硬殼（1 / 2 層，只有特效打得掉）、. 沒有
+//                                  A 鬧鐘、X / Y 硬殼（1 / 2 層，只有特效打得掉）、P 巧克力壺（打不掉，這一步沒打到巧克力
+//                                  就噴一塊到最近的方塊上；底下要是盤面外或不會動的東西）、
+//                                  - / | / W / B 包在保鮮膜裡的橫條紋 / 直條紋 / 包裝糖 / 彩色炸彈（不能換、不會掉，
+//                                  在旁邊配對或用特效打到就拆開，拆開後才能用；可以放在果凍上）、. 沒有
 //   portals: [[r1, c1, r2, c2], …] 傳送門：(r1, c1) 下面掉出去的，從 (r2, c2) 上面進來
 //   licorice: { rate, max }        補位時偶爾掉下甘草漩渦糖
 //   alarm: { timer, rate, max }    鬧鐘：timer = 起始數字（每走一步少 1，數到 0 爆開扣 3 步）；rate / max = 補位時掉下鬧鐘
+//   pot: { max }                   巧克力壺：盤面上巧克力到 max 塊（3–12，預設 8）就先不噴
 //   dinos: { onBoard, rate }       龍龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
 // 目標 goal.type：
 //   'collect' { items }、'jelly'、'score'（原本的三種）
@@ -3770,6 +3933,7 @@ export function mechOpts(L) {
   if (Array.isArray(L.portals)) o.portals = L.portals;
   if (L.licorice) o.licorice = { ...L.licorice };
   if (L.alarm) o.alarm = { ...L.alarm };
+  if (L.pot) o.pot = { ...L.pot };
   const d = goalParts(L).find(p => p.kind === 'dino');
   if (d) o.dinos = { total: d.need, onBoard: 2, rate: 0.35, ...(L.dinos || {}) };
   return o;
@@ -3909,20 +4073,21 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
 
     // 盤面機關
     const obs = L.obstacles;
-    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, frost: 0, shell: 0 };
+    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, P: 0, frost: 0, shell: 0, gift: 0 };
     if (obs != null) {
       if (!Array.isArray(obs) || obs.length !== ROWS || !obs.every(r => typeof r === 'string' && r.length === COLS)) bad(`obstacles 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       else for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const ch = obs[r][c];
         if (ch === '.') continue;
-        if (!'LCSDEA123XY'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
+        if (!'LCSDEA123XYP-|WB'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
         if (!isCell(r, c)) { bad(`obstacles (${r},${c}) 放在洞上`); continue; }
-        if ('123'.includes(ch)) has.frost += +ch; else if ('XY'.includes(ch)) has.shell += ch === 'Y' ? 2 : 1; else has[ch]++;
+        if ('123'.includes(ch)) has.frost += +ch; else if ('XY'.includes(ch)) has.shell += ch === 'Y' ? 2 : 1; else if ('-|WB'.includes(ch)) has.gift++; else has[ch]++;
         const jl = L.jelly && L.jelly[r] && L.jelly[r][c] && L.jelly[r][c] !== '.';
-        if (jl && '123CXY'.includes(ch)) bad(`obstacles (${r},${c}) 糖霜 / 巧克力 / 硬殼不要蓋在果凍上`);
+        if (jl && '123CXYP'.includes(ch)) bad(`obstacles (${r},${c}) 糖霜 / 巧克力 / 硬殼 / 巧克力壺不要蓋在果凍上`);
         // 糖霜、巧克力底下要是盤面外或同樣不會動的東西（不然底下那格什麼都掉不進去）
         if ('123'.includes(ch) && isCell(r + 1, c) && !'123C'.includes(obs[r + 1][c])) bad(`obstacles (${r},${c}) 糖霜底下還有空格子`);
         if ('XY'.includes(ch) && isCell(r + 1, c) && !'123CXY'.includes(obs[r + 1][c])) bad(`obstacles (${r},${c}) 硬殼底下還有空格子`);
+        if (ch === 'P' && isCell(r + 1, c) && !'123CXYP'.includes(obs[r + 1][c])) bad(`obstacles (${r},${c}) 巧克力壺底下還有空格子`);
       }
     }
     for (const q of L.portals || []) {
@@ -3938,11 +4103,14 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (!has.A && !(rate > 0)) bad('有 alarm 設定，盤面上卻沒有鬧鐘，也不會掉鬧鐘');
     }
     if (has.A && L.alarm == null) bad('盤面上有鬧鐘（A），要寫 alarm: { timer }');
+    if (L.pot != null && !(Number.isInteger(L.pot.max) && L.pot.max >= 3 && L.pot.max <= 12)) bad('pot 要 { max: 3–12 }');
+    if (L.pot != null && !has.P) bad('有 pot 設定，盤面上卻沒有巧克力壺（P）');
     const parts = goalParts(L);
     for (const part of parts) {
       if (part.kind === 'dino' && !(Number.isInteger(part.need) && part.need > 0 && part.need <= 8)) bad('救龍龍的數量要 1–8');
       if (part.kind === 'frost' && !has.frost) bad('要清糖霜，盤面上卻沒有糖霜');
       if (part.kind === 'choco' && !has.C) bad('要清巧克力，盤面上卻沒有巧克力');
+      if (part.kind === 'choco' && has.P) bad('有巧克力壺會一直噴，不要用「清光巧克力」當目標');
       if (part.kind === 'cage' && !has.L) bad('要開籠子，盤面上卻沒有鐵籠子');
       if (part.kind === 'shell' && !has.shell) bad('要打破硬殼，盤面上卻沒有硬殼');
       if (part.kind === 'jelly' && !layers) bad('目標有果凍，盤面上卻沒有果凍');
@@ -3953,7 +4121,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       }
       if (part.kind === 'chocoGot') {
         if (!(Number.isInteger(part.need) && part.need > 0 && part.need <= 30)) bad('收集巧克力的數量要 1–30');
-        if (!has.C) bad('要收集巧克力，盤面上卻沒有巧克力');
+        if (!has.C && !has.P) bad('要收集巧克力，盤面上卻沒有巧克力或巧克力壺');
       }
     }
     if (g.type === 'mix' && parts.length < 2) bad('mix 王關至少要兩個目標');

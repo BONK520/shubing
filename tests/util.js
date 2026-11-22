@@ -100,6 +100,7 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
       for (const x of e.unlocks || []) {
         at(x, where);
         if (!L[x.r][x.c]) fail(`${where}: unlock at ${x.r},${x.c} without a cage`);
+        else if (!!x.gift !== (L[x.r][x.c] === 2)) fail(`${where}: unlock at ${x.r},${x.c} gift=${!!x.gift} but lock ${L[x.r][x.c]}`);
         L[x.r][x.c] = 0;
       }
       for (const x of e.blockerHits || []) {
@@ -176,8 +177,9 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
     } else if (e.t === 'spread') {
       at(e.from, where); at(e.to, where);
       const src = g[e.from.r][e.from.c], cur = g[e.to.r][e.to.c];
-      if (!src || src.block !== 'choco') fail(`${where}: spread from ${pieceStr(src)}`);
-      if (Math.abs(e.from.r - e.to.r) + Math.abs(e.from.c - e.to.c) !== 1) fail(`${where}: spread not to a neighbour`);
+      if (!src || (src.block !== 'choco' && src.block !== 'pot')) fail(`${where}: spread from ${pieceStr(src)}`);
+      // plain chocolate grows next to itself; a pot spits to the nearest normal piece, any distance
+      if (src && src.block === 'choco' && Math.abs(e.from.r - e.to.r) + Math.abs(e.from.c - e.to.c) !== 1) fail(`${where}: spread not to a neighbour`);
       if (!cur || cur.block || cur.special !== 'none' || cur.kind < 0 || L[e.to.r][e.to.c] || cur.id !== e.was.id) fail(`${where}: spread over ${pieceStr(cur)}`);
       if (e.piece.block !== 'choco') fail(`${where}: spread makes ${pieceStr(e.piece)}`);
       g[e.to.r][e.to.c] = { ...e.piece };
@@ -373,10 +375,12 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
   if (st.frostLeft !== undefined) {
     const cnt = { frost: 0, choco: 0, licorice: 0, dino: 0, alarm: 0, shell: 0 };
     for (const row of after.grid) for (const p of row) if (p && p.block) cnt[p.block] += p.block === 'frost' || p.block === 'shell' ? p.hp : 1;
-    const locks = after.lock ? after.lock.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0) : 0;
+    // lock 1 = cage, 2 = gift (plastic wrap)
+    const lockN = v => after.lock ? after.lock.reduce((s, row) => s + row.filter(a => a === v).length, 0) : 0;
+    const locks = lockN(1), gifts = lockN(2);
     if (st.frostLeft !== cnt.frost || st.chocoLeft !== cnt.choco || st.licoriceLeft !== cnt.licorice || st.locksLeft !== locks
-      || (st.shellLeft !== undefined && st.shellLeft !== cnt.shell))
-      fail(`blocker stats ${JSON.stringify(st)} vs board ${JSON.stringify(cnt)} locks ${locks}`);
+      || (st.shellLeft !== undefined && st.shellLeft !== cnt.shell) || (st.giftLeft !== undefined && st.giftLeft !== gifts))
+      fail(`blocker stats ${JSON.stringify(st)} vs board ${JSON.stringify(cnt)} locks ${locks} gifts ${gifts}`);
   }
   ctx.moves++;
 }

@@ -55,7 +55,7 @@ test('API surface, isCell / cell / snapshot copies', () => {
   const st = e.stats;
   deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0,
     made: { stripe: 0, wrap: 0, bomb: 0, fish: 0 }, combos: {}, comboCount: 0, chocoGot: 0,
-    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0, alarmsLeft: 0, alarmsBurst: 0, shellLeft: 0 });
+    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0, alarmsLeft: 0, alarmsBurst: 0, shellLeft: 0, giftLeft: 0 });
   st.cleared[0] = 50;
   eq(e.stats.cleared[0], 0, 'stats is a copy');
   ok(e.isAdjacent(P(2, 2), P(2, 3)) && e.isAdjacent(P(2, 2), P(1, 2)), 'adjacent');
@@ -778,6 +778,48 @@ test('cage: a caged piece does not fall and nothing falls through it; an effect 
   eq(bb(r2)[2][5].id, id2, 'the piece that was caged is still there');
 });
 
+test('gift: a wrapped special cannot be swapped and does not fall; a match next to it opens the wrap, the special stays unfired', () => {
+  const e = mo(['______', '______', '00_1__', '__0___', '______', '______'],
+    ['......', '......', '...-..', '......', '......', '......']);
+  eq(e.lockAt(2, 3), 2);
+  eq(e.stats.giftLeft, 1); eq(e.stats.locksLeft, 0, 'a gift is not a cage');
+  eq(e.cell(2, 3).special, 'h', 'the starting piece keeps its colour and becomes a striped piece');
+  eq(e.cell(2, 3).kind, 1);
+  const id = e.cell(2, 3).id;
+  ok(!e.swap(P(2, 3), P(2, 4)).ok, 'a gift cannot be swapped');
+  const res = play(e, P(3, 2), P(2, 2));
+  const cl = firstClear(res);
+  deq(cl.unlocks, [{ r: 2, c: 3, gift: true }], 'the match next to it opens the wrap');
+  eq(cl.removed.length, 3, 'only the match is removed; the stripe inside does not fire');
+  eq(e.lockAt(2, 3), 0); eq(e.stats.giftLeft, 0);
+  eq(bb(res)[2][3].id, id, 'same piece is still there');
+  eq(bb(res)[2][3].special, 'h', 'still striped');
+});
+
+test('gift: an effect opens it without firing it; an unwrapped colour bomb can be used', () => {
+  // a row stripe through a wrapped vertical stripe: the wrap opens, its column is not cleared
+  const e = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....|', '......', '......', '......']);
+  eq(e.cell(2, 5).special, 'v');
+  const id = e.cell(2, 5).id;
+  const res = play(e, P(3, 3), P(2, 3));
+  ok(res.events.some(x => x.t === 'clear' && (x.unlocks || []).some(u => u.r === 2 && u.c === 5 && u.gift)), 'the stripe opens the gift');
+  const cl = firstClear(res);
+  ok(!cl.removed.some(x => x.c === 5), 'the stripe inside did not fire');
+  eq(bb(res)[2][5].id, id); eq(e.lockAt(2, 5), 0);
+  // B = a wrapped colour bomb: no colour, cannot be swapped until a match next to it opens it
+  const e2 = mo(['______', '______', '00____', '__0___', '______', '______'],
+    ['......', '......', '...B..', '......', '......', '......']);
+  eq(e2.cell(2, 3).special, 'bomb'); ok(e2.cell(2, 3).kind < 0, 'a bomb has no colour');
+  ok(!e2.swap(P(2, 3), P(2, 4)).ok, 'a wrapped bomb cannot be swapped');
+  const r1 = play(e2, P(3, 2), P(2, 2));
+  deq(firstClear(r1).unlocks, [{ r: 2, c: 3, gift: true }]);
+  eq(e2.cell(2, 3).special, 'bomb', 'the bomb is still there, unfired');
+  const r2 = play(e2, P(2, 3), P(2, 4));
+  ok(r2.ok, 'now it can be used');
+  ok(firstClear(r2).removed.length >= 3, 'the colour bomb fires');
+});
+
 test('frosting: 2 layers; a match next to it removes one layer, the second match removes it; it never moves', () => {
   const e = mo(['______', '______', '______', '00_0__', '______', '______'],
     ['......', '......', '..2...', '......', '......', '......']);
@@ -863,6 +905,65 @@ test('chocolate: a match next to it removes it (no spread); a move that breaks n
   eq(e2.cell(sp[0].to.r, sp[0].to.c).block, 'choco');
   eq(e2.stats.chocoLeft, 2);
   ok(sp[0].was && sp[0].was.kind >= 0, 'the eaten piece is reported');
+});
+
+test('chocolate pot: never moves or breaks; a move that broke no chocolate spits one onto the nearest normal piece', () => {
+  const e = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['P.....', '......', '......', '......', '......', '......']);
+  eq(e.cell(0, 0).block, 'pot');
+  ok(e.cell(0, 0).kind < 0, 'pots have no colour');
+  eq(e.stats.chocoLeft, 0);
+  const pid = e.cell(0, 0).id;
+  ok(!e.swap(P(0, 0), P(0, 1)).ok, 'a pot cannot be swapped');
+  const r = play(e, P(5, 3), P(5, 2));
+  const sp = evOf(r, 'spread');
+  eq(sp.length, 1, 'one chocolate spat');
+  deq(sp[0].from, { r: 0, c: 0 });
+  ok((sp[0].to.r === 1 && sp[0].to.c === 0) || (sp[0].to.r === 0 && sp[0].to.c === 1), 'onto the nearest normal piece');
+  eq(e.cell(sp[0].to.r, sp[0].to.c).block, 'choco');
+  eq(e.stats.chocoLeft, 1);
+  eq(e.cell(0, 0).id, pid, 'the pot stays');
+  // nearest = by distance: its neighbours are frosting, so it lands two steps away
+  const e2 = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['......', '..1...', '.1P1..', '..1...', '......', '......']);
+  const s2 = evOf(play(e2, P(5, 3), P(5, 2)), 'spread');
+  eq(s2.length, 1);
+  eq(Math.abs(s2[0].to.r - 2) + Math.abs(s2[0].to.c - 2), 2, 'two steps from the pot');
+  // a move that breaks chocolate: no spitting
+  const e3 = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['P.....', '......', '..C...', '......', '......', '......']);
+  const r3 = play(e3, P(3, 3), P(3, 2));
+  ok(firstClear(r3).removed.some(x => x.piece.block === 'choco'), 'chocolate removed');
+  eq(evOf(r3, 'spread').length, 0, 'no spit on a move that broke chocolate');
+  eq(e3.stats.chocoGot, 1);
+  // cap: pot.max chocolates on the board → no spit, and with a pot plain chocolate does not grow on its own
+  const e4 = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['P....C', '......', 'C.....', '......', '.....C', '......'], { pot: { max: 3 } });
+  eq(e4.stats.chocoLeft, 3);
+  eq(evOf(play(e4, P(5, 3), P(5, 2)), 'spread').length, 0, 'full: nothing spat, nothing grows');
+  eq(e4.stats.chocoLeft, 3);
+  const e5 = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['P....C', '......', '......', '......', '......', '......'], { pot: { max: 3 } });
+  const s5 = evOf(play(e5, P(5, 3), P(5, 2)), 'spread');
+  eq(s5.length, 1, 'below the cap it spits');
+  deq(s5[0].from, { r: 0, c: 0 }, 'the pot spits, the old chocolate does not grow');
+  // effects and the hammer cannot break it
+  const e6 = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....P', '......', '......', '......']);
+  const p6 = e6.cell(2, 5).id;
+  const r6 = play(e6, P(3, 3), P(2, 3));
+  ok(!r6.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.id === p6)), 'a striped beam does not break it');
+  eq(e6.cell(2, 5).id, p6);
+  ok(!e6.smash(P(2, 5)).ok, 'the hammer refuses a pot');
+  eq(e6.cell(2, 5).id, p6);
+});
+
+test('chocolate pot: with dinos and no exit marked, the cell above a pot is an exit', () => {
+  const e = mo(['______', '______', '______', '______', '______', '______'],
+    ['......', '......', '......', '......', '......', '..P...'], { dinos: { total: 1, onBoard: 0, rate: 0 } });
+  ok(e.isExit(4, 2), 'above the pot');
+  ok(!e.isExit(5, 2), 'not the pot itself');
+  ok(e.isExit(5, 0) && !e.isExit(4, 0), 'bottom row elsewhere');
 });
 
 test('licorice swirl: never matches, can be swapped, removed by a match next to it, stops a striped beam', () => {
@@ -1072,14 +1173,17 @@ test('shuffle leaves frosting, chocolate, swirls, dinos, shells and caged pieces
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (fixedIds.has(before.grid[r][c] && before.grid[r][c].id)) eq(after.grid[r][c].id, before.grid[r][c].id);
 });
 
-test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, shells, dinos + exits, portals; every invariant', () => {
+test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls, shells, pots, dinos + exits, portals; every invariant', () => {
   let moves = 0, exits = 0, spreads = 0, unlocks = 0, hits = 0;
   const cfgs = [
     { name: 'mixed', rows: 8, cols: 8, portals: [] },
     { name: 'portal', rows: 8, cols: 8, mask: ['####....', '####....', '####....', '####....', '....####', '....####', '....####', '....####'],
       portals: [[3, 0, 4, 4], [3, 1, 4, 5], [3, 2, 4, 6], [3, 3, 4, 7]] },
     { name: 'tall', rows: 9, cols: 7, mask: MASKS.tall, portals: [] },
+    { name: 'pot', rows: 8, cols: 8, portals: [], pot: true },
+    { name: 'gift', rows: 8, cols: 8, portals: [], gift: true },
   ];
+  let gifts = 0;
   for (const cfg of cfgs) for (let g = 0; g < Math.max(3, FUZZ); g++) {
     const seed = 4000 + g * 131 + cfg.name.length;
     const rnd = mulberry(seed);
@@ -1088,13 +1192,15 @@ test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, shells
       let s = '';
       for (let c = 0; c < cfg.cols; c++) {
         const x = rnd();
-        s += r >= cfg.rows - 1 ? '.' : x < 0.07 ? 'L' : x < 0.10 ? '1' : x < 0.12 ? '2' : x < 0.13 ? '3' : x < 0.15 ? 'C' : x < 0.18 ? 'S' : x < 0.20 && r < 3 ? 'D' : x >= 0.20 && x < 0.215 ? 'X' : x >= 0.215 && x < 0.225 ? 'Y' : '.';
+        s += cfg.pot && r === cfg.rows - 1 && (c === 2 || c === 5) ? 'P' : cfg.gift && x < 0.08 ? '-|WB'[Math.floor(x / 0.02)] : r >= cfg.rows - 1 ? '.' : x < 0.07 ? 'L' : x < 0.10 ? '1' : x < 0.12 ? '2' : x < 0.13 ? '3' : x < 0.15 ? 'C' : x < 0.18 ? 'S' : x < 0.20 && r < 3 ? 'D' : x >= 0.20 && x < 0.215 ? 'X' : x >= 0.215 && x < 0.225 ? 'Y' : '.';
       }
       obstacles.push(s);
     }
     const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, rows: cfg.rows, cols: cfg.cols, mask: cfg.mask || null, obstacles, portals: cfg.portals,
-      dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 }, alarm: { timer: 6, rate: 0.03, max: 2 } });
+      dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 }, alarm: { timer: 6, rate: 0.03, max: 2 },
+      ...(cfg.pot ? { pot: { max: 6 } } : {}) });
     const ctx = newCtx(e);
+    const gift0 = e.stats.giftLeft;
     for (let m = 0; m < 40; m++) {
       const h = e.findHint();
       if (!h) break;
@@ -1105,6 +1211,7 @@ test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, shells
       moves++;
     }
     eq(e.stats.dinosOut, ctx.exits, 'dinosOut counts exits');
+    gifts += gift0 - e.stats.giftLeft;
     exits += ctx.exits; spreads += ctx.spreads; unlocks += ctx.unlocks; hits += ctx.blockerHits;
     // boosters on a board full of blockers: replay exactly, board stays full, dinos are never destroyed
     for (const kind of ['smash', 'freeSwap', 'airDrop']) {
@@ -1121,8 +1228,8 @@ test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, shells
     const sres = e.sugarCrush(Math.floor(rnd() * 8));
     try { replayEvents(before.grid, before.jelly, sres.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} sugarCrush: ${err.message}`); }
   }
-  note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken, ${hits} frosting layers`);
-  ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0, 'every mechanic happened');
+  note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken / gifts opened (${gifts} gifts), ${hits} frosting layers`);
+  ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0 && gifts > 0, 'every mechanic happened');
 });
 
 // ---------------------------------------------------------------- fuzz + perf

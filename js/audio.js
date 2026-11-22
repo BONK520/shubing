@@ -576,6 +576,14 @@ const SFX = {
     noise(t, { dur: 0.06, attack: 0.001, gain: 0.06, type: 'highpass', f0: 4000, q: 0.8 });
     pop(t + 0.03, 700, 300, 0.05, 0.06);
   },
+  // 保鮮膜拆開：玻璃紙「沙沙」+ 兩個木琴音的「噹啷」
+  gift(t) {
+    noise(t, { dur: 0.12, attack: 0.002, gain: 0.07, type: 'highpass', f0: 3200, q: 0.6 });
+    noise(t + 0.05, { dur: 0.08, attack: 0.002, gain: 0.05, type: 'bandpass', f0: 5200, f1: 2600, q: 1.1 });
+    marimba(79, t + 0.06, 0.11, 0.3);
+    marimba(84, t + 0.16, 0.12, 0.45);
+    bell(96, t + 0.17, 0.035, 0.3);
+  },
   // 糖霜掉一層：軟軟的「噗嚓」
   frost(t) {
     noise(t, { dur: 0.09, attack: 0.003, gain: 0.1, type: 'lowpass', f0: 2200, f1: 500, q: 0.7 });

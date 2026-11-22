@@ -1,4 +1,4 @@
-// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、龍龍出口箭頭、傳送門顏色）
+// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、巧克力壺、保鮮膜、龍龍出口箭頭、傳送門顏色）
 // 全部用 canvas 畫（不用額外的圖檔）。每個 paint 函式畫在 S×S 的畫布上（S = 一格的裝置像素），
 // renderer.js 畫一次就快取起來；main.js 也拿它們畫目標圖示 / 新機關教學小卡。
 
@@ -297,6 +297,108 @@ export function paintShell(g, S, hp) {
   }
 }
 
+// ---------------- 巧克力壺：粉紅色的小陶壺，裡面滿滿融化的巧克力往外流，壺身一顆白色愛心 ----------------
+export function paintPot(g, S) {
+  const X = v => v * S;
+  const body = () => {
+    g.beginPath();
+    g.moveTo(X(0.15), X(0.4));
+    g.bezierCurveTo(X(0.1), X(0.8), X(0.3), X(0.93), X(0.5), X(0.93));
+    g.bezierCurveTo(X(0.7), X(0.93), X(0.9), X(0.8), X(0.85), X(0.4));
+    g.closePath();
+  };
+  // 投影
+  g.fillStyle = 'rgba(10,8,30,0.35)';
+  g.beginPath(); g.ellipse(X(0.51), X(0.9), X(0.34), X(0.07), 0, 0, Math.PI * 2); g.fill();
+  // 兩邊的小把手
+  g.lineCap = 'round';
+  for (const d of [-1, 1]) {
+    g.beginPath(); g.arc(X(0.5 + d * 0.37), X(0.56), X(0.075), d < 0 ? Math.PI * 0.5 : -Math.PI * 0.5, d < 0 ? Math.PI * 1.5 : Math.PI * 0.5);
+    g.lineWidth = X(0.075); g.strokeStyle = '#7a2a55'; g.stroke();
+    g.lineWidth = X(0.04); g.strokeStyle = '#ff8fbc'; g.stroke();
+  }
+  // 壺身
+  const gr = g.createLinearGradient(X(0.15), X(0.4), X(0.85), X(0.93));
+  gr.addColorStop(0, '#ffd0e2'); gr.addColorStop(0.5, '#ff8fbc'); gr.addColorStop(1, '#d9548a');
+  body(); g.fillStyle = gr; g.fill();
+  g.save(); body(); g.clip();
+  g.fillStyle = 'rgba(255,255,255,0.32)';
+  g.beginPath(); g.ellipse(X(0.3), X(0.6), X(0.07), X(0.16), -0.3, 0, Math.PI * 2); g.fill();
+  g.restore();
+  body(); g.lineJoin = 'round'; g.lineWidth = X(0.035); g.strokeStyle = '#7a2a55'; g.stroke();
+  // 白色愛心
+  const hx = X(0.56), hy = X(0.66), hs = X(0.085);
+  g.beginPath();
+  g.moveTo(hx, hy + hs * 0.9);
+  g.bezierCurveTo(hx - hs * 1.4, hy, hx - hs * 0.7, hy - hs * 0.9, hx, hy - hs * 0.25);
+  g.bezierCurveTo(hx + hs * 0.7, hy - hs * 0.9, hx + hs * 1.4, hy, hx, hy + hs * 0.9);
+  g.fillStyle = '#ffffff'; g.fill();
+  // 壺口
+  g.beginPath(); g.ellipse(X(0.5), X(0.38), X(0.38), X(0.11), 0, 0, Math.PI * 2);
+  g.fillStyle = '#ffe3ee'; g.fill();
+  g.lineWidth = X(0.035); g.strokeStyle = '#7a2a55'; g.stroke();
+  // 融化的巧克力：滿出壺口、往下流幾滴
+  const cg = g.createLinearGradient(0, X(0.22), 0, X(0.52));
+  cg.addColorStop(0, '#a5653c'); cg.addColorStop(1, '#5a2c12');
+  g.fillStyle = cg;
+  g.beginPath(); g.ellipse(X(0.5), X(0.36), X(0.31), X(0.085), 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(X(0.46), X(0.3), X(0.17), X(0.09), 0, 0, Math.PI * 2); g.fill();
+  for (const [x, len, w] of [[0.3, 0.14, 0.05], [0.47, 0.09, 0.045], [0.66, 0.17, 0.055]]) {
+    g.beginPath();
+    g.moveTo(X(x - w), X(0.4));
+    g.lineTo(X(x - w), X(0.4 + len));
+    g.arc(X(x), X(0.4 + len), X(w), Math.PI, 0, true);
+    g.lineTo(X(x + w), X(0.4));
+    g.closePath(); g.fill();
+  }
+  // 光澤和一顆泡泡
+  g.fillStyle = 'rgba(255,236,214,0.55)';
+  g.beginPath(); g.ellipse(X(0.4), X(0.27), X(0.07), X(0.025), -0.2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(X(0.6), X(0.32), X(0.035), 0, Math.PI * 2);
+  g.fillStyle = '#8a4f2b'; g.fill();
+  g.lineWidth = X(0.012); g.strokeStyle = 'rgba(255,236,214,0.7)'; g.stroke();
+}
+
+// ---------------- 保鮮膜：透明的玻璃紙包住特殊方塊（看得到裡面），亮亮的反光、幾條皺摺，右上角一個粉紅小蝴蝶結 ----------------
+export function paintWrap(g, S) {
+  const X = v => v * S, m = X(0.06), w = S - 2 * m, r = X(0.24);
+  const box = () => rr(g, m, m, w, w, r);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  // 薄薄一層霧白（裡面的方塊還看得清楚）
+  const fog = g.createLinearGradient(0, 0, S, S);
+  fog.addColorStop(0, 'rgba(255,255,255,0.34)'); fog.addColorStop(0.5, 'rgba(210,238,255,0.1)'); fog.addColorStop(1, 'rgba(255,214,236,0.26)');
+  box(); g.fillStyle = fog; g.fill();
+  // 外框：深色細底邊 + 淡藍淡粉的反光邊
+  box(); g.lineWidth = X(0.075); g.strokeStyle = 'rgba(14,18,40,0.45)'; g.stroke();
+  const edge = g.createLinearGradient(0, 0, S, S);
+  edge.addColorStop(0, '#ffffff'); edge.addColorStop(0.35, '#bfe8ff'); edge.addColorStop(0.65, '#ffc6e6'); edge.addColorStop(1, '#ffffff');
+  box(); g.lineWidth = X(0.042); g.strokeStyle = edge; g.stroke();
+  g.save(); box(); g.clip();
+  // 斜斜的兩道反光
+  g.fillStyle = 'rgba(255,255,255,0.5)';
+  g.beginPath(); g.moveTo(X(0.06), X(0.44)); g.lineTo(X(0.44), X(0.06)); g.lineTo(X(0.56), X(0.06)); g.lineTo(X(0.06), X(0.56)); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,0.3)';
+  g.beginPath(); g.moveTo(X(0.06), X(0.66)); g.lineTo(X(0.66), X(0.06)); g.lineTo(X(0.71), X(0.06)); g.lineTo(X(0.06), X(0.71)); g.closePath(); g.fill();
+  // 皺摺
+  g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = X(0.016);
+  for (const pts of [[[0.62, 0.9], [0.68, 0.8], [0.64, 0.72], [0.72, 0.62]], [[0.86, 0.66], [0.79, 0.7], [0.82, 0.78]], [[0.16, 0.8], [0.24, 0.84], [0.3, 0.92]]]) {
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), X(y)) : g.moveTo(X(x), X(y)))); g.stroke();
+  }
+  g.restore();
+  // 蝴蝶結（右上角）：兩個圈、兩條緞帶尾巴、中間一顆結
+  const bx = X(0.76), by = X(0.22);
+  const loop = d => { g.beginPath(); g.ellipse(bx + d * X(0.1), by, X(0.11), X(0.07), d * 0.45, 0, Math.PI * 2); };
+  g.lineWidth = X(0.03); g.strokeStyle = '#a8285f';
+  for (const d of [-1, 1]) {
+    g.beginPath(); g.moveTo(bx, by); g.lineTo(bx + d * X(0.07), by + X(0.15)); g.lineTo(bx + d * X(0.02), by + X(0.13)); g.closePath();
+    g.fillStyle = '#ff5fa2'; g.fill(); g.stroke();
+  }
+  for (const d of [-1, 1]) { loop(d); g.fillStyle = '#ff7ab4'; g.fill(); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (const d of [-1, 1]) { g.beginPath(); g.ellipse(bx + d * X(0.11), by - X(0.02), X(0.045), X(0.022), d * 0.45, 0, Math.PI * 2); g.fill(); }
+  g.beginPath(); g.arc(bx, by, X(0.045), 0, Math.PI * 2); g.fillStyle = '#ffb3d4'; g.fill(); g.stroke();
+}
+
 // ---------------- 龍龍出口：綠色往下的箭頭（S = 箭頭大小）----------------
 export function paintExitArrow(g, S) {
   const pts = [[0.5, 0.92], [0.94, 0.42], [0.68, 0.42], [0.68, 0.08], [0.32, 0.08], [0.32, 0.42], [0.06, 0.42]].map(([x, y]) => [x * S, y * S]);
@@ -319,7 +421,9 @@ export const CRUMBS = {
   licorice: () => ['#2a1f33', '#c0479a', '#5a4566'],
   alarm: () => ['#ff4f78', '#ffc93a', '#ffffff'],
   shell: () => ['#a69dc0', '#d6d0e4', '#ff9ec6'],
+  pot: () => ['#ff8fbc', '#8a4f2b', '#ffe3ee'],
   cage: () => ['#ffffff', '#c6cfdb', '#ffd24a'],
+  wrap: () => ['#ffffff', '#cfefff', '#ff8fc2'],
 };
 
 // 傳送門（教學小卡用）：上面一個入口、下面一個出口，中間一顆玩偶色的小球穿過去
@@ -407,7 +511,7 @@ export function paintOrder(g, S, what) {
   paintOrderOne(g, S, what);
 }
 
-// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'alarm' | 'shell' | 'shell2' | 'exit' | 'portal' | 'o-<訂單>'
+// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'alarm' | 'shell' | 'shell2' | 'pot' | 'exit' | 'portal' | 'o-<訂單>'
 export function blockerCanvas(type, px) {
   const c = document.createElement('canvas');
   c.width = c.height = Math.max(8, Math.round(px));
@@ -423,6 +527,18 @@ export function blockerCanvas(type, px) {
   else if (type === 'swirl') paintSwirl(g, S);
   else if (type === 'alarm') paintAlarm(g, S, 9);
   else if (type.startsWith('shell')) paintShell(g, S, +(type.slice(5) || 1));
+  else if (type === 'pot') paintPot(g, S);
+  else if (type === 'wrap') {
+    // 教學小卡：包在保鮮膜裡的條紋玩偶（粉紅圓 + 三條白色橫紋）
+    const gr = g.createRadialGradient(S * 0.45, S * 0.42, S * 0.05, S / 2, S / 2, S * 0.4);
+    gr.addColorStop(0, '#ffe3f0'); gr.addColorStop(1, '#ff8fbf');
+    g.fillStyle = gr; g.beginPath(); g.arc(S / 2, S / 2, S * 0.32, 0, Math.PI * 2); g.fill();
+    g.save(); g.beginPath(); g.arc(S / 2, S / 2, S * 0.32, 0, Math.PI * 2); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const y of [0.38, 0.5, 0.62]) g.fillRect(0, S * y - S * 0.025, S, S * 0.05);
+    g.restore();
+    paintWrap(g, S);
+  }
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
   else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));

@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123k';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123k';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123k';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123l';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123l';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123l';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -2255,18 +2255,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     for (const jh of ev.jellyHits || []) if (jh) cue('jellyhit', tOf(jh.r, jh.c) + POP_HIT, { r: jh.r, c: jh.c });
 
-    // --- 鐵籠子打開：籠子裂成兩半飛走，玩偶留在原地 ---
+    // --- 鐵籠子打開：籠子裂成兩半飛走，玩偶留在原地；保鮮膜拆開也一樣，裡面的特殊方塊留著 ---
     for (const q of unlocks) {
-      const tm = tOf(q.r, q.c);
+      const tm = tOf(q.r, q.c), gift = !!q.gift;
       at(t0 + tm, tt => {
         if (locks[q.r]) locks[q.r][q.c] = 0;
-        fx.push({ type: 'cagebreak', r: q.r, c: q.c, t0: tt, dur: 560 });
-        crumbs(q.c + 0.5, q.r + 0.5, 'cage', 1, tt, 7);
-        sparkle(q.c + 0.5, q.r + 0.5, 5, tt, 0.35);
+        fx.push({ type: 'cagebreak', spr: gift ? 'wrap' : 'cage', r: q.r, c: q.c, t0: tt, dur: 560 });
+        crumbs(q.c + 0.5, q.r + 0.5, gift ? 'wrap' : 'cage', 1, tt, 7);
+        sparkle(q.c + 0.5, q.r + 0.5, gift ? 8 : 5, tt, 0.35);
         const v = cellV(q);
-        if (v) { v.landT = tt; v.landAmp = 0.12; }
+        if (v) { v.landT = tt; v.landAmp = gift ? 0.18 : 0.12; }
       });
-      cue('cage', tm, { r: q.r, c: q.c });
+      cue(gift ? 'gift' : 'cage', tm, { r: q.r, c: q.c });
     }
     // --- 多層糖霜 / 硬殼掉一層：碎屑 + 壓扁回彈，換成少一層的樣子 ---
     for (const q of bhits) {
@@ -2644,9 +2644,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ghosts.push({ kind: old.kind, special: old.special, x: q.c, y: q.r, t0: t + 80, dur: 420, melt: true, phase: old.phase, fired: true });
     }
     const v = newVisual(p, q.r, q.c);
-    v.mv = { t0: t, dur: 480, x1: q.c, y1: q.r, path: u => {
+    // 巧克力壺噴出來的：壺彈一下，巧克力畫一道弧線飛過去
+    const far = Math.abs(f.r - q.r) + Math.abs(f.c - q.c) > 1, pot = cellV(f);
+    if (pot && pot.block === 'pot') { pot.landT = t; pot.landAmp = 0.18; }
+    const arc = far || (pot && pot.block === 'pot') ? 0.7 : 0;
+    v.mv = { t0: t, dur: far ? 560 : 480, x1: q.c, y1: q.r, path: u => {
       const e = Math.min(1, easeOutBack(u, 2));
-      return { x: lerp(f.c, q.c, e), y: lerp(f.r, q.r, e), s: 0.4 + 0.6 * Math.min(1.06, easeOutBack(u, 2)) };
+      return { x: lerp(f.c, q.c, e), y: lerp(f.r, q.r, e) - arc * Math.sin(Math.PI * Math.min(1, u)), s: 0.4 + 0.6 * Math.min(1.06, easeOutBack(u, 2)) };
     } };
     visuals.set(p.id, v);
     if (cellMap[q.r]) cellMap[q.r][q.c] = v;
@@ -3085,6 +3089,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else if (type === 'cage') paintCage(g, S);
       else if (type === 'alarm') paintAlarm(g, S, hp);
       else if (type === 'shell') paintShell(g, S, hp);
+      else if (type === 'pot') paintPot(g, S);
+      else if (type === 'wrap') paintWrap(g, S);
       else if (type === 'exit') paintExitArrow(g, S);
       blockCache.set(key, c);
     }
@@ -3202,16 +3208,16 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
     }
   }
-  // 鐵籠子蓋在被關的玩偶上面；偶爾閃一下金屬光
+  // 鐵籠子蓋在被關的玩偶上面、保鮮膜（2）包著特殊方塊；偶爾閃一下光
   function drawLocks(t) {
     if (!locks.length) return;
-    let spr = null;
+    let cage = null, wrap = null;
     for (let r = 0; r < rows; r++) {
       const lr = locks[r];
       if (!lr) continue;
       for (let c = 0; c < cols; c++) {
         if (!lr[c]) continue;
-        spr = spr || blockSprite('cage');
+        const spr = lr[c] === 2 ? (wrap = wrap || blockSprite('wrap')) : (cage = cage || blockSprite('cage'));
         const x = ox + c * cs, y = oy + r * cs;
         ctx.drawImage(spr, x, y, cs, cs);
         const u = ((t / 3400 + r * 0.37 + c * 0.61) % 1 + 1) % 1;
@@ -3667,7 +3673,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         }
       } else if (f.type === 'cagebreak') {
         // 籠子從中間裂開，左右兩半往外翻、往下掉
-        const spr = blockSprite('cage'), S2 = spr.width, x = ox + (f.c + 0.5) * cs, y = oy + (f.r + 0.5) * cs, e = easeOutCubic(p);
+        const spr = blockSprite(f.spr || 'cage'), S2 = spr.width, x = ox + (f.c + 0.5) * cs, y = oy + (f.r + 0.5) * cs, e = easeOutCubic(p);
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1 - p * p;
         for (const d of [-1, 1]) {

@@ -101,6 +101,14 @@
 //   match next to it does nothing; only effects (stripes, wrapped, fish, combos, boosters) take off a layer.
 //   stats also: dinosOut, dinosTotal, frostLeft (layers), chocoLeft, licoriceLeft, locksLeft, alarmsLeft, alarmsBurst,
 //   shellLeft (layers).
+//   Obstacle 'P' = a chocolate pot (block 'pot', kind -9): fills the cell, never moves, cannot be removed. After a
+//   player move that broke no chocolate, one pot spits one chocolate onto the nearest normal piece (event 'spread'
+//   with `from` = the pot; then plain chocolate does not grow by itself). Option `pot: { max = 8 }`: no spitting
+//   while that many chocolates are on the board. With dinos and no E, the cell above a pot is an exit too.
+//   Obstacles '-' / '|' / 'W' / 'B' = a gift: a special (stripe h / stripe v / wrapped / colour bomb) under plastic
+//   wrap (lock 2 in the cage layer). Like a cage it cannot be swapped and does not fall; a match through it, a match
+//   next to it or any effect only opens the wrap (clear `unlocks` item with `gift: true`) — the special inside does
+//   not fire then and can be used afterwards. stats: giftLeft (locksLeft counts cages only).
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
@@ -152,7 +160,7 @@ const isSpecial = p => !!p && !p.block && p.special !== NONE;
 // two specials, or a colour bomb with a candy; blockers (dino, licorice …) never make a combo
 const isComboPair = (p, q) => !p.block && !q.block && ((isSpecial(p) && isSpecial(q)) || p.special === 'bomb' || q.special === 'bomb');
 const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const BLOCK_KIND = { dino: -3, frost: -4, choco: -5, licorice: -6, alarm: -7, shell: -8 };
+const BLOCK_KIND = { dino: -3, frost: -4, choco: -5, licorice: -6, alarm: -7, shell: -8, pot: -9 };
 
 export function createEngine(opts = {}) {
   const layoutToks = opts.layout ? parseLayout(opts.layout) : null;
@@ -175,6 +183,9 @@ export function createEngine(opts = {}) {
   // 鬧鐘：每走一步倒數一格（hp = 還剩幾步），數到 0 爆開；timer = 起始數字，rate / max = 從上面掉下來的機率和上限
   const alarmOpt = opts.alarm ? { timer: (opts.alarm.timer | 0) || 15, rate: opts.alarm.rate || 0, max: opts.alarm.max ?? 2 } : null;
   const alarmTimer = alarmOpt ? alarmOpt.timer : 15;
+  // 巧克力壺：盤面上巧克力到 potMax 塊就先不噴
+  const potMax = opts.pot && opts.pot.max > 0 ? opts.pot.max | 0 : 8;
+  let potCount = 0;
 
   // ---- state ----
   const cellMask = [];
@@ -204,7 +215,7 @@ export function createEngine(opts = {}) {
   let cascadesMax = 0;
   let frostLeft = 0, chocoLeft = 0, licoriceLeft = 0, locksLeft = 0, dinosOnBoard = 0, dinosSpawned = 0, dinosOut = 0;
   let chocoBroken = 0, dinosStart = 0;
-  let alarmsLeft = 0, alarmsBurst = 0, shellLeft = 0;
+  let alarmsLeft = 0, alarmsBurst = 0, shellLeft = 0, giftLeft = 0;
   // 訂單目標用：做出幾個條紋 / 包裝糖 / 彩色炸彈 / 飛天玩偶、打出哪些組合；收集巧克力目標用：一共打掉幾塊巧克力
   const made = { stripe: 0, wrap: 0, bomb: 0, fish: 0 };
   const combos = {};
@@ -225,8 +236,8 @@ export function createEngine(opts = {}) {
   const gridCopy = () => grid.map(row => row.map(cp));
   const jellyCopy = () => jel.map(row => row.slice());
   const ev = o => { o.board = gridCopy(); o.jelly = jellyCopy(); o.lock = lock.map(row => row.slice()); o.cnt = counts(); return o; };
-  // frosting / chocolate / hard shells and caged pieces never move; everything else falls
-  const isFixedBlock = p => !!p && (p.block === 'frost' || p.block === 'choco' || p.block === 'shell');
+  // frosting / chocolate / hard shells / pots and caged pieces never move; everything else falls
+  const isFixedBlock = p => !!p && (p.block === 'frost' || p.block === 'choco' || p.block === 'shell' || p.block === 'pot');
   const immovable = (r, c) => !!lock[r][c] || isFixedBlock(grid[r][c]);
   const movableAt = (r, c) => isCell(r, c) && !!grid[r][c] && !immovable(r, c);
   const canSwap = (r, c) => movableAt(r, c);
@@ -425,16 +436,17 @@ export function createEngine(opts = {}) {
     if (st.done.has(k) || st.prot.has(k)) return false;
     const p = grid[r][c];
     if (lock[r][c]) {
-      // cage: it breaks, the piece inside stays (a match through it also counts for the jelly under it)
+      // cage: it breaks, the piece inside stays (a match through it also counts for the jelly under it);
+      // a gift's wrap opens the same way and the special inside does not fire
       st.done.add(k);
-      lock[r][c] = 0; locksLeft--;
-      st.unlocks.push({ r, c });
+      if (lock[r][c] === 2) { giftLeft--; st.unlocks.push({ r, c, gift: true }); } else { locksLeft--; st.unlocks.push({ r, c }); }
+      lock[r][c] = 0;
       hitJelly(st, r, c);
       if (cause !== 'match') addPts(st, src.r, src.c, EFFECT_POINTS * st.mult);
       return true;
     }
     if (!p) return false;
-    if (p.block === 'dino') return false;                 // dinos cannot be destroyed
+    if (p.block === 'dino' || p.block === 'pot') return false;   // dinos and chocolate pots cannot be destroyed
     if (p.block === 'shell' && (cause === 'near' || cause === 'match')) return false;   // only effects crack a shell
     if ((p.block === 'frost' || p.block === 'shell') && p.hp > 1) {
       st.done.add(k);
@@ -489,13 +501,13 @@ export function createEngine(opts = {}) {
   }
   const hitRow = (st, r, c, cause, src) => hitBeam(st, r, c, 0, 1, cause, src);
   const hitCol = (st, r, c, cause, src) => hitBeam(st, r, c, 1, 0, cause, src);
-  // frosting / chocolate / licorice / alarms next to a matched cell lose a layer (once per step each)
+  // frosting / chocolate / licorice / alarms next to a matched cell lose a layer, gifts open (once per step each)
   function hitNear(st, cells) {
     for (const [r, c] of cells) for (const [dr, dc] of DIRS) {
       const y = r + dr, x = c + dc;
       if (!isCell(y, x)) continue;
       const q = grid[y][x];
-      if (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice' || q.block === 'alarm')) hit(st, y, x, 'near', { r, c });
+      if (lock[y][x] === 2 || (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice' || q.block === 'alarm'))) hit(st, y, x, 'near', { r, c });
     }
   }
   function hitSquare(st, r, c, rad, cause, src) {
@@ -939,6 +951,36 @@ export function createEngine(opts = {}) {
     chocoLeft++;
     events.push(ev({ t: 'spread', from: pick.from, to: pick.to, piece: cp(np), was: cp(was) }));
   }
+  // 巧克力壺：這一步沒打到巧克力 → 一個壺（隨機）往離它最近的一般方塊噴一塊巧克力
+  function potSpit(events) {
+    if (chocoLeft >= potMax) return;
+    const pots = [];
+    forCells((r, c) => { const p = grid[r][c]; if (p && p.block === 'pot') pots.push({ r, c }); });
+    for (let i = pots.length - 1; i > 0; i--) { const j = rand(i + 1); [pots[i], pots[j]] = [pots[j], pots[i]]; }
+    for (const s of pots) {
+      const seen = new Set([key(s.r, s.c)]);
+      let front = [s];
+      while (front.length) {
+        const next = [], cand = [];
+        for (const q of front) for (const [dr, dc] of DIRS) {
+          const y = q.r + dr, x = q.c + dc;
+          if (!isCell(y, x) || seen.has(key(y, x))) continue;
+          seen.add(key(y, x));
+          next.push({ r: y, c: x });
+          const p = grid[y][x];
+          if (p && !p.block && p.kind >= 0 && p.special === NONE && !lock[y][x]) cand.push({ r: y, c: x });
+        }
+        if (cand.length) {
+          const to = cand[rand(cand.length)], was = grid[to.r][to.c], np = newBlock('choco', 1);
+          grid[to.r][to.c] = np;
+          chocoLeft++;
+          events.push(ev({ t: 'spread', from: { ...s }, to, piece: cp(np), was: cp(was) }));
+          return;
+        }
+        front = next;
+      }
+    }
+  }
 
   // 鬧鐘：這一步開始前就在盤面上的鬧鐘各倒數一格；數到 0 的爆開（拿掉，main.js 扣 3 步），再掉落、連鎖。
   // 回傳這一步爆了幾個
@@ -1026,13 +1068,14 @@ export function createEngine(opts = {}) {
     const sq = squareOf(r, c);
     // specials in the match fire (+40); cells on jelly help the jelly goal (+35); with board mechanics also a cage
     // opened (+35), frosting / chocolate / a swirl next to it (+25 each) and a dino above it that will drop (+45)
-    const mech = frostLeft || chocoLeft || licoriceLeft || alarmsLeft || locksLeft || dinosOnBoard || shellLeft;
+    const mech = frostLeft || chocoLeft || licoriceLeft || alarmsLeft || locksLeft || dinosOnBoard || shellLeft || giftLeft;
     const sp = (y, x) => {
-      let v = (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+      let v = (grid[y][x].special !== NONE && lock[y][x] !== 2 ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
       if (!mech) return v;
       if (lock[y][x]) v += 35;
       for (const [dr, dc] of DIRS) {
         const q = isCell(y + dr, x + dc) ? grid[y + dr][x + dc] : null;
+        if (q && lock[y + dr][x + dc] === 2) v += 40;   // a gift next to the match opens
         if (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice')) v += 25;
         else if (q && q.block === 'alarm') v += q.hp <= 3 ? 60 : 30;
       }
@@ -1139,30 +1182,43 @@ export function createEngine(opts = {}) {
       if (!ch || ch === '.') return;
       if (ch === 'L') { lock[r][c] = 1; const p = grid[r][c]; if (p && (p.block || p.special !== NONE)) grid[r][c] = newPiece(kinds[rand(kinds.length)]); return; }
       if (ch === 'E') { exitAt[r][c] = true; return; }
+      if (ch === '-' || ch === '|' || ch === 'W' || ch === 'B') {
+        // gift: keep the starting piece's colour (no new matches); a colour bomb has no colour
+        const p = grid[r][c];
+        lock[r][c] = 2;
+        if (ch === 'B') grid[r][c] = newPiece(-1, 'bomb');
+        else if (!p || p.block || p.kind < 0) grid[r][c] = newPiece(kinds[rand(kinds.length)], ch === '-' ? 'h' : ch === '|' ? 'v' : 'wrap');
+        else p.special = ch === '-' ? 'h' : ch === '|' ? 'v' : 'wrap';
+        return;
+      }
       if (ch >= '1' && ch <= '3') grid[r][c] = newBlock('frost', +ch);
       else if (ch === 'C') grid[r][c] = newBlock('choco', 1);
       else if (ch === 'S') grid[r][c] = newBlock('licorice', 1);
       else if (ch === 'A') grid[r][c] = newBlock('alarm', alarmTimer);
       else if (ch === 'X' || ch === 'Y') grid[r][c] = newBlock('shell', ch === 'Y' ? 2 : 1);
+      else if (ch === 'P') grid[r][c] = newBlock('pot', 1);
       else if (ch === 'D') grid[r][c] = newBlock('dino', 0);
     });
-    frostLeft = chocoLeft = licoriceLeft = alarmsLeft = locksLeft = dinosOnBoard = shellLeft = 0;
+    frostLeft = chocoLeft = licoriceLeft = alarmsLeft = locksLeft = dinosOnBoard = shellLeft = potCount = giftLeft = 0;
     forCells((r, c) => {
       const p = grid[r][c];
-      if (lock[r][c]) locksLeft++;
+      if (lock[r][c] === 2) giftLeft++; else if (lock[r][c]) locksLeft++;
       if (!p || !p.block) return;
       if (p.block === 'frost') frostLeft += p.hp;
       else if (p.block === 'choco') chocoLeft++;
       else if (p.block === 'licorice') licoriceLeft++;
       else if (p.block === 'alarm') alarmsLeft++;
       else if (p.block === 'shell') shellLeft += p.hp;
+      else if (p.block === 'pot') potCount++;
       else if (p.block === 'dino') dinosOnBoard++;
     });
     dinosSpawned = dinosStart = dinosOnBoard;
     // dinos but no exit given: every cell a dino cannot fall out of is an exit — the bottom of each column and the
-    // cell above a hole (not a portal entrance: dinos go through those)
+    // cell above a hole (not a portal entrance: dinos go through those); a chocolate pot never goes away, so the cell
+    // above it is an exit instead of the pot's own cell
+    const potAt = q => !!q && !!grid[q.r][q.c] && grid[q.r][q.c].block === 'pot';
     if ((dinoOpt || dinosOnBoard) && !exitAt.some(row => row.some(Boolean)))
-      forCells((r, c) => { if (!below(r, c)) exitAt[r][c] = true; });
+      forCells((r, c) => { if (!potAt({ r, c }) && (!below(r, c) || potAt(below(r, c)))) exitAt[r][c] = true; });
   }
   const clearObstacles = () => { for (const row of lock) row.fill(0); for (const row of exitAt) row.fill(false); };
 
@@ -1207,7 +1263,7 @@ export function createEngine(opts = {}) {
     get stats() {
       return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax, ...counts(),
         dinosOut, dinosTotal: dinoOpt ? Math.max(dinoOpt.total, dinosStart) : dinosStart, frostLeft, chocoLeft, licoriceLeft, locksLeft,
-        alarmsLeft, alarmsBurst, shellLeft };
+        alarmsLeft, alarmsBurst, shellLeft, giftLeft };
     },
     lockAt: (r, c) => (isCell(r, c) ? lock[r][c] : 0),
     isExit: (r, c) => isCell(r, c) && exitAt[r][c],
@@ -1236,7 +1292,8 @@ export function createEngine(opts = {}) {
       const last = settle(events, cascade, combo ? null : [b, a]);
       cascadesMax = Math.max(cascadesMax, last);
       const alarms = tickAlarms(events, ticking, last + 1);
-      if (chocoBefore > 0 && chocoBroken === 0 && chocoLeft > 0) spreadChoco(events);
+      if (potCount) { if (chocoBroken === 0) potSpit(events); }
+      else if (chocoBefore > 0 && chocoBroken === 0 && chocoLeft > 0) spreadChoco(events);
       if (!hasValidMove()) events.push(shuffleInternal());
       const gained = events.reduce((s, e) => s + (e.gained || 0), 0);
       score += gained;
@@ -1246,7 +1303,7 @@ export function createEngine(opts = {}) {
     // ---- 道具（Candy Crush 的 booster；都不算步數） ----
     // smash(cell)：棒棒糖槌，敲掉一顆（特殊方塊會發動），之後照常掉落、連鎖
     smash(cell) {
-      if (!cell || !isCell(cell.r, cell.c) || !grid[cell.r][cell.c] || grid[cell.r][cell.c].block === 'dino') return { ok: false, events: [], gained: 0 };
+      if (!cell || !isCell(cell.r, cell.c) || !grid[cell.r][cell.c] || grid[cell.r][cell.c].block === 'dino' || grid[cell.r][cell.c].block === 'pot') return { ok: false, events: [], gained: 0 };
       const events = [];
       const st = newStep(1);
       hit(st, cell.r, cell.c, 'combo', { r: cell.r, c: cell.c });
