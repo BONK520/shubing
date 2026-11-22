@@ -1,10 +1,10 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123';
-import { SLOGANS } from './slogans.js?v=20261123';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123';
-import { blockerCanvas } from './blockers.js?v=20261123';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123b';
+import { SLOGANS } from './slogans.js?v=20261123b';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123b';
+import { blockerCanvas } from './blockers.js?v=20261123b';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123';
+const MOD_V = '?v=20261123b';
 
 window.__plushBooted = true;
 
@@ -1255,6 +1255,7 @@ function buildGoal() {
     r.gi.classList.add('score-goal');
   }
   box.dataset.n = goalRefs.length;          // 三種目標時圖示小一點才排得下
+  box.parentElement.toggleAttribute('data-many', goalRefs.length >= 3);   // 三個以上：數字變成徽章，「還差」只寫一次在左上角（CSS）
   // 星星的位置固定在條子的 1/3、2/3 和尾端（條子照門檻分段走，見 starBarPct）
   $$('.sb-star').forEach((st, i) => { st.style.setProperty('--p', STAR_AT[i] + '%'); st.classList.remove('on'); });
   hud.on = hudEls().stars.map(() => false);

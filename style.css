@@ -1773,16 +1773,43 @@ svg.on .hi { opacity: .9; }
   #scr-game .goal-items[data-n="2"] .gi .cnt { font-size: 23px; }
   #scr-game .goal-items[data-n="2"] .gi .lft { font-size: 10px; }
   #scr-game .goal-items[data-n="2"] .jelly-ic { width: 30px; height: 30px; border-width: 2px; }
-  /* 三種目標：排不下「還差」，改成圖示在上、數字在下 */
-  #scr-game .goal-items[data-n="3"] { gap: 2px; }
-  #scr-game .goal-items[data-n="3"] .gi { grid-template-columns: auto; row-gap: 1px; }
-  #scr-game .goal-items[data-n="3"] .gi .ic { grid-row: 1; width: 32px; height: 32px; }
-  #scr-game .goal-items[data-n="3"] .gi .lft { display: none; }
-  #scr-game .goal-items[data-n="3"] .gi .cnt, #scr-game .goal-items[data-n="3"] .gi .check { grid-column: 1; grid-row: 2; justify-self: center; }
-  #scr-game .goal-items[data-n="3"] .gi .cnt { font-size: 19px; }
-  #scr-game .goal-items[data-n="3"] .gi .check { width: 20px; height: 20px; border-width: 2px; }
-  #scr-game .goal-items[data-n="3"] .gi .check::after { width: 8px; height: 4px; border-width: 0 0 2.5px 2.5px; }
-  #scr-game .goal-items[data-n="3"] .jelly-ic { width: 28px; height: 28px; border-width: 2px; }
+  @media (max-width: 370px) { /* 360 寬：兩個兩位數目標會擠出目標格 3px，再縮一點 */
+    #scr-game .goal-items[data-n="2"] .gi { column-gap: 3px; }
+    #scr-game .goal-items[data-n="2"] .gi .ic { width: 30px; height: 30px; }
+    #scr-game .goal-items[data-n="2"] .gi .cnt { font-size: 20px; }
+    #scr-game .goal-items[data-n="2"] .jelly-ic { width: 27px; height: 27px; }
+  }
+  /* 三個以上目標（11/23 修：第80關四個目標的數字和「還差」疊成一串、跑進分數格）：
+     圖示縮小，數字改成圖示右下角的白色徽章；每個目標各自的「還差」拿掉，改成目標格左上角一個小標。
+     四、五個目標排成兩排。目標格 overflow: hidden，怎樣都不會蓋到右邊的分數格 */
+  #scr-game .hud-goal[data-many] { overflow: hidden; }
+  #scr-game .hud-goal[data-many]::before {
+    content: '還差'; position: absolute; top: 3px; left: 8px; z-index: 2; pointer-events: none;
+    font-size: 10px; font-weight: 700; color: #a5657f; line-height: 1.2;
+  }
+  #scr-game .hud-goal[data-many] .goal-items { min-width: 0; gap: 2px; justify-content: space-evenly; }
+  #scr-game .hud-goal[data-many] .gi { display: block; position: relative; flex: none; margin: 0 7px 0 0; }
+  #scr-game .hud-goal[data-many] .gi .ic { width: 32px; height: 32px; }
+  #scr-game .hud-goal[data-many] .gi .lft { display: none; }
+  #scr-game .hud-goal[data-many] .gi .cnt {
+    position: absolute; right: -8px; bottom: -4px; min-width: 18px; padding: 2px 4px; border-radius: 9px;
+    background: #fff; box-shadow: 0 1px 3px rgba(107, 45, 74, .35); text-align: center;
+    font-size: 13px; line-height: 1;
+  }
+  #scr-game .hud-goal[data-many] .gi .check { position: absolute; right: -7px; bottom: -4px; width: 18px; height: 18px; border-width: 2px; }
+  #scr-game .hud-goal[data-many] .gi .check::after { width: 7px; height: 4px; border-width: 0 0 2.5px 2.5px; }
+  #scr-game .hud-goal[data-many] .jelly-ic { width: 27px; height: 27px; border-width: 2px; }
+  #scr-game .hud-goal[data-many] .gi.score-goal .ic svg { width: 28px; height: 28px; }
+  /* 四、五個目標：兩排（四個 2×2、五個 3＋2），上面留給「還差」小標 */
+  #scr-game .goal-items[data-n="4"], #scr-game .goal-items[data-n="5"] {
+    display: grid; grid-template-columns: repeat(2, auto); justify-content: space-evenly; align-content: center;
+    row-gap: 7px; column-gap: 6px; padding-top: 10px;
+  }
+  #scr-game .goal-items[data-n="5"] { grid-template-columns: repeat(3, auto); column-gap: 2px; }
+  #scr-game .goal-items[data-n="4"] .gi .ic, #scr-game .goal-items[data-n="5"] .gi .ic { width: 26px; height: 26px; }
+  #scr-game .goal-items[data-n="4"] .gi .cnt, #scr-game .goal-items[data-n="5"] .gi .cnt { font-size: 12px; padding: 1px 3px; min-width: 16px; bottom: -2px; }
+  #scr-game .goal-items[data-n="4"] .gi .check, #scr-game .goal-items[data-n="5"] .gi .check { width: 16px; height: 16px; bottom: -2px; }
+  #scr-game .goal-items[data-n="4"] .jelly-ic, #scr-game .goal-items[data-n="5"] .jelly-ic { width: 22px; height: 22px; }
 
   /* 分數：小標、數字、星星條由上往下 */
   #scr-game .hud-score { flex: none; width: min(132px, 35vw); padding: 8px 10px; gap: 0; justify-content: center; }
