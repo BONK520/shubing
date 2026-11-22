@@ -1647,3 +1647,20 @@ svg.on .hi { opacity: .9; }
 @keyframes itemPop { 0% { transform: translateY(30px) scale(.2); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .cp-text { margin: 0; font-size: 18px; font-weight: 900; color: #c42a74; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .closet-fab, .closet-fab.ready, .cl-chest.ready .cc-box, .win-card.three, .win-card.three .big-stars::before { animation: none; } }
+
+/* 新機關教學小卡 */
+#m-intro { cursor: pointer; }
+.intro-card { padding-top: 42px; gap: 10px; text-align: center; max-width: 320px; }
+.intro-icon {
+  width: 120px; height: 120px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #fff 0 40%, #ffe3f0 70%, rgba(255, 214, 236, 0) 72%);
+  animation: intro-bob 1.6s ease-in-out infinite;
+}
+.intro-icon img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(94, 33, 54, .25)); }
+.intro-icon .jelly-ic { width: 78px; height: 78px; border-radius: 18px; }
+.intro-title { font-size: 26px; font-weight: 900; color: var(--ink); letter-spacing: .04em; }
+.intro-text { margin: 0; font-size: 18px; font-weight: 800; line-height: 1.5; color: var(--ink); text-wrap: balance; word-break: keep-all; line-break: strict; }
+.intro-tap { margin-top: 4px; font-size: 15px; font-weight: 900; color: var(--ink-soft); animation: intro-tap 1.1s ease-in-out infinite; }
+@keyframes intro-bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.04); } }
+@keyframes intro-tap { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .intro-icon, .intro-tap { animation: none; } }

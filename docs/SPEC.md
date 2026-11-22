@@ -224,6 +224,26 @@ export const LEVELS = [
 - `stars[0]` is the minimum score to pass a score level; for other goals the goal must be met, stars come from the final score.
 - `hint` = one short zh-TW line shown at level start (optional).
 
+## 4a. Level rotation with board mechanics (2026-11)
+
+- Every level keeps its board shape and chapter; mechanics were layered on by a generator (rules below), then all
+  100 levels were retuned with `tests/tune_levels.py --min-moves 15`.
+- First appearance (main.js shows a one-time intro card: icon + one sentence, tap to start; seen list in
+  `save.seen`, per device): jelly 7, dino 10, cage 12, frosting 16, chocolate 22, licorice 26, portal 31.
+- Levels 31–100, five per chapter: dino rescue (every other chapter: collect with portals + licorice) → jelly with
+  cages / portals → clear frosting + cages (every other chapter: collect + clear chocolate) → jelly with frosting /
+  portals → boss (`mix`: jelly or collect + dinos + frosting / cages).
+- Placement rules: frosting builds up from the bottom of a column segment (no empty cell under it) and every
+  frosting / chocolate cell has a neighbour that can still make a 3-in-a-row; chocolate starts in the middle rows;
+  portals bridge gaps in a column (to the mirrored column when possible); dinos only drop into columns with at
+  least 4 cells to an exit; every cell a dino cannot fall out of is an exit (arrows hidden on short column tops
+  dinos never reach).
+- `validateLevels` checks obstacles (size, characters, not on holes, frosting / chocolate not on jelly, nothing
+  empty under frosting), portals (entrance has no cell below, exit no cell above), licorice, and that each goal's
+  blockers exist on the board.
+- Simulation bots pick from `engine.listMoves()` and value dino progress, blockers hit, cages opened and chocolate
+  cleared (`tests/sim.bots.js` PROFILES: `block`, `chocoAny`, `dino`).
+
 ## 5. Audio — `js/audio.js`
 
 All sounds synthesized with Web Audio (no audio files).

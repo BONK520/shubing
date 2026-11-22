@@ -90,7 +90,7 @@
 //   kinds -4 / -5 / -6 / -3. Cages are a separate layer: every event carries `lock` (0 / 1 per cell).
 //   Option `dinos: { total, onBoard = 2, rate = 0.3 }`: dinos drop in at the top until `total` have entered
 //   (counting the ones on the starting board), at most `onBoard` at a time. With dinos and no E, every column's
-//   bottom cell is an exit. Option `licorice: { rate, max }`: new pieces are sometimes licorice swirls.
+//   bottom cell (and every cell above a hole) is an exit. Option `licorice: { rate, max }`: new pieces are sometimes licorice swirls.
 //   Option `portals: [[r1, c1, r2, c2], …]`: what falls out of the bottom of (r1, c1) comes in at the top of
 //   (r2, c2) (fall paths mark that step with `warp: true`).
 //   stats also: dinosOut, dinosTotal, frostLeft (layers), chocoLeft, licoriceLeft, locksLeft.
@@ -710,6 +710,24 @@ export function createEngine(opts = {}) {
   // column by column, the lower part of a column first
   chains.sort((x, y) => x[0].c - y[0].c || y[0].r - x[0].r);
   const isSpawner = q => q.r === spawnRow[q.c] && !above(q.r, q.c);
+  // exits worth drawing: not the end of a short column top that dinos never drop into (they still work as exits)
+  const shownExits = () => {
+    const out = exitAt.map(row => row.slice()), ok = dinoCol();
+    for (const ch of chains) {
+      const end = ch[ch.length - 1];
+      if (isSpawner(ch[0]) && !ok[ch[0].c] && !ch.some(q => immovable(q.r, q.c))) out[end.r][end.c] = false;
+    }
+    return out;
+  };
+  // columns a dino may drop into: the spawner's chain is at least 4 cells long (or the longest there is)
+  let dinoCols = null;
+  const dinoCol = () => {
+    if (dinoCols) return dinoCols;
+    const len = new Array(cols).fill(0);
+    for (const ch of chains) if (isSpawner(ch[0])) len[ch[0].c] = ch.length;
+    const need = Math.min(4, Math.max(...len));
+    return (dinoCols = len.map(n => n > 0 && n >= need));
+  };
   function pickKind(r, c) {
     if (antiCascade > 0 && rng() < antiCascade) {
       const safe = kinds.filter(k => !wouldMatch(r, c, k));
@@ -817,11 +835,15 @@ export function createEngine(opts = {}) {
     // colours of the new pieces, bottom-up (so the cascade-friendly refill sees what is below)
     const fresh = spawned.map(sp => ({ sp, at: paths.get(sp.p)[paths.get(sp.p).length - 1] }))
       .sort((x, y) => y.at.r - x.at.r || x.at.c - y.at.c);
-    // a dino drops in at the top while the goal still needs more (the highest new piece becomes one)
+    // a dino drops in at the top while the goal still needs more (the highest new piece in a column with a real way
+    // down — at least 4 cells to its exit — becomes one)
     if (dinoOpt && fresh.length && dinosSpawned < dinoOpt.total && dinosOnBoard < dinoOpt.onBoard && rng() < dinoOpt.rate) {
-      const top = fresh.reduce((m, x) => (x.at.r < m.at.r ? x : m), fresh[0]);
-      Object.assign(top.sp.p, { kind: BLOCK_KIND.dino, block: 'dino', hp: 0 });
-      dinosSpawned++; dinosOnBoard++;
+      const ok = fresh.filter(x => dinoCol()[x.sp.c]);
+      if (ok.length) {
+        const top = ok.reduce((m, x) => (x.at.r < m.at.r ? x : m), ok[0]);
+        Object.assign(top.sp.p, { kind: BLOCK_KIND.dino, block: 'dino', hp: 0 });
+        dinosSpawned++; dinosOnBoard++;
+      }
     }
     for (const { sp, at } of fresh) {
       if (sp.p.block) continue;
@@ -886,13 +908,16 @@ export function createEngine(opts = {}) {
     events.push(ev({ t: 'spread', from: pick.from, to: pick.to, piece: cp(np), was: cp(was) }));
   }
 
-  // matches -> clear -> fall, repeated (dinos on exits leave first); returns the last cascade number used
+  // matches -> clear -> fall, repeated; when nothing matches, dinos standing on exits leave (then gravity, and
+  // matching again). Returns the last cascade number used
   function settle(events, cascade, swapped) {
     let last = cascade - 1;
     for (let guard = 0; guard < 200; guard++) {
-      if (collectDinos(events)) { fall(events); continue; }
       const groups = findGroups();
-      if (!groups.length) break;
+      if (!groups.length) {
+        if (collectDinos(events)) { fall(events); continue; }
+        break;
+      }
       events.push(matchStep(groups, cascade, swapped));
       swapped = null;
       fall(events);
@@ -921,14 +946,39 @@ export function createEngine(opts = {}) {
     return n;
   }
   function hasValidMove() { return validMoves(1) >= 1; }
+  // every valid swap (simulation bots pick from these; they know cages, frosting and blockers this way)
+  function listMoves() {
+    const out = [];
+    forCells((r, c) => {
+      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1)) out.push({ a: { r, c }, b: { r, c: c + 1 } });
+      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c)) out.push({ a: { r, c }, b: { r: r + 1, c } });
+    });
+    return out;
+  }
   const COMBO_VALUE = { 'bomb+bomb': 1000, 'bomb+wrap': 900, 'bomb+h': 850, 'bomb+v': 850, 'bomb+fish': 800, 'wrap+wrap': 700,
     'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600,
     'fish+wrap': 580, 'fish+h': 560, 'fish+v': 560, 'fish+fish': 540 };
   function cellValue(r, c) {
     const { h, v } = lineLens(r, c);
     const sq = squareOf(r, c);
-    // specials in the match fire (+40); cells on jelly help the jelly goal (+35)
-    const sp = (y, x) => (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+    // specials in the match fire (+40); cells on jelly help the jelly goal (+35); with board mechanics also a cage
+    // opened (+35), frosting / chocolate / a swirl next to it (+25 each) and a dino above it that will drop (+45)
+    const mech = frostLeft || chocoLeft || licoriceLeft || locksLeft || dinosOnBoard;
+    const sp = (y, x) => {
+      let v = (grid[y][x].special !== NONE ? 40 : 0) + (jel[y][x] > 0 ? 35 : 0);
+      if (!mech) return v;
+      if (lock[y][x]) v += 35;
+      for (const [dr, dc] of DIRS) {
+        const q = isCell(y + dr, x + dc) ? grid[y + dr][x + dc] : null;
+        if (q && (q.block === 'frost' || q.block === 'choco' || q.block === 'licorice')) v += 25;
+      }
+      for (let u = y - 1; u >= 0 && isCell(u, x); u--) {
+        const q = grid[u][x];
+        if (lock[u][x] || (q && (q.block === 'frost' || q.block === 'choco'))) break;
+        if (q && q.block === 'dino') { v += 45; break; }
+      }
+      return v;
+    };
     const sqPart = () => {           // the square's other three cells
       let s = 0;
       for (const [y, x] of [[sq.r, sq.c], [sq.r, sq.c + 1], [sq.r + 1, sq.c], [sq.r + 1, sq.c + 1]]) if (y !== r || x !== c) s += sp(y, x);
@@ -1041,13 +1091,10 @@ export function createEngine(opts = {}) {
       else if (p.block === 'dino') dinosOnBoard++;
     });
     dinosSpawned = dinosStart = dinosOnBoard;
-    // dinos but no exit given: the bottom cell of every column is an exit (not a portal entrance: dinos go through those)
+    // dinos but no exit given: every cell a dino cannot fall out of is an exit — the bottom of each column and the
+    // cell above a hole (not a portal entrance: dinos go through those)
     if ((dinoOpt || dinosOnBoard) && !exitAt.some(row => row.some(Boolean)))
-      for (let c = 0; c < cols; c++) {
-        let r = rows - 1;
-        while (r >= 0 && !cellMask[r][c]) r--;
-        if (r >= 0 && !portalOut.has(key(r, c))) exitAt[r][c] = true;
-      }
+      forCells((r, c) => { if (!below(r, c)) exitAt[r][c] = true; });
   }
   const clearObstacles = () => { for (const row of lock) row.fill(0); for (const row of exitAt) row.fill(false); };
 
@@ -1087,7 +1134,7 @@ export function createEngine(opts = {}) {
     cell: (r, c) => (isCell(r, c) ? cp(grid[r][c]) : null),
     jellyAt: (r, c) => (isCell(r, c) ? jel[r][c] : 0),
     snapshot: () => ({ rows, cols, mask: cellMask.map(row => row.slice()), grid: gridCopy(), jelly: jellyCopy(),
-      lock: lock.map(row => row.slice()), exits: exitAt.map(row => row.slice()), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })) }),
+      lock: lock.map(row => row.slice()), exits: shownExits(), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })) }),
     get score() { return score; },
     get stats() {
       return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax,
@@ -1185,6 +1232,7 @@ export function createEngine(opts = {}) {
 
     findHint,
     hasValidMove,
+    listMoves,
     shuffle: () => [shuffleInternal()],
 
     addScore(points) {

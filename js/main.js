@@ -39,6 +39,7 @@ function normSave(s) {
     music: s.music !== false,
     boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
     t: Number.isFinite(s.t) ? s.t : 0,
+    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 20) : [],   // 看過教學小卡的機關（這台裝置）
   };
 }
 function loadSave(key) {
@@ -72,7 +73,7 @@ function mergeSave(a, b) {
 }
 // 換成另一份存檔（save 是 const 物件，很多地方直接拿去用，所以就地換內容）；音效 / 音樂開關保留這台裝置的
 function applySave(s) {
-  const keep = { muted: save.muted, music: save.music };
+  const keep = { muted: save.muted, music: save.music, seen: save.seen };
   for (const k of Object.keys(save)) delete save[k];
   Object.assign(save, normSave(s), keep);
   lastProgress = JSON.stringify({ ...progressOf(save), t: 0 });
@@ -324,6 +325,55 @@ function dinoImg() {
 const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage') };
 const PART_NAME = { dino: '小恐龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
 const goalPartsOf = lvl => (levMod.goalParts ? levMod.goalParts(lvl) : [{ kind: 'score' }]);
+
+// ---------- 新機關教學小卡 ----------
+// 第一次遇到某種機關時，開始前先跳一張小卡（圖示 + 一句話），點一下就開始。看過的記在 save.seen（這台裝置）
+const INTRO = {
+  jelly: { name: '冰果凍', text: '在冰塊上面配對，把所有冰果凍敲碎！', icon: () => jellyIcon() },
+  dino: { name: '小恐龍', text: '消掉小恐龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！' },
+  cage: { name: '鐵籠子', text: '被關住的玩偶不能動，和牠同色配對或用特效就能打開！', icon: () => blockerImg('cage') },
+  frost: { name: '多層糖霜', text: '在旁邊配對就能敲掉一層，最多有三層喔！', icon: () => blockerImg('frost3') },
+  choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco') },
+  lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl') },
+  portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
+};
+function levelMechs(lvl) {
+  const out = new Set();
+  if (lvl.jelly && lvl.jelly.some(row => /[12]/.test(row))) out.add('jelly');
+  const obs = (lvl.obstacles || []).join('');
+  if (obs.includes('L')) out.add('cage');
+  if (/[123]/.test(obs)) out.add('frost');
+  if (obs.includes('C')) out.add('choco');
+  if (obs.includes('S') || lvl.licorice) out.add('lic');
+  if (obs.includes('D') || goalPartsOf(lvl).some(p => p.kind === 'dino')) out.add('dino');
+  if (lvl.portals && lvl.portals.length) out.add('portal');
+  return Object.keys(INTRO).filter(k => out.has(k));
+}
+async function showIntros(lvl, token) {
+  for (const k of levelMechs(lvl)) {
+    if (save.seen.includes(k)) continue;
+    const it = INTRO[k];
+    $('#mi-ribbon').textContent = it.ribbon || '新機關！';
+    const ic = $('#mi-icon');
+    ic.innerHTML = '';
+    ic.appendChild(it.icon());
+    $('#mi-title').textContent = it.name;
+    $('#mi-text').textContent = softWrap(it.text);
+    openModal('m-intro');
+    audio.play('chime', { level: 3 });
+    await new Promise(res => {
+      const m = $('#m-intro');
+      const done = () => { m.removeEventListener('click', done); clearInterval(chk); res(); };
+      const chk = setInterval(() => { if (token !== session || !isOpen('m-intro')) done(); }, 200);
+      setTimeout(() => m.addEventListener('click', done), 350);     // 剛跳出來的那一下不算（避免連點直接跳過）
+    });
+    closeModal('m-intro');
+    if (token !== session) return;
+    save.seen.push(k);
+    writeSave();
+    await sleep(120);
+  }
+}
 function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
 // 立體數字：字面上亮下暗的漸層是 ::after 用 attr(data-t) 疊一份同樣的字（text-shadow 的描邊會蓋掉 background-clip 的漸層），
 // 所以數字要同時寫進 data-t（CSS 在「遊戲感的字」那段）
@@ -1041,6 +1091,8 @@ async function startLevel(idx) {
 
   state = 'intro';
   await sleep(380);
+  if (token !== session) return;
+  await showIntros(level, token);
   if (token !== session) return;
   await R.banner(`第 ${idx + 1} 關`, { sub: goalText(level), duration: 1500 });
   if (token !== session) return;

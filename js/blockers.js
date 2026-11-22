@@ -213,7 +213,27 @@ export const CRUMBS = {
   cage: () => ['#ffffff', '#c6cfdb', '#ffd24a'],
 };
 
-// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'exit'
+// 傳送門（教學小卡用）：上面一個入口、下面一個出口，中間一顆玩偶色的小球穿過去
+export function paintPortalIcon(g, S, hex = PORTAL_COLORS[0]) {
+  const ring = (y, a) => {
+    g.save(); g.globalAlpha = a;
+    const gl = g.createRadialGradient(S / 2, y, S * 0.02, S / 2, y, S * 0.45);
+    gl.addColorStop(0, hex); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gl; g.fillRect(0, y - S * 0.25, S, S * 0.5);
+    g.restore();
+    g.beginPath(); g.ellipse(S / 2, y, S * 0.38, S * 0.11, 0, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(14,8,40,0.9)'; g.fill();
+    g.lineWidth = S * 0.06; g.strokeStyle = hex; g.stroke();
+    g.lineWidth = S * 0.02; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.stroke();
+  };
+  ring(S * 0.3, 0.6);
+  ring(S * 0.78, 0.6);
+  // 往下的小箭頭
+  g.fillStyle = '#ffffff';
+  for (const y of [S * 0.44, S * 0.56]) { g.beginPath(); g.moveTo(S * 0.42, y); g.lineTo(S * 0.58, y); g.lineTo(S / 2, y + S * 0.07); g.closePath(); g.fill(); }
+}
+
+// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'exit' | 'portal'
 export function blockerCanvas(type, px) {
   const c = document.createElement('canvas');
   c.width = c.height = Math.max(8, Math.round(px));
@@ -228,5 +248,6 @@ export function blockerCanvas(type, px) {
   else if (type === 'choco') paintChoco(g, S);
   else if (type === 'swirl') paintSwirl(g, S);
   else if (type === 'exit') paintExitArrow(g, S);
+  else if (type === 'portal') paintPortalIcon(g, S);
   return c;
 }

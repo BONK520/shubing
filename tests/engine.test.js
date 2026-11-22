@@ -871,6 +871,17 @@ test('dino: falls onto the exit row and leaves (exit event, then a refill); cann
   ok(!r2.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.id === did)), 'dino not removed by the beam');
 });
 
+test('dino swapped down onto an exit: the match clears first, then the dino leaves', () => {
+  const e = mo(['______', '______', '______', '______', '00____', '__0___'],
+    ['......', '......', '......', '......', '..D...', '......']);
+  ok(e.isExit(5, 2), 'bottom row is an exit');
+  const res = play(e, P(4, 2), P(5, 2));
+  const ts = res.events.map(x => x.t);
+  eq(ts[1], 'clear', 'the match clears right after the swap');
+  ok(ts.indexOf('exit') > ts.indexOf('clear'), 'the dino leaves after the clear');
+  eq(e.stats.dinosOut, 1);
+});
+
 test('dino: swappable; drops in from the top while the goal needs more (dinos option); fish never targets one', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 5, dinos: { total: 3, onBoard: 1, rate: 1 } });
   eq(e.stats.dinosTotal, 3);
@@ -892,6 +903,29 @@ test('dino: swappable; drops in from the top while the goal needs more (dinos op
     ['......', '......', '..D...', '......', '......', '......']);
   const r2 = play(e2, P(2, 2), P(3, 2));
   ok(r2.ok, 'dino + matching piece is a valid swap');
+});
+
+test('dino exits default to every cell a dino cannot fall out of; listMoves = exactly the valid swaps', () => {
+  const rows = ['__0___', '__.___', '_0_0__', '__0___', '______', '______'];
+  const obst = ['D.....', '......', 'L.....', '...2..', '......', '......'];
+  const e = mo(rows, obst);
+  ok(e.isExit(0, 2), 'the cell above a hole is an exit');
+  for (let c = 0; c < 6; c++) ok(e.isExit(5, c), `bottom cell ${c} is an exit`);
+  ok(!e.isExit(4, 0) && !e.isExit(2, 2), 'cells with something below are not exits');
+  const list = e.listMoves();
+  ok(list.length > 0, 'some moves');
+  for (const m of list) {
+    const f = mo(rows, obst);
+    ok(f.swap(m.a, m.b).ok, `listed move ${JSON.stringify(m)} is valid`);
+  }
+  ok(!list.some(m => [m.a, m.b].some(q => (q.r === 2 && q.c === 0) || (q.r === 3 && q.c === 3))), 'never the caged piece or the frosting');
+  // every valid adjacent swap is listed
+  let n = 0;
+  for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) for (const [dr, dc] of [[0, 1], [1, 0]]) {
+    if (!e.isCell(r, c) || !e.isCell(r + dr, c + dc)) continue;
+    if (mo(rows, obst).swap(P(r, c), P(r + dr, c + dc)).ok) n++;
+  }
+  eq(list.length, n, 'listMoves count');
 });
 
 test('portal: what falls out of the bottom of one column comes in at the top of another (warp path)', () => {
