@@ -1,10 +1,10 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123e';
-import { SLOGANS } from './slogans.js?v=20261123e';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123e';
-import { blockerCanvas } from './blockers.js?v=20261123e';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123f';
+import { SLOGANS } from './slogans.js?v=20261123f';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123f';
+import { blockerCanvas } from './blockers.js?v=20261123f';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123e';
+const MOD_V = '?v=20261123f';
 
 window.__plushBooted = true;
 
@@ -850,16 +850,9 @@ function buildMap(popIndex = -1) {
     mapNodes.push(b);
   });
 
-  // 頭像標記站在目前關卡「旁邊」（靠地圖中間那一側），箭頭橫向指著關卡：
-  // 放在正上方會蓋到這關的星星和上一格的下一關（兩關只差 MAP_GAP 高）
-  const marker = el('span', 'map-marker');
-  marker.appendChild(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 26));   // 中間那隻（薯餅）當頭像
-  const mp = pts[cur];
-  const side = mp.x <= 50 ? 1 : -1;   // 1 = 在關卡右邊
-  marker.classList.add(side > 0 ? 'on-right' : 'on-left');
-  marker.style.left = `calc(${mp.x}% + ${side * 84}px)`;
-  marker.style.top = mp.y + 'px';
-  inner.appendChild(marker);
+  // 頭像放在底部固定列（以前站在目前關卡旁邊，第 1 關時會跟衣櫃擠在一起）；目前關卡改用放大＋光暈標出來
+  const ava = $('#dk-ava');
+  if (ava) ava.replaceChildren(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22));   // 中間那隻（薯餅）當頭像
 
   const end = el('span', 'map-end', '更多關卡製作中…');
   end.style.top = (MAP_TOP * 0.42) + 'px';
@@ -871,13 +864,19 @@ function buildMap(popIndex = -1) {
   $('#map-stars-max').textContent = '/ ' + n * 3;
   return pts;
 }
+// 地圖捲到某個高度的關卡：讓它停在可視範圍偏下（約 58% 的位置）
+function mapTarget(y) { const sc = $('#map-scroll'); return clamp(y - sc.clientHeight * 0.58, 0, sc.scrollHeight); }
+function scrollMapToCurrent() {
+  const node = mapNodes[currentIndex()];
+  if (node) $('#map-scroll').scrollTo({ top: mapTarget(parseFloat(node.style.top) || 0), behavior: 'smooth' });
+}
 function showMap({ pop = -1, thenOpen = -1 } = {}) {
   const pts = buildMap(pop);
   renderClosetBtn();
   show('map');
   const sc = $('#map-scroll');
   const cur = currentIndex();
-  const target = idx => clamp(pts[idx].y - sc.clientHeight * 0.58, 0, sc.scrollHeight);
+  const target = idx => mapTarget(pts[idx].y);
   if (pop > 0) {
     sc.scrollTop = target(pop - 1);
     requestAnimationFrame(() => sc.scrollTo({ top: target(pop), behavior: 'smooth' }));
@@ -2220,6 +2219,7 @@ function bindUI() {
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-map').addEventListener('click', () => leaveToMap());
   $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  $('#dk-me').addEventListener('click', () => { audio.play('tap'); scrollMapToCurrent(); });
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#cl-demo').addEventListener('click', closetDemo);
   $('#cl-ready').addEventListener('click', () => { audio.play('tap'); scrollToChests(); });
