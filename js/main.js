@@ -1187,6 +1187,10 @@ function buildGoal() {
     const ic = el('span', 'ic');
     ic.appendChild(icon);
     gi.appendChild(ic);
+    const lft = el('small', 'lft');          // 數字上面的小字（改版 2026-11）
+    lft.textContent = kind === 'score' ? '目標' : '還差';
+    lft.setAttribute('aria-hidden', 'true');
+    gi.appendChild(lft);
     const cnt = el('span', 'cnt');
     gi.appendChild(cnt);
     gi.appendChild(el('span', 'check'));
@@ -1228,10 +1232,8 @@ function buildGoal() {
     r.gi.classList.add('score-goal');
   }
   box.dataset.n = goalRefs.length;          // 三種目標時圖示小一點才排得下
-  // 星星門檻位置
-  const s = level.stars || [1, 2, 3];
-  const top = s[2] || s[s.length - 1] || 1;
-  $$('.sb-star').forEach((st, i) => { st.style.setProperty('--p', clamp((s[i] || top) / top * 100, 8, 100) + '%'); st.classList.remove('on'); });
+  // 星星的位置固定在條子的 1/3、2/3 和尾端（條子照門檻分段走，見 starBarPct）
+  $$('.sb-star').forEach((st, i) => { st.style.setProperty('--p', STAR_AT[i] + '%'); st.classList.remove('on'); });
   hud.on = hudEls().stars.map(() => false);
   hud.text = ''; hud.width = '';
   renderGoal(true);
@@ -1279,10 +1281,22 @@ function hudEls() {
   }
   return hud;
 }
+// 星星條只改「怎麼顯示」：一星的刻度放在約 1/3，前段拉開，前幾步就看得到條子在漲。
+// 0 → 一星門檻走到 33.3%，一星 → 二星走到 66.6%，二星 → 三星走到 97%，超過三星再補滿到 100%。
+// 星星亮不亮還是照 paintScore 裡的分數門檻判斷，這裡不動
+const STAR_AT = [33.3, 66.6, 97];
+function starBarPct(score, s) {
+  const a = Math.max(1, s[0] || 1), b = Math.max(a + 1, s[1] || a * 2), c = Math.max(b + 1, s[2] || b * 1.5);
+  if (score <= 0) return 0;
+  if (score < a) return STAR_AT[0] * score / a;
+  if (score < b) return STAR_AT[0] + (STAR_AT[1] - STAR_AT[0]) * (score - a) / (b - a);
+  if (score < c) return STAR_AT[1] + (STAR_AT[2] - STAR_AT[1]) * (score - b) / (c - b);
+  return Math.min(100, STAR_AT[2] + (100 - STAR_AT[2]) * (score - c) / (c - b));
+}
 function renderScore(instant = false) {
   const h = hudEls();
   const s = level ? level.stars || [] : [];
-  const w = clamp(dispScore / (s[2] || 1) * 100, 0, 100).toFixed(1) + '%';
+  const w = clamp(starBarPct(dispScore, s), 0, 100).toFixed(1) + '%';
   if (instant) { shownScore = dispScore; if (h.fill) h.fill.style.width = w; h.width = w; paintScore(); return; }
   if (w !== h.width) { h.width = w; if (h.fill) h.fill.style.width = w; }
   if (scoreRaf) return;

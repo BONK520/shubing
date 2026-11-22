@@ -1670,3 +1670,134 @@ svg.on .hi { opacity: .9; }
 @keyframes intro-bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.04); } }
 @keyframes intro-tap { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .intro-icon, .intro-tap { animation: none; } }
+
+
+/* ==== 改版 2026-11：遊戲畫面 ==== */
+/* 照 shubing-draft.html：左上一顆白色膠囊（暫停＋第 N 關）、74px 高的三格白色 HUD、三顆獨立的白色圓形道具鈕。
+   只套在直式（和夠高的橫式）版面；手機橫放（高度 520 以下）維持原本的左右兩欄排法。
+   選擇器前面都加 #scr-game：要蓋過前面「精簡 HUD」和「遊戲感的字」兩段的描邊、厚度、反光 */
+.gi .lft { display: none; }   /* 「還差」小字只在新版直式 HUD 顯示 */
+.lv-cap { display: inline-flex; align-items: center; gap: 8px; }   /* 手機橫放：暫停鈕和「第 N 關」照舊左右並排 */
+@media (orientation: portrait), (min-height: 521px) {
+  #scr-game { gap: 8px; padding-left: calc(6px + var(--safe-l)); padding-right: calc(6px + var(--safe-r)); }
+  #scr-game .game-top { min-height: 40px; justify-content: flex-start; gap: 8px; padding-left: 2px; }
+
+  /* 左上：暫停鈕和「第 N 關」合成一顆白色膠囊 */
+  #scr-game .lv-cap {
+    display: inline-flex; align-items: center; flex: none; height: 40px; margin-right: auto;
+    gap: 0; padding: 0 16px 0 0; border-radius: 20px; background: #fff; box-shadow: 0 3px 0 #e7b9cf;
+  }
+  #scr-game .lv-cap .icon-btn {
+    width: 40px; height: 40px; margin-right: 10px; border: 0;
+    background: linear-gradient(#ff8cc0, #e2458e); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15);
+  }
+  #scr-game .lv-cap .icon-btn:active { transform: scale(.9); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .15); }
+  #scr-game .lv-cap .icon-btn svg { width: 20px; height: 20px; filter: none; }
+  #scr-game .lv-cap .level-pill {
+    height: auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+    font-size: 17px; font-weight: 900;
+  }
+  #scr-game .lv-cap .lv { color: #6b2d4a; font-size: 17px; letter-spacing: .04em; text-shadow: none; filter: none; }
+  #scr-game .lv-cap .lv b { color: #e2458e; font-size: 22px; line-height: 1; margin: 0 2px; vertical-align: -1px; text-shadow: none; filter: none; }
+
+  /* HUD：一排 74px 高的三塊白板（步數｜目標｜分數） */
+  #scr-game .hud {
+    display: flex; gap: 6px; height: 74px; padding: 0; border: 0; border-radius: 0;
+    background: none; box-shadow: none;
+  }
+  #scr-game .hud-moves, #scr-game .hud-goal, #scr-game .hud-score {
+    min-height: 0; border: 0; border-radius: 16px; overflow: visible;
+    background: rgba(255, 255, 255, .92); box-shadow: 0 4px 0 #e7b9cf;
+  }
+  #scr-game .hud-moves::after, #scr-game .hud-goal::after, #scr-game .hud-score::after { display: none; }
+  #scr-game .hud-moves { flex: none; width: 70px; padding: 0; gap: 1px; background: linear-gradient(#ff7fb8, #e2458e); }
+  #scr-game .hud-moves.low { background: linear-gradient(#ff9a7a, #e2453f); box-shadow: 0 4px 0 #ebb4a8; }
+  #scr-game .hud-moves .lbl {
+    position: static; translate: none; color: #fff; opacity: .9;
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; line-height: 1.2; text-shadow: none; filter: none;
+  }
+  #scr-game .hud-moves b { font-size: 34px; line-height: 1; color: #fff; text-shadow: 0 2px 0 rgba(140, 20, 80, .22); filter: none; }
+
+  /* 目標：圖示在左，右邊「還差」小字疊在數字上面 */
+  #scr-game .hud-goal { flex: 1; min-width: 0; padding: 0 6px; gap: 0; }
+  #scr-game .hud-goal > .lbl { display: none; }
+  #scr-game .goal-items { gap: 4px; justify-content: space-evenly; }
+  #scr-game .gi {
+    display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto;
+    column-gap: 4px; align-items: center; align-content: center; margin: 0;
+  }
+  #scr-game .gi .ic { grid-row: 1 / span 2; width: 44px; height: 44px; margin: 0; }
+  #scr-game .gi.toy .ic { aspect-ratio: auto; display: grid; }
+  #scr-game .gi.toy .ic::before { display: none; }
+  #scr-game .gi.toy .ic img, #scr-game .gi.toy .ic .toy-fallback {
+    position: static; width: 100%; height: 100%; object-position: 50% 50%;
+    filter: drop-shadow(0 2px 2px rgba(94, 33, 54, .25));
+  }
+  #scr-game .gi .lft {
+    display: block; grid-column: 2; grid-row: 1; align-self: end;
+    font-size: 11px; font-weight: 700; color: #a5657f; line-height: 1.15; white-space: nowrap;
+  }
+  #scr-game .gi .cnt {
+    grid-column: 2; grid-row: 2; align-self: start; position: static; margin: 0;
+    font-size: 28px; line-height: 1; color: #6b2d4a; text-shadow: none; filter: none;
+  }
+  #scr-game .gi .check { grid-column: 2; grid-row: 1 / span 2; position: static; margin: 0; width: 26px; height: 26px; border-width: 2.5px; }
+  #scr-game .gi.done .lft { display: none; }
+  #scr-game .gi.score-goal .ic { width: 38px; height: 38px; }
+  #scr-game .gi.score-goal .ic svg { width: 34px; height: 34px; }
+  #scr-game .gi.score-goal .cnt { font-size: 21px; }
+  #scr-game .jelly-ic { width: 38px; height: 38px; }
+  /* 兩種目標：圖示和數字小一點 */
+  #scr-game .goal-items[data-n="2"] .gi .ic { width: 34px; height: 34px; }
+  #scr-game .goal-items[data-n="2"] .gi .cnt { font-size: 23px; }
+  #scr-game .goal-items[data-n="2"] .gi .lft { font-size: 10px; }
+  #scr-game .goal-items[data-n="2"] .jelly-ic { width: 30px; height: 30px; border-width: 2px; }
+  /* 三種目標：排不下「還差」，改成圖示在上、數字在下 */
+  #scr-game .goal-items[data-n="3"] { gap: 2px; }
+  #scr-game .goal-items[data-n="3"] .gi { grid-template-columns: auto; row-gap: 1px; }
+  #scr-game .goal-items[data-n="3"] .gi .ic { grid-row: 1; width: 32px; height: 32px; }
+  #scr-game .goal-items[data-n="3"] .gi .lft { display: none; }
+  #scr-game .goal-items[data-n="3"] .gi .cnt, #scr-game .goal-items[data-n="3"] .gi .check { grid-column: 1; grid-row: 2; justify-self: center; }
+  #scr-game .goal-items[data-n="3"] .gi .cnt { font-size: 19px; }
+  #scr-game .goal-items[data-n="3"] .gi .check { width: 20px; height: 20px; border-width: 2px; }
+  #scr-game .goal-items[data-n="3"] .gi .check::after { width: 8px; height: 4px; border-width: 0 0 2.5px 2.5px; }
+  #scr-game .goal-items[data-n="3"] .jelly-ic { width: 28px; height: 28px; border-width: 2px; }
+
+  /* 分數：小標、數字、星星條由上往下 */
+  #scr-game .hud-score { flex: none; width: min(132px, 35vw); padding: 8px 10px; gap: 0; justify-content: center; }
+  #scr-game .score-line { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; }
+  #scr-game .score-line .lbl {
+    position: static; color: #a5657f; font-size: 11px; font-weight: 700; letter-spacing: .08em; line-height: 1.2;
+    text-shadow: none; filter: none;
+  }
+  #scr-game .score-line b { font-size: 22px; line-height: 1.1; color: #6b2d4a; text-shadow: none; filter: none; }
+  #scr-game .score-line b[data-len="7"] { font-size: 20px; }
+  #scr-game .score-line b[data-len="8"], #scr-game .score-line b[data-len="9"] { font-size: 17px; }
+  #scr-game .starbar { height: 10px; margin: 6px 0 0; }
+  #scr-game .starbar-track { top: 0; height: 10px; border-radius: 6px; background: #efdbe5; box-shadow: none; }
+  #scr-game .starbar-fill { border-radius: 6px; background: linear-gradient(90deg, #ffc928, #ff9d2e); box-shadow: none; }
+  #scr-game .sb-star { width: 18px; height: 18px; fill: #d7c3cd; stroke: #fff; stroke-width: 1.6; filter: none; }
+  #scr-game .sb-star .hi { display: none; }
+  #scr-game .sb-star.on { fill: #ffb800; stroke: #fff; filter: drop-shadow(0 1px 0 #c77d00); }
+
+  /* 盤面四周的柔光拿掉：深紫底板直接放在天空上 */
+  #scr-game .board-wrap::before { display: none; }
+
+  /* 道具：拿掉托盤，三顆獨立的白色圓鈕，數量徽章在右上 */
+  #scr-game .boosters {
+    gap: 22px; margin-bottom: calc(10px + var(--safe-b)); padding: 4px 0 20px;
+    border: 0; border-radius: 0; background: none; box-shadow: none;
+  }
+  #scr-game .bst { width: 58px; height: 58px; border: 0; background: #fff; box-shadow: 0 4px 0 #e7b9cf; }
+  #scr-game .bst .bi { font-size: 25px; line-height: 58px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .12)); }
+  #scr-game .bst .bc {
+    top: -4px; right: -4px; bottom: auto; min-width: 20px; height: 20px; padding: 0 5px;
+    border: 0; border-radius: 10px; background: #e2458e; color: #fff; box-shadow: none; text-shadow: none;
+    font: 800 12px/20px var(--font-num);
+  }
+  #scr-game .bst.empty .bc { background: #c9aeb4; }
+  #scr-game .bst .bn {
+    bottom: -18px; color: #6b2d4a; font-size: 11px; font-weight: 700; text-shadow: none; filter: none;
+  }
+  #scr-game .bst.on { box-shadow: 0 0 0 4px #ffe14d, 0 0 22px 6px rgba(255, 220, 80, .8), 0 4px 0 #e7b9cf; }
+}

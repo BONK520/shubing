@@ -26,10 +26,11 @@ import { paintCage, paintFrost, paintChoco, paintSwirl, paintExitArrow, PORTAL_C
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
 const MAX_DPR = 2;        // 手機上限：再高肉眼幾乎看不出差別，填色量卻多很多
-const MARGIN = 0.25;      // 盤面四周保留（格）：放得下有厚度的盤子外框
-const FRAME_B = 0.34;     // 盤面下面再多留（格）：盤子的厚度和投影
+const MARGIN_RIM = 0.25;  // 有外框的主題：盤面四周保留（格），放得下有厚度的盤子外框
+const FRAME_B_RIM = 0.34; //               盤面下面再多留（格）：盤子的厚度和投影
+const MARGIN_FLAT = 0.1;  // 平面底板（改版 2026-11 的預設主題）：深紫底板只比格子多一圈細邊，沒有厚度
 const PAD = 1.42;         // 方塊快取畫布邊長 / 格（留給陰影、糖果紙兩端）
-const TILE = 0.88;        // 圓角方塊邊長 / 格
+const TILE = 0.8;         // 圓角方塊邊長 / 格（改版 2026-11：從 0.88 縮小，格子露出比較多）
 const MAX_PARTS = 900;
 
 // ---- 節奏（毫秒）----
@@ -75,6 +76,8 @@ export const BOARD_THEMES = {
     wallDark: 'rgba(6,8,36,0.55)', wallLit: 'rgba(190,200,255,0.14)', rimShadow: 'rgba(8,6,36,0.24)',
     shadow: [10, 6, 44],             // 糖果落在盤面上的影子顏色
     frame: FRAME_CREAM,
+    // 改版 2026-11：預設主題改成平的深紫底板（拿掉奶油厚框），格子深淺交錯。其他主題的裝飾畫在外框上，維持原樣
+    flat: { base: '#2b2560', cellA: '#3d3680', cellB: '#342e72' },
   },
   // 粉紅夾娃娃機台：桃紅色的機台外框、一圈會發亮的小燈泡，裡面粉粉的
   claw: {
@@ -300,6 +303,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const colorMemo = new Map();
   let scratch = null;
   let BOARD_THEME = BOARD_THEMES.macaron;
+  // 盤面四周和下面留多少（格）：平面底板幾乎不用留，有外框的主題要留給外框和厚度
+  let MARGIN = MARGIN_FLAT, FRAME_B = 0;
+  function themeGeom() { MARGIN = BOARD_THEME.flat ? MARGIN_FLAT : MARGIN_RIM; FRAME_B = BOARD_THEME.flat ? 0 : FRAME_B_RIM; }
   // 衣櫃的外觀（R.setLook）：hat 配件、frame 方塊底座、theme 盤面主題；消除特效在 particleSkin
   let look = { hat: 'none', fx: 'default', frame: 'jelly', theme: 'macaron' };
 
@@ -402,6 +408,20 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     vividCache.set(src, c);
     return c;
   }
+  // 亮度 × 對比（等於 CSS 的 filter: brightness() contrast()）。用像素算，不用 ctx.filter（舊的 Safari 不支援）
+  function brighten(src, k, ct) {
+    const w = src.width, h = src.height, c = makeCanvas(w, h), g = c.getContext('2d');
+    g.drawImage(src, 0, 0);
+    try {
+      const d = g.getImageData(0, 0, w, h), a = d.data;
+      for (let i = 0; i < a.length; i += 4) {
+        if (!a[i + 3]) continue;
+        for (let j = 0; j < 3; j++) { const v = (a[i + j] * k - 128) * ct + 128; a[i + j] = v < 0 ? 0 : v > 255 ? 255 : v; }
+      }
+      g.putImageData(d, 0, 0);
+    } catch (e) { return src; }
+    return c;
+  }
   // 盤面上的玩具：沒白邊的版本，不描邊。外圍一圈糖果色的柔光、往右下的落影；
   // 玩具暗的地方帶一點糖果的顏色（被底下發光的糖果照到），和糖果像是同一個世界的東西
   const toyCache = new Map();
@@ -416,7 +436,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const key = kind + '|' + box;
     let c = toyCache.get(key);
     if (c) return c;
-    const src = vivid(scaled(im, box)), pad = Math.ceil(box * 0.16), W = src.width + pad * 2;
+    let src = vivid(scaled(im, box));
+    if (pieceInfo(kind).id === 'dog') src = brighten(src, 1.25, 1.1);   // 皮蛋是黑色的，放在深紫格子上再調亮一點
+    const pad = Math.ceil(box * 0.16), W = src.width + pad * 2;
     c = makeCanvas(W, W);
     const g = c.getContext('2d'), col = kindColor(kind);
     // 外圍柔光：糖果色的亮色版（不是白色、也不是一條硬線），兩圈位置疊出往外淡掉的光（淡淡的就好，太亮玩具會像浮在糖果上）
@@ -618,8 +640,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', piggy: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };   // 顏色在 pieces.js
   const SHAPE_CYCLE = ['ball', 'square', 'egg', 'flower', 'hex', 'bean', 'heart'];
   function shapeOf(kind) { const id = pieceInfo(kind).id; return SHAPE_OF[id] || SHAPE_CYCLE[((kind % 7) + 7) % 7]; }
-  const CANDY_R = 0.485;    // 糖果半徑 / 格（底座大一點，玩偶周圍露出一整圈顏色）
-  const TOY_CELL = 0.71;    // 玩偶（照片裡不透明的部分）最長的那邊 = 一格的 71%（連照片四周的透明邊大約是一格的 78%）
+  const CANDY_R = 0.42;     // 糖果半徑 / 格（改版 2026-11：底座約一格的 84%，格子的深淺交錯露得出來）
+  const TOY_CELL = 0.66;    // 玩偶（照片裡不透明的部分）最長的那邊 = 一格的 66%
   // 立體糖果（像 Candy Crush）：光從左上來 → 左上亮、右下暗；壓在盤面上的落影；玩具在裡面，上面再蓋反光
   function paintCandy(g, kind, cx, cy, S, col, special) {
     const shape = shapeOf(kind), R = S * CANDY_R;
@@ -1385,9 +1407,46 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       }
     }
   }
+  // 平面底板：深紫色圓角底板 + 深淺交錯的方格，沒有外框、厚度和毛玻璃
+  function buildFlatBg() {
+    const fl = BOARD_THEME.flat, S = cs * dpr, m = Math.round(MARGIN * S);
+    const Wd = Math.ceil(cols * S + 2 * m), Hd = Math.ceil(rows * S + 2 * m);
+    const on = (r, c) => r >= 0 && c >= 0 && r < rows && c < cols && mask[r][c];
+    const corners = (r, c, rad) => {
+      const u = on(r - 1, c), d = on(r + 1, c), l = on(r, c - 1), ri = on(r, c + 1);
+      return [!u && !l ? rad : 0, !u && !ri ? rad : 0, !d && !ri ? rad : 0, !d && !l ? rad : 0];
+    };
+    const base = makeCanvas(Wd, Hd), bq = base.getContext('2d');
+    const rad = S * 0.28, crad = Math.max(0, rad - m);
+    bq.fillStyle = fl.base;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (!mask[r][c]) continue;
+      rr4(bq, m + c * S - m, m + r * S - m, S + 2 * m, S + 2 * m, ...corners(r, c, rad));
+      bq.fill();
+    }
+    const c = makeCanvas(Wd, Hd), g = c.getContext('2d');
+    g.drawImage(base, 0, 0);
+    for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
+      if (!mask[r][c2]) continue;
+      rr4(g, m + c2 * S, m + r * S, S, S, ...corners(r, c2, crad));
+      g.fillStyle = (r + c2) % 2 ? fl.cellB : fl.cellA;
+      g.fill();
+    }
+    const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');
+    sg.drawImage(base, 0, 0);
+    sg.globalCompositeOperation = 'source-in';
+    sg.fillStyle = 'rgb(40,12,70)'; sg.fillRect(0, 0, Wd, Hd);
+    bgCache = { c, shade, x: ox - m / dpr, y: oy - m / dpr, w: Wd / dpr, h: Hd / dpr };
+    const p = new Path2D();
+    for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
+      if (mask[r][c2]) p.rect(ox + c2 * cs - 0.5, oy + r * cs - 0.5, cs + 1, cs + 1);
+    }
+    clipPath = p;
+  }
   function buildBg() {
     bgCache = null; clipPath = null;
     if (!rows || !cols || !W) return;
+    if (BOARD_THEME.flat) { buildFlatBg(); return; }
     const S = cs * dpr, m = MARGIN * S;
     // 快取畫布比盤面大一點：左右留給投影、下面留給盤子的厚度和投影
     const sideX = Math.round(S * 0.14), below = Math.round(S * FRAME_B);
@@ -4077,6 +4136,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     look = next;
     particleSkin = PARTICLE_SKINS[look.fx] ? look.fx : 'default';
     BOARD_THEME = BOARD_THEMES[look.theme] || BOARD_THEMES.macaron;
+    themeGeom();
     if (look.hat && look.hat !== 'none') accImg(look.hat);
     if (tiles) { tileCache.clear(); accCache.clear(); }
     if (theme) geom();
