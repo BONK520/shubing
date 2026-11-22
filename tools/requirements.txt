@@ -5,3 +5,5 @@ pillow
 scipy
 playwright
 opencv-python-headless
+fonttools
+brotli

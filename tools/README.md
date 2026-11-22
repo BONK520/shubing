@@ -114,6 +114,19 @@ python tools/build_assets.py --force   # 全部重做
 
 **想用新的代號或多加一隻**：`tools/assets.json` 的 `pieces` 和 `js/pieces.js` 的 `PIECES` 各加一筆，再到 `js/levels.js` 把它加進想要的關卡（每關的種類數決定難度，換玩具不要改種類數）。改完跑 `python tests/run_tests.py --sim` 看平衡。
 
+## 字型（改了畫面上的中文字就要重跑）
+
+遊戲用源泉圓體（GenSenRounded2 TW v2.100，SIL OFL 1.1）的子集字型，只放畫面上用到的字。字型裡沒有的字會退回手機的系統字，同一行字就會粗細、圓角不一樣，看起來像不支援繁體。所以**新增或修改任何中文文字（關卡說明、道具名稱、按鈕、提示）之後都要重跑一次**：
+
+1. 從 https://github.com/ButTaiwan/gensen-font/releases 下載 `GenSenRounded2TW-otf.zip`，解壓到 repo 外面的資料夾（原始字型很大，不要放進 git）。
+2. 安裝 `fonttools` 和 `brotli`（產生 woff2 要用），在專案根目錄跑：
+   ```bash
+   python tools/font_subset.py <放 GenSenRounded2TW-B.otf 和 -H.otf 的資料夾>
+   ```
+   它會掃 `index.html`、`ar.html`、`style.css`、`ar.css`、`js/*.js` 裡畫面上會出現的字（註解不算），重新產生 `assets/fonts/gensen-rounded-bold.woff2` 和 `gensen-rounded-heavy.woff2`。
+3. 把 `style.css` 最上面兩個 `@font-face` 網址後面的 `?v=` 改成新的日期，手機才會拿新字型。
+4. 胖數字 `plush-num.woff2` 只有數字和符號，中文字改了不用重做；要重做時再跑 `tools/fat_digits.py`。
+
 ## 個別腳本
 
 | 腳本 | 用途 |
