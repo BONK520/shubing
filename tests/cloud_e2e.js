@@ -8,8 +8,8 @@
 //
 // 測的東西：訪客進度 → 登入 → 問要不要帶進帳號 → 雲端有資料 → 另一台裝置登入同一個帳號就接著玩
 // → 重新整理還是登入狀態 → 登出回到訪客 → 同一台換另一個人登入從頭開始、看不到別人的 → 離線過關、連回來自動補傳。
-// 遊戲用 ?debug=1&emu=1 連模擬器；登入用模擬器接受的假 Google 身分（window.__emuGoogleUser，見 js/cloud.js），
-// 所以不會開 Google 的彈出視窗（那一步要在真的手機上試）。Firebase SDK 從本機的 npm 套件給（等同 gstatic 上的檔案）。
+// 遊戲用 ?debug=1&emu=1 連模擬器；登入用遊戲裡的「帳號密碼」框（帳號開在模擬器上，不碰真的 Firebase 專案）。
+// Firebase SDK 從本機的 npm 套件給（等同 gstatic 上的檔案）。
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
 const FB = process.env.FIREBASE_SDK_DIR || path.dirname(require.resolve('firebase/package.json', { paths: [process.cwd(), __dirname] }));
@@ -51,8 +51,8 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   const open = async (ctx, q = '') => {
     const pg = await ctx.newPage();
     pg.on('pageerror', e => errs.push(e.message));
-    // 不算錯誤：apis.google.com（測試環境不開 Google 彈出視窗）、RPC_ERROR（離線那段故意斷網）
-    pg.on('console', m => { if (m.type() === 'error' && !/apis\.google\.com|ERR_|Failed to load resource|RPC_ERROR/.test(m.text())) errs.push(m.text()); });
+    // 不算錯誤：RPC_ERROR（離線那段故意斷網）
+    pg.on('console', m => { if (m.type() === 'error' && !/ERR_|Failed to load resource|RPC_ERROR/.test(m.text())) errs.push(m.text()); });
     await pg.goto(URL0 + q);
     await pg.waitForFunction(() => window.__game && window.__game.cloud && window.__game.cloud.isReady, null, { timeout: 20000 });
     return pg;
@@ -65,14 +65,21 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
     await pg.waitForSelector('#m-win.open', { timeout: 30000 });
     await pg.waitForTimeout(400);
   };
-  const signInAs = async (pg, user) => {
-    await G(pg, u => { window.__emuGoogleUser = u; }, user);
+  // 帳號名稱＋密碼的登入框：mode 'up' 開新帳號、'in' 登入
+  const pwForm = async (pg, mode, name, pass, pass2) => {
     await G(pg, () => { if (!document.querySelector('#m-settings.open')) document.querySelector('[data-open-settings]').click(); });
     await pg.waitForTimeout(400);
-    await G(pg, () => document.querySelector('#acct-in').click());
+    if (!(await pg.$('#m-login.open'))) { await G(pg, () => document.querySelector('#acct-pw').click()); await pg.waitForTimeout(300); }
+    const isUp = await G(pg, () => !document.querySelector('#lg-pass2-row').hidden);
+    if ((mode === 'up') !== isUp) await G(pg, () => document.querySelector('#lg-switch').click());
+    await pg.fill('#lg-name', name);
+    await pg.fill('#lg-pass', pass);
+    if (mode === 'up') await pg.fill('#lg-pass2', pass2 ?? pass);
+    await G(pg, () => document.querySelector('#lg-submit').click());
   };
-  const ALICE = { sub: 'alice-001', email: 'alice@example.com', name: 'Alice' };
-  const BOB = { sub: 'bob-002', email: 'bob@example.com', name: 'Bob' };
+  const lgErr = async pg => { await pg.waitForFunction(() => document.querySelector('#lg-err').textContent.trim() || !document.querySelector('#m-login.open'), null, { timeout: 10000 }); return G(pg, () => document.querySelector('#lg-err').textContent.trim()); };
+  const ALICE = { name: 'alice', pass: 'alice123' };
+  const BOB = { name: 'bob', pass: 'bobby123' };
 
   // ---------- 裝置 A：先當訪客玩過第 1 關 ----------
   const A = await device(b);
@@ -84,8 +91,8 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   await G(pa, () => document.querySelector('#mw-map').click());
   await pa.waitForTimeout(1500);
 
-  // 登入 Alice → 問要不要把訪客進度帶進來 → 帶進來
-  await signInAs(pa, ALICE);
+  // 開帳號 alice → 問要不要把訪客進度帶進來 → 帶進來
+  await pwForm(pa, 'up', ALICE.name, ALICE.pass);
   await pa.waitForSelector('#m-merge.open', { timeout: 10000 }).catch(async e => {
     console.log('DEBUG', JSON.stringify(await G(pa, () => ({ sync: window.__game.syncState, acct: window.__game.account, toast: document.querySelector('#toast').textContent, open: [...document.querySelectorAll('.modal.open')].map(m => m.id), screen: window.__game.screen, guest: localStorage.getItem('plushcrush.v1') }))));
     throw e;
@@ -96,9 +103,9 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   await waitSync(pa);
   await pa.waitForTimeout(300);
   await shot(pa, 'welcome');
-  check('welcome toast after the merge answer', /歡迎，Alice/.test(await pa.innerText('#toast')));
+  check('welcome toast after the merge answer', /歡迎，alice/.test(await pa.innerText('#toast')));
   const aliceUid = await G(pa, () => window.__game.account.uid);
-  check('A signed in as Alice and synced', await G(pa, () => window.__game.account.name === 'Alice' && window.__game.saveKey.includes('.u.')));
+  check('A signed in as Alice and synced', await G(pa, () => window.__game.account.name === 'alice' && window.__game.saveKey.includes('.u.')));
   check('Alice save has the guest progress', await G(pa, () => window.__game.save.unlocked >= 2 && window.__game.save.stars['1'] >= 1));
   check('guest save on A was cleared', (await G(pa, () => JSON.parse(localStorage.getItem('plushcrush.v1')))).unlocked === 1);
   let doc = await cloudDoc(aliceUid);
@@ -119,7 +126,7 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   const B = await device(b);
   let pb = await open(B);
   check('B starts as a fresh guest', await G(pb, () => window.__game.save.unlocked === 1 && window.__game.syncState === 'guest'));
-  await signInAs(pb, ALICE);
+  await pwForm(pb, 'in', ALICE.name, ALICE.pass);
   await waitSync(pb);
   check('no merge prompt on B (no guest progress there)', !(await pb.$('#m-merge.open')));
   check('B now has Alice progress from the cloud', await G(pb, () => window.__game.save.unlocked >= 3 && window.__game.save.stars['2'] >= 1), JSON.stringify(await G(pb, () => ({ u: window.__game.save.unlocked, s: window.__game.save.stars }))));
@@ -132,7 +139,7 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   await pb.reload();
   await pb.waitForFunction(() => window.__game && window.__game.cloud && window.__game.cloud.isReady, null, { timeout: 20000 });
   await waitSync(pb);
-  check('after reload B is still Alice with her progress', await G(pb, () => window.__game.account && window.__game.account.name === 'Alice' && window.__game.save.unlocked >= 3));
+  check('after reload B is still Alice with her progress', await G(pb, () => window.__game.account && window.__game.account.name === 'alice' && window.__game.save.unlocked >= 3));
   await pb.waitForFunction(() => window.__game.screen === 'title', null, { timeout: 10000 });
   await pb.waitForTimeout(1200);
   await shot(pb, 'b_title');
@@ -144,10 +151,10 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   await pb.waitForFunction(() => window.__game.syncState === 'guest', null, { timeout: 10000 });
   check('signed out on B → back to B guest save (level 1)', await G(pb, () => !window.__game.account && window.__game.save.unlocked === 1));
 
-  // 同一台 B 換 Bob 登入 → Bob 從頭開始，看不到 Alice 的進度
-  await signInAs(pb, BOB);
+  // 同一台 B 換 Bob 開帳號 → Bob 從頭開始，看不到 Alice 的進度
+  await pwForm(pb, 'up', BOB.name, BOB.pass);
   await waitSync(pb);
-  check('Bob on B starts from level 1', await G(pb, () => window.__game.account.name === 'Bob' && window.__game.save.unlocked === 1 && Object.keys(window.__game.save.stars).length === 0));
+  check('Bob on B starts from level 1', await G(pb, () => window.__game.account.name === 'bob' && window.__game.save.unlocked === 1 && Object.keys(window.__game.save.stars).length === 0));
   const bobUid = await G(pb, () => window.__game.account.uid);
   doc = await cloudDoc(aliceUid);
   check('Alice cloud save untouched by Bob', doc && doc.unlocked >= 3, JSON.stringify(doc));
@@ -169,23 +176,10 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   doc = await cloudDoc(aliceUid);
   check('back online → cloud catches up', doc && doc.unlocked >= 4 && doc.stars['3'] >= 1, JSON.stringify(doc));
 
-  // ---------- 帳號名稱＋密碼（不用 Google）：裝置 C 開帳號「小明」，裝置 D 用同一組登入 ----------
-  const pwForm = async (pg, mode, name, pass, pass2) => {
-    await G(pg, () => { if (!document.querySelector('#m-settings.open')) document.querySelector('[data-open-settings]').click(); });
-    await pg.waitForTimeout(400);
-    if (!(await pg.$('#m-login.open'))) { await G(pg, () => document.querySelector('#acct-pw').click()); await pg.waitForTimeout(300); }
-    const isUp = await G(pg, () => !document.querySelector('#lg-pass2-row').hidden);
-    if ((mode === 'up') !== isUp) await G(pg, () => document.querySelector('#lg-switch').click());
-    await pg.fill('#lg-name', name);
-    await pg.fill('#lg-pass', pass);
-    if (mode === 'up') await pg.fill('#lg-pass2', pass2 ?? pass);
-    await G(pg, () => document.querySelector('#lg-submit').click());
-  };
-  const lgErr = async pg => { await pg.waitForFunction(() => document.querySelector('#lg-err').textContent.trim() || !document.querySelector('#m-login.open'), null, { timeout: 10000 }); return G(pg, () => document.querySelector('#lg-err').textContent.trim()); };
-
+  // ---------- 帳號名稱＋密碼：裝置 C 開帳號「小明」（中文名字），裝置 D 用同一組登入 ----------
   const C = await device(b);
   const pc = await open(C);
-  check('settings shows both sign-in buttons for a guest', await G(pc, () => { document.querySelector('[data-open-settings]').click(); return !document.querySelector('#acct-btns').hidden; }));
+  check('settings shows the sign-in button for a guest (no Google button)', await G(pc, () => { document.querySelector('[data-open-settings]').click(); return !document.querySelector('#acct-btns').hidden && !!document.querySelector('#acct-pw') && !document.querySelector('#acct-in'); }));
   await pc.waitForTimeout(400);
   await pwForm(pc, 'up', '小明', '123');
   check('short password is refused before sending', /至少要 6 個字/.test(await lgErr(pc)));

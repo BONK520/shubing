@@ -1,10 +1,9 @@
-// 雲端存檔：Firebase 的 Google 登入 + Firestore（lite 版，只有讀寫一份文件，沒有即時同步，檔案小）
+// 雲端存檔：Firebase 的帳號名稱＋密碼登入 + Firestore（lite 版，只有讀寫一份文件，沒有即時同步，檔案小）
 //
 //   const cloud = createCloud(config, { emulator })
 //   cloud.ready            Promise：SDK 載好、登入狀態也恢復了（重新整理後不用再登入）
-//   cloud.isReady          SDK 載好了沒（登入要在點擊的當下馬上開視窗，SDK 沒好就先不要按）
-//   cloud.onUser(cb)       登入 / 登出 / 恢復登入時呼叫 cb(user | null)，user = { uid, name, email, photo }
-//   cloud.signIn()         Google 登入（彈出視窗；要在點擊事件裡直接呼叫，不然會被瀏覽器擋）
+//   cloud.isReady          SDK 載好了沒（還沒好就先不要按登入）
+//   cloud.onUser(cb)       登入 / 登出 / 恢復登入時呼叫 cb(user | null)，user = { uid, name }
 //   cloud.signInWithName(name, password)   帳號名稱＋密碼登入（不用 email；LINE 裡也能用）
 //   cloud.signUpWithName(name, password)   開新帳號（名字已經有人用 → auth/email-already-in-use）
 //   cloud.signOut()
@@ -61,11 +60,10 @@ export function nameFromEmail(email) {
 export function createCloud(config, { emulator = false } = {}) {
   let A = null, F = null, auth = null, db = null, user = null, isReady = false;
   const subs = new Set();
-  // 名字：用帳號名稱開的 → 那個名字；Google → Google 上的名字；都沒有 → email 的前半
+  // 名字：用帳號名稱開的 → 那個名字；認不出來（不是遊戲裡開的帳號）→ email 的前半
   const toUser = u => {
     if (!u) return null;
-    const own = nameFromEmail(u.email);
-    return { uid: u.uid, name: own || u.displayName || (u.email ? u.email.split('@')[0] : '玩家'), email: own ? '' : (u.email || ''), photo: own ? '' : (u.photoURL || ''), kind: own ? 'name' : 'google' };
+    return { uid: u.uid, name: nameFromEmail(u.email) || (u.email ? u.email.split('@')[0] : '玩家') };
   };
 
   const ready = (async () => {
@@ -74,10 +72,9 @@ export function createCloud(config, { emulator = false } = {}) {
     ]);
     A = authMod; F = fsMod;
     const app = appMod.initializeApp(config);
-    // 登入狀態記在 IndexedDB（不行就 localStorage）；彈出視窗登入
+    // 登入狀態記在 IndexedDB（不行就 localStorage）
     auth = A.initializeAuth(app, {
       persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence],
-      popupRedirectResolver: A.browserPopupRedirectResolver,
     });
     db = F.getFirestore(app);
     if (emulator) {
@@ -108,19 +105,6 @@ export function createCloud(config, { emulator = false } = {}) {
     get isReady() { return isReady; },
     get user() { return user; },
     onUser(cb) { subs.add(cb); if (isReady) cb(user); return () => subs.delete(cb); },
-    // 不能先 await 任何東西：彈出視窗一定要在點擊的同一個事件裡打開
-    signIn() {
-      if (!isReady) return Promise.reject(Object.assign(new Error('cloud not ready'), { code: 'cloud/not-ready' }));
-      // 只有測試（連本機模擬器）時：測試腳本先設 window.__emuGoogleUser = { sub, email, name }，
-      // 就直接把這個假的 Google 身分交給模擬器登入（模擬器接受假的 id token），不用開彈出視窗
-      if (emulator && typeof window !== 'undefined' && window.__emuGoogleUser) {
-        const cred = A.GoogleAuthProvider.credential(JSON.stringify({ email_verified: true, ...window.__emuGoogleUser }));
-        return A.signInWithCredential(auth, cred).then(r => toUser(r.user));
-      }
-      const p = new A.GoogleAuthProvider();
-      p.setCustomParameters({ prompt: 'select_account' });     // 同一台裝置換人玩：每次都讓他選帳號
-      return A.signInWithPopup(auth, p).then(r => toUser(r.user));
-    },
     signInWithName(name, password) {
       if (!isReady) return Promise.reject(Object.assign(new Error('cloud not ready'), { code: 'cloud/not-ready' }));
       const n = normName(name);

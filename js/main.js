@@ -1990,16 +1990,10 @@ const SYNC_TEXT = {
   synced: '已存到雲端 ✓',
   offline: '離線中，連上網路會自動存到雲端',
 };
-// 頭像：Google 的大頭照；沒有就用名字的第一個字；沒登入是一朵雲
+// 頭像：名字的第一個字；沒登入是一朵雲
 function paintAvatar(box) {
   box.textContent = '';
-  if (account && account.photo) {
-    const im = document.createElement('img');
-    im.alt = ''; im.referrerPolicy = 'no-referrer'; im.decoding = 'async';
-    im.onerror = () => { box.textContent = Array.from(account ? account.name : '?')[0] || '?'; };
-    im.src = account.photo;
-    box.appendChild(im);
-  } else if (account) {
+  if (account) {
     box.textContent = Array.from(account.name || '?')[0] || '?';
   } else {
     const s = document.createElementNS(SVGNS, 'svg'), u = document.createElementNS(SVGNS, 'use');
@@ -2022,26 +2016,6 @@ function renderAccount() {
   box.dataset.sync = account ? syncState : 'guest';
   $('#acct-btns').hidden = !!account;
   $('#acct-out').hidden = !account;
-}
-// LINE / Facebook / IG / 微信 裡面的瀏覽器：Google 不讓這些地方登入（帳號密碼可以）
-const IN_APP = typeof navigator !== 'undefined' && /\bLine\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent || '');
-// 要在點擊的當下直接開登入視窗（先 await 別的東西，瀏覽器會把視窗擋掉）
-function signIn() {
-  if (!cloud) return;
-  if (!cloud.isReady) { toast('雲端存檔還在準備，等一下再按一次'); return; }
-  if (IN_APP) { toast('LINE、IG 裡不能用 Google 登入：請用「帳號密碼」，或改用 Safari / Chrome 打開', 3200); return; }
-  askGuestMerge = true;
-  cloud.signIn().catch(e => {      // 成功的話 onUser → switchAccount 會接手（歡迎訊息在那裡，等「帶進帳號？」問完才出現）
-    askGuestMerge = false;
-    const c = (e && e.code) || '';
-    console.warn('[cloud] 登入失敗', e);
-    if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request' || c === 'auth/user-cancelled') return;
-    if (c === 'auth/popup-blocked') toast('登入視窗被擋住了，請允許彈出視窗再按一次');
-    else if (c === 'auth/operation-not-supported-in-this-environment' || c === 'auth/web-storage-unsupported') toast('這個瀏覽器不能登入，請用 Safari 或 Chrome 打開遊戲');
-    else if (c === 'auth/unauthorized-domain') toast('這個網址還不能登入（Firebase 的授權網域要加上它）');
-    else if (c === 'auth/network-request-failed') toast('連不上網路，晚點再試');
-    else toast('登入沒有成功，請再試一次');
-  });
 }
 // ---------- 帳號名稱＋密碼（不用 email） ----------
 let lgMode = 'in';             // 'in' 登入、'up' 開新帳號
@@ -2085,7 +2059,7 @@ async function submitLogin(e) {
   if (lgMode === 'up' && pass !== $('#lg-pass2').value) { err.textContent = '兩次輸入的密碼不一樣'; return; }
   if (btn.disabled) return;
   btn.disabled = true;
-  askGuestMerge = true;                    // 跟 Google 登入一樣：這台裝置有訪客進度的話會問要不要帶進帳號
+  askGuestMerge = true;                    // 這台裝置有訪客進度的話會問要不要帶進帳號（成功後 onUser → switchAccount 接手，歡迎訊息在那裡）
   try {
     await (lgMode === 'up' ? cloud.signUpWithName(name, pass) : cloud.signInWithName(name, pass));
     $('#lg-pass').value = $('#lg-pass2').value = '';
@@ -2169,7 +2143,6 @@ function bindUI() {
   });
   $('#set-close').addEventListener('click', () => closeModal('m-settings'));
   $('#acct-chip').addEventListener('click', openSettings);
-  $('#acct-in').addEventListener('click', signIn);
   $('#acct-pw').addEventListener('click', () => openLogin('in'));
   $('#lg-form').addEventListener('submit', submitLogin);
   $('#lg-switch').addEventListener('click', () => setLoginMode(lgMode === 'up' ? 'in' : 'up'));

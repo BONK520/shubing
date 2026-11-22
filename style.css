@@ -1425,13 +1425,12 @@ svg.on .hi { opacity: .9; }
   transition: transform .09s;
 }
 .acct-chip:active { transform: translateY(2px); }
-.acct-chip[hidden], .acct[hidden], .acct-out[hidden], #acct-in[hidden] { display: none; }
+.acct-chip[hidden], .acct[hidden], .acct-out[hidden] { display: none; }
 .acct-av {
   width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
   background: linear-gradient(180deg, #8fe6ff, #38aef8); color: #fff; font-weight: 900; font-size: 15px;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12), 0 0 0 2px #fff;
 }
-.acct-av img { width: 100%; height: 100%; object-fit: cover; }
 .acct-av svg { width: 19px; height: 19px; fill: #fff; filter: drop-shadow(0 1px 0 rgba(13, 82, 163, .5)); }
 .acct-chip.in .acct-av, .acct[data-sync]:not([data-sync="guest"]) .acct-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
 .acct-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -1453,7 +1452,7 @@ svg.on .hi { opacity: .9; }
   background: #f3d9d0; color: var(--ink); font: 900 14px/1 var(--font); box-shadow: 0 3px 0 #dcb3a8;
 }
 .acct-out:active { transform: translateY(2px); box-shadow: 0 1px 0 #dcb3a8; }
-.acct-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.acct-btns { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .acct-btns[hidden] { display: none; }
 .acct-btns .btn { width: 100%; padding-left: 8px; padding-right: 8px; font-size: 18px; }
 /* 帳號名稱＋密碼的登入框 */
