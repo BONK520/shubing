@@ -2496,7 +2496,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const k = dpr, sc = scratchCtx();
     sc.font = `900 ${Math.max(6, size * k)}px ${FONT}`;
     const mw = sc.measureText(text).width / k;
-    const depth = ext ? size * 0.13 : 0;
+    const depth = ext ? size * 0.075 : 0;          // 厚度：字高的 7.5%（以前 13%，手機上像多一份錯開的字）
     const pad = size * (outer ? 0.36 : 0.28) + (shadow ? size * 0.22 : 0) + depth;
     const w = mw + pad * 2, h = size * 1.25 + pad * 2;
     const c = makeCanvas(w * k, h * k), g = c.getContext('2d');
@@ -2505,7 +2505,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     const x = w / 2, y = h / 2;
     const fs = typeof fill === 'function' ? fill(g, size) : fill;
-    const ow = size * (outer ? 0.34 : 0.22);    // 最外圈描邊的粗細
+    const ow = size * (outer ? 0.24 : 0.15);    // 最外圈描邊的粗細（細一點，字的筆畫和數字的洞才不會被填滿）
     // 陰影不用 shadowBlur（很貴）：往右下偏的半透明粗描邊，兩層疊出柔和的邊
     if (shadow) {
       g.strokeStyle = 'rgba(50,10,80,0.18)'; g.lineWidth = ow + size * 0.16; g.strokeText(text, x + depth + size * 0.04, y + depth + size * 0.1);
@@ -2516,14 +2516,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.strokeStyle = ext; g.fillStyle = ext; g.lineWidth = ow;
       for (let i = n; i >= 1; i--) {
         const d = depth * i / n;
-        g.strokeText(text, x + d * 0.6, y + d); g.fillText(text, x + d * 0.6, y + d);
+        g.strokeText(text, x + d * 0.15, y + d); g.fillText(text, x + d * 0.15, y + d);
       }
     }
     if (outer) { g.lineWidth = ow; g.strokeStyle = outer; g.strokeText(text, x, y); }
-    g.lineWidth = size * (outer ? 0.17 : 0.22); g.strokeStyle = outline; g.strokeText(text, x, y);
+    g.lineWidth = size * (outer ? 0.12 : 0.15); g.strokeStyle = outline; g.strokeText(text, x, y);
     // 字面加胖：描邊一半畫在字裡面，會把字吃瘦；用字面的顏色再描一圈，把字撐回來、再胖一點
     // （只有數字和符號胖很多；中文筆畫多，只補回一點點，不然「關」「蛋」會糊成一團）
-    g.lineWidth = size * (/^[\d\s+\-×.,%/!！]+$/.test(text) ? 0.07 : 0.02); g.strokeStyle = fs; g.strokeText(text, x, y);
+    g.lineWidth = size * (/^[\d\s+\-×.,%/!！]+$/.test(text) ? 0.04 : 0.015); g.strokeStyle = fs; g.strokeText(text, x, y);
     g.fillStyle = fs; g.fillText(text, x, y);
     return { c, w, h };
   }

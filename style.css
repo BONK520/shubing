@@ -316,9 +316,9 @@ svg use { pointer-events: none; }
   font-weight: 900; font-size: clamp(20px, 5.8vw, 28px); letter-spacing: .08em; line-height: 1.2;
   color: #fff;
   text-shadow:
-    0 0 0 #b4357b, 2px 0 0 #b4357b, -2px 0 0 #b4357b, 0 2px 0 #b4357b, 0 -2px 0 #b4357b,
-    2px 2px 0 #b4357b, -2px 2px 0 #b4357b, 2px -2px 0 #b4357b, -2px -2px 0 #b4357b,
-    0 4px 0 #b4357b, 0 6px 6px rgba(70, 10, 70, .3);
+    1.5px 0 0 #b4357b, -1.5px 0 0 #b4357b, 0 1.5px 0 #b4357b, 0 -1.5px 0 #b4357b,
+    1.1px 1.1px 0 #b4357b, -1.1px 1.1px 0 #b4357b, 1.1px -1.1px 0 #b4357b, -1.1px -1.1px 0 #b4357b,
+    0 3px 0 #b4357b, 0 4px 4px rgba(70, 10, 70, .25);
 }
 .logo-sub i { font-style: normal; color: #ffd23f; }
 .tagline { /* 實體的糖果牌：亮邊 + 外圈 + 底下深玫瑰的厚度 */
@@ -431,10 +431,10 @@ svg use { pointer-events: none; }
 .star-pill .pill-star { width: 26px; height: 26px; overflow: visible; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.6; stroke-linejoin: round; paint-order: stroke; filter: drop-shadow(0 2px 0 #c46d00) drop-shadow(0 0 3px rgba(255, 196, 50, .6)); }
 .star-pill { box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(255, 111, 179, .24), 0 0 0 2.5px #ff6fb3, 0 6px 0 2.5px #c41f74, 0 10px 12px 2px rgba(150, 40, 100, .3); }
 .star-pill b, .star-pill span {   /* 描邊和往右下的厚度在「遊戲感的字」那段 */
-  --o: #7a2342; --w: 2.4px; --x: #4d1228; --d: 1.1px; font-family: var(--font-num, inherit); font-weight: 900;
+  --o: #7a2342; --w: 1.7px; --x: #4d1228; --d: 1.2px; font-family: var(--font-num, inherit); font-weight: 900;
 }
 .star-pill b { color: #ff4f9a; }
-.star-pill span { font-size: 15px; color: #fff; --w: 1.8px; --d: .8px; }
+.star-pill span { font-size: 15px; color: #fff; --w: 1.3px; --d: .8px; }
 .map-scroll {
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -519,7 +519,7 @@ svg use { pointer-events: none; }
 }
 .node:active { transform: translate(-50%, calc(-50% + 4px)); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .6), inset 0 -4px 0 rgba(0, 0, 0, .14), 0 0 0 2px var(--nsh), 0 2px 0 2px var(--nsh), 0 4px 0 2px var(--nsh2), 0 8px 10px 2px rgba(64, 23, 37, .3); }
 .node .num { /* 數字：白色胖數字 + 按鈕顏色的深色粗描邊 + 往右下的厚度（描邊和厚度在「遊戲感的字」那段） */
-  --o: var(--nsh2); --w: 2.2px; --x: var(--nx, #5c0a35); --d: 1.2px;
+  --o: var(--nsh2); --w: 1.6px; --x: var(--nx, #5c0a35); --d: 1.3px;
   font-size: 28px; font-weight: 900; color: #fff; line-height: 1; margin-top: 2px; font-family: var(--font-num, inherit);
 }
 .node .nstars { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); display: flex; gap: 0; align-items: flex-end; }
@@ -553,7 +553,7 @@ svg.on .hi { opacity: .9; }
 .node .badge .toy-fallback { width: 100%; height: 100%; border-width: 0; --fs: 12px; }
 .node.done { --nc1: #86dbff; --nc2: #3aa4f5; --nsh: #1f6fbf; --nsh2: #12488a; --nx: #08295a; }
 .node.current { width: 80px; height: 80px; --nc1: #ffa6d6; --nc2: #ff4f9e; --nsh: #c42a74; --nsh2: #8e1452; animation: nodePulse 1.6s ease-in-out infinite; }
-.node.current .num { font-size: 34px; --w: 2.6px; --d: 1.4px; }
+.node.current .num { font-size: 34px; --w: 1.9px; --d: 1.6px; }
 .node.locked { --nc1: #f3e6e3; --nc2: #dcc3c0; --nsh: #bf9c9c; --nsh2: #9a7476; --nx: #6e4c52; cursor: default; }
 .node.locked .num { color: #fdf7f5; --o: #a88488; }
 .node.locked .lock-badge { /* 鎖頭：右下角小徽章（位置同 .badge） */
@@ -588,12 +588,12 @@ svg.on .hi { opacity: .9; }
 .map-marker img { filter: drop-shadow(0 0 5px rgba(255, 150, 210, .85)) drop-shadow(2px 4px 3px rgba(80, 20, 90, .3)); }
 @keyframes markerBob { 0%, 100% { translate: 0 0; } 50% { translate: var(--nudge, 0px) 0; } }   /* 朝關卡點一點 */
 .map-end { /* 「更多關卡製作中」的立牌：實體的糖果板 + 白字深玫瑰粗描邊 */
-  --o: #b8325f; --w: 2px;
+  --o: #b8325f; --w: 1.4px;
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   padding: 9px 20px 10px; border-radius: 18px; border: 3px solid #fff;
   background: linear-gradient(180deg, #ffc4d6 0%, #ff8fb2 55%, #f2678f 100%);
   font-weight: 900; color: #fff; font-size: 16px; letter-spacing: .04em; white-space: nowrap;
-  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o), 0 calc(var(--w) + 2px) 0 #8a1f48;
+  text-shadow: var(--w) 0 0 var(--o), calc(var(--w) * -1) 0 0 var(--o), 0 var(--w) 0 var(--o), 0 calc(var(--w) * -1) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--o), calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--o), calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--o), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--o), 0 calc(var(--w) + 1.2px) 0 #8a1f48;
   box-shadow: inset 0 3px 0 rgba(255, 255, 255, .7), inset 0 -5px 0 rgba(150, 20, 70, .22),
     0 0 0 2px #e35583, 0 6px 0 2px #b8325f, 0 13px 14px 2px rgba(120, 30, 60, .3);
 }
@@ -1266,13 +1266,12 @@ svg.on .hi { opacity: .9; }
 
 
 /* ---------- 遊戲感的字：胖圓數字 + 厚描邊 + 往右下擠出來的立體厚度；面板上緣高光、下緣厚度 ---------- */
-/* 立體字四層（光從左上來，跟盤面的糖果一樣，所以厚度和影子都在右下）：
-   1. 字面：數字用胖數字 PlushNum（源泉圓體 Heavy 再膨脹一大圈），中文字照用源泉圓體；
-      重要的數字字面再疊一層上亮下暗的漸層（::after + data-t，main.js 的 setNum），像膨起來的糖果
-   2. 描邊：12 個方向的 text-shadow 疊出圓滑的描邊（--o 顏色、--w 粗細）—— 玫瑰色，比厚度亮一階
-   3. 厚度：filter 把「字 + 描邊」整個往右下複製三次（--x 顏色、每次 --d，總共約字高的 12–15%），
-      顏色比描邊深很多（深梅紅），看起來是字的「側面」而不是更粗的描邊；最後一層柔和的落影
-      （text-shadow 只能複製字本身、複製不到描邊；filter 是整個畫好的字一起複製，厚度才會跟描邊一樣圓、連成一塊）
+/* 立體字（光從上面來）：
+   1. 字面：數字用胖數字 PlushNum（源泉圓體 Heavy 再膨脹一大圈），中文字照用源泉圓體；實色（不再疊漸層字，iPhone 上會錯開）
+   2. 描邊：12 個方向的 text-shadow 疊出圓滑的描邊（--o 顏色、--w 粗細）。描邊要細（約 1.2–2px）：太粗會把 3、8、
+      中文字筆畫中間的空隙填滿，小螢幕上就看不出是什麼字
+   3. 厚度：filter 把「字 + 描邊」往正下方複製一層（--x 顏色、--d 距離，約 1.3–2px），再一層很淡的落影。
+      只往下、只一層、貼著字：以前往右下疊三層（約 5px），手機上看起來像後面多了一份錯開的字
    有底色的元素（例如道具的數量徽章）不能用 filter（底色也會被複製），改用 text-shadow 做厚度。
    這裡只用變數、不宣告變數（預設值寫在 var() 裡），每個元素在檔案任何地方設的 --o / --w / --x / --d 才不會被這裡蓋掉。 */
 :root {
@@ -1283,7 +1282,7 @@ svg.on .hi { opacity: .9; }
 }
 .hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .game-top .lv b, .hud-moves .lbl, .score-line .lbl, .bst .bn,
 .star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
-  --ow: var(--w, 2.2px); --oc: var(--o, #a0255b);
+  --ow: var(--w, 1.5px); --oc: var(--o, #a0255b);
   text-shadow:
     var(--ow) 0 0 var(--oc), calc(var(--ow) * -1) 0 0 var(--oc), 0 var(--ow) 0 var(--oc), 0 calc(var(--ow) * -1) 0 var(--oc),
     calc(var(--ow) * .87) calc(var(--ow) * .5) 0 var(--oc), calc(var(--ow) * -.87) calc(var(--ow) * .5) 0 var(--oc),
@@ -1293,37 +1292,29 @@ svg.on .hi { opacity: .9; }
 }
 .hud-moves b, .score-line b, .gi .cnt, .game-top .lv, .hud-moves .lbl, .score-line .lbl, .bst .bn,
 .star-pill b, .star-pill span, .node .num, .ribbon span, .goal-big .gb b, .moves-line b, .score-box b {
-  --xd: var(--d, 1.2px); --xc: var(--x, #4a0a26);
-  filter: drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc)) drop-shadow(calc(var(--xd) * .6) var(--xd) 0 var(--xc))
-    drop-shadow(calc(var(--xd) * 1) calc(var(--xd) * 2.6) calc(var(--xd) * 1.8) rgba(40, 6, 22, .5));
+  --xd: var(--d, 1.3px); --xc: var(--x, #4a0a26);
+  /* 厚度只往正下方一層、貼著字（以前往右下疊三層、總共 5px：在手機上看起來像後面多了一份錯開的字） */
+  filter: drop-shadow(0 var(--xd) 0 var(--xc)) drop-shadow(0 calc(var(--xd) + 1px) 1.5px rgba(40, 6, 22, .28));
 }
 /* 字面的漸層：同一份字（attr(data-t)）疊在上面，只留漸層、不要描邊和厚度（text-shadow 會繼承，要關掉） */
 /* :where() 權重是 0：目標數量徽章（.gi.toy .cnt）在別的地方設 position: absolute，不能被這裡蓋掉 */
 :where(.hud-moves b, .score-line b, .gi .cnt, .game-top .lv b, .star-pill b, .goal-big .gb b, .moves-line b, .score-box b)[data-t] { position: relative; }
 :where(.game-top .lv b, .moves-line b)[data-t] { display: inline-block; }
-.hud-moves b[data-t]::after, .score-line b[data-t]::after, .gi .cnt[data-t]::after, .game-top .lv b[data-t]::after, .star-pill b[data-t]::after,
-.goal-big .gb b[data-t]::after, .moves-line b[data-t]::after, .score-box b[data-t]::after {
-  content: attr(data-t); position: absolute; left: 0; top: 0; width: 100%; text-align: inherit; white-space: nowrap; pointer-events: none;
-  color: transparent; text-shadow: none; filter: none;
-  background: var(--face, linear-gradient(180deg, #fff 0%, #fff 50%, #fff2f7 72%, #ffd6e6 100%));
-  -webkit-background-clip: text; background-clip: text;
-}
-/* 粉紅色的數字（關卡、分數、星星數）：上面淡粉、下面濃桃紅 */
-.score-line b, .game-top .lv b, .star-pill b, .score-box b { --face: linear-gradient(180deg, #ffc0dc 0%, #ff7ab4 36%, #ff4893 62%, #e3247a 100%); }
-/* 步數：白字 + 深玫瑰粗描邊 + 最深的厚度（數字最大，厚度也最厚：3 × 1.7 ≈ 5px） */
-.hud-moves b { color: #fff; --o: #a3215a; --w: 2.8px; --x: #4c0624; --d: 1.7px; }
+/* （以前這裡用 ::after 再疊一份漸層字；iPhone 的瀏覽器有時候會錯開一兩個像素，數字看起來重疊、糊掉，所以拿掉了，字面用實色） */
+/* 步數：白字 + 深玫瑰描邊 + 往下 2px 的厚度（描邊細一點，3、8 的洞才不會被填滿） */
+.hud-moves b { color: #fff; --o: #a3215a; --w: 1.9px; --x: #5c0a2e; --d: 2px; }
 /* 奶油色面板上的數字（分數、關卡、目標）：白描邊會跟淺色底糊在一起，所以描邊用深玫瑰 */
-.score-line b { color: #ff4f9a; --w: 2.4px; --d: 1.25px; }
-.gi .cnt { color: #fff; --w: 2.4px; --d: 1.25px; }
-.game-top .lv { color: #fff; --w: 2.2px; --d: 1.45px; }
-.game-top .lv b { color: #ff4f9a; --w: 2.8px; }
+.score-line b { color: #ff4f9a; --w: 1.6px; --d: 1.3px; }
+.gi .cnt { color: #fff; --w: 1.7px; --d: 1.4px; }
+.game-top .lv { color: #fff; --w: 1.6px; --d: 1.4px; }
+.game-top .lv b { color: #ff4f9a; --w: 1.9px; }
 .hud .lbl { font-weight: 900; }
 /* 對話框裡的字：關卡緞帶（粉紅底 → 深桃紅描邊）、目標數量、步數、過關分數 */
-.ribbon span { display: inline-block; --o: #a3125c; --w: 2.4px; --x: #5c0a35; --d: 1.2px; }
+.ribbon span { display: inline-block; --o: #a3125c; --w: 1.7px; --x: #5c0a35; --d: 1.5px; }
 .ribbon.sad span { --o: #7a3a4c; --x: #4a1f2c; }
-.goal-big .gb b { --w: 2.2px; }
-.moves-line b { --o: #b8325f; --w: 2.4px; --x: #631a3a; }
-.score-box b { --w: 3px; --d: 1.8px; margin-bottom: 4px; }   /* 胖數字的逗號往下長，留一點空間給下一行 */
+.goal-big .gb b { --w: 1.3px; --d: 1.2px; }   /* 「果凍」這種中文字筆畫多，描邊再細一點 */
+.moves-line b { --o: #b8325f; --w: 1.7px; --x: #631a3a; }
+.score-box b { --w: 2px; --d: 2px; margin-bottom: 4px; }   /* 胖數字的逗號往下長，留一點空間給下一行 */
 /* 面板：實體的糖果板 — 上面一道亮邊、外面一圈糖衣、底下一層深色的厚度、再往下的投影 */
 .hud {
   background: linear-gradient(180deg, rgba(255, 250, 242, .92), rgba(252, 238, 226, .88));
@@ -1347,12 +1338,12 @@ svg.on .hi { opacity: .9; }
   box-shadow: inset 0 2px 0 #fff, inset 0 -4px 0 rgba(230, 120, 140, .2),
     0 0 0 2.5px #f78fb0, 0 5px 0 2.5px #d0567f, 0 9px 12px 2px rgba(110, 50, 60, .24);
 }
-.bst .bn { font-weight: 900; color: #fff; font-size: 12px; --o: #a3307a; --w: 1.7px; --x: #6e1d52; --d: .8px; }
+.bst .bn { font-weight: 900; color: #fff; font-size: 12px; --o: #a3307a; --w: 1.2px; --x: #6e1d52; --d: .8px; }
 /* 道具數量：徽章有底色，厚度用 text-shadow（描邊 + 往右下兩層） */
 .bst .bc {
-  text-shadow: 1.3px 0 0 #a3125c, -1.3px 0 0 #a3125c, 0 1.3px 0 #a3125c, 0 -1.3px 0 #a3125c,
-    .92px .92px 0 #a3125c, -.92px .92px 0 #a3125c, .92px -.92px 0 #a3125c, -.92px -.92px 0 #a3125c,
-    1.2px 2px 0 #6e0a3c, 1.8px 2.6px 0 #6e0a3c;
+  text-shadow: 1.1px 0 0 #a3125c, -1.1px 0 0 #a3125c, 0 1.1px 0 #a3125c, 0 -1.1px 0 #a3125c,
+    .78px .78px 0 #a3125c, -.78px .78px 0 #a3125c, .78px -.78px 0 #a3125c, -.78px -.78px 0 #a3125c,
+    0 2px 0 #6e0a3c;
 }
 
 /* ---------- 氛圍：盤面柔光、背景散景、閃爍星光 ---------- */
@@ -1380,26 +1371,20 @@ svg.on .hi { opacity: .9; }
 
 /* ---------- 卡通立體字：按鈕、標籤、標題 ---------- */
 /* 按鈕字：膨脹的立體字 — 深色粗描邊、往下三層厚度、再一層柔影；.bt 的 ::after 再疊一層上亮下暗的漸層字 */
-.btn { --w: 2.2px; font-weight: 900; color: #fff;
+.btn { --w: 1.5px; font-weight: 900; color: #fff;
   text-shadow:
     var(--w) 0 0 var(--sh), calc(var(--w) * -1) 0 0 var(--sh), 0 var(--w) 0 var(--sh), 0 calc(var(--w) * -1) 0 var(--sh),
     calc(var(--w) * .87) calc(var(--w) * .5) 0 var(--sh), calc(var(--w) * -.87) calc(var(--w) * .5) 0 var(--sh),
     calc(var(--w) * .87) calc(var(--w) * -.5) 0 var(--sh), calc(var(--w) * -.87) calc(var(--w) * -.5) 0 var(--sh),
     calc(var(--w) * .5) calc(var(--w) * .87) 0 var(--sh), calc(var(--w) * -.5) calc(var(--w) * .87) 0 var(--sh),
     calc(var(--w) * .5) calc(var(--w) * -.87) 0 var(--sh), calc(var(--w) * -.5) calc(var(--w) * -.87) 0 var(--sh),
-    0 calc(var(--w) + 1.5px) 0 var(--sh), 0 calc(var(--w) + 3px) 0 var(--sh), 0 calc(var(--w) + 4.5px) 0 var(--sh),
-    0 calc(var(--w) + 7px) 6px rgba(37, 13, 21, .3); }
+    0 calc(var(--w) + 1.3px) 0 var(--sh), 0 calc(var(--w) + 3px) 3px rgba(37, 13, 21, .25); }
 .btn .bt { position: relative; display: inline-block; white-space: nowrap; }
-.btn .bt::after {
-  content: attr(data-t); position: absolute; left: 0; top: 0; white-space: nowrap;
-  color: transparent; text-shadow: none;
-  background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--c1) 100%);
-  -webkit-background-clip: text; background-clip: text;
-}
+/* （按鈕字以前也用 ::after 疊一份漸層字，同樣會在 iPhone 上錯開，拿掉了） */
 /* 小標籤（步數、分數）也是遊戲字：白字、深紫描邊、往右下的厚度（描邊和厚度在「遊戲感的字」那段） */
-.hud-moves .lbl, .score-line .lbl { color: #fff; --o: #a3305f; --w: 1.6px; --x: #631a3a; --d: .75px; }
+.hud-moves .lbl, .score-line .lbl { color: #fff; --o: #a3305f; --w: 1.2px; --x: #631a3a; --d: .8px; }
 .game-top .level-pill { font-weight: 900; }
-.modal h2, .card h2 { text-shadow: 0 2px 0 rgba(120, 20, 80, .55), 2px 0 0 rgba(120, 20, 80, .55), 0 -2px 0 rgba(120, 20, 80, .55), -2px 0 0 rgba(120, 20, 80, .55), 0 4px 0 rgba(80, 10, 50, .45); }
+.modal h2, .card h2 { text-shadow: 0 2px 0 #fff, 0 3px 4px rgba(120, 20, 80, .22); }
 
 /* ---------- 面板加厚、加反光 ---------- */
 .hud-goal, .hud-score, .hud-moves { position: relative; overflow: hidden; }
