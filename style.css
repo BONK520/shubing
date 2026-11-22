@@ -678,8 +678,10 @@ svg.on .hi { opacity: .9; }
 .gi.score-goal .cnt { font-size: 22px; }
 .jelly-ic {
   width: 38px; height: 38px; border-radius: 10px;
-  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .85) 0 12%, rgba(255, 255, 255, 0) 30%), linear-gradient(180deg, #ffb3d8, #ff5fa8);
-  border: 3px solid #fff; box-shadow: 0 3px 6px rgba(200, 50, 120, .3), inset 0 -4px 0 rgba(160, 20, 90, .2);
+  /* 冰藍水晶果凍（跟盤面上的果凍一樣） */
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, .45) 34%, rgba(255, 255, 255, 0) 44%),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .9) 0 12%, rgba(255, 255, 255, 0) 30%), linear-gradient(180deg, #a8ecff, #36b4f0);
+  border: 3px solid #fff; box-shadow: 0 3px 6px rgba(20, 110, 190, .3), inset 0 -4px 0 rgba(10, 90, 170, .22);
 }
 .jelly-ic.sm { width: 22px; height: 22px; border-radius: 6px; border-width: 2px; }
 .bump { animation: bump .35s ease; }
