@@ -1,10 +1,11 @@
-// 毛絨消消樂 — 音效與背景音樂，全部用 Web Audio 即時合成（不用音檔）
+// 毛絨消消樂 — 音效用 Web Audio 即時合成；背景音樂播 assets/music/ 的三首（載不到時退回合成的那首）
 // API（docs/SPEC.md §5）：
 //   audio.unlock()            第一次 pointerdown / keydown 時呼叫；建立或喚醒 AudioContext（含 iOS 解鎖）
 //   audio.play(name, opts)    靜音或尚未解鎖時直接忽略；永遠不丟例外
 //                             opts.delay（毫秒）：排在多久之後響（照 AudioContext 的時鐘，和畫面的動畫時間對齊）
 //   audio.setMuted(b) / audio.muted     只管音效（sfx）；音樂另外用 setMusic 控制
-//   audio.setMusic(b) / audio.music     輕柔循環背景音樂；分頁隱藏時自動暫停
+//   audio.setMusic(b) / audio.music     背景音樂開關；分頁隱藏時自動暫停
+//   audio.setScene(s)         'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡：level-a、level-b 播完換下一首）
 // 音效名稱：tap select swap invalid match(opts.cascade 1..n) stripe wrap bomb special land shuffle
 //           win lose star(opts.n 1..3) sugar combo
 //           pop(opts.cascade, opts.group：連鎖越多、同一步的組數越多，音越高) board(炸彈+炸彈) chime(opts.level：長連鎖)
@@ -24,7 +25,7 @@ const MUSIC_VOL = 0.3;
 const MAX_VOICES = 150;              // 以振盪器數量計（一個鈴聲 = 4 個）
 
 let ctx = null;
-let master = null, sfxBus = null, crispBus = null, musicBus = null, revIn = null, noiseBuf = null;
+let master = null, sfxBus = null, crispBus = null, musicBus = null, musicRev = null, revIn = null, noiseBuf = null;
 let crunchBufs = null;     // 糖果碎掉的聲音（makeCrunches 離線算好的幾種）
 let unlocked = false, muted = false, musicOn = false;
 let voices = 0;
@@ -104,8 +105,8 @@ function makeContext() {
     musicBus = c.createGain();
     musicBus.gain.value = 0;
     musicBus.connect(master);
-    const musicRev = c.createGain();
-    musicRev.gain.value = 0.9;
+    musicRev = c.createGain();
+    musicRev.gain.value = 0;      // 音檔本身已經混好，不再加殘響；退回合成音樂時才打開（startSynth）
     musicBus.connect(musicRev);
     musicRev.connect(revIn);
 
@@ -220,6 +221,7 @@ function rebuild() {
   stale = false;
   rebuilds++;
   try { stopMusic(true); } catch (e) { /* ignore */ }
+  song = null;                 // 舊 AudioContext 的音源跟著關掉；解碼好的曲子新的也能用
   const old = ctx;
   try { if (voiceSrc) voiceSrc.stop(); } catch (e) { /* ignore */ }
   voiceSrc = null;
@@ -677,30 +679,185 @@ function scheduler() {
   } catch (e) { /* ignore */ }
 }
 
-function startMusic() {
-  if (!ctx || !unlocked || !musicOn || musicTimer) return;
-  if (typeof document !== 'undefined' && document.hidden) return;
+// 合成的那首：音檔載不到時的備用
+function startSynth() {
+  if (musicTimer) return;
   try {
     const now = ctx.currentTime;
-    musicBus.gain.cancelScheduledValues(now);
-    musicBus.gain.setValueAtTime(musicBus.gain.value, now);
-    musicBus.gain.linearRampToValueAtTime(MUSIC_VOL, now + 1.2);
+    if (musicRev) { musicRev.gain.cancelScheduledValues(now); musicRev.gain.setValueAtTime(0.9, now); }
     nextTime = now + 0.1;
     stepIdx = 0;
     musicTimer = setInterval(scheduler, 40);
     scheduler();
   } catch (e) { /* ignore */ }
 }
+function stopSynth() {
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+}
+
+// ---------- 背景音樂：assets/music/*.mp3 ----------
+// home = 〈かわいいきみ。〉、level-a = 〈Mini mini Kawaii Pop〉、level-b = 〈かわいいこねこ〉
+// 三首的響度不一樣（整首平均約 -21 / -17 / -11 dB），各自乘一個係數拉齊到 musicBus 上約 -34 dB RMS
+// （舊的合成音樂約 -40 dB；真的歌比較滿，壓到一樣小會聽不清楚）。整體開關和淡入淡出還是 musicBus 的 MUSIC_VOL
+const TRACKS = {
+  home: { url: 'assets/music/home.mp3', gain: 0.86, loop: true },
+  'level-a': { url: 'assets/music/level-a.mp3', gain: 0.53, loop: false },
+  'level-b': { url: 'assets/music/level-b.mp3', gain: 0.28, loop: false },
+};
+const SCENES = { home: ['home'], level: ['level-a', 'level-b'] };
+const FADE_OUT = 0.6, FADE_IN = 0.9;      // 換曲：舊的先淡出，快淡完才淡入新的（兩首不會疊在一起）
+let scene = 'home', levelTurn = 0, levelVisits = 0;
+let musicLive = false;                    // musicBus 已經淡入（音樂「開著」）
+let song = null;                          // 正在播的 { name, src, g, t0, off, dur, loop, c, done }
+let songWant = '';                        // 正在載入或正在播的曲名
+let songSeq = 0;
+const songPos = Object.create(null);      // 暫停時播到哪（秒），回來接著播
+const trackRaw = Object.create(null);     // 曲名 -> Promise<ArrayBuffer>（壓縮檔，整頁只抓一次）
+const trackBuf = Object.create(null);     // 曲名 -> 解碼好的 AudioBuffer（只留現在這個場景用得到的，省手機記憶體）
+const trackFail = Object.create(null);    // 曲名 -> true：抓不到或解不開，這次就不再試
+
+function fetchRaw(name) {
+  if (!trackRaw[name]) {
+    trackRaw[name] = fetch(TRACKS[name].url).then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    });
+    trackRaw[name].catch(() => { trackFail[name] = true; });
+  }
+  return trackRaw[name];
+}
+function getBuffer(name) {
+  if (trackBuf[name]) return Promise.resolve(trackBuf[name]);
+  const c = ctx;
+  return fetchRaw(name).then(ab => new Promise((res, rej) => {
+    // decodeAudioData 會把傳進去的 ArrayBuffer 用掉，給它一份複本（之後重建 AudioContext 時還要用）
+    const p = c.decodeAudioData(ab.slice(0), res, rej);
+    if (p && p.catch) p.catch(() => {});
+  })).then(b => {
+    if (!b) throw new Error('decode');
+    trackBuf[name] = b;
+    return b;
+  });
+}
+function wantedTrack() {
+  const list = SCENES[scene].filter(n => !trackFail[n]);
+  if (!list.length) return null;
+  return list[(scene === 'level' ? levelTurn : 0) % list.length];
+}
+function songAt(s, now) {
+  let p = s.off + Math.max(0, now - s.t0);
+  if (s.loop) p %= s.dur;
+  return p >= s.dur - 0.5 ? 0 : p;
+}
+// 把正在播的那首淡出、停掉。keep：記住播到哪（暫停用；換場景時不記，下次從頭）
+function endSong(sec, keep) {
+  const s = song;
+  song = null;
+  if (!s) return;
+  s.done = true;
+  try {
+    if (s.c === ctx && ctx && ctx.state !== 'closed') {
+      const now = ctx.currentTime;
+      if (keep) songPos[s.name] = songAt(s, now);
+      s.g.gain.cancelScheduledValues(now);
+      s.g.gain.setValueAtTime(s.g.gain.value, now);
+      s.g.gain.linearRampToValueAtTime(0, now + sec);
+      s.src.stop(now + sec + 0.02);
+    } else s.src.stop();
+  } catch (e) { /* 已經停了 */ }
+  setTimeout(() => { try { s.src.disconnect(); s.g.disconnect(); } catch (e) { /* ignore */ } }, (sec + 0.3) * 1000);
+}
+function startSong(name, buf, delay) {
+  const t = ctx.currentTime + 0.03 + delay;
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  const tr = TRACKS[name];
+  src.buffer = buf;
+  src.loop = tr.loop;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(tr.gain, t + FADE_IN);
+  src.connect(g); g.connect(musicBus);
+  let off = songPos[name] || 0;
+  delete songPos[name];
+  if (off >= buf.duration - 0.5) off = 0;
+  src.start(t, off);
+  const s = { name, src, g, t0: t, off, dur: buf.duration, loop: tr.loop, c: ctx, done: false };
+  src.onended = () => {
+    if (s.done) return;                 // 自己停的（換曲、暫停）
+    s.done = true;
+    if (song === s) { song = null; songWant = ''; }
+    try { src.disconnect(); g.disconnect(); } catch (e) { /* ignore */ }
+    if (scene === 'level') levelTurn++;  // 關卡：這首播完換下一首
+    if (musicLive) startMusic();
+  };
+  song = s;
+}
+// 不在這個場景的曲子：解碼好的資料丟掉（一首解開來有二、三十 MB）
+function dropUnused() {
+  const keep = SCENES[scene];
+  for (const n in trackBuf) if (!keep.includes(n) && !(song && song.name === n)) delete trackBuf[n];
+}
+function playScene(name) {
+  if (songWant === name) return;
+  songWant = name;
+  const my = ++songSeq;
+  const had = !!song;
+  endSong(FADE_OUT, false);
+  getBuffer(name).then(buf => {
+    if (my !== songSeq || !ctx || !musicLive) return;
+    startSong(name, buf, had ? FADE_OUT - 0.1 : 0);
+    setTimeout(dropUnused, (FADE_OUT + 0.5) * 1000);
+    // 關卡：先把下一首抓好、解好
+    if (scene === 'level') {
+      const next = SCENES.level.find(n => n !== name && !trackFail[n]);
+      if (next) setTimeout(() => { if (scene === 'level' && ctx) getBuffer(next).catch(() => {}); }, 4000);
+    } else setTimeout(() => SCENES.level.forEach(n => fetchRaw(n).catch(() => {})), 8000);   // 首頁：先下載關卡的兩首（不解碼）
+  }, () => {
+    trackFail[name] = true;
+    if (my !== songSeq) return;
+    songWant = '';
+    if (musicLive) startMusic();       // 換這個場景的另一首，或退回合成音樂
+  });
+}
+
+function startMusic() {
+  if (!ctx || !unlocked || !musicOn) return;
+  if (typeof document !== 'undefined' && document.hidden) return;
+  try {
+    if (!musicLive) {
+      musicLive = true;
+      const now = ctx.currentTime;
+      musicBus.gain.cancelScheduledValues(now);
+      musicBus.gain.setValueAtTime(musicBus.gain.value, now);
+      musicBus.gain.linearRampToValueAtTime(MUSIC_VOL, now + 1.2);
+    }
+    const name = wantedTrack();
+    if (name) { stopSynth(); playScene(name); }
+    else { endSong(0.4, false); songWant = ''; startSynth(); }
+  } catch (e) { /* ignore */ }
+}
 
 function stopMusic(fast) {
-  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
-  if (!ctx || !musicBus) return;
+  stopSynth();
+  musicLive = false;
+  songSeq++;
+  songWant = '';
+  if (!ctx || !musicBus) { song = null; return; }
   try {
+    const sec = fast ? 0.08 : 0.4;
     const now = ctx.currentTime;
     musicBus.gain.cancelScheduledValues(now);
     musicBus.gain.setValueAtTime(musicBus.gain.value, now);
-    musicBus.gain.linearRampToValueAtTime(0, now + (fast ? 0.08 : 0.4));
-  } catch (e) { /* ignore */ }
+    musicBus.gain.linearRampToValueAtTime(0, now + sec);
+    endSong(sec, true);
+  } catch (e) { song = null; }
+}
+
+function setScene(name) {
+  if (!SCENES[name] || name === scene) return;
+  if (name === 'level' && levelVisits++ > 0) levelTurn++;   // 每次進關卡換另一首開頭
+  scene = name;
+  if (musicOn && musicLive) startMusic();
+  else SCENES[name].forEach(n => { if (musicOn) fetchRaw(n).catch(() => {}); });
 }
 
 // ---------- 對外 API ----------
@@ -787,10 +944,20 @@ export const audio = {
 
   setMusic(b) {
     musicOn = !!b;
-    try { if (musicOn) startMusic(); else stopMusic(false); } catch (e) { /* ignore */ }
+    try {
+      if (musicOn) {
+        if (!ctx) SCENES[scene].forEach(n => fetchRaw(n).catch(() => {}));   // 還沒解鎖：先下載，第一次點擊後馬上能播
+        startMusic();
+      } else stopMusic(false);
+    } catch (e) { /* ignore */ }
     syncIdle();
   },
   get music() { return musicOn; },
+
+  setScene(name) { try { setScene(name); } catch (e) { /* ignore */ } },
+  get scene() { return scene; },
+  // 除錯用：現在播哪一首（'synth' = 退回合成音樂）
+  get track() { return musicTimer ? 'synth' : (song ? song.name : (songWant ? songWant + '（載入中）' : '')); },
 
   // 除錯用（非 SPEC 必要）
   get ready() { return !!ctx && unlocked && ctx.state === 'running'; },

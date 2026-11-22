@@ -168,7 +168,7 @@ function refreshAfterSwitch() {
 
 // ---------- 模組 ----------
 let createEngine, createRenderer, LEVELS, audio, levMod = {};
-const silentAudio = { unlock() {}, play() {}, setMuted() {}, setMusic() {}, get muted() { return true; }, get music() { return false; } };
+const silentAudio = { unlock() {}, play() {}, setMuted() {}, setMusic() {}, setScene() {}, get muted() { return true; }, get music() { return false; } };
 
 async function loadModules() {
   const names = ['engine', 'renderer', 'levels', 'audio'];
@@ -394,6 +394,8 @@ function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
   document.documentElement.dataset.screen = name;   // CSS：遊戲畫面時背景的泡泡、雲停住（省電）
+  // 背景音樂：首頁、地圖播同一首；進關卡換關卡的兩首（audio.js 會淡入淡出）
+  try { if (audio && audio.setScene) audio.setScene(name === 'game' ? 'level' : 'home'); } catch (e) { /* ignore */ }
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
   // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
   clearTimeout(parkTimer);
