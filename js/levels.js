@@ -1914,13 +1914,13 @@ export const LEVELS = [
     hint: '冰屋圓頂上鋪滿了果凍',
   },
   {
-    id: 65, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
-    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 25 層
+    id: 65, rows: 9, cols: 7, moves: 35, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [19000, 38000, 57000],   // 果凍 20 層
     mask: XMASTREE,
     jelly: [
       '.......',
       '..111..',
-      '.22222.',
+      '.11111.',
       '1111111',
       '.......',
       '.11111.',
@@ -1928,8 +1928,8 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    seed: 6507,
-    hint: '聖誕樹中間的果凍有兩層！',
+    seed: 6510,
+    hint: '聖誕樹上的果凍融化光',
   },
   {
     id: 66, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'dino'], antiCascade: 0.8,
@@ -1939,12 +1939,12 @@ export const LEVELS = [
     hint: '遊樂園篇！氣球飛起來囉',
   },
   {
-    id: 67, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'], antiCascade: 0.8,
-    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 16 層
+    id: 67, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [22000, 44000, 66000],   // 果凍 10 層
     mask: FERRIS,
     jelly: [
       '.11111.',
-      '111.111',
+      '.......',
       '.......',
       '.......',
       '.......',
@@ -2164,8 +2164,8 @@ export const LEVELS = [
     hint: '鯨魚背上鋪滿了果凍',
   },
   {
-    id: 85, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy', 'nyanko'], antiCascade: 0.8,
-    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 28 層
+    id: 85, rows: 9, cols: 7, moves: 37, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy', 'nyanko'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [24000, 48000, 72000],   // 果凍 28 層
     mask: CHEST,
     jelly: [
       '.......',
@@ -2232,10 +2232,10 @@ export const LEVELS = [
     hint: '星球表面鋪滿果凍',
   },
   {
-    id: 90, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'dino', 'moodeng'], antiCascade: 0.8,
-    goal: { type: 'collect', items: { sloth: 14, dog: 14, snoopy: 14 } }, stars: [10000, 20000, 30000],
+    id: 90, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'dino', 'moodeng'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { sloth: 14, dog: 14, snoopy: 14 } }, stars: [13000, 26000, 39000],
     mask: SPIRAL, jelly: null,
-    seed: 9007,
+    seed: 9014,
     hint: '銀河漩渦！三種一起收',
   },
   {
@@ -2289,8 +2289,8 @@ export const LEVELS = [
     hint: '咖啡杯裡的果凍融化掉',
   },
   {
-    id: 95, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
-    goal: { type: 'jelly' }, stars: [10000, 20000, 30000],   // 果凍 19 層
+    id: 95, rows: 9, cols: 7, moves: 41, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'jelly' }, stars: [28000, 56000, 84000],   // 果凍 14 層
     mask: TOWER,
     jelly: [
       '.......',
@@ -2298,7 +2298,7 @@ export const LEVELS = [
       '.......',
       '.......',
       '.......',
-      '.11111.',
+      '.......',
       '.......',
       '1111111',
       '1111111',
@@ -2357,10 +2357,10 @@ export const LEVELS = [
     hint: '金牌上的果凍有好多',
   },
   {
-    id: 100, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
-    goal: { type: 'collect', items: { dog: 16, sloth: 16, egg: 16 } }, stars: [10000, 20000, 30000],
+    id: 100, rows: 9, cols: 7, moves: 39, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'nyanko', 'dino'], antiCascade: 0.8,
+    goal: { type: 'collect', items: { dog: 16, sloth: 16, egg: 16 } }, stars: [11000, 22000, 33000],
     mask: FIREWORKS, jelly: null,
-    seed: 10007,
+    seed: 10010,
     hint: '第 100 關！放煙火慶祝吧～',
   },
 ];
