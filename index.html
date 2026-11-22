@@ -12,7 +12,7 @@
 <title>毛絨消消樂</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123c">
+<link rel="stylesheet" href="style.css?v=20261123d">
 </head>
 <body>
 
@@ -255,6 +255,8 @@
     <!-- main.js 設 src（隨機一張貼紙照片）；沒有 src 或載入失敗就不顯示（不能 remove，下一關還要用） -->
     <img id="mw-photo" class="modal-photo" alt="" decoding="async" onload="this.classList.remove('broken')" onerror="this.classList.add('broken')">
     <div class="ribbon"><span id="mw-title">過關！</span></div>
+    <!-- 改版 2026-11：緞帶和貼紙照片留在卡片外框，其他內容放進 .win-body；螢幕太矮時只有 .win-body 在卡片裡捲動，緞帶永遠看得到 -->
+    <div class="win-body" id="mw-body">
     <div class="big-stars" id="mw-stars" aria-label="得到星星">
       <svg class="bs" style="--k:0"><use href="#i-star"/></svg>
       <svg class="bs" style="--k:1"><use href="#i-star"/></svg>
@@ -266,12 +268,8 @@
       <em id="mw-best" hidden>新紀錄！</em>
       <span class="best-line" id="mw-best-line"></span>
     </div>
+    <!-- 獲得的道具和「三星造型幣 +1」排在同一排小膠囊（main.js showWin 填），放不下就換第二行 -->
     <div class="mw-reward" id="mw-reward" hidden></div>
-    <!-- 第一次拿到這關的三星：送 1 枚三星造型幣（華麗的金幣翻進來）；有寶箱可以開時多一行 -->
-    <div class="mw-coin" id="mw-coin" hidden>
-      <span class="mc-coin" aria-hidden="true"><i class="coin big"></i></span>
-      <span class="mc-text"><b>三星造型幣 +1</b><small id="mc-sub">去衣櫃幫玩偶換裝吧！</small></span>
-    </div>
     <div class="modal-toys" id="mw-toys"></div>
     <div class="btn-col">
       <button class="btn green xl" id="mw-next"><span class="bt" data-t="下一關">下一關</span></button>
@@ -279,7 +277,8 @@
         <button class="btn blue" id="mw-retry">再玩一次</button>
         <button class="btn pink" id="mw-map">地圖</button>
       </div>
-      <button class="link-btn" id="mw-closet" type="button"><svg><use href="#i-hanger"/></svg>玩偶衣櫃<span class="lb-dot" id="mw-closet-dot" hidden></span></button>
+      <button class="link-btn" id="mw-closet" type="button"><svg><use href="#i-hanger"/></svg>玩偶衣櫃<small class="lb-tag" id="mw-closet-tag" hidden>開寶箱</small><span class="lb-dot" id="mw-closet-dot" hidden></span></button>
+    </div>
     </div>
   </div>
 </div>
@@ -407,6 +406,6 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/main.js?v=20261123c"></script>
+<script type="module" src="js/main.js?v=20261123d"></script>
 </body>
 </html>

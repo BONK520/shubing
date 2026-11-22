@@ -1,10 +1,10 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123c';
-import { SLOGANS } from './slogans.js?v=20261123c';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123c';
-import { blockerCanvas } from './blockers.js?v=20261123c';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123d';
+import { SLOGANS } from './slogans.js?v=20261123d';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123d';
+import { blockerCanvas } from './blockers.js?v=20261123d';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123c';
+const MOD_V = '?v=20261123d';
 
 window.__plushBooted = true;
 
@@ -1900,25 +1900,41 @@ function setPhoto(id, src) {
 function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   winTimers.forEach(clearTimeout);
   winTimers = [];
-  // 三星：第一次拿到這關的三星 → 送 1 枚三星造型幣（金幣翻進來 + 金光），卡片整張閃金光
-  const card = $('#m-win .win-card'), mc = $('#mw-coin'), ready = closet.readyChests(save.stars).length;
+  // 三星：卡片整張閃金光；第一次拿到這關的三星 → 送 1 枚三星造型幣
+  const card = $('#m-win .win-card'), ready = closet.readyChests(save.stars).length;
   card.classList.toggle('three', stars === 3);
-  mc.hidden = true; mc.classList.remove('show');
-  $('#mc-sub').textContent = ready ? '有三星豪華寶箱可以開了！快去衣櫃～' : '去衣櫃幫玩偶換裝吧！';
+  // 改版 2026-11：原本造型幣是一張獨立的大卡片，一出現整張過關卡太高、頂端的緞帶被切掉。
+  // 改成跟獲得的道具排在同一排小膠囊；造型幣先佔好位置（看不見），星星亮完才翻進來，卡片高度不會突然變。
+  const rw = $('#mw-reward');
+  rw.innerHTML = '';
+  const chip = (cls, txt) => { const c = el('span', cls); c.append(txt); return c; };
+  let coinChip = null;
+  if (lastRewards.length || newThree) {
+    rw.appendChild(chip('rw-lbl', '獲得'));
+    lastRewards.forEach(k => rw.appendChild(chip('rw-chip', BOOSTER_NAME[k] + ' ×1')));
+    if (newThree) { coinChip = chip('rw-chip rw-coin wait', '三星造型幣 +1'); coinChip.prepend(coinEl()); rw.appendChild(coinChip); }
+  }
+  rw.hidden = !rw.childElementCount;
+  // 原本卡片上「去衣櫃幫玩偶換裝吧！」「有三星豪華寶箱可以開了！」那行，改成「玩偶衣櫃」按鈕上的提示：
+  // 有寶箱可以開 → 紅點＋「開寶箱」小標籤＋按鈕輕輕發光；剛拿到造型幣 → 金幣翻進來後按鈕跳一下
+  const cbtn = $('#mw-closet');
   $('#mw-closet-dot').hidden = !ready;
+  $('#mw-closet-tag').hidden = !ready;
+  cbtn.classList.toggle('ready', !!ready);
+  cbtn.classList.remove('nudge');
+  cbtn.setAttribute('aria-label', ready ? '玩偶衣櫃，有三星豪華寶箱可以開' : '玩偶衣櫃');
   renderClosetBtn();
-  if (newThree) {
+  if (coinChip) {
     winTimers.push(setTimeout(() => {
       if (!isOpen('m-win')) return;
-      mc.hidden = false; restartAnim(mc, 'show');
+      coinChip.classList.remove('wait'); restartAnim(coinChip, 'show');
+      restartAnim(cbtn, 'nudge');
       audio.play('special'); audio.play('collect', { step: 4, delay: 120 });
       confetti(true);
     }, 500 + 3 * 420 + 300));
   }
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
-  const rw = $('#mw-reward');
-  if (rw) { rw.hidden = !lastRewards.length; rw.textContent = '獲得道具：' + lastRewards.map(k => BOOSTER_NAME[k] + ' ×1').join('、'); }
   if (stars === 3 && SLOGANS.win3.voice) audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 });
   setPhoto('mw-photo', WIN_PHOTOS[Math.floor(Math.random() * WIN_PHOTOS.length)]);
   const bs = $$('#mw-stars .bs');
@@ -1933,6 +1949,11 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   const toys = $('#mw-toys');
   toys.innerHTML = '';
   TITLE_TOYS.forEach((p, k) => { const d = el('span', 'mt'); d.style.setProperty('--k', k); d.appendChild(toyEl(p, 26)); toys.appendChild(d); });
+  // 讓出高度：有獲得道具時三隻玩偶縮小；連造型幣都有（最擠的時候）就整排拿掉
+  toys.classList.toggle('small', !rw.hidden);
+  toys.hidden = !!coinChip;
+  $('#mw-body').classList.toggle('no-toys', !!coinChip);
+  $('#mw-body').scrollTop = 0;
   if (last) $('#mw-title').textContent = '全部過關！';
   openModal('m-win');
   confetti();
