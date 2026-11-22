@@ -1,4 +1,4 @@
-// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、龍龍出口箭頭、傳送門顏色）
+// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、龍龍出口箭頭、傳送門顏色）
 // 全部用 canvas 畫（不用額外的圖檔）。每個 paint 函式畫在 S×S 的畫布上（S = 一格的裝置像素），
 // renderer.js 畫一次就快取起來；main.js 也拿它們畫目標圖示 / 新機關教學小卡。
 
@@ -243,6 +243,60 @@ export function paintAlarm(g, S, hp = 9) {
   g.beginPath(); g.arc(cx, cy, R * 0.9, Math.PI * 1.08, Math.PI * 1.38); g.stroke();
 }
 
+// ---------------- 硬殼：一顆灰紫色的大石頭，2 層比較深、左下兩個圓點；剩 1 層有裂縫，裂縫裡透出粉紅寶石 ----------------
+export function paintShell(g, S, hp) {
+  hp = Math.max(1, Math.min(2, hp | 0));
+  const m = S * 0.06;
+  // 不規則的多邊形石頭（固定的點，看起來像切面）
+  const pts = [[0.2, 0.1], [0.62, 0.06], [0.88, 0.22], [0.95, 0.58], [0.82, 0.9], [0.4, 0.95], [0.1, 0.8], [0.05, 0.38]]
+    .map(([x, y]) => [m + x * (S - 2 * m), m + y * (S - 2 * m)]);
+  const path = (dx = 0, dy = 0) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x + dx, y + dy) : g.moveTo(x + dx, y + dy))); g.closePath(); };
+  // 投影
+  g.fillStyle = 'rgba(10,8,30,0.35)'; path(S * 0.015, S * 0.045); g.fill();
+  const top = hp === 2 ? ['#b3abc9', '#7d7499', '#4f4768'] : ['#d6d0e4', '#a69dc0', '#776d93'];
+  const gr = g.createLinearGradient(m, m, S - m, S - m);
+  gr.addColorStop(0, top[0]); gr.addColorStop(0.55, top[1]); gr.addColorStop(1, top[2]);
+  path(); g.fillStyle = gr; g.fill();
+  // 切面：從中間一點連到幾個角，左上亮、右下暗
+  const c = [S * 0.46, S * 0.44];
+  g.save(); path(); g.clip();
+  const faces = [[7, 0, 'rgba(255,255,255,0.28)'], [0, 1, 'rgba(255,255,255,0.18)'], [3, 4, 'rgba(20,10,40,0.18)'], [4, 5, 'rgba(20,10,40,0.24)'], [5, 6, 'rgba(20,10,40,0.12)']];
+  for (const [a, b, col] of faces) {
+    g.beginPath(); g.moveTo(c[0], c[1]); g.lineTo(...pts[a]); g.lineTo(...pts[b]); g.closePath();
+    g.fillStyle = col; g.fill();
+  }
+  g.lineWidth = S * 0.014; g.strokeStyle = 'rgba(40,30,70,0.28)';
+  for (const i of [0, 2, 4, 6]) { g.beginPath(); g.moveTo(c[0], c[1]); g.lineTo(...pts[i]); g.stroke(); }
+  // 剩 1 層：裂開，裡面的粉紅寶石露出來
+  if (hp === 1) {
+    const gx = S * 0.52, gy = S * 0.5, gs = S * 0.11;
+    g.beginPath(); g.moveTo(gx, gy - gs); g.lineTo(gx + gs * 0.9, gy); g.lineTo(gx, gy + gs); g.lineTo(gx - gs * 0.9, gy); g.closePath();
+    const gg = g.createLinearGradient(gx - gs, gy - gs, gx + gs, gy + gs);
+    gg.addColorStop(0, '#ffe0ef'); gg.addColorStop(0.5, '#ff7fb6'); gg.addColorStop(1, '#d94a8c');
+    g.fillStyle = gg; g.fill();
+    g.lineWidth = S * 0.016; g.strokeStyle = '#7a2a55'; g.stroke();
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    g.lineWidth = S * 0.028; g.strokeStyle = '#3e3558';
+    const cracks = [[[gx - gs * 0.9, gy], [S * 0.3, S * 0.4], [S * 0.22, S * 0.24]], [[gx + gs * 0.9, gy], [S * 0.72, S * 0.62], [S * 0.86, S * 0.7]], [[gx, gy + gs], [S * 0.46, S * 0.74], [S * 0.5, S * 0.88]]];
+    for (const line of cracks) { g.beginPath(); line.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); }
+  }
+  g.restore();
+  // 外框 + 左上的亮光
+  path(); g.lineJoin = 'round';
+  g.lineWidth = S * 0.035; g.strokeStyle = '#332a4d'; g.stroke();
+  g.lineWidth = S * 0.022; g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(pts[7][0] + S * 0.06, pts[7][1] + S * 0.02); g.lineTo(pts[0][0] + S * 0.04, pts[0][1] + S * 0.07); g.lineTo(S * 0.42, pts[0][1] + S * 0.04); g.stroke();
+  // 2 層：左下兩個圓點（和糖霜一樣）
+  if (hp >= 2) {
+    for (let i = 0; i < hp; i++) {
+      const x = m + S * 0.17 + i * S * 0.1, y = S - m - S * 0.14;
+      g.beginPath(); g.arc(x, y, S * 0.04, 0, Math.PI * 2);
+      g.fillStyle = '#ffffff'; g.fill();
+      g.lineWidth = S * 0.014; g.strokeStyle = 'rgba(40,30,70,0.7)'; g.stroke();
+    }
+  }
+}
+
 // ---------------- 龍龍出口：綠色往下的箭頭（S = 箭頭大小）----------------
 export function paintExitArrow(g, S) {
   const pts = [[0.5, 0.92], [0.94, 0.42], [0.68, 0.42], [0.68, 0.08], [0.32, 0.08], [0.32, 0.42], [0.06, 0.42]].map(([x, y]) => [x * S, y * S]);
@@ -264,6 +318,7 @@ export const CRUMBS = {
   choco: () => ['#8a4f2b', '#5a2c12', '#c48a5c'],
   licorice: () => ['#2a1f33', '#c0479a', '#5a4566'],
   alarm: () => ['#ff4f78', '#ffc93a', '#ffffff'],
+  shell: () => ['#a69dc0', '#d6d0e4', '#ff9ec6'],
   cage: () => ['#ffffff', '#c6cfdb', '#ffd24a'],
 };
 
@@ -352,7 +407,7 @@ export function paintOrder(g, S, what) {
   paintOrderOne(g, S, what);
 }
 
-// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'exit' | 'portal' | 'o-<訂單>'
+// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'alarm' | 'shell' | 'shell2' | 'exit' | 'portal' | 'o-<訂單>'
 export function blockerCanvas(type, px) {
   const c = document.createElement('canvas');
   c.width = c.height = Math.max(8, Math.round(px));
@@ -367,6 +422,7 @@ export function blockerCanvas(type, px) {
   else if (type === 'choco') paintChoco(g, S);
   else if (type === 'swirl') paintSwirl(g, S);
   else if (type === 'alarm') paintAlarm(g, S, 9);
+  else if (type.startsWith('shell')) paintShell(g, S, +(type.slice(5) || 1));
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
   else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));

@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123j';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123j';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123j';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123k';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123k';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123k';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -2244,7 +2244,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const ch = charge && it.piece && charge.ids.has(it.piece.id) ? { t: charge.t, dur: charge.dur, S: charge.S, x: charge.at.c, y: charge.at.r } : null;
       ghosts.push({ kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, x: gx, y: gy, t0: t0 + tm,
         dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase, charge: ch });
-      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : p.block === 'alarm' ? 'alarmoff' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
+      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : p.block === 'alarm' ? 'alarmoff' : p.block === 'shell' ? 'shell' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
       lastPop = Math.max(lastPop, tm);
     }
 
@@ -2268,15 +2268,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       });
       cue('cage', tm, { r: q.r, c: q.c });
     }
-    // --- 多層糖霜掉一層：碎屑 + 壓扁回彈，換成少一層的樣子 ---
+    // --- 多層糖霜 / 硬殼掉一層：碎屑 + 壓扁回彈，換成少一層的樣子 ---
     for (const q of bhits) {
       const tm = tOf(q.r, q.c);
       at(t0 + tm, tt => {
         const v = cellV(q);
-        crumbs(q.c + 0.5, q.r + 0.5, 'frost', (q.left | 0) + 1, tt, 10);
+        crumbs(q.c + 0.5, q.r + 0.5, q.block === 'shell' ? 'shell' : 'frost', (q.left | 0) + 1, tt, 10);
         if (v) { v.hp = q.left | 0; v.landT = tt; v.landAmp = 0.16; }
       });
-      cue('frost', tm, { r: q.r, c: q.c });
+      cue(q.block === 'shell' ? 'shell' : 'frost', tm, { r: q.r, c: q.c });
     }
 
     // --- 特效 ---
@@ -3084,6 +3084,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       else if (type === 'licorice') paintSwirl(g, S);
       else if (type === 'cage') paintCage(g, S);
       else if (type === 'alarm') paintAlarm(g, S, hp);
+      else if (type === 'shell') paintShell(g, S, hp);
       else if (type === 'exit') paintExitArrow(g, S);
       blockCache.set(key, c);
     }

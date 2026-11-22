@@ -1243,6 +1243,61 @@ const TIMEMACHINE = [   // 時光機（第 110 關）
   '#######',
   '.#####.',
 ];
+const MINECART = [   // 礦車（第 111 關）
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '.#####.',
+  '.##.##.',
+  '.##.##.',
+];
+const GEMSTONE = [   // 寶石（第 112 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '.#####.',
+  '.#####.',
+  '..###..',
+  '..###..',
+  '...#...',
+];
+const MINETUNNEL = [   // 礦坑隧道（第 113 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const PICKAXE = [   // 十字鎬（第 114 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '.......',
+  '..###..',
+  '..###..',
+  '..###..',
+  '..###..',
+  '..###..',
+];
+const GEMCAVE = [   // 寶石洞（第 115 關）
+  '###.###',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -3555,6 +3610,110 @@ export const LEVELS = [
     dinos: { onBoard: 1, rate: 0.4 },
     hint: '王關！龍龍和鬧鐘一起來',
   },
+  // ---- 第 23 章 糖果礦坑（111–115）：只怕特殊方塊的硬殼 ----
+  {
+    id: 111, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'clear', what: ['shell'] }, stars: [14000, 28000, 42000],
+    mask: MINECART, jelly: null,
+    seed: 11115,
+    obstacles: [
+      '.......',
+      '.......',
+      'X.....X',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.XX.XX.',
+    ],
+    hint: '硬殼只怕特殊方塊！',
+  },
+  {
+    id: 112, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'mix', items: { moodeng: 20 }, clear: ['shell'] }, stars: [13000, 26000, 39000],
+    mask: GEMSTONE, jelly: null,
+    seed: 11215,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.Y...Y.',
+      '.......',
+      '..X.X..',
+      '...Y...',
+    ],
+    hint: '兩層的要打兩下',
+  },
+  {
+    id: 113, rows: 9, cols: 7, moves: 14, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'dino', count: 2 }, stars: [22000, 44000, 66000],
+    mask: MINETUNNEL, jelly: null,
+    seed: 11315,
+    obstacles: [
+      '.......',
+      '...D...',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.XXXXX.',
+    ],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '用條紋打穿硬殼，幫龍龍開路',
+  },
+  {
+    id: 114, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'jelly' }, stars: [18000, 36000, 54000],
+    mask: PICKAXE,
+    jelly: [
+      '.11111.',
+      '1111111',
+      '.1.1.1.',
+      '.......',
+      '..111..',
+      '..111..',
+      '..111..',
+      '..111..',
+      '..111..',
+    ],
+    seed: 11415,
+    obstacles: [
+      '.......',
+      '.......',
+      'X.X.X.X',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    portals: [[2, 1, 4, 2], [2, 3, 4, 3], [2, 5, 4, 4]],
+    hint: '硬殼底下沒有果凍，旁邊才有',
+  },
+  {
+    id: 115, rows: 9, cols: 7, moves: 12, kinds: ['sloth', 'dog', 'egg', 'snoopy'],
+    goal: { type: 'mix', items: { sloth: 15 }, clear: ['shell'] }, stars: [18000, 36000, 54000],
+    mask: GEMCAVE, jelly: null,
+    seed: 11515,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '...X...',
+      'YX.Y.XY',
+    ],
+    hint: '王關！多做幾個條紋就打得開',
+  },
 ];
 
 // ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
@@ -3571,7 +3730,7 @@ export function isScoreLevel(L) {
 // ---------- 盤面機關和目標（2026-11）----------
 // 關卡可以再加（js/engine.js 的 createEngine 選項，見那邊的說明）：
 //   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 龍龍、E 龍龍出口、
-//                                  A 鬧鐘、. 沒有
+//                                  A 鬧鐘、X / Y 硬殼（1 / 2 層，只有特效打得掉）、. 沒有
 //   portals: [[r1, c1, r2, c2], …] 傳送門：(r1, c1) 下面掉出去的，從 (r2, c2) 上面進來
 //   licorice: { rate, max }        補位時偶爾掉下甘草漩渦糖
 //   alarm: { timer, rate, max }    鬧鐘：timer = 起始數字（每走一步少 1，數到 0 爆開扣 3 步）；rate / max = 補位時掉下鬧鐘
@@ -3579,7 +3738,7 @@ export function isScoreLevel(L) {
 // 目標 goal.type：
 //   'collect' { items }、'jelly'、'score'（原本的三種）
 //   'dino' { count }                       救出 count 隻龍龍
-//   'clear' { what: ['frost', 'choco', 'cage'] }   把這幾種機關全部清掉（糖霜算層數）
+//   'clear' { what: ['frost', 'choco', 'cage', 'shell'] }   把這幾種機關全部清掉（糖霜、硬殼算層數）
 //   'order' { orders: { stripe: 5 } }      訂單：做出幾個特殊方塊（stripe / wrap / bomb / fish）
 //                                          或打出幾次組合（'combo' = 任何兩個特殊方塊互換；'stripe+wrap' 這種 = 指定組合）
 //   'chocoGot' { count }                   收集巧克力：一共打掉 count 塊巧克力
@@ -3625,6 +3784,7 @@ export function partLeft(part, stats, kindOf) {
     case 'frost': return Math.max(0, st.frostLeft | 0);
     case 'choco': return Math.max(0, st.chocoLeft | 0);
     case 'cage': return Math.max(0, st.locksLeft | 0);
+    case 'shell': return Math.max(0, st.shellLeft | 0);
     case 'order': {
       const done = ORDER_SPECIALS.includes(part.what) ? (st.made || {})[part.what]
         : part.what === 'combo' ? st.comboCount : (st.combos || {})[part.what];
@@ -3749,19 +3909,20 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
 
     // 盤面機關
     const obs = L.obstacles;
-    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, frost: 0 };
+    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, frost: 0, shell: 0 };
     if (obs != null) {
       if (!Array.isArray(obs) || obs.length !== ROWS || !obs.every(r => typeof r === 'string' && r.length === COLS)) bad(`obstacles 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       else for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const ch = obs[r][c];
         if (ch === '.') continue;
-        if (!'LCSDEA123'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
+        if (!'LCSDEA123XY'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
         if (!isCell(r, c)) { bad(`obstacles (${r},${c}) 放在洞上`); continue; }
-        if ('123'.includes(ch)) has.frost += +ch; else has[ch]++;
+        if ('123'.includes(ch)) has.frost += +ch; else if ('XY'.includes(ch)) has.shell += ch === 'Y' ? 2 : 1; else has[ch]++;
         const jl = L.jelly && L.jelly[r] && L.jelly[r][c] && L.jelly[r][c] !== '.';
-        if (jl && '123C'.includes(ch)) bad(`obstacles (${r},${c}) 糖霜 / 巧克力不要蓋在果凍上`);
+        if (jl && '123CXY'.includes(ch)) bad(`obstacles (${r},${c}) 糖霜 / 巧克力 / 硬殼不要蓋在果凍上`);
         // 糖霜、巧克力底下要是盤面外或同樣不會動的東西（不然底下那格什麼都掉不進去）
         if ('123'.includes(ch) && isCell(r + 1, c) && !'123C'.includes(obs[r + 1][c])) bad(`obstacles (${r},${c}) 糖霜底下還有空格子`);
+        if ('XY'.includes(ch) && isCell(r + 1, c) && !'123CXY'.includes(obs[r + 1][c])) bad(`obstacles (${r},${c}) 硬殼底下還有空格子`);
       }
     }
     for (const q of L.portals || []) {
@@ -3783,6 +3944,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (part.kind === 'frost' && !has.frost) bad('要清糖霜，盤面上卻沒有糖霜');
       if (part.kind === 'choco' && !has.C) bad('要清巧克力，盤面上卻沒有巧克力');
       if (part.kind === 'cage' && !has.L) bad('要開籠子，盤面上卻沒有鐵籠子');
+      if (part.kind === 'shell' && !has.shell) bad('要打破硬殼，盤面上卻沒有硬殼');
       if (part.kind === 'jelly' && !layers) bad('目標有果凍，盤面上卻沒有果凍');
       if (part.kind === 'collect' && !kinds.includes(part.id)) bad(`collect 的 ${part.id} 不在 kinds 裡`);
       if (part.kind === 'order') {

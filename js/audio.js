@@ -582,6 +582,13 @@ const SFX = {
     crunch(t, 0.75, 0.18);
     pop(t, 520, 300, 0.05, 0.07);
   },
+  // 硬殼裂開：石頭的「喀啦」+ 一點寶石的亮聲
+  shell(t) {
+    crunch(t, 0.5, 0.26);
+    noise(t, { dur: 0.07, attack: 0.001, gain: 0.08, type: 'bandpass', f0: 1800, f1: 700, q: 1.4 });
+    tone(240, t, { dur: 0.09, attack: 0.002, gain: 0.07, to: 140, glide: 0.07 });
+    bell(96, t + 0.04, 0.035, 0.22);
+  },
   // 巧克力碎掉：低一點的「咔」
   choco(t) {
     crunch(t, 0.6, 0.24);

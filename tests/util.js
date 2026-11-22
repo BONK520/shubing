@@ -64,10 +64,10 @@ export const matchesIn = board => [...runsIn(board), ...squaresIn(board)];
 export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}${p.block ? ':' + p.block + p.hp : ''}` : '-');
 export const boardStr = b => b.map(row => row.map(pieceStr).join(' ')).join('\n');
 export const sameBoard = (a, b) => boardStr(a) === boardStr(b);
-const BLOCK_CH = { dino: 'D', frost: 'F', choco: 'C', licorice: 'S' };
-export const kindStr = b => b.map(row => row.map(p => (!p ? '.' : p.block ? BLOCK_CH[p.block] + (p.block === 'frost' ? p.hp : ' ') : p.special === 'bomb' ? 'B' : p.kind + (p.special === 'none' ? ' ' : p.special[0]))).join('')).join('\n');
-// pieces that never move: frosting, chocolate, anything in a cage
-export const isFixed = (p, locked) => !!locked || (!!p && (p.block === 'frost' || p.block === 'choco'));
+const BLOCK_CH = { dino: 'D', frost: 'F', choco: 'C', licorice: 'S', alarm: 'A', shell: 'X' };
+export const kindStr = b => b.map(row => row.map(p => (!p ? '.' : p.block ? BLOCK_CH[p.block] + (p.block === 'frost' || p.block === 'shell' ? p.hp : ' ') : p.special === 'bomb' ? 'B' : p.kind + (p.special === 'none' ? ' ' : p.special[0]))).join('')).join('\n');
+// pieces that never move: frosting, chocolate, shells, anything in a cage
+export const isFixed = (p, locked) => !!locked || (!!p && (p.block === 'frost' || p.block === 'choco' || p.block === 'shell'));
 
 const fail = msg => { throw new Error(msg); };
 const copyBoard = b => b.map(row => row.map(p => (p ? { ...p } : null)));
@@ -371,10 +371,11 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
   const jl = after.jelly.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0);
   if (st.jellyLeft !== jl) fail(`jellyLeft ${st.jellyLeft} != ${jl}`);
   if (st.frostLeft !== undefined) {
-    const cnt = { frost: 0, choco: 0, licorice: 0, dino: 0 };
-    for (const row of after.grid) for (const p of row) if (p && p.block) cnt[p.block] += p.block === 'frost' ? p.hp : 1;
+    const cnt = { frost: 0, choco: 0, licorice: 0, dino: 0, alarm: 0, shell: 0 };
+    for (const row of after.grid) for (const p of row) if (p && p.block) cnt[p.block] += p.block === 'frost' || p.block === 'shell' ? p.hp : 1;
     const locks = after.lock ? after.lock.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0) : 0;
-    if (st.frostLeft !== cnt.frost || st.chocoLeft !== cnt.choco || st.licoriceLeft !== cnt.licorice || st.locksLeft !== locks)
+    if (st.frostLeft !== cnt.frost || st.chocoLeft !== cnt.choco || st.licoriceLeft !== cnt.licorice || st.locksLeft !== locks
+      || (st.shellLeft !== undefined && st.shellLeft !== cnt.shell))
       fail(`blocker stats ${JSON.stringify(st)} vs board ${JSON.stringify(cnt)} locks ${locks}`);
   }
   ctx.moves++;

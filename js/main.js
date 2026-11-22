@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123j';
-import { SLOGANS } from './slogans.js?v=20261123j';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123j';
-import { blockerCanvas } from './blockers.js?v=20261123j';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123j';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123k';
+import { SLOGANS } from './slogans.js?v=20261123k';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123k';
+import { blockerCanvas } from './blockers.js?v=20261123k';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123k';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123j';
+const MOD_V = '?v=20261123k';
 
 window.__plushBooted = true;
 
@@ -325,8 +325,8 @@ function dinoImg() {
   return img;
 }
 // 目標的一個部分（levels.js goalParts）→ 圖示
-const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage') };
-const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
+const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage'), shell: () => blockerImg('shell2') };
+const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子', shell: '硬殼' };
 // 用好幾個「部分」來顯示的目標類型（goalParts）
 const PART_GOALS = ['dino', 'clear', 'order', 'chocoGot', 'mix'];
 // 訂單：做出哪一種特殊方塊 / 打出哪一種組合
@@ -353,6 +353,7 @@ const INTRO = {
   lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl') },
   portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
   alarm: { name: '鬧鐘', text: '每走一步，鬧鐘就少一格；數到0會爆開，扣掉3步！在旁邊配對或用特效就能拆掉。', icon: () => blockerImg('alarm') },
+  shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
 };
 function levelMechs(lvl) {
@@ -365,6 +366,7 @@ function levelMechs(lvl) {
   if (obs.includes('S') || lvl.licorice) out.add('lic');
   if (obs.includes('D') || goalPartsOf(lvl).some(p => p.kind === 'dino')) out.add('dino');
   if (obs.includes('A') || lvl.alarm) out.add('alarm');
+  if (/[XY]/.test(obs)) out.add('shell');
   if (lvl.portals && lvl.portals.length) out.add('portal');
   if (goalPartsOf(lvl).some(p => p.kind === 'order')) out.add('order');
   return Object.keys(INTRO).filter(k => out.has(k));
@@ -942,6 +944,7 @@ function goalText(lvl) {
       else if (part.kind === 'frost') out.push('敲掉全部糖霜');
       else if (part.kind === 'choco') out.push('清光巧克力');
       else if (part.kind === 'cage') out.push('打開全部鐵籠子');
+      else if (part.kind === 'shell') out.push('打破全部硬殼');
       else if (part.kind === 'order') {
         const sp = ['stripe', 'wrap', 'bomb', 'fish'].includes(part.what);
         out.push(sp ? `做出 ${part.need} 個${orderName(part.what)}` : `打出 ${part.need} 次${orderName(part.what)}`);
@@ -1055,14 +1058,14 @@ let dispScore = 0, shownScore = 0;
 let liveCleared = {};
 let jellyLive = 0, jellyCountsLayers = true;
 // 機關目標的即時數字：救出的龍龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
-let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0 };
+let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0, shell: 0 };
 // 訂單 / 收集巧克力的即時數字（engine 每個事件帶的 ev.cnt）
 let liveCnt = { made: {}, combos: {}, comboCount: 0, chocoGot: 0 };
 const cntOf = st => ({ made: { ...(st.made || {}) }, combos: { ...(st.combos || {}) }, comboCount: st.comboCount | 0, chocoGot: st.chocoGot | 0 });
 function countBlocks(board, lock) {
-  const o = { frost: 0, choco: 0 };
+  const o = { frost: 0, choco: 0, shell: 0 };
   let cage = 0;
-  for (const row of board || []) for (const p of row || []) if (p && p.block) { if (p.block === 'frost') o.frost += p.hp | 0; else if (p.block === 'choco') o.choco++; }
+  for (const row of board || []) for (const p of row || []) if (p && p.block) { if (p.block === 'frost') o.frost += p.hp | 0; else if (p.block === 'shell') o.shell += p.hp | 0; else if (p.block === 'choco') o.choco++; }
   for (const row of lock || []) for (const v of row || []) if (v) cage++;
   return { ...o, cage };
 }
@@ -1142,7 +1145,7 @@ async function startLevel(idx) {
   jellyCountsLayers = statJ === layers || layers === cells;
   jellyLive = statJ;
   const st0 = engine.stats || {};
-  mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0 };
+  mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0, shell: st0.shellLeft | 0 };
   liveCnt = cntOf(st0);
 
   setNum($('#hud-level'), idx + 1);
@@ -1317,7 +1320,7 @@ function renderGoal(init = false) {
     } else if (r.kind === 'dino') {
       const left = Math.max(0, r.need - mechLive.dino + flyDino);      // 飛到圖示了才扣
       txt = String(left); done = left <= 0;
-    } else if (r.kind === 'frost' || r.kind === 'choco' || r.kind === 'cage') {
+    } else if (r.kind === 'frost' || r.kind === 'choco' || r.kind === 'cage' || r.kind === 'shell') {
       const left = Math.max(0, mechLive[r.kind]);
       txt = String(left); done = left <= 0;
     } else if ((r.kind === 'order' || r.kind === 'chocoGot') && levMod.partLeft) {
@@ -1445,7 +1448,7 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
   cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino',
-  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff' };
+  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];
@@ -1458,6 +1461,7 @@ function onCue(name, data, token) {
     case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
     case 'cage': case 'frost': case 'choco': buzzLater(d, 12, 60); break;
+    case 'shell': buzzLater(d, 16, 60); break;
     case 'dino': buzzLater(d, [12, 30, 12], 80); break;
     case 'alarm': buzzLater(d, [30, 40, 30, 40, 30], 80); break;
     case 'alarmoff': buzzLater(d, 12, 60); break;
@@ -1622,7 +1626,7 @@ function syncFromEngine() {
     for (const k in st.cleared) liveCleared[k] = st.cleared[k];
   }
   if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
-  mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0 };
+  mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0, shell: st.shellLeft | 0 };
   liveCnt = cntOf(st);
   dispScore = engine.score;
   renderScore();

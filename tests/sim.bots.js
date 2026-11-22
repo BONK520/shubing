@@ -61,7 +61,7 @@ export function goalMet(level, e) {
 // ---------- players ----------
 export const PROFILES = {
   // weights are in "cells" (1 = one plain piece cleared); urgency: jelly weight × (1 + urgency / jelly left)
-  // board mechanics: block = one layer of a goal blocker (frosting / chocolate / cage), chocoAny = clearing chocolate
+  // board mechanics: block = one layer of a goal blocker (frosting / chocolate / cage / shell), chocoAny = clearing chocolate
   // that is not a goal (it would spread), dino = one row a dino moves down, alarm = taking out an alarm clock
   // (worth more the closer it is to bursting)
   casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3,
@@ -136,6 +136,7 @@ function bestMove(s, moves, level, e, W, rnd) {
     frost: leftOf('frost') > 0 ? W.block * urg('frost') : 0.3,
     choco: leftOf('choco') > 0 ? W.block * urg('choco') : leftOf('chocoGot') > 0 ? W.block * urg('chocoGot') : W.chocoAny,
     cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
+    shell: leftOf('shell') > 0 ? W.block * urg('shell') : 0.3,
     licorice: 0.4,
   };
   const blkV = q => (q.block === 'alarm' ? W.alarm * (q.hp <= 2 ? 3 : q.hp <= 4 ? 1.5 : 0.6) : BLK[q.block]);
@@ -170,7 +171,7 @@ function bestMove(s, moves, level, e, W, rnd) {
         const yy = y + dy, xx = x + dx, kk = yy * C + xx;
         if (!isCell(yy, xx) || seen.has(kk) || hitCells.has(kk)) continue;
         const q = g[yy][xx];
-        if (q && q.block && blkV(q)) { v += blkV(q); seen.add(kk); }
+        if (q && q.block && q.block !== 'shell' && blkV(q)) { v += blkV(q); seen.add(kk); }   // a plain match never cracks a shell
       }
     }
     // dinos drop by the number of cleared cells below them in their column

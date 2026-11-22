@@ -808,6 +808,41 @@ test('frosting: 3 layers, a striped beam takes one layer per hit', () => {
   eq(e.cell(2, 5).hp, 2); eq(e.stats.frostLeft, 2);
 });
 
+test('shell: a match next to it does nothing; it cannot be swapped and never moves', () => {
+  const e = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['......', '......', '..X...', '......', '......', '......']);
+  eq(e.cell(2, 2).block, 'shell'); eq(e.cell(2, 2).hp, 1); eq(e.stats.shellLeft, 1);
+  ok(e.cell(2, 2).kind < 0, 'shells have no colour');
+  const sid = e.cell(2, 2).id, above = e.cell(1, 2).id;
+  ok(!e.swap(P(2, 2), P(3, 2)).ok, 'a shell cannot be swapped');
+  const res = play(e, P(3, 3), P(3, 2));
+  const cl = firstClear(res);
+  ok(!(cl.blockerHits || []).some(b => b.block === 'shell'), 'no layer taken by the match next to it');
+  ok(!cl.removed.some(x => x.piece.id === sid), 'not removed by the match next to it');
+  eq(bb(res)[1][2].id, above, 'the piece above the shell does not fall');
+});
+
+test('shell: effects crack it, one layer per hit (Y = 2 layers), then it is gone and the cell refills', () => {
+  const e = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....Y', '......', '......', '......']);
+  eq(e.stats.shellLeft, 2);
+  const res = play(e, P(3, 3), P(2, 3));
+  ok(res.events.some(x => x.t === 'clear' && (x.blockerHits || []).some(b => b.r === 2 && b.c === 5 && b.block === 'shell' && b.left === 1)), 'the beam takes one layer');
+  eq(e.cell(2, 5).block, 'shell'); eq(e.cell(2, 5).hp, 1); eq(e.stats.shellLeft, 1);
+  const e2 = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....X', '......', '......', '......']);
+  const sid = e2.cell(2, 5).id;
+  const r2 = play(e2, P(3, 3), P(2, 3));
+  ok(r2.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.id === sid && y.piece.block === 'shell')), 'one beam breaks a 1-layer shell');
+  eq(e2.stats.shellLeft, 0);
+  ok(!(e2.cell(2, 5).block === 'shell'), 'the cell refills once the shell is gone');
+  // the hammer cracks it too
+  const e3 = mo(['______', '______', '______', '______', '______', '______'],
+    ['......', '......', '......', '......', '......', '....X.']);
+  ok(e3.smash(P(5, 4)).ok, 'smash works on a shell');
+  eq(e3.stats.shellLeft, 0);
+});
+
 test('chocolate: a match next to it removes it (no spread); a move that breaks none grows it into a neighbour', () => {
   const e = mo(['______', '______', '______', '00_0__', '______', '______'],
     ['......', '......', '..C...', '......', '......', '......']);
@@ -1021,9 +1056,9 @@ test('portal: what falls out of the bottom of one column comes in at the top of 
   eq(fall.spawns.filter(s => s.to.c === 1).length, 3, 'column 1 refills from its top');
 });
 
-test('shuffle leaves frosting, chocolate, swirls, dinos and caged pieces where they are', () => {
+test('shuffle leaves frosting, chocolate, swirls, dinos, shells and caged pieces where they are', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 9,
-    obstacles: ['L.......', '..2.....', '....C...', '......S.', '.D......', '...L....', '........', '........'] });
+    obstacles: ['L.......', '..2.....', '....C...', '......S.', '.D......', '...L....', '......Y.', '........'] });
   const before = e.snapshot();
   const ev = e.shuffle()[0];
   const fixedIds = new Set();
@@ -1031,13 +1066,13 @@ test('shuffle leaves frosting, chocolate, swirls, dinos and caged pieces where t
     const p = before.grid[r][c];
     if (p && (p.block || before.lock[r][c])) fixedIds.add(p.id);
   }
-  eq(fixedIds.size, 6);
+  eq(fixedIds.size, 7);
   ok(!(ev.moves || []).some(m => fixedIds.has(m.id) && (m.from.r !== m.to.r || m.from.c !== m.to.c)), 'fixed pieces do not move');
   const after = e.snapshot();
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (fixedIds.has(before.grid[r][c] && before.grid[r][c].id)) eq(after.grid[r][c].id, before.grid[r][c].id);
 });
 
-test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, dinos + exits, portals; every invariant', () => {
+test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, shells, dinos + exits, portals; every invariant', () => {
   let moves = 0, exits = 0, spreads = 0, unlocks = 0, hits = 0;
   const cfgs = [
     { name: 'mixed', rows: 8, cols: 8, portals: [] },
@@ -1053,7 +1088,7 @@ test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, dinos 
       let s = '';
       for (let c = 0; c < cfg.cols; c++) {
         const x = rnd();
-        s += r >= cfg.rows - 1 ? '.' : x < 0.07 ? 'L' : x < 0.10 ? '1' : x < 0.12 ? '2' : x < 0.13 ? '3' : x < 0.15 ? 'C' : x < 0.18 ? 'S' : x < 0.20 && r < 3 ? 'D' : '.';
+        s += r >= cfg.rows - 1 ? '.' : x < 0.07 ? 'L' : x < 0.10 ? '1' : x < 0.12 ? '2' : x < 0.13 ? '3' : x < 0.15 ? 'C' : x < 0.18 ? 'S' : x < 0.20 && r < 3 ? 'D' : x >= 0.20 && x < 0.215 ? 'X' : x >= 0.215 && x < 0.225 ? 'Y' : '.';
       }
       obstacles.push(s);
     }
