@@ -1,10 +1,10 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123b';
-import { SLOGANS } from './slogans.js?v=20261123b';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123b';
-import { blockerCanvas } from './blockers.js?v=20261123b';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123c';
+import { SLOGANS } from './slogans.js?v=20261123c';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123c';
+import { blockerCanvas } from './blockers.js?v=20261123c';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123b';
+const MOD_V = '?v=20261123c';
 
 window.__plushBooted = true;
 
@@ -396,8 +396,8 @@ function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
   document.documentElement.dataset.screen = name;   // CSS：遊戲畫面時背景的泡泡、雲停住（省電）
-  // 背景音樂：首頁、地圖播同一首；進關卡換關卡的兩首（audio.js 會淡入淡出）
-  try { if (audio && audio.setScene) audio.setScene(name === 'game' ? 'level' : 'home'); } catch (e) { /* ignore */ }
+  // 背景音樂：首頁、地圖播同一首；關卡一關一首（單數關、雙數關各一首），重新開始不換歌（audio.js 會淡入淡出）
+  try { if (audio && audio.setScene) audio.setScene(name === 'game' ? 'level' : 'home', levelIdx + 1); } catch (e) { /* ignore */ }
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
   // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
   clearTimeout(parkTimer);

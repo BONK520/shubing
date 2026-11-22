@@ -5,7 +5,7 @@
 //                             opts.delay（毫秒）：排在多久之後響（照 AudioContext 的時鐘，和畫面的動畫時間對齊）
 //   audio.setMuted(b) / audio.muted     只管音效（sfx）；音樂另外用 setMusic 控制
 //   audio.setMusic(b) / audio.music     背景音樂開關；分頁隱藏時自動暫停
-//   audio.setScene(s)         'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡：level-a、level-b 播完換下一首）
+//   audio.setScene(s, n)      'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡第 n 關：單數關 level-a、雙數關 level-b，整關循環同一首）
 // 音效名稱：tap select swap invalid match(opts.cascade 1..n) stripe wrap bomb special land shuffle
 //           win lose star(opts.n 1..3) sugar combo
 //           pop(opts.cascade, opts.group：連鎖越多、同一步的組數越多，音越高) board(炸彈+炸彈) chime(opts.level：長連鎖)
@@ -703,12 +703,14 @@ function stopSynth() {
 // （舊的合成音樂約 -40 dB；真的歌比較滿，壓到一樣小會聽不清楚）。整體開關和淡入淡出還是 musicBus 的 MUSIC_VOL
 const TRACKS = {
   home: { url: 'assets/music/home.mp3', gain: 0.86, loop: true },
-  'level-a': { url: 'assets/music/level-a.mp3', gain: 0.53, loop: false },
-  'level-b': { url: 'assets/music/level-b.mp3', gain: 0.28, loop: false },
+  'level-a': { url: 'assets/music/level-a.mp3', gain: 0.53, loop: true },
+  'level-b': { url: 'assets/music/level-b.mp3', gain: 0.28, loop: true },
 };
 const SCENES = { home: ['home'], level: ['level-a', 'level-b'] };
 const FADE_OUT = 0.6, FADE_IN = 0.9;      // 換曲：舊的先淡出，快淡完才淡入新的（兩首不會疊在一起）
-let scene = 'home', levelTurn = 0, levelVisits = 0;
+// 11/23 使用者指定：一關一首、一直循環（原本兩首輪流、播完換下一首，聽起來很怪）。單數關 level-a、雙數關 level-b，
+// 同一關每次玩都是同一首；重新開始、暫停後繼續都不換歌
+let scene = 'home', levelNo = 1;
 let musicLive = false;                    // musicBus 已經淡入（音樂「開著」）
 let song = null;                          // 正在播的 { name, src, g, t0, off, dur, loop, c, done }
 let songWant = '';                        // 正在載入或正在播的曲名
@@ -744,7 +746,9 @@ function getBuffer(name) {
 function wantedTrack() {
   const list = SCENES[scene].filter(n => !trackFail[n]);
   if (!list.length) return null;
-  return list[(scene === 'level' ? levelTurn : 0) % list.length];
+  if (scene !== 'level') return list[0];
+  const pref = levelNo % 2 === 1 ? 'level-a' : 'level-b';
+  return list.includes(pref) ? pref : list[0];     // 這關的歌抓不到：先用另一首
 }
 function songAt(s, now) {
   let p = s.off + Math.max(0, now - s.t0);
@@ -788,8 +792,7 @@ function startSong(name, buf, delay) {
     s.done = true;
     if (song === s) { song = null; songWant = ''; }
     try { src.disconnect(); g.disconnect(); } catch (e) { /* ignore */ }
-    if (scene === 'level') levelTurn++;  // 關卡：這首播完換下一首
-    if (musicLive) startMusic();
+    if (musicLive) startMusic();        // 每首都是循環播放，正常不會播完；意外停掉時再接上
   };
   song = s;
 }
@@ -808,7 +811,7 @@ function playScene(name) {
     if (my !== songSeq || !ctx || !musicLive) return;
     startSong(name, buf, had ? FADE_OUT - 0.1 : 0);
     setTimeout(dropUnused, (FADE_OUT + 0.5) * 1000);
-    // 關卡：先把下一首抓好、解好
+    // 關卡：先把另一首（下一關用的）抓好、解好
     if (scene === 'level') {
       const next = SCENES.level.find(n => n !== name && !trackFail[n]);
       if (next) setTimeout(() => { if (scene === 'level' && ctx) getBuffer(next).catch(() => {}); }, 4000);
@@ -854,9 +857,11 @@ function stopMusic(fast) {
   } catch (e) { song = null; }
 }
 
-function setScene(name) {
-  if (!SCENES[name] || name === scene) return;
-  if (name === 'level' && levelVisits++ > 0) levelTurn++;   // 每次進關卡換另一首開頭
+function setScene(name, n) {
+  if (!SCENES[name]) return;
+  const lv = name === 'level' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : levelNo;
+  if (name === scene && lv === levelNo) return;      // 同一關（重新開始）：歌不換、不重播
+  levelNo = lv;
   scene = name;
   if (musicOn && musicLive) startMusic();
   else SCENES[name].forEach(n => { if (musicOn) fetchRaw(n).catch(() => {}); });
@@ -956,7 +961,7 @@ export const audio = {
   },
   get music() { return musicOn; },
 
-  setScene(name) { try { setScene(name); } catch (e) { /* ignore */ } },
+  setScene(name, n) { try { setScene(name, n); } catch (e) { /* ignore */ } },
   get scene() { return scene; },
   // 除錯用：現在播哪一首（'synth' = 退回合成音樂）
   get track() { return musicTimer ? 'synth' : (song ? song.name : (songWant ? songWant + '（載入中）' : '')); },
