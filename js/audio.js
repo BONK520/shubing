@@ -447,11 +447,13 @@ const SFX = {
   match(t, o) { SFX.pop(t, o); },
   // 做出特殊方塊：亮晶晶往上爬
   special(t) {
-    bell(penta(84, 0), t, 0.07, 0.5);
-    bell(penta(84, 2), t + 0.055, 0.075, 0.6);
-    bell(penta(84, 4), t + 0.11, 0.08, 0.8);
-    noise(t, { dur: 0.35, attack: 0.03, gain: 0.025, type: 'highpass', f0: 6000, q: 0.5 });
-    sparkle(t + 0.14, 4, 0.032);
+    tone(900, t, { dur: 0.16, attack: 0.004, gain: 0.035, to: 2400, glide: 0.14, type: 'sine' });   // 改版 2026-11：往上滑的「嗶～」，比一般消除亮
+    bell(penta(84, 0), t, 0.08, 0.5);
+    bell(penta(84, 2), t + 0.055, 0.085, 0.6);
+    bell(penta(84, 4), t + 0.11, 0.09, 0.8);
+    bell(penta(84, 7), t + 0.165, 0.08, 0.9);
+    noise(t, { dur: 0.35, attack: 0.03, gain: 0.03, type: 'highpass', f0: 6000, q: 0.5 });
+    sparkle(t + 0.14, 5, 0.034);
   },
   // 條紋：「咻——滋」掃過去
   stripe(t) {

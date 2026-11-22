@@ -43,7 +43,7 @@ const POP_LEAD = 105;     // 最後一顆閃光之後 ~100ms 上面的方塊就�
 const GROUP_STAGGER = 24; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
 const POP_SEQ = 26;       // 同一組裡一顆接一顆爆（「啵、啵、啵」，很快）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
-const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
+const POPIN_MS = 420;     // 新特殊方塊 / 變身的彈出（放大到 1.3 倍再彈回；改版 2026-11 從 340 拉長，大的那一下看得清楚）
 const LAND_MS = 130;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復），約 120ms 內做完
 const LAND_HOLD = 80;     // 下一輪連鎖：會被消掉的方塊落地後 80ms 就爆（瀑布一樣接著連消）
 const G_FALL = 0.00009;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.1 秒、整欄約 0.35 秒
@@ -611,7 +611,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
   // 玩具在糖果裡的大小和位置（像素）
   function toyLayout(kind, special, S) {
-    const k = special === 'wrap' ? 0.86 : 1, im = toyImage(kind);
+    const k = special === 'wrap' ? 0.86 : special === 'h' || special === 'v' ? 0.9 : 1, im = toyImage(kind);
     if (!im) return { box: Math.round(S * 0.72 * k), dx: 0, dy: 0 };
     const f = toyFit(kind, im);
     return { box: Math.round(S * f.box * k), dx: f.dx * S * k, dy: f.dy * S * k };
@@ -621,7 +621,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const im = toyImage(kind);
     if (!im) return;
     const c = makeCanvas(box, box), q = c.getContext('2d');
-    q.fillStyle = 'rgba(255,255,255,0.32)';
+    q.fillStyle = 'rgba(255,255,255,0.42)';   // 改版 2026-11：0.32 → 0.42，蛋形這種窄的方塊直條紋才看得出來
     q.translate(box / 2 - tx, box / 2 - ty);
     paintStripes(q, x, y, T, dir);
     q.setTransform(1, 0, 0, 1, 0, 0);
@@ -630,7 +630,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.drawImage(c, tx - box / 2, ty - box / 2);
   }
   function paintStripes(g, x, y, T, dir) {
-    const n = 4, band = T * 0.105, step = T / n;
+    const n = 4, band = T * 0.125, step = T / n;   // 改版 2026-11：從 0.105 加粗，縮小後還看得到
     for (let i = 0; i < n; i++) {
       const o = step * (i + 0.5) - band / 2;
       if (dir === 'h') g.fillRect(x - T, y + o, T * 3, band);
@@ -690,11 +690,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     candyPath(g, shape, cx, cy, R); g.fillStyle = rg; g.fill();
     g.save();
     candyPath(g, shape, cx, cy, R); g.clip();
-    if (shape === 'heart') paintHeartPuff(g, cx, cy, R, col);   // 愛心：枕頭狀的明暗（條紋要畫在它上面）
-    if (special === 'h' || special === 'v') {
-      g.fillStyle = 'rgba(255,255,255,0.86)';
-      paintStripes(g, cx - R, cy - R, R * 2, special);
-    }
+    if (shape === 'heart') paintHeartPuff(g, cx, cy, R, col);   // 愛心：枕頭狀的明暗
     // 暗部：右下角淡淡地深一點（用自己顏色的深色版，不是灰黑）
     const dg = g.createLinearGradient(cx - R * 0.6, cy - R * 0.7, cx + R * 0.8, cy + R);
     dg.addColorStop(0, css(deeper, 0)); dg.addColorStop(0.55, css(deeper, 0)); dg.addColorStop(1, css(deeper, 0.32));
@@ -717,6 +713,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       lg.addColorStop(0, 'rgba(255,255,255,0.75)'); lg.addColorStop(0.5, 'rgba(255,255,255,0.18)'); lg.addColorStop(1, 'rgba(255,255,255,0)');
       g.lineWidth = Math.max(1, R * 0.05); g.strokeStyle = lg; g.stroke();
     }
+    if (special === 'h' || special === 'v') {
+      // 改版 2026-11：粗白條紋畫在果凍邊上面（以前被果凍邊和玩偶蓋掉，縮小後看不出來）。橫條紋＝整排消除，直條紋＝整行消除
+      g.fillStyle = 'rgba(255,255,255,0.93)';
+      paintStripes(g, cx - R, cy - R, R * 2, special);
+      const sd = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      sd.addColorStop(0, css(deeper, 0)); sd.addColorStop(0.6, css(deeper, 0)); sd.addColorStop(1, css(deeper, 0.22));
+      g.fillStyle = sd; g.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
+    }
     // 最外緣一圈暗邊（輪廓清楚）：右下深、左上淡
     candyPath(g, shape, cx, cy, R);
     const eg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
@@ -733,13 +737,23 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.restore();
     }
     g.restore();
-    if (special === 'wrap') {
-      candyPath(g, shape, cx, cy, R * 0.86);
-      g.save();
-      g.setLineDash([0.001, R * 0.3]); g.lineCap = 'round';
-      g.lineWidth = R * 0.16; g.strokeStyle = 'rgba(255,255,255,0.92)'; g.stroke();
-      g.restore();
+    if (special === 'h' || special === 'v') {
+      // 條紋糖果外面一圈白邊
+      candyPath(g, shape, cx, cy, R * 1.03);
+      g.lineWidth = R * 0.075; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
     }
+    if (special === 'wrap') paintWrapFrame(g, k => candyPath(g, shape, cx, cy, R * k), R);
+  }
+  // 包裝糖：白色粗外框，外面再一圈橘色細邊（改版 2026-11，照草稿；以前是一圈白色小點）
+  function paintWrapFrame(g, path, R) {
+    g.save();
+    g.lineJoin = 'round';
+    g.shadowColor = 'rgba(255,150,40,0.85)'; g.shadowBlur = R * 0.12;
+    path(1.11); g.lineWidth = R * 0.08; g.strokeStyle = '#ff7a12'; g.stroke();
+    g.shadowColor = 'transparent';
+    path(1.0); g.lineWidth = R * 0.17; g.strokeStyle = '#fff'; g.stroke();
+    path(0.915); g.lineWidth = Math.max(1, R * 0.025); g.strokeStyle = 'rgba(255,170,90,0.55)'; g.stroke();
+    g.restore();
   }
   // 愛心的「枕頭」明暗：不用一圈一圈的同心邊線（看起來像扁平貼紙），改成中間鼓起來、往邊緣柔柔地變深的軟糖
   // （已經在 candyPath 的 clip 裡面）
@@ -919,31 +933,42 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.restore();
     }
   }
+  // 包裝糖兩側的糖果紙（改版 2026-11：從跟方塊同色的小耳朵改成白色大耳朵，露在糖果外面約格寬三成，橘色細邊）
   function paintWrapEnds(g, cx, cy, S, col) {
-    const T = S * TILE;
-    const light = mixc(col, WHITE, 0.35), dark = css(mixc(saturate(col, 0.4), BLACK, 0.38));
-    g.lineJoin = 'round';
+    const edge = '#ff7a12', fold = 'rgba(235,160,195,0.75)';
+    g.lineJoin = 'round'; g.lineCap = 'round';
     for (const s of [-1, 1]) {
-      const x0 = cx + s * T * 0.4, x1 = cx + s * T * 0.76;
-      g.beginPath();
-      g.moveTo(x0, cy - T * 0.1);
-      g.quadraticCurveTo(lerp(x0, x1, 0.55), cy - T * 0.14, x1, cy - T * 0.36);
-      g.quadraticCurveTo(x1 - s * T * 0.1, cy, x1, cy + T * 0.36);
-      g.quadraticCurveTo(lerp(x0, x1, 0.55), cy + T * 0.14, x0, cy + T * 0.1);
-      g.closePath();
-      const gr = g.createLinearGradient(0, cy - T * 0.34, 0, cy + T * 0.34);
-      gr.addColorStop(0, css(mixc(light, WHITE, 0.4))); gr.addColorStop(0.5, css(light)); gr.addColorStop(1, css(saturate(col, 0.3)));
-      g.fillStyle = gr; g.fill();
-      g.lineWidth = S * 0.03; g.strokeStyle = dark; g.stroke();
-      // 皺褶
-      g.lineWidth = S * 0.018; g.strokeStyle = 'rgba(255,255,255,0.8)';
-      for (const k of [-0.2, 0, 0.2]) {
-        g.beginPath(); g.moveTo(lerp(x0, x1, 0.25), cy + k * T * 0.2); g.lineTo(lerp(x0, x1, 0.9), cy + k * T * 1.15); g.stroke();
+      const x0 = cx + s * S * 0.3, xn = cx + s * S * 0.45, x1 = cx + s * S * 0.67, h = S * 0.3, nk = S * 0.085;
+      const ear = () => {
+        g.beginPath();
+        g.moveTo(x0, cy - nk * 1.2);
+        g.lineTo(xn, cy - nk);
+        g.quadraticCurveTo(lerp(xn, x1, 0.4), cy - nk * 1.3, x1, cy - h);
+        g.quadraticCurveTo(x1 - s * S * 0.07, cy - h * 0.3, x1 - s * S * 0.03, cy);
+        g.quadraticCurveTo(x1 - s * S * 0.07, cy + h * 0.3, x1, cy + h);
+        g.quadraticCurveTo(lerp(xn, x1, 0.4), cy + nk * 1.3, xn, cy + nk);
+        g.lineTo(x0, cy + nk * 1.2);
+        g.closePath();
+      };
+      // 橘色的柔光（在深色盤面上把白耳朵框出來）
+      g.save();
+      g.shadowColor = 'rgba(255,140,40,0.9)'; g.shadowBlur = S * 0.05;
+      ear(); g.fillStyle = '#fff'; g.fill();
+      g.restore();
+      // 白色的紙：上面亮、下面帶一點粉，看得出是捏起來的
+      const gr = g.createLinearGradient(0, cy - h, 0, cy + h);
+      gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.55, '#fff6fa'); gr.addColorStop(1, '#f6dce8');
+      ear(); g.fillStyle = gr; g.fill();
+      g.lineWidth = S * 0.026; g.strokeStyle = edge; g.stroke();
+      // 皺褶：從結往外散開
+      g.lineWidth = S * 0.016; g.strokeStyle = fold;
+      for (const k of [-0.62, -0.22, 0.22, 0.62]) {
+        g.beginPath(); g.moveTo(lerp(xn, x1, 0.18), cy + k * nk); g.lineTo(lerp(xn, x1, 0.86), cy + k * h * 0.92); g.stroke();
       }
-      // 結
-      rr(g, cx + s * T * 0.46 - T * 0.05, cy - T * 0.13, T * 0.1, T * 0.26, T * 0.04);
-      g.fillStyle = css(saturate(mixc(col, BLACK, 0.08), 0.5)); g.fill();
-      g.lineWidth = S * 0.025; g.strokeStyle = dark; g.stroke();
+      // 結：白色小方塊，橘邊
+      rr(g, xn - S * 0.04, cy - S * 0.12, S * 0.08, S * 0.24, S * 0.035);
+      g.fillStyle = '#fff'; g.fill();
+      g.lineWidth = S * 0.022; g.strokeStyle = edge; g.stroke();
     }
   }
   function paintCellophane(g, cx, cy, S) {
@@ -1039,12 +1064,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         g.fillStyle = 'rgba(255,255,255,0.75)'; paintStripes(g, cx - R, cy - R, R * 2, special); g.restore();
       }
     }
-    if (special === 'wrap') {
-      g.beginPath(); g.arc(cx, cy, R * 0.86, 0, Math.PI * 2);
-      g.save(); g.setLineDash([0.001, R * 0.3]); g.lineCap = 'round';
-      g.lineWidth = R * 0.16; g.strokeStyle = 'rgba(255,255,255,0.92)'; g.stroke();
-      g.restore();
-    }
+    if (special === 'wrap') paintWrapFrame(g, k => { g.beginPath(); g.arc(cx, cy, R * k, 0, Math.PI * 2); }, R);
   }
   // 蓋在玩偶上面的反光
   function paintAltGloss(g, kind, cx, cy, S) {
@@ -1144,61 +1164,64 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     fanCache.set(S, c);
     return c;
   }
-  // 彩色炸彈：會轉的七彩漩渦球 + 金色寶石框 + 玻璃反光，上面是扇形的三寶；外面一圈金光（drawBomb 裡一明一暗）
+  // 彩色炸彈（改版 2026-11，照草稿）：深巧克力色的球、上面撒彩色糖粒（會慢慢轉），白圈 + 粉紅外圈，上面是扇形的三寶。
+  // 盤面上唯一沒有角色顏色的方塊。以前是七彩漩渦球 + 金框（備份 tag backup/live-before-redesign-2026-11-23 裡有）
   function buildBomb(S) {
-    const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, R = S * 0.39;
+    const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, R = S * 0.35;
     const under = makeCanvas(P, P), ug = under.getContext('2d');
     ug.save();
     ug.shadowColor = 'rgba(36,8,64,0.55)'; ug.shadowBlur = S * 0.08; ug.shadowOffsetX = S * 0.03; ug.shadowOffsetY = S * 0.06;
-    ug.beginPath(); ug.arc(cx, cy, R * 1.13, 0, Math.PI * 2); ug.fillStyle = '#8a5410'; ug.fill();
+    ug.beginPath(); ug.arc(cx, cy, R * 1.24, 0, Math.PI * 2); ug.fillStyle = '#b8306f'; ug.fill();
     ug.restore();
-    // 七彩漩渦（整張會轉）：彩虹扇形 + 白色的漩渦臂 + 中間亮、邊緣暗（球的體積）
+    // 會轉的部分：巧克力球（中心對稱的深淺，轉起來看不出來）+ 糖粒
     const orb = makeCanvas(P, P), og = orb.getContext('2d');
-    const n = 36;
-    for (let i = 0; i < n; i++) {
-      const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1.08) / n) * Math.PI * 2;
-      og.beginPath(); og.moveTo(cx, cy); og.arc(cx, cy, R, a0, a1); og.closePath();
-      og.fillStyle = `hsl(${(i / n) * 360},96%,62%)`; og.fill();
-    }
-    og.save();
-    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.clip();
-    og.lineCap = 'round';
-    for (let k = 0; k < 6; k++) {
-      const a0 = (k / 6) * Math.PI * 2;
-      og.beginPath();
-      for (let j = 0; j <= 20; j++) {
-        const f = j / 20, r = R * f * 1.05, a = a0 + f * 2.2;
-        const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
-        if (j) og.lineTo(x, y); else og.moveTo(x, y);
+    const cg = og.createRadialGradient(cx, cy, 0, cx, cy, R);
+    cg.addColorStop(0, '#6e4129'); cg.addColorStop(0.7, '#56301c'); cg.addColorStop(1, '#3b2014');
+    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.fillStyle = cg; og.fill();
+    {
+      const rnd = mulberry(5150), cols = ['#ff3fb0', '#18c25a', '#ffc81a', '#4fb4ff', '#ffffff', '#ff8a2a'];
+      og.lineCap = 'round';
+      for (let i = 0; i < 26; i++) {
+        const d = R * 0.86 * Math.sqrt((i + 0.5) / 26), a = i * 2.39996 + rnd() * 0.5;
+        const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, c = cols[i % cols.length];
+        if (i % 3 === 2) {
+          og.beginPath(); og.arc(x, y, R * 0.06, 0, Math.PI * 2); og.fillStyle = c; og.fill();
+        } else {
+          const r = rnd() * Math.PI, l = R * 0.11;
+          og.beginPath(); og.moveTo(x - Math.cos(r) * l, y - Math.sin(r) * l); og.lineTo(x + Math.cos(r) * l, y + Math.sin(r) * l);
+          og.lineWidth = R * 0.085; og.strokeStyle = c; og.stroke();
+        }
       }
-      og.lineWidth = R * 0.16; og.strokeStyle = 'rgba(255,255,255,0.22)'; og.stroke();
-      og.lineWidth = R * 0.05; og.strokeStyle = 'rgba(255,255,255,0.4)'; og.stroke();
     }
-    og.restore();
-    const rg = og.createRadialGradient(cx, cy, 0, cx, cy, R);
-    rg.addColorStop(0, 'rgba(255,255,255,0.75)'); rg.addColorStop(0.35, 'rgba(255,255,255,0.18)'); rg.addColorStop(0.72, 'rgba(255,255,255,0)');
-    rg.addColorStop(1, 'rgba(70,20,120,0.3)');
-    og.beginPath(); og.arc(cx, cy, R, 0, Math.PI * 2); og.fillStyle = rg; og.fill();
-    // 不轉的部分：金色寶石框（左上亮、右下深）、內側亮線、左上月牙反光和亮點
+    // 不轉的部分：球的明暗（左上亮、右下暗）、白圈、粉紅外圈、反光
     const top = makeCanvas(P, P), tg = top.getContext('2d');
-    tg.beginPath(); tg.arc(cx, cy, R * 1.13, 0, Math.PI * 2); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2, true);
-    const gg = tg.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-    gg.addColorStop(0, '#fff6c2'); gg.addColorStop(0.3, '#ffd84a'); gg.addColorStop(0.65, '#f0a81c'); gg.addColorStop(1, '#a8640a');
-    tg.fillStyle = gg; tg.fill('evenodd');
-    tg.beginPath(); tg.arc(cx, cy, R * 1.05, Math.PI * 0.85, Math.PI * 1.65);
-    tg.lineWidth = Math.max(1, S * 0.022); tg.lineCap = 'round'; tg.strokeStyle = 'rgba(255,255,255,0.85)'; tg.stroke();
-    tg.beginPath(); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2);
-    tg.lineWidth = Math.max(1, S * 0.014); tg.strokeStyle = 'rgba(120,60,10,0.6)'; tg.stroke();
-    tg.beginPath(); tg.arc(cx, cy, R * 1.13, 0, Math.PI * 2);
-    tg.lineWidth = Math.max(1, S * 0.016); tg.strokeStyle = 'rgba(100,50,10,0.75)'; tg.stroke();
-    tg.save();
-    tg.beginPath(); tg.arc(cx, cy, R * 0.97, 0, Math.PI * 2); tg.clip();
-    tg.translate(cx - R * 0.36, cy - R * 0.5); tg.rotate(-0.62);
-    const gl = tg.createLinearGradient(0, -R * 0.36, 0, R * 0.26);
-    gl.addColorStop(0, 'rgba(255,255,255,0.75)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
-    tg.beginPath(); tg.ellipse(0, 0, R * 0.66, R * 0.3, 0, 0, Math.PI * 2); tg.fillStyle = gl; tg.fill();
-    tg.restore();
-    tg.beginPath(); tg.arc(cx - R * 0.78, cy - R * 0.62, R * 0.08, 0, Math.PI * 2); tg.fillStyle = 'rgba(255,255,255,0.95)'; tg.fill();
+    {
+      const lg = tg.createRadialGradient(cx - R * 0.3, cy - R * 0.4, R * 0.05, cx, cy, R);
+      lg.addColorStop(0, 'rgba(255,225,200,0.3)'); lg.addColorStop(0.5, 'rgba(255,225,200,0)'); lg.addColorStop(0.8, 'rgba(20,6,2,0.05)'); lg.addColorStop(1, 'rgba(20,6,2,0.4)');
+      tg.beginPath(); tg.arc(cx, cy, R, 0, Math.PI * 2); tg.fillStyle = lg; tg.fill();
+      // 粉紅外圈
+      tg.beginPath(); tg.arc(cx, cy, R * 1.24, 0, Math.PI * 2); tg.arc(cx, cy, R * 1.08, 0, Math.PI * 2, true);
+      const pg = tg.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      pg.addColorStop(0, '#ffb3d6'); pg.addColorStop(0.4, '#ff5aa8'); pg.addColorStop(1, '#c92f78');
+      tg.fillStyle = pg; tg.fill('evenodd');
+      // 白圈
+      tg.beginPath(); tg.arc(cx, cy, R * 1.09, 0, Math.PI * 2); tg.arc(cx, cy, R * 0.99, 0, Math.PI * 2, true);
+      tg.fillStyle = '#fff'; tg.fill('evenodd');
+      tg.beginPath(); tg.arc(cx, cy, R * 0.99, 0, Math.PI * 2);
+      tg.lineWidth = Math.max(1, S * 0.012); tg.strokeStyle = 'rgba(60,25,10,0.55)'; tg.stroke();
+      tg.beginPath(); tg.arc(cx, cy, R * 1.24, 0, Math.PI * 2);
+      tg.lineWidth = Math.max(1, S * 0.014); tg.strokeStyle = 'rgba(130,20,70,0.7)'; tg.stroke();
+      tg.beginPath(); tg.arc(cx, cy, R * 1.17, Math.PI * 0.9, Math.PI * 1.6);
+      tg.lineWidth = Math.max(1, S * 0.018); tg.lineCap = 'round'; tg.strokeStyle = 'rgba(255,255,255,0.8)'; tg.stroke();
+      // 左上的月牙反光和亮點
+      tg.save();
+      tg.beginPath(); tg.arc(cx, cy, R * 0.99, 0, Math.PI * 2); tg.clip();
+      tg.translate(cx - R * 0.36, cy - R * 0.5); tg.rotate(-0.62);
+      const gl = tg.createLinearGradient(0, -R * 0.36, 0, R * 0.26);
+      gl.addColorStop(0, 'rgba(255,255,255,0.55)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      tg.beginPath(); tg.ellipse(0, 0, R * 0.62, R * 0.26, 0, 0, Math.PI * 2); tg.fillStyle = gl; tg.fill();
+      tg.restore();
+    }
     // 三寶（扇形）；圖還沒載好就用三顆小球
     let trio = trioFan(S);
     if (!trio) {
@@ -2886,30 +2909,31 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return { x, y, s, sx, sy, falling, top, hl };
   }
 
+  const BOMB_GLOW = [255, 110, 180];
   function drawBomb(cx, cy, s, t, phase, spinRate = 1) {
     s *= 1 + 0.055 * Math.sin(t / 260 + phase);                  // 脈動呼吸縮放
     const e = getTile(-1, 'bomb'), P = e.P / dpr * s;
     {
-      // 外圈一圈會轉的彩虹光環（一段一段、一明一暗）
-      const k = 0.5 + 0.5 * Math.sin(t / 200 + phase), R = cs * 0.57 * s, n = 12, ga0 = ctx.globalAlpha;
-      ctx.lineWidth = cs * 0.06 * s; ctx.lineCap = 'round';
+      // 外圈一圈會轉的光環（一段一段、一明一暗；改版 2026-11：彩虹改成粉紅 / 白，跟粉紅外圈同一套）
+      const k = 0.5 + 0.5 * Math.sin(t / 200 + phase), R = cs * 0.55 * s, n = 12, ga0 = ctx.globalAlpha;
+      ctx.lineWidth = cs * 0.05 * s; ctx.lineCap = 'round';
       for (let i = 0; i < n; i++) {
         const a0 = (i / n) * Math.PI * 2 + t / 700 + phase;
         ctx.beginPath(); ctx.arc(cx, cy, R, a0, a0 + (Math.PI * 2 / n) * 0.62);
-        ctx.strokeStyle = `hsla(${(i / n) * 360},95%,62%,${((0.45 + 0.45 * k) * ga0).toFixed(3)})`; ctx.stroke();
+        ctx.strokeStyle = i % 2 ? `rgba(255,255,255,${((0.4 + 0.45 * k) * ga0).toFixed(3)})` : `rgba(255,90,168,${((0.45 + 0.45 * k) * ga0).toFixed(3)})`; ctx.stroke();
       }
       ctx.lineCap = 'butt';
     }
     {
       // 外圈的金光一明一暗（和條紋糖果的箭頭同一套）
       const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), z = cs * (1.25 + 0.1 * k) * s, ga = ctx.globalAlpha;
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.32 + 0.3 * k);
-      ctx.drawImage(getGlowCol(GOLD), cx - z / 2, cy - z / 2, z, z);
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.28 + 0.26 * k);
+      ctx.drawImage(getGlowCol(BOMB_GLOW), cx - z / 2, cy - z / 2, z, z);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
     }
     ctx.drawImage(e.under, cx - P / 2, cy - P / 2, P, P);
     ctx.save();
-    ctx.translate(cx, cy); ctx.rotate((t / 650) * spinRate + phase);
+    ctx.translate(cx, cy); ctx.rotate((t / 1400) * spinRate + phase);
     ctx.drawImage(e.orb, -P / 2, -P / 2, P, P);
     ctx.restore();
     ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
@@ -3206,19 +3230,21 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const w = P * s * sx, h = P * s * sy, dy = (1 - sy) * cs * TILE * s * 0.5;
     const ga = ctx.globalAlpha, col = kindColor(kind);
     const striped = special === 'h' || special === 'v';
-    if (striped || special === 'wrap') {
-      // 會呼吸的霓虹外光暈（方塊顏色）
+    if (striped) {
+      // 會呼吸的外光暈（方塊顏色混白，草稿：條紋外面一圈白光）
       const k = 0.5 + 0.5 * Math.sin(t / 380 + phase), z = cs * (1.32 + 0.14 * k) * s;
       ctx.globalAlpha = ga * (0.42 + 0.4 * k);
-      ctx.drawImage(getNeon(col), cx - z / 2, cy + dy - z / 2, z, z);
+      ctx.drawImage(getNeon(mixc(col, WHITE, 0.45)), cx - z / 2, cy + dy - z / 2, z, z);
       ctx.globalAlpha = ga;
     }
     if (special === 'wrap') {
-      // 外圈一明一暗的光環（金 / 白交替）
-      const k = 0.5 + 0.5 * Math.sin(t / 210 + phase), R = cs * (0.56 + 0.03 * k) * s;
-      ctx.beginPath(); ctx.arc(cx, cy + dy, R, 0, Math.PI * 2);
-      ctx.lineWidth = cs * 0.075 * s; ctx.strokeStyle = css(mixc(RING_GOLD, WHITE, 0.25 + 0.5 * k), (0.45 + 0.45 * k) * ga); ctx.stroke();
-      ctx.lineWidth = cs * 0.025 * s; ctx.strokeStyle = css(WHITE, 0.85 * ga); ctx.stroke();
+      // 外面一圈會呼吸的金光（改版 2026-11：取代以前的細光環）
+      const k = 0.5 + 0.5 * Math.sin(t / 420 + phase), z = cs * (1.42 + 0.2 * k) * s;
+      ctx.globalAlpha = ga * (0.55 + 0.45 * k);
+      ctx.drawImage(getNeon(RING_GOLD), cx - z / 2, cy + dy - z / 2, z, z);
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.12 + 0.22 * k);
+      ctx.drawImage(getGlowCol(GOLD), cx - z / 2, cy + dy - z / 2, z, z);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
     }
     if (special === 'fish') {
       // 飛天玩偶：底座周圍一圈金 / 淺藍的星光環（在糖果下面）+ 背後一對會拍動的翅膀
