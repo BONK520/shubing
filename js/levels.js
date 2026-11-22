@@ -1408,6 +1408,61 @@ const GIFTHILL = [   // 禮物山（第 125 關）
   '#######',
   '#######',
 ];
+const BELTROOM = [   // 輸送帶（第 126 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const PACKER = [   // 包裝機（第 127 關）
+  '.#####.',
+  '..###..',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const CHIMNEY = [   // 煙囪（第 128 關）
+  '#.....#',
+  '#.....#',
+  '##...##',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const CHECKGATE = [   // 檢查站（第 129 關）
+  '#######',
+  '#######',
+  '##...##',
+  '##...##',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const BIGFACTORY = [   // 薯餅大工廠（第 130 關）
+  '#..#..#',
+  '#..#..#',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -4031,6 +4086,104 @@ export const LEVELS = [
     alarm: { timer: 9 },
     hint: '王關！先拆禮物，鬧鐘順手處理',
   },
+  // ---- 第 26 章 夢幻工廠（126–130）：輸送帶，每走一步帶子上的方塊往前跑一格 ----
+  {
+    id: 126, rows: 9, cols: 7, moves: 10, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'collect', items: { dog: 160 } }, stars: [48000, 96000, 144000],
+    mask: BELTROOM, jelly: null,
+    seed: 12615,
+    belts: [
+      [[3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5], [3, 6]],
+      [[5, 6], [5, 5], [5, 4], [5, 3], [5, 2], [5, 1], [5, 0]],
+    ],
+    hint: '每走一步，帶子上的方塊會往前跑',
+  },
+  {
+    id: 127, rows: 9, cols: 7, moves: 8, kinds: ['moodeng', 'piggy', 'snoopy', 'sloth'],
+    goal: { type: 'jelly' }, stars: [59000, 118000, 177000],
+    mask: PACKER,
+    jelly: [
+      '.22222.',
+      '..222..',
+      '2222222',
+      '2222222',
+      '2222222',
+      '2222222',
+      '2222222',
+      '2222222',
+      '2222222',
+    ],
+    seed: 12715,
+    belts: [
+      [[3, 1], [3, 2], [3, 3], [3, 4], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [7, 4], [7, 3], [7, 2], [7, 1], [6, 1], [5, 1], [4, 1]],
+    ],
+    hint: '果凍不會跑，上面的方塊會',
+  },
+  {
+    id: 128, rows: 9, cols: 7, moves: 16, kinds: ['dog', 'egg', 'nyanko', 'moodeng'],
+    goal: { type: 'dino', count: 2 }, stars: [20000, 40000, 60000],
+    mask: CHIMNEY, jelly: null,
+    seed: 12815,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '...D...',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '......E',
+    ],
+    belts: [
+      [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 6]],
+    ],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '讓輸送帶幫你送龍龍',
+  },
+  {
+    id: 129, rows: 9, cols: 7, moves: 10, kinds: ['sloth', 'snoopy', 'piggy', 'egg'],
+    goal: { type: 'mix', orders: { wrap: 2 }, clear: ['shell'] }, stars: [16000, 32000, 48000],
+    mask: CHECKGATE, jelly: null,
+    seed: 12915,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      'Y.Y.Y.Y',
+    ],
+    belts: [
+      [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6], [7, 6], [7, 5], [7, 4], [7, 3], [7, 2], [7, 1], [7, 0]],
+    ],
+    hint: '帶子會把特殊方塊送到硬殼旁邊',
+  },
+  {
+    id: 130, rows: 9, cols: 7, moves: 17, kinds: ['sloth', 'dog', 'egg', 'snoopy'],
+    goal: { type: 'mix', orders: { bomb: 1 }, dinos: 2, chocoGot: 10 }, stars: [41000, 82000, 123000],
+    mask: BIGFACTORY, jelly: null,
+    seed: 13015,
+    obstacles: [
+      '.......',
+      '.......',
+      '...D...',
+      '.......',
+      '.......',
+      '.......',
+      '..-.|..',
+      '.......',
+      'C..P..C',
+    ],
+    belts: [
+      [[4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6]],
+    ],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '王關！最後一關，每種機關都來一點',
+  },
 ];
 
 // ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
@@ -4089,6 +4242,7 @@ export function mechOpts(L) {
   if (!L) return o;
   if (Array.isArray(L.obstacles)) o.obstacles = L.obstacles;
   if (Array.isArray(L.portals)) o.portals = L.portals;
+  if (Array.isArray(L.belts)) o.belts = L.belts;
   if (L.licorice) o.licorice = { ...L.licorice };
   if (L.alarm) o.alarm = { ...L.alarm };
   if (L.pot) o.pot = { ...L.pot };
@@ -4252,6 +4406,25 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (!Array.isArray(q) || q.length !== 4 || !isCell(q[0], q[1]) || !isCell(q[2], q[3])) bad(`portal ${JSON.stringify(q)} 要在格子上`);
       else if (isCell(q[0] + 1, q[1])) bad(`portal ${JSON.stringify(q)} 的入口下面還有格子`);
       else if (isCell(q[2] - 1, q[3])) bad(`portal ${JSON.stringify(q)} 的出口上面還有格子`);
+    }
+    // 輸送帶：每條是一串 [r, c]，相鄰兩格要上下左右挨著（只有最後一格回到第一格可以跳過去）；
+    // 帶子上不能放不會動的東西（籠子、保鮮膜、糖霜、巧克力、硬殼、巧克力壺），不然整條帶子都不會動
+    if (L.belts != null) {
+      const used = new Set();
+      if (!Array.isArray(L.belts) || !L.belts.length) bad('belts 要是一串輸送帶');
+      else L.belts.forEach((b, bi) => {
+        const nm = `輸送帶 ${bi + 1}`;
+        if (!Array.isArray(b) || b.length < 2 || !b.every(q => Array.isArray(q) && q.length === 2 && Number.isInteger(q[0]) && Number.isInteger(q[1]))) { bad(`${nm} 要是至少兩個 [r, c]`); return; }
+        b.forEach((q, k) => {
+          const [r, c] = q, id = r * 100 + c;
+          if (!isCell(r, c)) bad(`${nm} 的 (${r},${c}) 不在格子上`);
+          if (used.has(id)) bad(`${nm} 的 (${r},${c}) 重複了`);
+          used.add(id);
+          if (k && Math.abs(r - b[k - 1][0]) + Math.abs(c - b[k - 1][1]) !== 1) bad(`${nm} 的 (${b[k - 1].join(',')}) → (${r},${c}) 沒有挨著`);
+          const ch = Array.isArray(obs) && obs[r] ? obs[r][c] : '.';
+          if (ch && 'L123CXYP-|WB'.includes(ch)) bad(`${nm} 的 (${r},${c}) 上面有不會動的東西 '${ch}'`);
+        });
+      });
     }
     if (L.licorice != null && !(L.licorice.rate > 0 && L.licorice.rate <= 0.2 && L.licorice.max >= 1 && L.licorice.max <= 8)) bad('licorice 要 { rate: 0–0.2, max: 1–8 }');
     if (L.alarm != null) {

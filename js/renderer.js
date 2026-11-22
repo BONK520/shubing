@@ -13,15 +13,15 @@
 //   R.play(events, { onEvent, onCue })
 //               onCue(name, { delay, ... })：音效 / 震動的時間點，和畫面同步。delay = 從現在算起幾毫秒後發生。
 //               name：'swap' 'invalid' 'pop'(cascade, group, size) 'stripe' 'wrap'(radius) 'bomb'(n) 'board'
-//                     'combo' 'special'(special) 'land' 'chime'(level) 'shuffle'
+//                     'combo' 'special'(special) 'land' 'chime'(level) 'shuffle' 'belt'
 //   R.pause()   停掉 requestAnimationFrame 迴圈（遊戲畫面被藏起來時用，例如回到地圖 / 標題），
 //               選取、提示、特殊方塊的待機動畫都不再每幀重畫。play() / banner() 照常計時完成，不會卡住。
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123m';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123m';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123m';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123n';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123n';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123n';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -284,8 +284,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const jellyFx = new Map();        // key -> { t0, from }
   let selected = null, hintPair = null, dragState = null;
   let fallSeq = 0;
-  // 盤面機關：鐵籠子（每格 0 / 1）、龍龍出口、傳送門
-  let locks = [], exitCells = [], portalList = [];
+  // 盤面機關：鐵籠子（每格 0 / 1）、龍龍出口、傳送門、輸送帶（每條是一串格子，方塊照順序往下一格跑）
+  let locks = [], exitCells = [], portalList = [], beltList = [];
   const blockCache = new Map(), crumbCache = new Map();
   let blockS = 0;
   // ---- 流程 ----
@@ -1835,7 +1835,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     abortWaits();
     sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
-    locks = []; exitCells = []; portalList = [];
+    locks = []; exitCells = []; portalList = []; beltList = [];
     if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
     rows = R; cols = C;
@@ -1844,6 +1844,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     locks = Array.isArray(snap.lock) ? snap.lock.map(row => (row || []).slice()) : make2D(R, C, 0);
     if (Array.isArray(snap.exits)) for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (snap.exits[r] && snap.exits[r][c]) exitCells.push({ r, c });
     if (Array.isArray(snap.portals)) portalList = snap.portals.filter(q => q && q.from && q.to).map(q => ({ from: { ...q.from }, to: { ...q.to } }));
+    if (Array.isArray(snap.belts)) beltList = snap.belts.filter(b => Array.isArray(b) && b.length > 1).map(b => b.map(q => ({ r: q.r | 0, c: q.c | 0 })));
     visuals = new Map();
     syncBoard(snap.grid, null);
     if (!W) layout(); else geom();
@@ -2608,6 +2609,36 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     await wait(dur + 15);
   }
 
+  // 輸送帶走一格：帶子上的方塊一起滑到下一格；頭尾不相鄰的帶子，最後一顆從尾巴縮小鑽出去，再從頭冒出來
+  function beltEnds(q) {
+    for (const b of beltList) {
+      const n = b.length, a = b[n - 1], z = b[0];
+      if (a.r === q.r && a.c === q.c) return { out: { r: a.r - b[n - 2].r, c: a.c - b[n - 2].c }, inn: { r: b[1].r - z.r, c: b[1].c - z.c } };
+    }
+    return { out: { r: 0, c: 0 }, inn: { r: 0, c: 0 } };
+  }
+  async function animBelt(ev) {
+    const t = now(), dur = 380;
+    for (const m of ev.moves || []) {
+      if (!m || !m.from || !m.to) continue;
+      const v = visuals.get(m.id) || cellV(m.from);
+      if (!v) continue;
+      const f = m.from, q = m.to;
+      if (m.warp) {
+        const d = beltEnds(f);
+        v.mv = { t0: t, dur, x1: q.c, y1: q.r, clip: true, path: u => {
+          if (u < 0.5) { const k = u * 2; return { x: f.c + d.out.c * 0.5 * k, y: f.r + d.out.r * 0.5 * k, s: 1 - 0.88 * k }; }
+          const k = (u - 0.5) * 2;
+          return { x: q.c - d.inn.c * 0.5 * (1 - k), y: q.r - d.inn.r * 0.5 * (1 - k), s: 0.12 + 0.88 * k };
+        } };
+      } else {
+        v.mv = { t0: t, dur, x1: q.c, y1: q.r, path: u => { const e = easeInOutCubic(u); return { x: lerp(f.c, q.c, e), y: lerp(f.r, q.r, e), s: 1 }; } };
+      }
+    }
+    cue('belt');
+    await wait(dur + 10);
+  }
+
   // 龍龍走到出口：開心地跳兩下，第二下跳高飛走（main.js 接著讓牠沿弧線飛到上面的目標圖示）
   async function animExit(ev) {
     const t = now();
@@ -2705,6 +2736,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       case 'clear': return animClear(ev, next);
       case 'fall': return animFall(ev, next);
       case 'shuffle': return animShuffle(ev);
+      case 'belt': return animBelt(ev);
       default: return null;
     }
   }
@@ -3442,6 +3474,103 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
   }
 
+  // 輸送帶：畫在果凍上面、方塊下面。一條半透明的帶子沿著格子中心連起來，小箭頭往前跑（方塊之間的縫看得到）；
+  // 頭尾不相鄰的帶子，兩端各延伸半格，尾巴的箭頭往外跑、頭的箭頭從外面跑進來
+  function beltChevron(x, y, dx, dy, z) {
+    const px = -dy * z * 0.62, py = dx * z * 0.62, bx = dx * z * 0.42, by = dy * z * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(x - bx + px, y - by + py); ctx.lineTo(x + bx, y + by); ctx.lineTo(x - bx - px, y - by - py);
+    ctx.stroke();
+  }
+  function drawBelts(t) {
+    if (!beltList.length) return;
+    const w = cs * 0.86, ph = (t / 760) % 1;
+    ctx.save();
+    if (clipPath) ctx.clip(clipPath);
+    ctx.lineJoin = 'round';
+    for (const b of beltList) {
+      const n = b.length, a = b[n - 1], h = b[0], loop = Math.abs(a.r - h.r) + Math.abs(a.c - h.c) === 1;
+      const X = q => ox + (q.c + 0.5) * cs, Y = q => oy + (q.r + 0.5) * cs;
+      const dIn = { r: b[1].r - h.r, c: b[1].c - h.c }, dOut = { r: a.r - b[n - 2].r, c: a.c - b[n - 2].c };
+      ctx.beginPath();
+      if (loop) { ctx.moveTo(X(h), Y(h)); for (let i = 1; i < n; i++) ctx.lineTo(X(b[i]), Y(b[i])); ctx.closePath(); }
+      else {
+        ctx.moveTo(X(h) - dIn.c * cs * 0.5, Y(h) - dIn.r * cs * 0.5);
+        for (let i = 0; i < n; i++) ctx.lineTo(X(b[i]), Y(b[i]));
+        ctx.lineTo(X(a) + dOut.c * cs * 0.5, Y(a) + dOut.r * cs * 0.5);
+      }
+      ctx.lineCap = loop ? 'round' : 'butt';
+      ctx.lineWidth = w + cs * 0.08; ctx.strokeStyle = 'rgba(92,48,20,0.5)'; ctx.stroke();
+      ctx.lineWidth = w; ctx.strokeStyle = 'rgba(255,206,140,0.28)'; ctx.stroke();
+      ctx.lineWidth = cs * 0.025; ctx.strokeStyle = 'rgba(255,236,205,0.45)'; ctx.setLineDash([cs * 0.09, cs * 0.09]);
+      ctx.lineDashOffset = -ph * cs * 0.18 * 4; ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    }
+    ctx.restore();
+  }
+  // 輸送帶上層：果凍外框會蓋到方塊之間的縫，所以軌道邊線和箭頭在方塊、果凍框、籠子之後再畫一次。
+  // 邊線貼著格子邊；箭頭只在兩格交界附近出現，不會壓到毛絨玩具的臉
+  function drawBeltsTop(t) {
+    if (!beltList.length) return;
+    const e = cs * 0.46, H = cs * 0.5, z = cs * 0.19, ph = (t / 760) % 1;
+    const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+    ctx.save();
+    if (clipPath) ctx.clip(clipPath);
+    ctx.lineCap = 'butt'; ctx.lineWidth = cs * 0.045; ctx.strokeStyle = 'rgba(92,48,20,0.6)';
+    ctx.beginPath();
+    for (const b of beltList) {
+      const n = b.length, a = b[n - 1], h = b[0], loop = Math.abs(a.r - h.r) + Math.abs(a.c - h.c) === 1;
+      for (let i = 0; i < n; i++) {
+        const q = b[i], open = [false, false, false, false];
+        const link = (dr, dc) => { for (let k = 0; k < 4; k++) if (DIRS[k][0] === dr && DIRS[k][1] === dc) open[k] = true; };
+        const prev = i > 0 ? b[i - 1] : (loop ? a : null), next = i < n - 1 ? b[i + 1] : (loop ? h : null);
+        if (prev) link(prev.r - q.r, prev.c - q.c); else link(q.r - b[1].r, q.c - b[1].c);
+        if (next) link(next.r - q.r, next.c - q.c); else link(q.r - b[n - 2].r, q.c - b[n - 2].c);
+        const cx = ox + (q.c + 0.5) * cs, cy = oy + (q.r + 0.5) * cs;
+        for (let k = 0; k < 4; k++) {
+          const [dr, dc] = DIRS[k], kl = (k + 3) % 4, kr = (k + 1) % 4;
+          // 沿著這一邊走的方向（順時針）：從左鄰邊到右鄰邊
+          const tr = DIRS[kr][0], tc = DIRS[kr][1];
+          const sL = open[kl] ? H : e, sR = open[kr] ? H : e;
+          if (!open[k]) {
+            const mx = cx + dc * e, my = cy + dr * e;
+            ctx.moveTo(mx - tc * sL, my - tr * sL); ctx.lineTo(mx + tc * sR, my + tr * sR);
+          } else if (open[kr]) {
+            // 轉彎內角：兩邊都通，補一個小 L
+            ctx.moveTo(cx + dc * H + tc * e, cy + dr * H + tr * e);
+            ctx.lineTo(cx + dc * e + tc * e, cy + dr * e + tr * e);
+            ctx.lineTo(cx + dc * e + tc * H, cy + dr * e + tr * H);
+          }
+        }
+      }
+    }
+    ctx.stroke();
+    // 箭頭：每一段兩個往前跑，只在兩格交界附近亮起來
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = cs * 0.065; ctx.strokeStyle = '#fff';
+    const X = q => ox + (q.c + 0.5) * cs, Y = q => oy + (q.r + 0.5) * cs;
+    for (const b of beltList) {
+      const n = b.length, a = b[n - 1], h = b[0], loop = Math.abs(a.r - h.r) + Math.abs(a.c - h.c) === 1;
+      const dIn = { r: b[1].r - h.r, c: b[1].c - h.c }, dOut = { r: a.r - b[n - 2].r, c: a.c - b[n - 2].c };
+      const segs = [];
+      for (let i = 0; i < n - 1; i++) segs.push([b[i], b[i + 1], 0, 1]);
+      if (loop) segs.push([a, h, 0, 1]);
+      else {
+        segs.push([a, { r: a.r + dOut.r, c: a.c + dOut.c }, 0, 0.5]);
+        segs.push([{ r: h.r - dIn.r, c: h.c - dIn.c }, h, 0.5, 1]);
+      }
+      for (const [p, q, lo, hi] of segs) {
+        const dx = q.c - p.c, dy = q.r - p.r;
+        for (let j = 0; j < 2; j++) {
+          const u = (ph + j * 0.5) % 1, d = Math.abs(u - 0.5);
+          if (u < lo || u > hi || d > 0.2) continue;
+          ctx.globalAlpha = 0.95 * (1 - d / 0.2);
+          beltChevron(lerp(X(p), X(q), u), lerp(Y(p), Y(q), u), dx, dy, z);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
   function drawJelly(t) {
     for (let r = 0; r < rows; r++) {
       const jr = jelly[r];
@@ -3491,6 +3620,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const [v, st] of late) drawVisual(v, st, t);
     drawJellyRims(t);
     drawLocks(t);
+    drawBeltsTop(t);
     if (falling.length) {
       // 同一欄掉落中的方塊不重疊（後面掉得比較快的會「頂」在前面那顆上面）
       for (let c = 0; c < cols; c++) fallCols[c] = null;
@@ -4108,6 +4238,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.setTransform(dpr, 0, 0, dpr, sx * dpr, sy * dpr);
       if (bgCache) ctx.drawImage(bgCache.c, bgCache.x, bgCache.y, bgCache.w, bgCache.h);
       drawJelly(t);
+      drawBelts(t);
       drawPieces(t);
       drawGhosts(t);
       drawFx(t);
@@ -4133,7 +4264,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return false;
   }
   function ambient() {
-    if (selected || hintPair || exitCells.length || portalList.length) return true;
+    if (selected || hintPair || exitCells.length || portalList.length || beltList.length) return true;
     for (const v of visuals.values()) if (v.special !== 'none' || v.kind < 0) return true;
     return false;
   }

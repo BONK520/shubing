@@ -109,6 +109,11 @@
 //   wrap (lock 2 in the cage layer). Like a cage it cannot be swapped and does not fall; a match through it, a match
 //   next to it or any effect only opens the wrap (clear `unlocks` item with `gift: true`) — the special inside does
 //   not fire then and can be used afterwards. stats: giftLeft (locksLeft counts cages only).
+//   Option `belts: [[[r, c], …], …]` (or {r, c}) = conveyor belts. After each swap() (not boosters, not sugarCrush),
+//   once the move has settled, every piece on a belt moves one cell along it (the last cell's piece goes to the
+//   first one; `warp: true` when they are not neighbours) — event 'belt' { moves: [{ id, from, to, warp? }] }, replayed
+//   like a fall. Then matching again (free cascades), then the alarms tick. A belt with a hole, a cage / gift or a
+//   fixed block (frost, chocolate, shell, pot) on it waits that move. Chocolate never grows / is spat onto a belt.
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
@@ -186,6 +191,8 @@ export function createEngine(opts = {}) {
   // 巧克力壺：盤面上巧克力到 potMax 塊就先不噴
   const potMax = opts.pot && opts.pot.max > 0 ? opts.pot.max | 0 : 8;
   let potCount = 0;
+  const beltsIn = (Array.isArray(opts.belts) ? opts.belts : []).map(path => (Array.isArray(path) ? path : [])
+    .map(q => (Array.isArray(q) ? { r: q[0] | 0, c: q[1] | 0 } : { r: q.r | 0, c: q.c | 0 })));
 
   // ---- state ----
   const cellMask = [];
@@ -227,6 +234,16 @@ export function createEngine(opts = {}) {
   const newBlock = (block, hp = 1) => ({ id: nextId++, kind: BLOCK_KIND[block], special: NONE, block, hp });
   const isCell = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols && cellMask[r][c];
   const key = (r, c) => r * cols + c;
+  // 輸送帶：每條至少兩格、格子都在盤面上、彼此不重疊（重疊的那條不用）
+  const belts = [], beltAt = new Set();
+  for (const path of beltsIn) {
+    if (path.length < 2 || !path.every(q => isCell(q.r, q.c))) continue;
+    const ks = path.map(q => key(q.r, q.c));
+    if (new Set(ks).size !== ks.length || ks.some(k => beltAt.has(k))) continue;
+    ks.forEach(k => beltAt.add(k));
+    belts.push(path.map(q => ({ r: q.r, c: q.c })));
+  }
+  const onBelt = (r, c) => beltAt.has(key(r, c));
   // kind usable for matching at (r,c), or -9 (hole / empty / bomb)
   const kAt = (r, c) => {
     if (!isCell(r, c)) return -9;
@@ -940,7 +957,7 @@ export function createEngine(opts = {}) {
       if (!p || p.block !== 'choco') return;
       for (const [dr, dc] of DIRS) {
         const y = r + dr, x = c + dc;
-        if (!isCell(y, x) || lock[y][x]) continue;
+        if (!isCell(y, x) || lock[y][x] || onBelt(y, x)) continue;
         const q = grid[y][x];
         if (q && !q.block && q.kind >= 0 && q.special === NONE) cand.push({ from: { r, c }, to: { r: y, c: x } });
       }
@@ -968,7 +985,7 @@ export function createEngine(opts = {}) {
           seen.add(key(y, x));
           next.push({ r: y, c: x });
           const p = grid[y][x];
-          if (p && !p.block && p.kind >= 0 && p.special === NONE && !lock[y][x]) cand.push({ r: y, c: x });
+          if (p && !p.block && p.kind >= 0 && p.special === NONE && !lock[y][x] && !onBelt(y, x)) cand.push({ r: y, c: x });
         }
         if (cand.length) {
           const to = cand[rand(cand.length)], was = grid[to.r][to.c], np = newBlock('choco', 1);
@@ -980,6 +997,25 @@ export function createEngine(opts = {}) {
         front = next;
       }
     }
+  }
+
+  // 輸送帶：帶子上的方塊各往前一格（最後一格回到第一格）；有空格、籠子、保鮮膜或固定方塊的那條這一步不動
+  function runBelts(events) {
+    const moves = [];
+    for (const path of belts) {
+      if (path.some(q => !grid[q.r][q.c] || immovable(q.r, q.c))) continue;
+      const ps = path.map(q => grid[q.r][q.c]), n = path.length;
+      for (let i = 0; i < n; i++) {
+        const from = path[i], to = path[(i + 1) % n];
+        grid[to.r][to.c] = ps[i];
+        const m = { id: ps[i].id, from: { ...from }, to: { ...to } };
+        if (Math.abs(from.r - to.r) + Math.abs(from.c - to.c) !== 1) m.warp = true;
+        moves.push(m);
+      }
+    }
+    if (!moves.length) return false;
+    events.push(ev({ t: 'belt', moves }));
+    return true;
   }
 
   // 鬧鐘：這一步開始前就在盤面上的鬧鐘各倒數一格；數到 0 的爆開（拿掉，main.js 扣 3 步），再掉落、連鎖。
@@ -1258,7 +1294,8 @@ export function createEngine(opts = {}) {
     cell: (r, c) => (isCell(r, c) ? cp(grid[r][c]) : null),
     jellyAt: (r, c) => (isCell(r, c) ? jel[r][c] : 0),
     snapshot: () => ({ rows, cols, mask: cellMask.map(row => row.slice()), grid: gridCopy(), jelly: jellyCopy(),
-      lock: lock.map(row => row.slice()), exits: shownExits(), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })) }),
+      lock: lock.map(row => row.slice()), exits: shownExits(), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })),
+      belts: belts.map(path => path.map(q => ({ ...q }))) }),
     get score() { return score; },
     get stats() {
       return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax, ...counts(),
@@ -1268,6 +1305,7 @@ export function createEngine(opts = {}) {
     lockAt: (r, c) => (isCell(r, c) ? lock[r][c] : 0),
     isExit: (r, c) => isCell(r, c) && exitAt[r][c],
     portals: () => portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })),
+    belts: () => belts.map(path => path.map(q => ({ ...q }))),
     isAdjacent: (a, b) => !!a && !!b && Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1,
 
     swap(a, b) {
@@ -1289,7 +1327,8 @@ export function createEngine(opts = {}) {
       const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
       let cascade = 1;
       if (combo) cascade = playCombo(a, b, events);
-      const last = settle(events, cascade, combo ? null : [b, a]);
+      let last = settle(events, cascade, combo ? null : [b, a]);
+      if (belts.length && runBelts(events)) last = Math.max(last, settle(events, last + 1, null));
       cascadesMax = Math.max(cascadesMax, last);
       const alarms = tickAlarms(events, ticking, last + 1);
       if (potCount) { if (chocoBroken === 0) potSpit(events); }

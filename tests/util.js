@@ -150,6 +150,24 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
         if (g[s.to.r][s.to.c]) fail(`${where}: spawn lands on occupied ${s.to.r},${s.to.c}`);
         g[s.to.r][s.to.c] = { ...s.piece };
       }
+    } else if (e.t === 'belt') {
+      // conveyor belt: lift every piece, then drop them all one cell further along (no cages, nothing fixed)
+      if (!e.moves.length) fail(`${where}: empty belt`);
+      const lifted = [];
+      for (const m of e.moves) {
+        at(m.from, where); at(m.to, where);
+        const cur = g[m.from.r][m.from.c];
+        if (!cur || cur.id !== m.id) fail(`${where}: belt move of id ${m.id} from ${m.from.r},${m.from.c} but board has ${pieceStr(cur)}`);
+        if (isFixed(cur, L[m.from.r][m.from.c]) || cur.block === 'pot' || L[m.to.r][m.to.c]) fail(`${where}: belt moves a fixed piece / into a cage ${JSON.stringify(m)}`);
+        const adj = Math.abs(m.from.r - m.to.r) + Math.abs(m.from.c - m.to.c) === 1;
+        if (adj === !!m.warp) fail(`${where}: belt warp flag wrong ${JSON.stringify(m)}`);
+        lifted.push([m, cur]);
+        g[m.from.r][m.from.c] = null;
+      }
+      for (const [m, p] of lifted) {
+        if (g[m.to.r][m.to.c]) fail(`${where}: belt move of id ${m.id} lands on occupied ${m.to.r},${m.to.c}`);
+        g[m.to.r][m.to.c] = p;
+      }
     } else if (e.t === 'exit') {
       if (!e.cells.length) fail(`${where}: empty exit`);
       for (const x of e.cells) {
@@ -252,7 +270,12 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     } else if (e.t === 'tick') {
       // alarms count down once, after the move has settled (then maybe burst, fall and cascade)
       if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'tick')) fail('tick must come once, after the move');
-      if (evs[i - 1] && evs[i - 1].t !== 'fall') fail(`tick after ${evs[i - 1].t}`);
+      if (evs[i - 1] && evs[i - 1].t !== 'fall' && evs[i - 1].t !== 'belt') fail(`tick after ${evs[i - 1].t}`);
+    } else if (e.t === 'belt') {
+      // belts run once, after the move has settled and before the alarms tick
+      if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'belt' || x.t === 'tick')) fail('belt must come once, after the move');
+      if (!evs[i - 1] || evs[i - 1].t !== 'fall') fail(`belt after ${evs[i - 1] && evs[i - 1].t}`);
+      ctx.belts = (ctx.belts || 0) + 1;
     } else if (e.t === 'alarm') {
       if (!evs[i - 1] || evs[i - 1].t !== 'tick') fail('alarm not preceded by tick');
       if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('alarm not followed by fall');

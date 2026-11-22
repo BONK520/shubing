@@ -1,4 +1,4 @@
-// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、巧克力壺、保鮮膜、龍龍出口箭頭、傳送門顏色）
+// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、巧克力壺、保鮮膜、龍龍出口箭頭、傳送門顏色、輸送帶小圖）
 // 全部用 canvas 畫（不用額外的圖檔）。每個 paint 函式畫在 S×S 的畫布上（S = 一格的裝置像素），
 // renderer.js 畫一次就快取起來；main.js 也拿它們畫目標圖示 / 新機關教學小卡。
 
@@ -446,6 +446,28 @@ export function paintPortalIcon(g, S, hex = PORTAL_COLORS[0]) {
   for (const y of [S * 0.44, S * 0.56]) { g.beginPath(); g.moveTo(S * 0.42, y); g.lineTo(S * 0.58, y); g.lineTo(S / 2, y + S * 0.07); g.closePath(); g.fill(); }
 }
 
+// 輸送帶（教學小卡用）：焦糖色的帶子、兩端滾輪，上面兩顆玩偶色的小球，白色箭頭往右
+export function paintBeltIcon(g, S) {
+  const y = S * 0.66, h = S * 0.24, x0 = S * 0.06, w = S * 0.88;
+  rr(g, x0, y - h / 2, w, h, h / 2); g.fillStyle = '#6b3a1a'; g.fill();
+  rr(g, x0 + S * 0.025, y - h / 2 + S * 0.025, w - S * 0.05, h - S * 0.05, h / 2); g.fillStyle = '#f2b978'; g.fill();
+  for (const x of [x0 + h / 2, x0 + w - h / 2]) {
+    g.beginPath(); g.arc(x, y, h * 0.3, 0, Math.PI * 2); g.fillStyle = '#ffe9cc'; g.fill();
+    g.lineWidth = S * 0.02; g.strokeStyle = '#6b3a1a'; g.stroke();
+  }
+  g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = S * 0.04; g.strokeStyle = '#ffffff';
+  for (const x of [0.4, 0.52, 0.64]) {
+    g.beginPath(); g.moveTo(S * x - S * 0.035, y - S * 0.055); g.lineTo(S * x + S * 0.03, y); g.lineTo(S * x - S * 0.035, y + S * 0.055); g.stroke();
+  }
+  for (const [x, a, b] of [[0.32, '#ffe3f0', '#ff8fbf'], [0.68, '#e3f4ff', '#6fc4ff']]) {
+    const cx = S * x, cy = y - h / 2 - S * 0.14, R = S * 0.14;
+    const gr = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R);
+    gr.addColorStop(0, a); gr.addColorStop(1, b);
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = gr; g.fill();
+    g.lineWidth = S * 0.02; g.strokeStyle = 'rgba(255,255,255,0.9)'; g.stroke();
+  }
+}
+
 // ---------------- 訂單目標的小圖：條紋方塊 / 包裝糖 / 彩色炸彈 / 飛天玩偶；組合 = 兩個疊在一起 ----------------
 const ORDER_COL = { stripe: ['#ffb3d4', '#ff5f9e'], wrap: ['#ffe28a', '#ff9f1c'], fish: ['#b8f0ff', '#3fb6ff'] };
 function paintOrderOne(g, S, what) {
@@ -541,6 +563,7 @@ export function blockerCanvas(type, px) {
   }
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
+  else if (type === 'belt') paintBeltIcon(g, S);
   else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));
   return c;
 }

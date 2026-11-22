@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123m';
-import { SLOGANS } from './slogans.js?v=20261123m';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123m';
-import { blockerCanvas } from './blockers.js?v=20261123m';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123m';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123n';
+import { SLOGANS } from './slogans.js?v=20261123n';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123n';
+import { blockerCanvas } from './blockers.js?v=20261123n';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123n';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123m';
+const MOD_V = '?v=20261123n';
 
 window.__plushBooted = true;
 
@@ -356,6 +356,7 @@ const INTRO = {
   shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2') },
   pot: { name: '巧克力壺', text: '壺打不掉。這一步沒打到巧克力，它就會噴一塊出來，記得一直清喔！', icon: () => blockerImg('pot') },
   gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap') },
+  belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
 };
 function levelMechs(lvl) {
@@ -372,6 +373,7 @@ function levelMechs(lvl) {
   if (obs.includes('P')) out.add('pot');
   if (/[-|WB]/.test(obs)) out.add('gift');
   if (lvl.portals && lvl.portals.length) out.add('portal');
+  if (lvl.belts && lvl.belts.length) out.add('belt');
   if (goalPartsOf(lvl).some(p => p.kind === 'order')) out.add('order');
   return Object.keys(INTRO).filter(k => out.has(k));
 }
@@ -1452,7 +1454,7 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
   cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino',
-  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift' };
+  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift', belt: 'belt' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];

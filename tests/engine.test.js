@@ -1157,6 +1157,48 @@ test('portal: what falls out of the bottom of one column comes in at the top of 
   eq(fall.spawns.filter(s => s.to.c === 1).length, 3, 'column 1 refills from its top');
 });
 
+test('belt: after the move every piece on the belt moves one cell along; the last one warps to the first', () => {
+  const belt = [[5, 0], [5, 1], [5, 2], [5, 3], [5, 4], [5, 5]];
+  const e = mk(['_____0', '_____0', '____0_', '______', '______', '______'], { belts: [belt] });
+  deq(e.belts(), [belt.map(([r, c]) => P(r, c))]);
+  deq(e.snapshot().belts, [belt.map(([r, c]) => P(r, c))]);
+  const ids = belt.map(([r, c]) => e.cell(r, c).id);
+  const res = play(e, P(2, 4), P(2, 5));
+  const bi = res.events.findIndex(x => x.t === 'belt');
+  ok(bi > 0, 'a belt event');
+  eq(res.events[bi - 1].t, 'fall', 'after the move has settled');
+  const mv = res.events[bi].moves;
+  eq(mv.length, 6);
+  for (let i = 0; i < 6; i++) {
+    const m = mv.find(x => x.id === ids[i]);
+    deq([m.from, m.to], [P(5, i), P(5, (i + 1) % 6)]);
+    eq(!!m.warp, i === 5, `warp only for the last cell (${i})`);
+    eq(res.events[bi].board[5][(i + 1) % 6].id, ids[i]);
+  }
+});
+
+test('belt: pieces it brings together match (next cascade); a cage or fixed block on it stops it', () => {
+  // a 2-cell belt swaps (5,2) and (5,3): 0 0 _ 0 -> 0 0 0 _
+  const e = mk(['_____0', '_____0', '____0_', '______', '______', '00_0__'], { belts: [[[5, 2], [5, 3]]] });
+  const res = play(e, P(2, 4), P(2, 5));
+  const bi = res.events.findIndex(x => x.t === 'belt');
+  const c2 = res.events.slice(bi).find(x => x.t === 'clear');
+  ok(c2, 'a clear after the belt');
+  eq(c2.cascade, 2, 'belt match is the next cascade');
+  deq([...cellSet(c2.removed.filter(x => x.r === 5))].sort(), ['5,0', '5,1', '5,2']);
+  ok(e.stats.cascadesMax >= 2, 'cascadesMax counts it');
+  const f = mo(['_____0', '_____0', '____0_', '______', '______', '______'], ['......', '......', '......', '......', '......', '.L....'],
+    { belts: [[[5, 0], [5, 1], [5, 2]]] });
+  ok(!play(f, P(2, 4), P(2, 5)).events.some(x => x.t === 'belt'), 'a caged piece on the belt: it waits');
+  const g = mo(['_____0', '_____0', '____0_', '______', '______', '______'], ['......', '......', '......', '......', '......', '..1...'],
+    { belts: [[[5, 0], [5, 1], [5, 2]]] });
+  ok(!play(g, P(2, 4), P(2, 5)).events.some(x => x.t === 'belt'), 'frosting on the belt: it waits');
+  // boosters do not run the belt
+  const h = mk(['_____0', '_____0', '____0_', '______', '______', '______'], { belts: [[[5, 0], [5, 1]]] });
+  ok(!h.freeSwap(P(2, 4), P(2, 5)).events.some(x => x.t === 'belt'), 'freeSwap: no belt');
+  ok(!h.smash(P(0, 0)).events.some(x => x.t === 'belt'), 'smash: no belt');
+});
+
 test('shuffle leaves frosting, chocolate, swirls, dinos, shells and caged pieces where they are', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 9,
     obstacles: ['L.......', '..2.....', '....C...', '......S.', '.D......', '...L....', '......Y.', '........'] });
@@ -1182,8 +1224,11 @@ test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls,
     { name: 'tall', rows: 9, cols: 7, mask: MASKS.tall, portals: [] },
     { name: 'pot', rows: 8, cols: 8, portals: [], pot: true },
     { name: 'gift', rows: 8, cols: 8, portals: [], gift: true },
+    // a ring in the middle and the bottom row (its end warps back to its start); pots spit, chocolate grows
+    { name: 'belt', rows: 8, cols: 8, portals: [], pot: true,
+      belts: [[[2, 2], [2, 3], [2, 4], [2, 5], [3, 5], [4, 5], [4, 4], [4, 3], [4, 2], [3, 2]], [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6], [6, 7]]] },
   ];
-  let gifts = 0;
+  let gifts = 0, belts = 0;
   for (const cfg of cfgs) for (let g = 0; g < Math.max(3, FUZZ); g++) {
     const seed = 4000 + g * 131 + cfg.name.length;
     const rnd = mulberry(seed);
@@ -1196,7 +1241,10 @@ test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls,
       }
       obstacles.push(s);
     }
-    const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, rows: cfg.rows, cols: cfg.cols, mask: cfg.mask || null, obstacles, portals: cfg.portals,
+    const beltCells = new Set((cfg.belts || []).flat().map(([r, c]) => r * cfg.cols + c));
+    // belt cells: only pieces that can ride (dinos, swirls, normal pieces); one belt cell keeps its blocker now and then (it waits)
+    if (beltCells.size) for (let r = 0; r < cfg.rows; r++) obstacles[r] = [...obstacles[r]].map((ch, c) => (beltCells.has(r * cfg.cols + c) && !'DS.'.includes(ch) && !(r === 4 && c === 3 && g % 2) ? '.' : ch)).join('');
+    const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, rows: cfg.rows, cols: cfg.cols, mask: cfg.mask || null, obstacles, portals: cfg.portals, belts: cfg.belts,
       dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 }, alarm: { timer: 6, rate: 0.03, max: 2 },
       ...(cfg.pot ? { pot: { max: 6 } } : {}) });
     const ctx = newCtx(e);
@@ -1208,8 +1256,13 @@ test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls,
       const res = e.swap(h.a, h.b);
       ok(res.ok, 'hint is valid');
       try { checkResult(e, before, res, ctx); } catch (err) { throw new Error(`${cfg.name} seed ${seed} move ${m}: ${err.message}\n${kindStr(before.grid)}`); }
+      if (beltCells.size) {
+        const gr = e.snapshot().grid;
+        for (const k of beltCells) { const p = gr[Math.floor(k / cfg.cols)][k % cfg.cols]; ok(!(p && p.block === 'choco' && res.events.some(x => x.t === 'spread' && x.to.r * cfg.cols + x.to.c === k)), 'no chocolate onto a belt'); }
+      }
       moves++;
     }
+    belts += ctx.belts || 0;
     eq(e.stats.dinosOut, ctx.exits, 'dinosOut counts exits');
     gifts += gift0 - e.stats.giftLeft;
     exits += ctx.exits; spreads += ctx.spreads; unlocks += ctx.unlocks; hits += ctx.blockerHits;
@@ -1228,8 +1281,8 @@ test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls,
     const sres = e.sugarCrush(Math.floor(rnd() * 8));
     try { replayEvents(before.grid, before.jelly, sres.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} sugarCrush: ${err.message}`); }
   }
-  note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken / gifts opened (${gifts} gifts), ${hits} frosting layers`);
-  ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0 && gifts > 0, 'every mechanic happened');
+  note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken / gifts opened (${gifts} gifts), ${hits} frosting layers, ${belts} belt runs`);
+  ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0 && gifts > 0 && belts > 0, 'every mechanic happened');
 });
 
 // ---------------------------------------------------------------- fuzz + perf

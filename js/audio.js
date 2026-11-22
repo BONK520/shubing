@@ -6,7 +6,7 @@
 //   audio.setMuted(b) / audio.muted     只管音效（sfx）；音樂另外用 setMusic 控制
 //   audio.setMusic(b) / audio.music     背景音樂開關；分頁隱藏時自動暫停
 //   audio.setScene(s, n)      'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡第 n 關：單數關 level-a、雙數關 level-b，整關循環同一首）
-// 音效名稱：tap select swap invalid match(opts.cascade 1..n) stripe wrap bomb special land shuffle
+// 音效名稱：tap select swap invalid match(opts.cascade 1..n) stripe wrap bomb special land shuffle belt
 //           win lose star(opts.n 1..3) sugar combo
 //           pop(opts.cascade, opts.group：連鎖越多、同一步的組數越多，音越高) board(炸彈+炸彈) chime(opts.level：長連鎖)
 // 全部經過壓縮器 + 限幅器，不會爆音。
@@ -583,6 +583,12 @@ const SFX = {
     marimba(79, t + 0.06, 0.11, 0.3);
     marimba(84, t + 0.16, 0.12, 0.45);
     bell(96, t + 0.17, 0.035, 0.3);
+  },
+  // 輸送帶走一格：輕輕的「喀啦」+ 低低的滑動聲
+  belt(t) {
+    noise(t, { dur: 0.22, attack: 0.02, gain: 0.04, type: 'bandpass', f0: 900, f1: 1400, q: 0.9 });
+    tone(220, t, { dur: 0.05, attack: 0.002, gain: 0.04, type: 'square', lp: 1200 });
+    tone(262, t + 0.12, { dur: 0.05, attack: 0.002, gain: 0.035, type: 'square', lp: 1200 });
   },
   // 糖霜掉一層：軟軟的「噗嚓」
   frost(t) {
