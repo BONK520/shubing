@@ -53,7 +53,8 @@ test('API surface, isCell / cell / snapshot copies', () => {
   s.grid[0][0].kind = 99; s.jelly[0][0] = 0; s.mask[0][0] = false;
   ok(e.cell(0, 0).kind !== 99 && e.jellyAt(0, 0) === 2 && e.isCell(0, 0), 'snapshot() is a deep copy');
   const st = e.stats;
-  deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0 });
+  deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0,
+    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0 });
   st.cleared[0] = 50;
   eq(e.stats.cleared[0], 0, 'stats is a copy');
   ok(e.isAdjacent(P(2, 2), P(2, 3)) && e.isAdjacent(P(2, 2), P(1, 2)), 'adjacent');
@@ -725,6 +726,257 @@ test('anti-cascade: far fewer free cascades at 0.9 than at 0', () => {
   // anti-cascade only picks the kinds of new pieces; 2×2 squares also form from pieces that were already on the
   // board falling together, so with squares the drop is about ×0.65 (it was ×0.55 with lines only)
   ok(r9 < r0 * 0.72, `expected far fewer cascades (${r0.toFixed(3)} vs ${r9.toFixed(3)})`);
+});
+
+// ---------------------------------------------------------------- board mechanics (blockers)
+// obstacles: rows of characters over a hand-made board ('.' = nothing)
+const mo = (rowsArr, obstacles, o = {}) => mk(rowsArr, { obstacles, ...o });
+const evOf = (res, t) => res.events.filter(x => x.t === t);
+// the board after the move but before any auto-shuffle (hand-made boards often end without a move)
+const bb = res => { const evs = res.events.filter(x => x.t !== 'shuffle'); return evs[evs.length - 1].board; };
+
+test('cage: a caged piece cannot be swapped; a match through the cage breaks it and the piece stays', () => {
+  const e = mo(['______', '______', '00____', '__0___', '______', '______'],
+    ['......', '......', 'L.....', '......', '......', '......']);
+  eq(e.lockAt(2, 0), 1);
+  eq(e.stats.locksLeft, 1);
+  const id = e.cell(2, 0).id;
+  const bad = e.swap(P(2, 0), P(3, 0));
+  ok(!bad.ok && bad.events.length === 0, 'caged piece does not swap');
+  const res = play(e, P(3, 2), P(2, 2));
+  const cl = firstClear(res);
+  deq(cl.unlocks, [{ r: 2, c: 0 }], 'cage breaks');
+  ok(!cl.removed.some(x => x.r === 2 && x.c === 0), 'the caged piece is not removed');
+  eq(cl.removed.length, 2);
+  eq(e.lockAt(2, 0), 0); eq(e.stats.locksLeft, 0);
+  eq(bb(res)[2][0].id, id, 'same piece is still there');
+});
+
+test('cage: a caged piece does not fall and nothing falls through it; an effect also breaks it', () => {
+  // col 1: caged piece at row 2 over the 3-in-a-row on row 3
+  const e = mo(['______', '______', '______', '_0_0__', '__0___', '______'],
+    ['......', '......', '.L....', '......', '......', '......']);
+  const caged = e.cell(2, 1).id, above = e.cell(1, 1).id;
+  const res = play(e, P(4, 2), P(3, 2));
+  eq(bb(res)[2][1].id, caged, 'caged piece stays put');
+  eq(bb(res)[1][1].id, above, 'the piece above the cage stays put');
+  const fall = evOf(res, 'fall')[0];
+  ok(!fall.moves.some(m => m.id === caged || m.id === above), 'no fall move for the caged column above the cage');
+  ok(bb(res)[3][1], 'the cell under the cage is refilled (sideways)');
+  // a row stripe through a cage: the cage breaks, the piece stays
+  const e2 = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....L', '......', '......', '......']);
+  const id2 = e2.cell(2, 5).id;
+  const r2 = play(e2, P(3, 3), P(2, 3));
+  ok(r2.events.some(x => x.t === 'clear' && (x.unlocks || []).some(u => u.r === 2 && u.c === 5)), 'stripe breaks the cage');
+  eq(e2.lockAt(2, 5), 0);
+  eq(bb(r2)[2][5].id, id2, 'the piece that was caged is still there');
+});
+
+test('frosting: 2 layers; a match next to it removes one layer, the second match removes it; it never moves', () => {
+  const e = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['......', '......', '..2...', '......', '......', '......']);
+  eq(e.cell(2, 2).block, 'frost'); eq(e.cell(2, 2).hp, 2); eq(e.stats.frostLeft, 2);
+  const above = e.cell(1, 2).id;
+  const bad = e.swap(P(2, 2), P(3, 2));
+  ok(!bad.ok, 'frosting cannot be swapped');
+  const res = play(e, P(3, 3), P(3, 2));
+  const cl = firstClear(res);
+  deq(cl.blockerHits, [{ r: 2, c: 2, block: 'frost', left: 1 }]);
+  eq(e.cell(2, 2).hp, 1); eq(e.stats.frostLeft, 1);
+  eq(bb(res)[1][2].id, above, 'the piece above the frosting does not fall');
+  ok(cl.points.reduce((s, p) => s + p.value, 0) > 60, 'a layer is worth points');
+  // second hit: an effect (bomb on the whole board) removes the last layer
+  const e2 = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['......', '......', '..1...', '......', '......', '......']);
+  const r2 = play(e2, P(3, 3), P(3, 2));
+  ok(firstClear(r2).removed.some(x => x.r === 2 && x.c === 2 && x.piece.block === 'frost' && x.cause === 'near'), 'removed by the match next to it');
+  eq(e2.stats.frostLeft, 0);
+  ok(!e2.cell(2, 2).block, 'the cell refills once the frosting is gone');
+});
+
+test('frosting: 3 layers, a striped beam takes one layer per hit', () => {
+  const e = mo(['______', '______', '_ 0 0h _ _ _', '___0__', '______', '______'],
+    ['......', '......', '.....3', '......', '......', '......']);
+  const res = play(e, P(3, 3), P(2, 3));
+  ok(res.events.some(x => x.t === 'clear' && (x.blockerHits || []).some(b => b.r === 2 && b.c === 5 && b.left === 2)), 'beam hits the frosting once');
+  eq(e.cell(2, 5).hp, 2); eq(e.stats.frostLeft, 2);
+});
+
+test('chocolate: a match next to it removes it (no spread); a move that breaks none grows it into a neighbour', () => {
+  const e = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['......', '......', '..C...', '......', '......', '......']);
+  eq(e.stats.chocoLeft, 1);
+  const res = play(e, P(3, 3), P(3, 2));
+  ok(firstClear(res).removed.some(x => x.piece.block === 'choco'), 'chocolate removed');
+  eq(evOf(res, 'spread').length, 0, 'no spread on a move that broke chocolate');
+  eq(e.stats.chocoLeft, 0);
+  // far away from the chocolate: it spreads
+  const e2 = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['C.....', '......', '......', '......', '......', '......']);
+  const r2 = play(e2, P(5, 3), P(5, 2));
+  const sp = evOf(r2, 'spread');
+  eq(sp.length, 1, 'one spread');
+  deq(sp[0].from, { r: 0, c: 0 });
+  ok((sp[0].to.r === 1 && sp[0].to.c === 0) || (sp[0].to.r === 0 && sp[0].to.c === 1), 'into a neighbour');
+  eq(e2.cell(sp[0].to.r, sp[0].to.c).block, 'choco');
+  eq(e2.stats.chocoLeft, 2);
+  ok(sp[0].was && sp[0].was.kind >= 0, 'the eaten piece is reported');
+});
+
+test('licorice swirl: never matches, can be swapped, removed by a match next to it, stops a striped beam', () => {
+  // three swirls in a row are no match
+  const e = mo(['______', '______', '______', '______', '______', '______'],
+    ['......', '......', 'SSS...', '......', '......', '......']);
+  eq(e.stats.licoriceLeft, 3);
+  eq(e.cell(2, 0).block, 'licorice');
+  ok(e.cell(2, 0).kind < 0, 'swirls have no colour');
+  // swapped into place: the swirl moves, the piece it traded with matches
+  const e2 = mo(['______', '______', '00____', '__0___', '______', '______'],
+    ['......', '......', '..S...', '......', '......', '......']);
+  const sid = e2.cell(2, 2).id;
+  const res = play(e2, P(2, 2), P(3, 2));
+  const cl = firstClear(res);
+  ok(cl.removed.some(x => x.piece.id === sid && x.cause === 'near'), 'the swirl next to the match is removed');
+  // beam stops at a swirl
+  const e3 = mo(['________', '________', '_ 0 0h _ _ _ _ _', '___0____', '________', '________'],
+    ['........', '........', '......S.', '........', '........', '........']);
+  const behind = e3.cell(2, 7).id;
+  const r3 = play(e3, P(3, 3), P(2, 3));
+  const line = r3.events.filter(x => x.t === 'clear').flatMap(x => x.effects).find(f => f.fx === 'line' && f.dir === 'h' && f.r === 2);
+  ok(line && line.reach && line.reach[0] === 0 && line.reach[1] === 6, `beam stops at the swirl: ${JSON.stringify(line)}`);
+  const cl3 = r3.events.find(x => x.t === 'clear' && x.effects.length);
+  ok(cl3.removed.some(x => x.r === 2 && x.c === 6 && x.piece.block === 'licorice'), 'the swirl itself is removed');
+  ok(!cl3.removed.some(x => x.r === 2 && x.c === 7), 'the piece behind it is safe');
+  eq(bb(r3)[2][7].id, behind, 'still there');
+});
+
+test('dino: falls onto the exit row and leaves (exit event, then a refill); cannot be destroyed', () => {
+  const e = mo(['______', '______', '______', '______', '______', '00_0__'],
+    ['......', '......', '......', '......', '..D...', '......']);
+  ok(e.isExit(5, 2) && e.isExit(5, 0) && !e.isExit(4, 2), 'default exits: the bottom row');
+  eq(e.stats.dinosTotal, 1);
+  const res = play(e, P(5, 3), P(5, 2));
+  deq(res.events.map(x => x.t).slice(0, 5), ['swap', 'clear', 'fall', 'exit', 'fall']);
+  const ex = evOf(res, 'exit')[0];
+  eq(ex.cells.length, 1); eq(ex.cells[0].r, 5); eq(ex.cells[0].c, 2); eq(ex.cells[0].piece.block, 'dino');
+  eq(e.stats.dinosOut, 1);
+  ok(!e.snapshot().grid.flat().some(p => p && p.block === 'dino'), 'gone from the board');
+  // a column stripe through a dino leaves it
+  const e2 = mo(['______', '______', '___0__', '_ 0 0v _ _ _', '______', '______'],
+    ['..D...', '......', '......', '......', '......', '......']);
+  const did = e2.cell(0, 2).id;
+  const r2 = play(e2, P(2, 3), P(3, 3));
+  ok(r2.events.some(x => x.t === 'clear' && x.effects.some(f => f.fx === 'line' && f.dir === 'v' && f.c === 2)), 'the column beam fired');
+  ok(!r2.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.id === did)), 'dino not removed by the beam');
+});
+
+test('dino: swappable; drops in from the top while the goal needs more (dinos option); fish never targets one', () => {
+  const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 5, dinos: { total: 3, onBoard: 1, rate: 1 } });
+  eq(e.stats.dinosTotal, 3);
+  const ctx = newCtx(e);
+  let seen = 0;
+  for (let m = 0; m < 20; m++) {
+    const h = e.findHint();
+    const before = e.snapshot();
+    const res = e.swap(h.a, h.b);
+    checkResult(e, before, res, ctx);
+    const onBoard = e.snapshot().grid.flat().filter(p => p && p.block === 'dino').length;
+    ok(onBoard <= 1, 'at most onBoard dinos');
+    seen = Math.max(seen, onBoard);
+  }
+  ok(seen === 1, 'a dino dropped in');
+  ok(e.stats.dinosOut + e.snapshot().grid.flat().filter(p => p && p.block === 'dino').length <= 3, 'never more than total');
+  // dino swaps with a piece that then matches
+  const e2 = mo(['______', '______', '00____', '__0___', '______', '______'],
+    ['......', '......', '..D...', '......', '......', '......']);
+  const r2 = play(e2, P(2, 2), P(3, 2));
+  ok(r2.ok, 'dino + matching piece is a valid swap');
+});
+
+test('portal: what falls out of the bottom of one column comes in at the top of another (warp path)', () => {
+  // the top-left 3×2 and the bottom-right 3×2 only meet through the portal (2,1) -> (3,2)
+  const e = mk(['_ _ . .', '_ _ . .', '_ _ . .', '. . 0 _', '. . 0 _', '. . _ 0'], { portals: [[2, 1, 3, 2]] });
+  deq(e.portals(), [{ from: { r: 2, c: 1 }, to: { r: 3, c: 2 } }]);
+  const ids = [e.cell(0, 1).id, e.cell(1, 1).id, e.cell(2, 1).id];
+  const res = play(e, P(5, 3), P(5, 2));
+  const fall = evOf(res, 'fall')[0];
+  for (const id of ids) {
+    const m = fall.moves.find(x => x.id === id);
+    ok(m && m.to.c === 2 && m.path && m.path.some(q => q.warp), `column 1 piece ${id} warps into column 2: ${JSON.stringify(m)}`);
+  }
+  eq(bb(res)[5][2].id, ids[2], 'the lowest one lands at the bottom');
+  ok(!fall.spawns.some(s => s.to.c === 2), 'column 2 gets no spawn of its own (fed through the portal)');
+  eq(fall.spawns.filter(s => s.to.c === 1).length, 3, 'column 1 refills from its top');
+});
+
+test('shuffle leaves frosting, chocolate, swirls, dinos and caged pieces where they are', () => {
+  const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 9,
+    obstacles: ['L.......', '..2.....', '....C...', '......S.', '.D......', '...L....', '........', '........'] });
+  const before = e.snapshot();
+  const ev = e.shuffle()[0];
+  const fixedIds = new Set();
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const p = before.grid[r][c];
+    if (p && (p.block || before.lock[r][c])) fixedIds.add(p.id);
+  }
+  eq(fixedIds.size, 6);
+  ok(!(ev.moves || []).some(m => fixedIds.has(m.id) && (m.from.r !== m.to.r || m.from.c !== m.to.c)), 'fixed pieces do not move');
+  const after = e.snapshot();
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (fixedIds.has(before.grid[r][c] && before.grid[r][c].id)) eq(after.grid[r][c].id, before.grid[r][c].id);
+});
+
+test('fuzz with every mechanic: cages, frosting 1–3, chocolate, swirls, dinos + exits, portals; every invariant', () => {
+  let moves = 0, exits = 0, spreads = 0, unlocks = 0, hits = 0;
+  const cfgs = [
+    { name: 'mixed', rows: 8, cols: 8, portals: [] },
+    { name: 'portal', rows: 8, cols: 8, mask: ['####....', '####....', '####....', '####....', '....####', '....####', '....####', '....####'],
+      portals: [[3, 0, 4, 4], [3, 1, 4, 5], [3, 2, 4, 6], [3, 3, 4, 7]] },
+    { name: 'tall', rows: 9, cols: 7, mask: MASKS.tall, portals: [] },
+  ];
+  for (const cfg of cfgs) for (let g = 0; g < Math.max(3, FUZZ); g++) {
+    const seed = 4000 + g * 131 + cfg.name.length;
+    const rnd = mulberry(seed);
+    const obstacles = [];
+    for (let r = 0; r < cfg.rows; r++) {
+      let s = '';
+      for (let c = 0; c < cfg.cols; c++) {
+        const x = rnd();
+        s += r >= cfg.rows - 1 ? '.' : x < 0.07 ? 'L' : x < 0.10 ? '1' : x < 0.12 ? '2' : x < 0.13 ? '3' : x < 0.15 ? 'C' : x < 0.18 ? 'S' : x < 0.20 && r < 3 ? 'D' : '.';
+      }
+      obstacles.push(s);
+    }
+    const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, rows: cfg.rows, cols: cfg.cols, mask: cfg.mask || null, obstacles, portals: cfg.portals,
+      dinos: { total: 4, onBoard: 2, rate: 0.4 }, licorice: { rate: 0.05, max: 4 } });
+    const ctx = newCtx(e);
+    for (let m = 0; m < 40; m++) {
+      const h = e.findHint();
+      if (!h) break;
+      const before = e.snapshot();
+      const res = e.swap(h.a, h.b);
+      ok(res.ok, 'hint is valid');
+      try { checkResult(e, before, res, ctx); } catch (err) { throw new Error(`${cfg.name} seed ${seed} move ${m}: ${err.message}\n${kindStr(before.grid)}`); }
+      moves++;
+    }
+    eq(e.stats.dinosOut, ctx.exits, 'dinosOut counts exits');
+    exits += ctx.exits; spreads += ctx.spreads; unlocks += ctx.unlocks; hits += ctx.blockerHits;
+    // boosters on a board full of blockers: replay exactly, board stays full, dinos are never destroyed
+    for (const kind of ['smash', 'freeSwap', 'airDrop']) {
+      const before = e.snapshot();
+      const r = Math.floor(rnd() * cfg.rows), c = Math.floor(rnd() * (cfg.cols - 1));
+      const res = kind === 'smash' ? e.smash({ r, c }) : kind === 'freeSwap' ? e.freeSwap({ r, c }, { r, c: c + 1 }) : e.airDrop(3);
+      if (!res.ok) { ok(sameBoard(e.snapshot().grid, before.grid), `${kind} refused without a change`); continue; }
+      try { replayEvents(before.grid, before.jelly, res.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} ${kind}: ${err.message}`); }
+      const g = e.snapshot().grid;
+      ok(g.every((row, y) => row.every((p, x) => !e.isCell(y, x) || p)), `${kind}: board full`);
+      ok(!res.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.block === 'dino')), `${kind}: no dino destroyed`);
+    }
+    const before = e.snapshot();
+    const sres = e.sugarCrush(Math.floor(rnd() * 8));
+    try { replayEvents(before.grid, before.jelly, sres.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} sugarCrush: ${err.message}`); }
+  }
+  note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken, ${hits} frosting layers`);
+  ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0, 'every mechanic happened');
 });
 
 // ---------------------------------------------------------------- fuzz + perf
