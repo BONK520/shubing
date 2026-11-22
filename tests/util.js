@@ -110,7 +110,10 @@ export function replayEvents(board0, jelly0, events) {
         at(m.from, where); at(m.to, where);
         const cur = g[m.from.r][m.from.c];
         if (!cur || cur.id !== m.id) fail(`${where}: move of id ${m.id} from ${m.from.r},${m.from.c} but board has ${pieceStr(cur)}`);
-        if (e.t === 'fall' && (m.to.c !== m.from.c || m.to.r <= m.from.r)) fail(`${where}: fall move not straight down ${JSON.stringify(m)}`);
+        if (e.t === 'fall') {
+          if (m.path) checkPath(m.path, m.from, m.to, where, m);
+          else if (m.to.c !== m.from.c || m.to.r <= m.from.r) fail(`${where}: fall move not straight down ${JSON.stringify(m)}`);
+        }
         lifted.push([m, cur]);
         g[m.from.r][m.from.c] = null;
       }
@@ -120,7 +123,9 @@ export function replayEvents(board0, jelly0, events) {
       }
       for (const s of e.spawns || []) {
         at(s.to, where);
-        if (!(s.from.r < 0) || s.from.c !== s.to.c) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
+        if (!(s.from.r < 0)) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
+        if (s.path) checkPath(s.path.slice(1), s.path[1], s.to, where, s);
+        else if (s.from.c !== s.to.c) fail(`${where}: bad spawn ${JSON.stringify(s)}`);
         if (g[s.to.r][s.to.c]) fail(`${where}: spawn lands on occupied ${s.to.r},${s.to.c}`);
         g[s.to.r][s.to.c] = { ...s.piece };
       }
@@ -132,6 +137,16 @@ export function replayEvents(board0, jelly0, events) {
   return { board: g, jelly: j };
 }
 
+// a fall path: from → … → to, every step either straight down the same column or one cell diagonally down
+function checkPath(pts, from, to, where, m) {
+  const f = pts[0], l = pts[pts.length - 1];
+  if (!f || f.r !== from.r || f.c !== from.c || l.r !== to.r || l.c !== to.c) fail(`${where}: path ends wrong ${JSON.stringify(m)}`);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const ok = (b.c === a.c && b.r > a.r) || (b.r === a.r + 1 && Math.abs(b.c - a.c) === 1);
+    if (!ok) fail(`${where}: bad path step ${JSON.stringify(a)} -> ${JSON.stringify(b)} in ${JSON.stringify(m)}`);
+  }
+}
 const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish']);
 const SHAPES = new Set(['3', '4', '5', 'L', 'T', 'square']);
 const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb', 'fish']);
@@ -238,7 +253,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       const byCol = {};
       for (const s of e.spawns) {
         if (s.piece.id <= ctx.maxId) fail(`spawn reuses id ${s.piece.id}`);
-        (byCol[s.to.c] = byCol[s.to.c] || []).push(s);
+        if (!s.path) (byCol[s.to.c] = byCol[s.to.c] || []).push(s);   // pieces that slid sideways have their own path
       }
       for (const list of Object.values(byCol)) {
         list.sort((x, y) => y.to.r - x.to.r);

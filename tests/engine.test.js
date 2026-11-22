@@ -175,14 +175,15 @@ test('fish targets jelly first, then pieces the collect goal still needs', () =>
   }
 });
 
-test('fish + striped: the fish carries the stripe to its target and it fires there', () => {
+test('fish + striped: three fish each carry the stripe to a target and it fires there', () => {
   const e = mk(['_ _ _ _ _ _', '0f 1h _ _ _ _', '_ _ _ _ _ _', '_ _ _ _ _ _'], { jelly: ['......', '......', '......', '.....1'] });
   const c = firstClear(play(e, P(1, 0), P(1, 1)));
-  const f = c.effects.find(x => x.fx === 'fish');
-  deq([f.to.r, f.to.c, f.carry], [3, 5, 'h']);
+  const fs = c.effects.filter(x => x.fx === 'fish');
+  eq(fs.length, 3, 'three fish');
+  ok(fs.every(f => f.carry === 'h'), 'each carries the stripe');
+  deq([fs[0].to.r, fs[0].to.c], [3, 5], 'the first one goes for the jelly');
   ok(c.effects.some(x => x.fx === 'line' && x.dir === 'h' && x.r === 3 && x.c === 5), 'a row stripe at the target');
   for (let x = 0; x < 6; x++) ok(c.removed.some(it => it.r === 3 && it.c === x), `row 3 col ${x} cleared`);
-  eq(c.removed.filter(it => it.cause === 'combo' && it.r !== 1).length, 5, 'the rest of the row: cause combo');
 });
 
 test('fish + wrapped: blast around the target; fish + fish: three fish, three different targets', () => {
@@ -410,6 +411,37 @@ test('combo wrapped + wrapped = 5x5', () => {
   for (let r = 1; r <= 5; r++) for (let c = 2; c <= 6; c++) ok(cells.has(`${r},${c}`), `5x5 ${r},${c}`);
 });
 
+test('combo wrapped + wrapped explodes twice: after the refill, a second 5x5 blast (cascade 2)', () => {
+  const e = comboBoard('_ _ _ 0w 1w _ _');
+  const res = play(e, P(3, 3), P(3, 4));
+  const clears = res.events.filter(x => x.t === 'clear');
+  const blasts = clears.filter(x => x.effects.some(f => f.fx === 'blast' && f.radius === 2 && f.r === 3 && f.c === 4));
+  eq(blasts.length >= 2, true, 'two 5x5 blasts');
+  eq(blasts[1].cascade, 2, 'the second blast is the first free cascade');
+  const i1 = res.events.indexOf(blasts[0]), i2 = res.events.indexOf(blasts[1]);
+  eq(res.events.slice(i1 + 1, i2).map(x => x.t).join(), 'fall', 'a refill between the two blasts');
+});
+
+test('cascade-friendly refill: new pieces copy a neighbour colour more often than chance', () => {
+  // same boards with and without the bias: count free cascades
+  const run = bias => {
+    let cascades = 0, moves = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed, cascadeBias: bias });
+      for (let i = 0; i < 8; i++) {
+        const h = e.findHint();
+        if (!h) break;
+        const r = e.swap(h.a, h.b);
+        moves++;
+        if (r.events.some(x => x.t === 'clear' && x.cascade >= 2)) cascades++;
+      }
+    }
+    return cascades / Math.max(1, moves);
+  };
+  const off = run(0), on = run(0.18);
+  ok(on > off, `free cascades: bias 0 → ${(off * 100).toFixed(1)}%, bias 0.18 → ${(on * 100).toFixed(1)}%`);
+});
+
 test('combo bomb + normal = every piece of that kind (specials among them fire)', () => {
   const e = mk(['0_____0', '_______', '__0____', '_ _ _ B 0 _ _', '_______', '_ 0 _ _ _ 0h _', '_______']);
   const res = play(e, P(3, 3), P(3, 4));
@@ -467,17 +499,29 @@ test('two specials always combo even without a match; bomb swaps are always vali
 });
 
 // ---------------------------------------------------------------- gravity, spawn, jelly
-test('gravity passes through holes; spawns come from above (from.r < 0, stacked)', () => {
+test('gravity: holes stop pieces; the cell under a hole is filled by a diagonal slide; spawns only from column tops', () => {
   const e = mk(['__1___', '______', '__2___', '__.___', '__0___', '00____']);
   ok(!e.isCell(3, 2), 'hole');
-  const id1 = e.cell(0, 2).id, id2 = e.cell(2, 2).id;
+  const id2 = e.cell(2, 2).id;
   const res = play(e, P(4, 2), P(5, 2));
   const fall = res.events.find(x => x.t === 'fall');
-  const mv = Object.fromEntries(fall.moves.map(m => [m.id, m]));
-  deq([mv[id2].from, mv[id2].to], [P(2, 2), P(4, 2)], 'piece above the hole jumps over it');
-  deq([mv[id1].from, mv[id1].to], [P(0, 2), P(1, 2)]);
-  deq(fall.spawns.map(s => [s.from.r, s.from.c, s.to.r, s.to.c]).sort(), [[-1, 0, 0, 0], [-1, 1, 0, 1], [-1, 2, 0, 2]]);
+  ok(!fall.moves.some(m => m.id === id2), 'the piece above the hole stays (it cannot fall through)');
+  const slid = fall.moves.find(m => m.to.r === 4 && m.to.c === 2);
+  ok(slid && slid.path && slid.from.r === 3 && Math.abs(slid.from.c - 2) === 1, 'the cell under the hole is filled diagonally');
+  deq(fall.spawns.map(s => [s.from.r, s.from.c, s.to.r, s.to.c]).sort(), [[-1, 0, 0, 0], [-1, 1, 0, 1], [-1, slid.from.c, 0, slid.from.c]].sort());
   for (const ev of res.events) eq(ev.board[3][2], null, `hole stays empty in ${ev.t}`);
+});
+
+test('a column cut off by holes on both sides above still fills (diagonal from a neighbour)', () => {
+  // col 2 rows 3–5 sit under holes; col 1 / col 3 feed them sideways
+  const e = mk(['______', '__.___', '__.___', '______', '______', '______']);
+  for (let i = 0; i < 6; i++) {
+    const h = e.findHint();
+    if (!h) break;
+    const res = play(e, h.a, h.b);
+    for (const ev of res.events) eq(ev.board[1][2], null, 'hole stays empty');
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 6; c++) if (e.isCell(r, c)) ok(e.cell(r, c), `cell ${r},${c} filled after move ${i}`);
+  }
 });
 
 test('column with holes on top still refills from above; multiple spawns stack -1, -2, -3', () => {

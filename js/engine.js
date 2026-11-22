@@ -63,6 +63,18 @@
 //   of moves). Sugar-crush transforms are the only events besides `clear` that carry `gained` / `points`.
 //   No shuffle is appended at the end of sugarCrush.
 // * addScore(n): adds n bonus points to the score (main.js lifts a completed goal level to 1 star with it).
+// * Gravity (Candy Crush style): holes stop pieces. New pieces enter only at the top cell of each column (its spawner)
+//   and fall inside that column's top segment. A cell that nothing can fall into from straight above (a hole above
+//   it) is filled by a piece sliding diagonally from the upper-left / upper-right cell (only a piece that is resting,
+//   i.e. cannot fall straight down). A cell nothing can ever reach that way gets a new piece directly.
+//   fall moves / spawns carry `path` ([{ r, c }, …], first = start; spawns start above their spawner) when the piece
+//   did not just fall straight down.
+// * Refill colours: chosen after everything has landed, bottom-up. Option `cascadeBias` (default 0.18): that share of
+//   new pieces copies the colour of a neighbour (more free cascades, Candy Crush feel). Option `antiCascade`
+//   (default 0): that share avoids colours that would match at once.
+// * The first board and every shuffle have at least 2 valid moves.
+// * Combos also: wrapped + wrapped = 5×5 blast, then after the refill a second 5×5 blast (its own clear, cascade 2);
+//   fish + striped / wrapped = 3 fish, each carrying it.
 //
 // TEST-ONLY option `layout` (not part of the game API): createEngine({ kinds, layout: [rowStrings] }).
 //   Each row is a list of tokens, spaces optional:  "0 1 2h 3v 4w B . ?"  ==  "012h3v4wB.?"
@@ -118,7 +130,9 @@ export function createEngine(opts = {}) {
   const rows = opts.rows ?? (layoutToks ? layoutToks.length : 8);
   const cols = opts.cols ?? (layoutToks ? Math.max(...layoutToks.map(t => t.length)) : 8);
   const kinds = Array.isArray(opts.kinds) && opts.kinds.length ? opts.kinds.slice() : [0, 1, 2, 3, 4];
-  const antiCascade = opts.antiCascade ?? 0.72;
+  const antiCascade = opts.antiCascade ?? 0;
+  const cascadeBias = opts.cascadeBias ?? 0.18;
+  let biasNow = cascadeBias;            // sugarCrush turns it off (the bonus should settle, not keep chaining)
   const rng = mulberry32(opts.seed ?? 1);
   const rand = n => Math.floor(rng() * n);
   const maskIn = opts.mask || null;
@@ -492,6 +506,7 @@ export function createEngine(opts = {}) {
   function comboSteps(a, b, events) {
     const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
     const st = newStep(1);
+    let again = null;
     const center = { r: b.r, c: b.c };
     if (pa.special === 'bomb' && pb.special === 'bomb') {
       hit(st, a.r, a.c, 'combo', center, true);
@@ -523,7 +538,7 @@ export function createEngine(opts = {}) {
       hit(st, a.r, a.c, 'combo', center, true);
       hit(st, b.r, b.c, 'combo', center, true);
       if (other === 'fish') launchFish(st, center, 3);
-      else launchFish(st, center, 1, other);
+      else launchFish(st, center, 3, other);           // 3 隻強化的飛天玩偶，各自帶著條紋 / 包裝飛過去
     } else {
       const stripes = [pa.special, pb.special].filter(s => s === 'h' || s === 'v').length;
       hit(st, a.r, a.c, 'combo', center, true);
@@ -545,41 +560,142 @@ export function createEngine(opts = {}) {
       } else {
         st.effects.push({ fx: 'blast', r: center.r, c: center.c, radius: 2 });
         hitSquare(st, center.r, center.c, 2, 'combo', center);
+        again = center;
       }
     }
     runQueue(st);
     events.push(finishStep(st));
+    return again;
+  }
+  // wrapped + wrapped: after the refill, the same 5×5 blast once more
+  function secondBlast(center, events, cascade) {
+    const st = newStep(cascade);
+    st.effects.push({ fx: 'blast', r: center.r, c: center.c, radius: 2 });
+    hitSquare(st, center.r, center.c, 2, 'combo', center);
+    runQueue(st);
+    events.push(finishStep(st));
+  }
+  // a player combo: the combo itself, the refill, and (wrapped + wrapped) the second blast; returns the next cascade
+  function playCombo(a, b, events) {
+    const again = comboSteps(a, b, events);
+    fall(events);
+    if (!again) return 2;
+    secondBlast(again, events, 2);
+    fall(events);
+    return 3;
   }
 
   // ---- gravity + refill ----
+  // spawner of each column = its top cell; new pieces only enter there
+  const spawnRow = [];
+  for (let c = 0; c < cols; c++) { let r = 0; while (r < rows && !cellMask[r][c]) r++; spawnRow.push(r < rows ? r : -1); }
   function pickKind(r, c) {
-    if (rng() < antiCascade) {
+    if (antiCascade > 0 && rng() < antiCascade) {
       const safe = kinds.filter(k => !wouldMatch(r, c, k));
       if (safe.length) return safe[rand(safe.length)];
+    }
+    if (biasNow > 0 && rng() < biasNow) {
+      // 爽感輔助：照旁邊已經有的顏色（下、左、右、上），比較容易接著連消
+      const nb = [];
+      for (const [dr, dc] of [[1, 0], [0, -1], [0, 1], [-1, 0]]) { const k = kAt(r + dr, c + dc); if (k >= 0 && kinds.includes(k)) nb.push(k); }
+      if (nb.length) return nb[rand(nb.length)];
     }
     return kinds[rand(kinds.length)];
   }
   function fall(events) {
-    const moves = [], spawnCells = [];
-    for (let c = 0; c < cols; c++) {
-      const col = [];
-      for (let r = 0; r < rows; r++) if (cellMask[r][c]) col.push(r);
-      let w = col.length - 1;
-      for (let i = col.length - 1; i >= 0; i--) {
-        const r = col[i], p = grid[r][c];
-        if (!p) continue;
-        const tr = col[w--];
-        if (tr !== r) { grid[tr][c] = p; grid[r][c] = null; moves.push({ id: p.id, from: { r, c }, to: { r: tr, c } }); }
+    const paths = new Map(), starts = new Map(), spawned = [], count = new Array(cols).fill(0);
+    const trail = (p, r, c) => { const t = paths.get(p); if (t) t.push({ r, c }); };
+    const place = (p, r0, c0, r1, c1) => {
+      if (!paths.has(p)) { paths.set(p, [{ r: r0, c: c0 }]); starts.set(p, { r: r0, c: c0 }); }
+      grid[r1][c1] = p; grid[r0][c0] = null; trail(p, r1, c1);
+    };
+    const spawnAt = (r, c, top) => {
+      const j = count[c]++;
+      const p = newPiece(-2);                         // colour chosen after everything has landed
+      grid[r][c] = p;
+      paths.set(p, [{ r: top - 1 - j, c }, { r, c }]);
+      spawned.push({ p, c, j });
+    };
+    // straight down inside every segment of every column (holes split a column into segments)
+    function settleColumns() {
+      let moved = false;
+      for (let c = 0; c < cols; c++) {
+        let r = rows - 1;
+        while (r >= 0) {
+          if (!cellMask[r][c]) { r--; continue; }
+          let top = r;
+          while (top - 1 >= 0 && cellMask[top - 1][c]) top--;
+          let w = r;                                   // next free cell from the bottom of this segment
+          for (let y = r; y >= top; y--) {
+            const q = grid[y][c];
+            if (!q) continue;
+            if (y !== w) { place(q, y, c, w, c); moved = true; }
+            w--;
+          }
+          // the top segment of the column is fed by its spawner
+          if (top === spawnRow[c]) for (let y = w; y >= top; y--) { spawnAt(y, c, top); moved = true; }
+          r = top - 1;
+        }
       }
-      for (let i = w; i >= 0; i--) spawnCells.push({ r: col[i], c, j: w - i });
+      return moved;
     }
-    spawnCells.sort((x, y) => y.r - x.r || x.c - y.c);
-    const spawns = [];
-    for (const s of spawnCells) {
-      const p = newPiece(pickKind(s.r, s.c));
-      grid[s.r][s.c] = p;
-      spawns.push({ piece: cp(p), from: { r: -1 - s.j, c: s.c }, to: { r: s.r, c: s.c } });
+    // a cell with a hole above it: a resting piece slides in from the upper-left / upper-right
+    function slideOne() {
+      for (let r = rows - 1; r >= 1; r--) for (let c = 0; c < cols; c++) {
+        if (!cellMask[r][c] || grid[r][c] || cellMask[r - 1][c]) continue;
+        const order = (r + c) % 2 ? [-1, 1] : [1, -1];
+        for (const d of order) {
+          const sc = c + d;
+          if (!isCell(r - 1, sc) || !grid[r - 1][sc]) continue;
+          if (isCell(r, sc) && !grid[r][sc]) continue;  // that piece can still fall straight down
+          place(grid[r - 1][sc], r - 1, sc, r, c);
+          return true;
+        }
+      }
+      return false;
     }
+    for (let guard = 0; guard < 4000; guard++) {
+      if (settleColumns()) continue;
+      if (slideOne()) continue;
+      // nothing can reach a cell any more: a new piece appears there directly (dropping in from above it)
+      let filled = false;
+      forCells((r, c) => {
+        if (filled || grid[r][c]) return;
+        let top = r;
+        while (top - 1 >= 0 && cellMask[top - 1][c]) top--;
+        spawnAt(r, c, top);
+        filled = true;
+      });
+      if (!filled) break;
+    }
+    // colours of the new pieces, bottom-up (so the cascade-friendly refill sees what is below)
+    const fresh = spawned.map(sp => ({ sp, at: paths.get(sp.p)[paths.get(sp.p).length - 1] }))
+      .sort((x, y) => y.at.r - x.at.r || x.at.c - y.at.c);
+    for (const { sp, at } of fresh) sp.p.kind = pickKind(at.r, at.c);
+    const straight = pts => pts.every(q => q.c === pts[0].c);
+    const moves = [], spawns = [];
+    for (const [p, pts] of paths) {
+      if (spawned.some(sp => sp.p === p)) continue;
+      const to = pts[pts.length - 1], from = starts.get(p);
+      if (from.r === to.r && from.c === to.c) continue;
+      const m = { id: p.id, from: { ...from }, to: { ...to } };
+      if (!straight(pts)) m.path = pts.map(q => ({ ...q }));
+      moves.push(m);
+    }
+    // pieces that stayed in their column stack above it -1, -2, … (lowest first); ones that slid sideways keep their path
+    const stack = new Array(cols).fill(0);
+    const order = spawned.slice().sort((x, y) => {
+      const a = paths.get(x.p), b = paths.get(y.p);
+      return b[b.length - 1].r - a[a.length - 1].r;
+    });
+    for (const sp of order) {
+      const pts = paths.get(sp.p), to = pts[pts.length - 1];
+      const o = { piece: cp(sp.p), from: { r: -1 - sp.j, c: sp.c }, to: { ...to } };
+      if (!straight(pts)) o.path = pts.map(q => ({ ...q }));
+      else o.from.r = -1 - stack[sp.c]++;
+      spawns.push(o);
+    }
+    spawns.sort((x, y) => y.to.r - x.to.r || x.to.c - y.to.c);
     if (moves.length || spawns.length) events.push(ev({ t: 'fall', moves, spawns }));
   }
 
@@ -607,14 +723,16 @@ export function createEngine(opts = {}) {
     grid[r1][c1] = p; grid[r2][c2] = q;
     return ok;
   }
-  function hasValidMove() {
+  function validMoves(limit = 1) {
+    let n = 0;
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
       if (!cellMask[r][c]) continue;
-      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1)) return true;
-      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c)) return true;
+      if (isCell(r, c + 1) && pairValid(r, c, r, c + 1) && ++n >= limit) return n;
+      if (isCell(r + 1, c) && pairValid(r, c, r + 1, c) && ++n >= limit) return n;
     }
-    return false;
+    return n;
   }
+  function hasValidMove() { return validMoves(1) >= 1; }
   const COMBO_VALUE = { 'bomb+bomb': 1000, 'bomb+wrap': 900, 'bomb+h': 850, 'bomb+v': 850, 'bomb+fish': 800, 'wrap+wrap': 700,
     'h+wrap': 650, 'v+wrap': 650, 'h+h': 600, 'h+v': 600, 'v+v': 600,
     'fish+wrap': 580, 'fish+h': 560, 'fish+v': 560, 'fish+fish': 540 };
@@ -672,7 +790,8 @@ export function createEngine(opts = {}) {
     return best;
   }
 
-  function stableAndPlayable() { return !findRuns().length && !findSquares().length && hasValidMove(); }
+  // stable (no match yet) and at least `need` valid moves (shuffles and the first board want 2)
+  function stableAndPlayable(need = 2) { return !findRuns().length && !findSquares().length && validMoves(need) >= need; }
 
   function shuffleInternal() {
     const cells = [];
@@ -694,7 +813,7 @@ export function createEngine(opts = {}) {
       ok = stableAndPlayable();
     }
     // last resort: keep ids/positions/specials, re-roll the kinds of normal pieces
-    for (let attempt = 0; attempt < 100 && !ok; attempt++) {
+    for (let attempt = 0; attempt < 200 && !ok; attempt++) {
       const normals = cells.filter(([r, c]) => grid[r][c] && grid[r][c].special === NONE);
       const saved = normals.map(([r, c]) => grid[r][c]);
       for (const [r, c] of normals) grid[r][c] = null;
@@ -703,7 +822,7 @@ export function createEngine(opts = {}) {
         saved[i].kind = safe.length ? safe[rand(safe.length)] : kinds[rand(kinds.length)];
         grid[r][c] = saved[i];
       });
-      ok = stableAndPlayable();
+      ok = stableAndPlayable(attempt < 150 ? 2 : 1);
     }
     const moves = [];
     // piece = the piece after the shuffle (the last resort may have changed its kind)
@@ -763,7 +882,7 @@ export function createEngine(opts = {}) {
       }
       const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
       let cascade = 1;
-      if (combo) { comboSteps(a, b, events); fall(events); cascade = 2; }
+      if (combo) cascade = playCombo(a, b, events);
       const last = settle(events, cascade, combo ? null : [b, a]);
       cascadesMax = Math.max(cascadesMax, last);
       if (!hasValidMove()) events.push(shuffleInternal());
@@ -798,7 +917,7 @@ export function createEngine(opts = {}) {
       grid[a.r][a.c] = pb; grid[b.r][b.c] = pa;
       const events = [ev({ t: 'swap', a: { ...a }, b: { ...b } })];
       let cascade = 1;
-      if (combo) { comboSteps(a, b, events); fall(events); cascade = 2; }
+      if (combo) cascade = playCombo(a, b, events);
       cascadesMax = Math.max(cascadesMax, settle(events, cascade, combo ? null : [b, a]));
       if (!hasValidMove()) events.push(shuffleInternal());
       const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
@@ -842,6 +961,7 @@ export function createEngine(opts = {}) {
 
     sugarCrush(movesLeft) {
       const events = [];
+      biasNow = 0;
       let left = Math.max(0, Math.floor(movesLeft || 0));
       // waves: convert up to SUGAR_WAVE moves into striped pieces (3,000 each), fire exactly those, let it settle
       while (left > 0) {
@@ -871,7 +991,7 @@ export function createEngine(opts = {}) {
         settle(events, 2, null);
       }
       // then every special still on the board (left by the player or made by cascades) fires, until none is left
-      for (let round = 0; round < 30; round++) {
+      for (let round = 0; round < 60; round++) {
         const st = newStep(1);
         forCells((r, c) => { const p = grid[r][c]; if (p && p.special !== NONE) hit(st, r, c, p.special, { r, c }); });
         if (!st.removed.length) break;
@@ -880,6 +1000,7 @@ export function createEngine(opts = {}) {
         fall(events);
         settle(events, 2, null);
       }
+      biasNow = cascadeBias;
       const gained = events.reduce((s, e) => s + (e.gained || 0), 0);
       score += gained;
       return { events, gained };
