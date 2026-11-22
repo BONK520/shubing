@@ -111,9 +111,9 @@ function goalStr(L) {
   if (g.type === 'score') return `分數 ${g.target}`;
   if (g.type === 'collect') return '收集 ' + Object.entries(g.items).map(([k, v]) => `${PIECES[PIECES.findIndex(p => p.id === k)].name}${v}`).join(' ');
   if (g.type === 'jelly') return '果凍';
-  const NAME = { jelly: '果凍', dino: '恐龍', frost: '糖霜', choco: '巧克力', cage: '籠子' };
+  const NAME = { jelly: '果凍', dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '籠子' };
   return goalParts(L).map(q => q.kind === 'collect' ? `${PIECES[PIECES.findIndex(p => p.id === q.id)].name}${q.need}`
-    : q.kind === 'dino' ? `恐龍${q.need}` : NAME[q.kind] || q.kind).join('+');
+    : q.kind === 'dino' ? `龍龍${q.need}` : NAME[q.kind] || q.kind).join('+');
 }
 
 // pad by display width (CJK = 2 columns) so the table lines up

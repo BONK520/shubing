@@ -56,7 +56,7 @@ const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 11
 const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
 const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
-const DINO_GLOW = [110, 240, 150];       // 小恐龍：綠色的光
+const DINO_GLOW = [110, 240, 150];       // 龍龍：綠色的光
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40], SPARK_GOLD = [255, 186, 60];
 // 盤面主題（衣櫃的「棋盤背景主題」）：玻璃、格子、內壁影子、外框顏色、裝飾。預設是「夢幻馬卡龍」：
 // 半透明的奶白 → 淡薰衣草毛玻璃，粉白 / 淡紫交錯的格子，奶油粉外框
@@ -280,7 +280,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const jellyFx = new Map();        // key -> { t0, from }
   let selected = null, hintPair = null, dragState = null;
   let fallSeq = 0;
-  // 盤面機關：鐵籠子（每格 0 / 1）、小恐龍出口、傳送門
+  // 盤面機關：鐵籠子（每格 0 / 1）、龍龍出口、傳送門
   let locks = [], exitCells = [], portalList = [];
   const blockCache = new Map(), crumbCache = new Map();
   let blockS = 0;
@@ -2525,7 +2525,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     await wait(dur + 15);
   }
 
-  // 小恐龍走到出口：開心地跳兩下，第二下跳高飛走（main.js 接著讓牠沿弧線飛到上面的目標圖示）
+  // 龍龍走到出口：開心地跳兩下，第二下跳高飛走（main.js 接著讓牠沿弧線飛到上面的目標圖示）
   async function animExit(ev) {
     const t = now();
     let i = 0;
@@ -2968,7 +2968,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     return c;
   }
-  // 小恐龍：原本那隻恐龍玩偶的實拍照片（main.js 載成 images 的 'dino'），細白邊
+  // 龍龍：原本那隻恐龍玩偶的實拍照片（main.js 載成 images 的 'dino'），細白邊
   function dinoSprite() {
     const S = Math.max(8, Math.round(cs * dpr));
     if (S !== blockS) { blockCache.clear(); blockS = S; }
@@ -3017,7 +3017,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         g: 10, drag: 1.2, t0: t, life: 480 + Math.random() * 260, size: 0.17 + Math.random() * 0.12, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 10 });
     }
   }
-  // 一顆機關（糖霜 / 巧克力 / 甘草 / 小恐龍）：s 縮放、sx / sy 壓扁（以底部為準）
+  // 一顆機關（糖霜 / 巧克力 / 甘草 / 龍龍）：s 縮放、sx / sy 壓扁（以底部為準）
   function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0) {
     const ga = ctx.globalAlpha, w = cs * s * sx, h = cs * s * sy, dy = (1 - sy) * cs * s * 0.5;
     if (block === 'dino') {
@@ -3093,7 +3093,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       }
     }
   }
-  // 小恐龍出口：那一格下緣一個上下輕輕跳的綠色箭頭
+  // 龍龍出口：那一格下緣一個上下輕輕跳的綠色箭頭
   function drawExits(t) {
     if (!exitCells.length) return;
     const spr = blockSprite('exit'), z = cs * 0.42, b = Math.sin(t / 260) * cs * 0.05;

@@ -46,7 +46,7 @@ export function makeEngine(level, attempt) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed: seedFor(level, attempt) };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
-  Object.assign(opts, mechOpts(level));                    // 盤面機關（鐵籠子、糖霜、巧克力、甘草、小恐龍、傳送門）
+  Object.assign(opts, mechOpts(level));                    // 盤面機關（鐵籠子、糖霜、巧克力、甘草、龍龍、傳送門）
   if (level.goal && level.goal.type === 'collect') {      // 跟 main.js 一樣：小魚優先游去目標還要收集的毛絨
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }

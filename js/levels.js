@@ -1,8 +1,8 @@
 // 毛絨消消樂 — 關卡資料（docs/SPEC.md §4）
 // 盤面都是 8×8。mask：'.' = 洞，其他字元 = 格子；jelly：數字 = 果凍層數（0–2），'.' = 0。
 // 2026-11 機關重編排（每一關的造型盤面和章節不變，加上機關 / 換目標；產生方式見 docs/SPEC.md §4a）：
-//   第一次出現：冰果凍 7、小恐龍 10、鐵籠子 12、多層糖霜 16、巧克力 22、甘草漩渦糖 26、傳送門 31（main.js 跳教學小卡）。
-//   第 31 關以後每章五關輪流：救小恐龍（隔章換成傳送門 + 甘草收集）→ 冰果凍 + 鐵籠子 / 傳送門 → 清糖霜 + 籠子（隔章換成
+//   第一次出現：冰果凍 7、龍龍 10、鐵籠子 12、多層糖霜 16、巧克力 22、甘草漩渦糖 26、傳送門 31（main.js 跳教學小卡）。
+//   第 31 關以後每章五關輪流：救龍龍（隔章換成傳送門 + 甘草收集）→ 冰果凍 + 鐵籠子 / 傳送門 → 清糖霜 + 籠子（隔章換成
 //   巧克力 + 收集）→ 冰果凍 + 糖霜 / 傳送門 → 章末王關（好幾個目標一起）。
 //   糖霜從下往上疊（底下不會空著），而且每一塊旁邊都有能湊成三連的格子；巧克力放在中間；傳送門接起盤面中間的空隙。
 // 進度：收集（1–4，第 2 關條紋、第 3 關飛天玩偶、第 4 關包裝）→ 造型盤面（5–6）→ 果凍（7–9）→ 綜合挑戰（10–15）
@@ -1240,7 +1240,7 @@ export const LEVELS = [
       '.......',
     ],
     dinos: { onBoard: 1, rate: 0.4 },
-    hint: '新朋友小恐龍！把牠下面的玩偶消掉，送牠到綠色箭頭出口～',
+    hint: '新朋友龍龍！把牠下面的玩偶消掉，送牠到綠色箭頭出口～',
   },
   {
     id: 11, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
@@ -1414,7 +1414,7 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    hint: '把小恐龍下面的玩偶消掉，牠就會往下掉～送牠到綠色箭頭出口！',
+    hint: '把龍龍下面的玩偶消掉，牠就會往下掉～送牠到綠色箭頭出口！',
   },
   {
     id: 19, rows: 9, cols: 7, moves: 25, kinds: ['dog', 'sloth', 'egg', 'piggy', 'moodeng'],
@@ -1646,7 +1646,7 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    hint: '直的條紋可以一口氣清空小恐龍下面整排！',
+    hint: '直的條紋可以一口氣清空龍龍下面整排！',
   },
   {
     id: 29, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'snoopy'],
@@ -1941,7 +1941,7 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    hint: '小恐龍迷路了，一路消到最下面帶牠回家～',
+    hint: '龍龍迷路了，一路消到最下面帶牠回家～',
   },
   {
     id: 42, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
@@ -2181,7 +2181,7 @@ export const LEVELS = [
       '.......',
     ],
     portals: [[3, 2, 5, 4], [3, 4, 5, 2]],
-    hint: '小恐龍會穿過傳送門，從同顏色的門掉出來～',
+    hint: '龍龍會穿過傳送門，從同顏色的門掉出來～',
   },
   {
     id: 52, rows: 9, cols: 7, moves: 17, kinds: ['dog', 'sloth', 'egg', 'piggy'],
@@ -2401,7 +2401,7 @@ export const LEVELS = [
       '.......',
     ],
     portals: [[2, 1, 4, 5], [2, 5, 4, 1]],
-    hint: '傳送門把上下接起來了，帶小恐龍一路往下！',
+    hint: '傳送門把上下接起來了，帶龍龍一路往下！',
   },
   {
     id: 62, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'piggy'],
@@ -2622,7 +2622,7 @@ export const LEVELS = [
       '.......',
       '.......',
     ],
-    hint: '小恐龍也可以跟旁邊的玩偶交換，往下走一格！',
+    hint: '龍龍也可以跟旁邊的玩偶交換，往下走一格！',
   },
   {
     id: 72, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
@@ -2842,7 +2842,7 @@ export const LEVELS = [
       '.......',
     ],
     portals: [[2, 1, 4, 5], [2, 5, 4, 1]],
-    hint: '小恐龍會穿過傳送門，從同顏色的門掉出來～',
+    hint: '龍龍會穿過傳送門，從同顏色的門掉出來～',
   },
   {
     id: 82, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -3073,7 +3073,7 @@ export const LEVELS = [
       '.......',
     ],
     portals: [[0, 1, 2, 5], [2, 1, 4, 5], [4, 1, 6, 5], [0, 3, 2, 3], [2, 3, 4, 3], [4, 3, 6, 3]],
-    hint: '傳送門把上下接起來了，帶小恐龍一路往下！',
+    hint: '傳送門把上下接起來了，帶龍龍一路往下！',
   },
   {
     id: 92, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'piggy'],
@@ -3292,13 +3292,13 @@ export function isScoreLevel(L) {
 
 // ---------- 盤面機關和目標（2026-11）----------
 // 關卡可以再加（js/engine.js 的 createEngine 選項，見那邊的說明）：
-//   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 小恐龍、E 小恐龍出口、. 沒有
+//   obstacles: [...]               每一列一個字串：L 鐵籠子、1 / 2 / 3 糖霜層數、C 巧克力、S 甘草漩渦糖、D 龍龍、E 龍龍出口、. 沒有
 //   portals: [[r1, c1, r2, c2], …] 傳送門：(r1, c1) 下面掉出去的，從 (r2, c2) 上面進來
 //   licorice: { rate, max }        補位時偶爾掉下甘草漩渦糖
-//   dinos: { onBoard, rate }       小恐龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
+//   dinos: { onBoard, rate }       龍龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
 // 目標 goal.type：
 //   'collect' { items }、'jelly'、'score'（原本的三種）
-//   'dino' { count }                       救出 count 隻小恐龍
+//   'dino' { count }                       救出 count 隻龍龍
 //   'clear' { what: ['frost', 'choco', 'cage'] }   把這幾種機關全部清掉（糖霜算層數）
 //   'mix' { items?, jelly?, dinos?, clear? }       王關：好幾個目標同時達成
 const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'mix'];
@@ -3475,7 +3475,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
     if (L.licorice != null && !(L.licorice.rate > 0 && L.licorice.rate <= 0.2 && L.licorice.max >= 1 && L.licorice.max <= 8)) bad('licorice 要 { rate: 0–0.2, max: 1–8 }');
     const parts = goalParts(L);
     for (const part of parts) {
-      if (part.kind === 'dino' && !(Number.isInteger(part.need) && part.need > 0 && part.need <= 8)) bad('救小恐龍的數量要 1–8');
+      if (part.kind === 'dino' && !(Number.isInteger(part.need) && part.need > 0 && part.need <= 8)) bad('救龍龍的數量要 1–8');
       if (part.kind === 'frost' && !has.frost) bad('要清糖霜，盤面上卻沒有糖霜');
       if (part.kind === 'choco' && !has.C) bad('要清巧克力，盤面上卻沒有巧克力');
       if (part.kind === 'cage' && !has.L) bad('要開籠子，盤面上卻沒有鐵籠子');
@@ -3484,7 +3484,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
     }
     if (g.type === 'mix' && parts.length < 2) bad('mix 王關至少要兩個目標');
     if (['dino', 'clear'].includes(g.type) && layers) bad(`${g.type} 關不要放果凍（目標面板不會顯示）`);
-    if (has.D && !parts.some(q => q.kind === 'dino')) bad('盤面上有小恐龍，目標卻沒有救小恐龍');
+    if (has.D && !parts.some(q => q.kind === 'dino')) bad('盤面上有龍龍，目標卻沒有救龍龍');
   });
   return out;
 }

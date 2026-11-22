@@ -217,7 +217,7 @@ async function loadImages(onProgress) {
     jobs.push(track(loadImg(`assets/sprites/${p.id}_n.png`)).then(im => { entry.clean = im; }));
     if (!p.photo) jobs.push(track(loadImg(`assets/sprites/${p.id}_spin_n.webp`)).then(im => { entry.spinClean = im; }));
   }
-  // 小恐龍（「救出小恐龍」關卡的主角）：原本那隻恐龍玩偶的實拍照片
+  // 龍龍（「救出龍龍」關卡的主角）：原本那隻恐龍玩偶的實拍照片
   const dino = { sprite: null, clean: null };
   images.set('dino', dino);
   jobs.push(track(loadImg('assets/sprites/dino.png')).then(im => { dino.sprite = im; }));
@@ -323,14 +323,14 @@ function dinoImg() {
 }
 // 目標的一個部分（levels.js goalParts）→ 圖示
 const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage') };
-const PART_NAME = { dino: '小恐龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
+const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
 const goalPartsOf = lvl => (levMod.goalParts ? levMod.goalParts(lvl) : [{ kind: 'score' }]);
 
 // ---------- 新機關教學小卡 ----------
 // 第一次遇到某種機關時，開始前先跳一張小卡（圖示 + 一句話），點一下就開始。看過的記在 save.seen（這台裝置）
 const INTRO = {
   jelly: { name: '冰果凍', text: '在冰塊上面配對，把所有冰果凍敲碎！', icon: () => jellyIcon() },
-  dino: { name: '小恐龍', text: '消掉小恐龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！' },
+  dino: { name: '龍龍', text: '消掉龍龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！' },
   cage: { name: '鐵籠子', text: '被關住的玩偶不能動，和牠同色配對或用特效就能打開！', icon: () => blockerImg('cage') },
   frost: { name: '多層糖霜', text: '在旁邊配對就能敲掉一層，最多有三層喔！', icon: () => blockerImg('frost3') },
   choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco') },
@@ -734,7 +734,7 @@ function goalBadge(lvl) {
   } else if (g.type === 'jelly') {
     b.classList.add('jelly');
   } else if (PART_ICON[(goalPartsOf(lvl)[0] || {}).kind]) {
-    // 機關關卡：第一個目標的小圖（小恐龍 / 糖霜 / 巧克力 / 籠子）
+    // 機關關卡：第一個目標的小圖（龍龍 / 糖霜 / 巧克力 / 籠子）
     b.classList.add('toy', 'mech');
     setToyColors(b, '#9fe8c0');
     b.appendChild(PART_ICON[goalPartsOf(lvl)[0].kind]());
@@ -883,7 +883,7 @@ function goalText(lvl) {
     for (const part of goalPartsOf(lvl)) {
       if (part.kind === 'collect') out.push(`收集 ${(pieceById(part.id) || { name: part.id }).name} ×${part.need}`);
       else if (part.kind === 'jelly') out.push('清掉全部果凍');
-      else if (part.kind === 'dino') out.push(`救出 ${part.need} 隻小恐龍`);
+      else if (part.kind === 'dino') out.push(`救出 ${part.need} 隻龍龍`);
       else if (part.kind === 'frost') out.push('敲掉全部糖霜');
       else if (part.kind === 'choco') out.push('清光巧克力');
       else if (part.kind === 'cage') out.push('打開全部鐵籠子');
@@ -897,7 +897,7 @@ function goalText(lvl) {
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
 const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
-  '小恐龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口'];
+  '龍龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -992,7 +992,7 @@ let movesLeft = 0, dispMoves = 0;
 let dispScore = 0, shownScore = 0;
 let liveCleared = {};
 let jellyLive = 0, jellyCountsLayers = true;
-// 機關目標的即時數字：救出的小恐龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
+// 機關目標的即時數字：救出的龍龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
 let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0 };
 function countBlocks(board, lock) {
   const o = { frost: 0, choco: 0 };
@@ -1509,7 +1509,7 @@ function onEvent(ev, token) {
       break;
     }
     case 'exit': {
-      // 小恐龍走到出口：飛到上面的目標圖示才扣數字
+      // 龍龍走到出口：飛到上面的目標圖示才扣數字
       const dinoBefore = mechLive.dino;
       mechLive.dino += (ev.cells || []).length;
       queueFlights({ ...liveCleared }, jellyLive, dinoBefore);
