@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123h';
-import { SLOGANS } from './slogans.js?v=20261123h';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123h';
-import { blockerCanvas } from './blockers.js?v=20261123h';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123h';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123i';
+import { SLOGANS } from './slogans.js?v=20261123i';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123i';
+import { blockerCanvas } from './blockers.js?v=20261123i';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123i';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123h';
+const MOD_V = '?v=20261123i';
 
 window.__plushBooted = true;
 
@@ -327,6 +327,19 @@ function dinoImg() {
 // 目標的一個部分（levels.js goalParts）→ 圖示
 const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage') };
 const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子' };
+// 用好幾個「部分」來顯示的目標類型（goalParts）
+const PART_GOALS = ['dino', 'clear', 'order', 'chocoGot', 'mix'];
+// 訂單：做出哪一種特殊方塊 / 打出哪一種組合
+const ORDER_NAME = { stripe: '條紋方塊', wrap: '包裝糖', bomb: '彩色炸彈', fish: '飛天玩偶', combo: '特殊組合' };
+const SHORT_NAME = { stripe: '條紋', wrap: '包裝糖', bomb: '彩色炸彈', fish: '飛天玩偶' };
+const orderName = w => ORDER_NAME[w] || w.split('+').map(x => SHORT_NAME[x] || x).join('＋');
+function partIcon(part) {
+  if (part.kind === 'order') return blockerImg('o-' + part.what);
+  if (part.kind === 'chocoGot') return blockerImg('choco');
+  return PART_ICON[part.kind] ? PART_ICON[part.kind]() : starSvg();
+}
+const hasPartIcon = part => !!part && (!!PART_ICON[part.kind] || part.kind === 'order' || part.kind === 'chocoGot');
+const partName = part => (part.kind === 'order' ? orderName(part.what) : part.kind === 'chocoGot' ? '巧克力' : PART_NAME[part.kind] || '');
 const goalPartsOf = lvl => (levMod.goalParts ? levMod.goalParts(lvl) : [{ kind: 'score' }]);
 
 // ---------- 新機關教學小卡 ----------
@@ -339,6 +352,7 @@ const INTRO = {
   choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco') },
   lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl') },
   portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
+  order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
 };
 function levelMechs(lvl) {
   const out = new Set();
@@ -350,6 +364,7 @@ function levelMechs(lvl) {
   if (obs.includes('S') || lvl.licorice) out.add('lic');
   if (obs.includes('D') || goalPartsOf(lvl).some(p => p.kind === 'dino')) out.add('dino');
   if (lvl.portals && lvl.portals.length) out.add('portal');
+  if (goalPartsOf(lvl).some(p => p.kind === 'order')) out.add('order');
   return Object.keys(INTRO).filter(k => out.has(k));
 }
 async function showIntros(lvl, token) {
@@ -757,11 +772,11 @@ function goalBadge(lvl) {
     }
   } else if (g.type === 'jelly') {
     b.classList.add('jelly');
-  } else if (PART_ICON[(goalPartsOf(lvl)[0] || {}).kind]) {
-    // 機關關卡：第一個目標的小圖（龍龍 / 糖霜 / 巧克力 / 籠子）
+  } else if (hasPartIcon(goalPartsOf(lvl)[0])) {
+    // 機關關卡：第一個目標的小圖（龍龍 / 糖霜 / 巧克力 / 籠子 / 訂單）
     b.classList.add('toy', 'mech');
     setToyColors(b, '#9fe8c0');
-    b.appendChild(PART_ICON[goalPartsOf(lvl)[0].kind]());
+    b.appendChild(partIcon(goalPartsOf(lvl)[0]));
   } else {
     b.classList.add('score');
     b.appendChild(starSvg());
@@ -916,7 +931,7 @@ function goalText(lvl) {
     return '收集 ' + Object.entries(g.items || {}).map(([id, n]) => `${(pieceById(id) || { name: id }).name} ×${n}`).join('、');
   }
   if (g.type === 'jelly') return '把果凍全部清掉！';
-  if (['dino', 'clear', 'mix'].includes(g.type)) {
+  if (PART_GOALS.includes(g.type)) {
     const out = [];
     for (const part of goalPartsOf(lvl)) {
       if (part.kind === 'collect') out.push(`收集 ${(pieceById(part.id) || { name: part.id }).name} ×${part.need}`);
@@ -925,6 +940,10 @@ function goalText(lvl) {
       else if (part.kind === 'frost') out.push('敲掉全部糖霜');
       else if (part.kind === 'choco') out.push('清光巧克力');
       else if (part.kind === 'cage') out.push('打開全部鐵籠子');
+      else if (part.kind === 'order') {
+        const sp = ['stripe', 'wrap', 'bomb', 'fish'].includes(part.what);
+        out.push(sp ? `做出 ${part.need} 個${orderName(part.what)}` : `打出 ${part.need} 次${orderName(part.what)}`);
+      } else if (part.kind === 'chocoGot') out.push(`打掉 ${part.need} 塊巧克力`);
     }
     return out.join('、') + '！';
   }
@@ -935,7 +954,7 @@ function goalText(lvl) {
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
 const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
-  '龍龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口'];
+  '龍龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -984,7 +1003,7 @@ function openStartCard(i) {
     const ic = el('span', 'ic'); ic.appendChild(jellyIcon());
     gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
     g.appendChild(gb);
-  } else if (['dino', 'clear', 'mix'].includes(goal.type)) {
+  } else if (PART_GOALS.includes(goal.type)) {
     for (const part of goalPartsOf(lvl)) {
       const gb = el('div', 'gb');
       const ic = el('span', 'ic');
@@ -998,8 +1017,8 @@ function openStartCard(i) {
         ic.appendChild(jellyIcon());
         gb.appendChild(ic); gb.appendChild(numEl('b', '果凍'));
       } else {
-        ic.appendChild(PART_ICON[part.kind]());
-        gb.appendChild(ic); gb.appendChild(numEl('b', part.kind === 'dino' ? '×' + part.need : PART_NAME[part.kind]));
+        ic.appendChild(partIcon(part));
+        gb.appendChild(ic); gb.appendChild(numEl('b', part.need ? '×' + part.need : partName(part)));
       }
       g.appendChild(gb);
     }
@@ -1035,6 +1054,9 @@ let liveCleared = {};
 let jellyLive = 0, jellyCountsLayers = true;
 // 機關目標的即時數字：救出的龍龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
 let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0 };
+// 訂單 / 收集巧克力的即時數字（engine 每個事件帶的 ev.cnt）
+let liveCnt = { made: {}, combos: {}, comboCount: 0, chocoGot: 0 };
+const cntOf = st => ({ made: { ...(st.made || {}) }, combos: { ...(st.combos || {}) }, comboCount: st.comboCount | 0, chocoGot: st.chocoGot | 0 });
 function countBlocks(board, lock) {
   const o = { frost: 0, choco: 0 };
   let cage = 0;
@@ -1119,6 +1141,7 @@ async function startLevel(idx) {
   jellyLive = statJ;
   const st0 = engine.stats || {};
   mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0 };
+  liveCnt = cntOf(st0);
 
   setNum($('#hud-level'), idx + 1);
   buildGoal();
@@ -1250,7 +1273,7 @@ function buildGoal() {
     }
   } else if (g.type === 'jelly') {
     mkItem(jellyIcon(), 'jelly');
-  } else if (['dino', 'clear', 'mix'].includes(g.type)) {
+  } else if (PART_GOALS.includes(g.type)) {
     for (const part of goalPartsOf(level)) {
       if (part.kind === 'collect') {
         const p = pieceById(part.id);
@@ -1261,9 +1284,9 @@ function buildGoal() {
         setToyColors(r.gi, p.color);
       } else if (part.kind === 'jelly') mkItem(jellyIcon(), 'jelly');
       else {
-        const r = mkItem(PART_ICON[part.kind](), part.kind);
-        r.need = part.need || 0;
-        r.gi.setAttribute('aria-label', PART_NAME[part.kind]);
+        const r = mkItem(partIcon(part), part.kind);
+        r.need = part.need || 0; r.part = part;
+        r.gi.setAttribute('aria-label', partName(part));
       }
     }
   } else {
@@ -1294,6 +1317,9 @@ function renderGoal(init = false) {
       txt = String(left); done = left <= 0;
     } else if (r.kind === 'frost' || r.kind === 'choco' || r.kind === 'cage') {
       const left = Math.max(0, mechLive[r.kind]);
+      txt = String(left); done = left <= 0;
+    } else if ((r.kind === 'order' || r.kind === 'chocoGot') && levMod.partLeft) {
+      const left = levMod.partLeft(r.part, liveCnt, kindOf);
       txt = String(left); done = left <= 0;
     } else {
       const t = scoreTarget(level);
@@ -1557,6 +1583,7 @@ function onEvent(ev, token) {
       }
       if (ev.jelly) jellyLive = sumJelly(ev.jelly, jellyCountsLayers);
       if (ev.board) Object.assign(mechLive, countBlocks(ev.board, ev.lock));
+      if (ev.cnt) liveCnt = cntOf(ev.cnt);
       queueFlights(before, jellyBefore);
       dispScore += ev.gained || 0;
       renderScore();
@@ -1587,6 +1614,7 @@ function syncFromEngine() {
   }
   if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
   mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0 };
+  liveCnt = cntOf(st);
   dispScore = engine.score;
   renderScore();
   renderGoal();
@@ -2034,7 +2062,7 @@ async function loseFlow() {
     }
   } else if (g.type === 'jelly') {
     txt.textContent = `還剩 ${Math.max(0, engine.stats.jellyLeft)} 塊果凍沒清掉`;
-  } else if (['dino', 'clear', 'mix'].includes(g.type) && levMod.partLeft) {
+  } else if (PART_GOALS.includes(g.type) && levMod.partLeft) {
     txt.appendChild(document.createTextNode('還差一點點：'));
     txt.appendChild(document.createElement('br'));
     for (const part of goalPartsOf(level)) {
@@ -2043,7 +2071,7 @@ async function loseFlow() {
       const row = el('span', 'row');
       if (part.kind === 'collect') { const p = pieceById(part.id); if (p) row.appendChild(toyEl(p, 14)); }
       else if (part.kind === 'jelly') row.appendChild(jellyIcon(true));
-      else row.appendChild(PART_ICON[part.kind]());
+      else row.appendChild(partIcon(part));
       row.appendChild(document.createTextNode(`×${left}`));
       txt.appendChild(row);
     }

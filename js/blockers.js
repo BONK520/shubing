@@ -233,7 +233,72 @@ export function paintPortalIcon(g, S, hex = PORTAL_COLORS[0]) {
   for (const y of [S * 0.44, S * 0.56]) { g.beginPath(); g.moveTo(S * 0.42, y); g.lineTo(S * 0.58, y); g.lineTo(S / 2, y + S * 0.07); g.closePath(); g.fill(); }
 }
 
-// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'exit' | 'portal'
+// ---------------- 訂單目標的小圖：條紋方塊 / 包裝糖 / 彩色炸彈 / 飛天玩偶；組合 = 兩個疊在一起 ----------------
+const ORDER_COL = { stripe: ['#ffb3d4', '#ff5f9e'], wrap: ['#ffe28a', '#ff9f1c'], fish: ['#b8f0ff', '#3fb6ff'] };
+function paintOrderOne(g, S, what) {
+  const cx = S / 2, cy = S / 2;
+  if (what === 'bomb') {
+    const R = S * 0.36;
+    const body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
+    body.addColorStop(0, '#6b4b2e'); body.addColorStop(1, '#2b170b');
+    g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
+    const dots = ['#ff4d6d', '#ffd23a', '#4fe06e', '#38d9ff', '#b26bff', '#ff9f1c'];
+    for (let i = 0; i < 12; i++) {
+      const a = i * 2.4, rad = R * (0.25 + 0.55 * ((i * 37) % 10) / 10);
+      g.fillStyle = dots[i % dots.length];
+      g.beginPath(); g.arc(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, S * 0.045, 0, Math.PI * 2); g.fill();
+    }
+    g.lineWidth = S * 0.03; g.strokeStyle = 'rgba(0,0,0,0.6)';
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    return;
+  }
+  const [hi, lo] = ORDER_COL[what] || ORDER_COL.stripe;
+  const w = S * 0.6, x = cx - w / 2, y = cy - w / 2;
+  if (what === 'wrap') {
+    // 糖果紙的兩端
+    g.fillStyle = lo;
+    for (const d of [-1, 1]) {
+      g.beginPath(); g.moveTo(cx + d * w * 0.42, cy); g.lineTo(cx + d * S * 0.48, cy - S * 0.17); g.lineTo(cx + d * S * 0.48, cy + S * 0.17); g.closePath(); g.fill();
+    }
+  }
+  if (what === 'fish') {
+    g.fillStyle = '#ffffff';
+    for (const d of [-1, 1]) { g.beginPath(); g.ellipse(cx + d * w * 0.55, cy - S * 0.1, S * 0.15, S * 0.08, d * -0.5, 0, Math.PI * 2); g.fill(); }
+  }
+  const gr = g.createLinearGradient(0, y, 0, y + w);
+  gr.addColorStop(0, hi); gr.addColorStop(1, lo);
+  rr(g, x, y, w, w, S * 0.14); g.fillStyle = gr; g.fill();
+  if (what === 'stripe') {
+    g.save(); rr(g, x, y, w, w, S * 0.14); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.92)';
+    for (let i = 0; i < 3; i++) g.fillRect(x, y + w * (0.18 + i * 0.27), w, w * 0.11);
+    g.restore();
+  }
+  if (what === 'wrap') {
+    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = S * 0.035;
+    rr(g, x + S * 0.06, y + S * 0.06, w - S * 0.12, w - S * 0.12, S * 0.1); g.stroke();
+  }
+  g.lineWidth = S * 0.03; g.strokeStyle = 'rgba(60,20,40,0.55)';
+  rr(g, x, y, w, w, S * 0.14); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.beginPath(); g.ellipse(x + w * 0.3, y + w * 0.22, w * 0.14, w * 0.07, -0.5, 0, Math.PI * 2); g.fill();
+}
+export function paintOrder(g, S, what) {
+  if (what === 'combo' || what.includes('+')) {
+    const [a, b] = what === 'combo' ? ['stripe', 'wrap'] : what.split('+');
+    g.save(); g.translate(-S * 0.14, -S * 0.1); g.scale(0.78, 0.78); g.translate(S * 0.06, S * 0.06); paintOrderOne(g, S, a); g.restore();
+    g.save(); g.translate(S * 0.24, S * 0.26); g.scale(0.72, 0.72); paintOrderOne(g, S, b); g.restore();
+    // 中間的閃光
+    g.fillStyle = '#fff6a8'; g.strokeStyle = '#ff9f1c'; g.lineWidth = S * 0.02;
+    g.beginPath();
+    for (let i = 0; i < 8; i++) { const a2 = i * Math.PI / 4, r2 = i % 2 ? S * 0.05 : S * 0.13; g.lineTo(S * 0.55 + Math.cos(a2) * r2, S * 0.45 + Math.sin(a2) * r2); }
+    g.closePath(); g.fill(); g.stroke();
+    return;
+  }
+  paintOrderOne(g, S, what);
+}
+
+// DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'exit' | 'portal' | 'o-<訂單>'
 export function blockerCanvas(type, px) {
   const c = document.createElement('canvas');
   c.width = c.height = Math.max(8, Math.round(px));
@@ -249,5 +314,6 @@ export function blockerCanvas(type, px) {
   else if (type === 'swirl') paintSwirl(g, S);
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
+  else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));
   return c;
 }

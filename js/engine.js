@@ -194,6 +194,12 @@ export function createEngine(opts = {}) {
   let cascadesMax = 0;
   let frostLeft = 0, chocoLeft = 0, licoriceLeft = 0, locksLeft = 0, dinosOnBoard = 0, dinosSpawned = 0, dinosOut = 0;
   let chocoBroken = 0, dinosStart = 0;
+  // 訂單目標用：做出幾個條紋 / 包裝糖 / 彩色炸彈 / 飛天玩偶、打出哪些組合；收集巧克力目標用：一共打掉幾塊巧克力
+  const made = { stripe: 0, wrap: 0, bomb: 0, fish: 0 };
+  const combos = {};
+  let comboCount = 0, chocoGot = 0;
+  const kindOf = s => (s === 'h' || s === 'v' ? 'stripe' : s);
+  const counts = () => ({ made: { ...made }, combos: { ...combos }, comboCount, chocoGot });
 
   const newPiece = (kind, special = NONE) => ({ id: nextId++, kind, special });
   const newBlock = (block, hp = 1) => ({ id: nextId++, kind: BLOCK_KIND[block], special: NONE, block, hp });
@@ -207,7 +213,7 @@ export function createEngine(opts = {}) {
   };
   const gridCopy = () => grid.map(row => row.map(cp));
   const jellyCopy = () => jel.map(row => row.slice());
-  const ev = o => { o.board = gridCopy(); o.jelly = jellyCopy(); o.lock = lock.map(row => row.slice()); return o; };
+  const ev = o => { o.board = gridCopy(); o.jelly = jellyCopy(); o.lock = lock.map(row => row.slice()); o.cnt = counts(); return o; };
   // frosting / chocolate and caged pieces never move; everything else falls
   const immovable = (r, c) => { const p = grid[r][c]; return !!lock[r][c] || (!!p && (p.block === 'frost' || p.block === 'choco')); };
   const movableAt = (r, c) => isCell(r, c) && !!grid[r][c] && !immovable(r, c);
@@ -428,7 +434,7 @@ export function createEngine(opts = {}) {
       st.done.add(k);
       grid[r][c] = null;
       if (p.block === 'frost') frostLeft--;
-      else if (p.block === 'choco') { chocoLeft--; chocoBroken++; }
+      else if (p.block === 'choco') { chocoLeft--; chocoBroken++; chocoGot++; }
       else if (p.block === 'licorice') licoriceLeft--;
       st.removed.push({ r, c, piece: cp(p), cause });
       hitJelly(st, r, c);
@@ -594,6 +600,7 @@ export function createEngine(opts = {}) {
       }
       st.created.push({ r, c, piece: cp(np) });
       specialsMade++;
+      if (made[kindOf(cls.special)] !== undefined) made[kindOf(cls.special)]++;
     }
     runQueue(st);
     return finishStep(st);
@@ -604,6 +611,12 @@ export function createEngine(opts = {}) {
     const pa = grid[a.r][a.c], pb = grid[b.r][b.c];
     const st = newStep(1);
     let again = null;
+    if (isSpecial(pa) && isSpecial(pb)) {
+      // 兩個特殊方塊互換才算「組合」（彩色炸彈配普通玩具不算）
+      const ck = [kindOf(pa.special), kindOf(pb.special)].sort().join('+');
+      combos[ck] = (combos[ck] || 0) + 1;
+      comboCount++;
+    }
     const center = { r: b.r, c: b.c };
     if (pa.special === 'bomb' && pb.special === 'bomb') {
       hit(st, a.r, a.c, 'combo', center, true);
@@ -1137,7 +1150,7 @@ export function createEngine(opts = {}) {
       lock: lock.map(row => row.slice()), exits: shownExits(), portals: portalsIn.map(q => ({ from: { ...q.from }, to: { ...q.to } })) }),
     get score() { return score; },
     get stats() {
-      return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax,
+      return { cleared: { ...cleared }, jellyLeft, specialsMade, cascadesMax, ...counts(),
         dinosOut, dinosTotal: dinoOpt ? Math.max(dinoOpt.total, dinosStart) : dinosStart, frostLeft, chocoLeft, licoriceLeft, locksLeft };
     },
     lockAt: (r, c) => (isCell(r, c) ? lock[r][c] : 0),

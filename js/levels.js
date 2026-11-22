@@ -1121,7 +1121,7 @@ const MEDAL = [   // 金牌（第 99 關）
   '.#####.',
 ];
 
-const FIREWORKS = [   // 煙火（第 100 關）（第 100 關）
+const FIREWORKS = [   // 煙火（第 100 關）
   '.#...#.',
   '###.###',
   '.#.#.#.',
@@ -1133,6 +1133,61 @@ const FIREWORKS = [   // 煙火（第 100 關）（第 100 關）
   '.#...#.',
 ];
 
+const ROBOT = [   // 機器人（第 101 關）
+  '...#...',
+  '.#####.',
+  '.#.#.#.',
+  '.#####.',
+  '..###..',
+  '#######',
+  '#.###.#',
+  '#.###.#',
+  '..#.#..',
+];
+const GEAR = [   // 齒輪（第 102 關）
+  '.#.#.#.',
+  '.#####.',
+  '#######',
+  '###.###',
+  '##...##',
+  '###.###',
+  '#######',
+  '.#####.',
+  '.#.#.#.',
+];
+const TOYCAR = [   // 積木車（第 103 關）
+  '.......',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '#######',
+  '###.###',
+  '.#...#.',
+  '.......',
+];
+const SOLDIER = [   // 玩具兵（第 104 關）
+  '..###..',
+  '..###..',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#.###.#',
+  '#.###.#',
+  '..#.#..',
+  '..#.#..',
+];
+const WINDUP = [   // 發條兔（第 105 關）
+  '.#...#.',
+  '.#...#.',
+  '.#####.',
+  '.#####.',
+  '..###..',
+  '.#####.',
+  '#######',
+  '#######',
+  '.##.##.',
+];
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -3277,6 +3332,88 @@ export const LEVELS = [
     portals: [[1, 0, 7, 6], [2, 1, 4, 5], [4, 1, 6, 5], [1, 2, 3, 4], [5, 2, 7, 4], [1, 4, 3, 2]],
     hint: '大魔王關卡！特殊方塊留著用在最需要的地方～',
   },
+  {
+    id: 101, rows: 9, cols: 7, moves: 22, kinds: ['dog', 'sloth', 'egg', 'piggy'],
+    goal: { type: 'order', orders: { stripe: 5 } }, stars: [14000, 28000, 42000],
+    mask: ROBOT, jelly: null,
+    seed: 10115,
+    hint: '新目標！照訂單做出特殊方塊',
+  },
+  {
+    id: 102, rows: 9, cols: 7, moves: 20, kinds: ['sloth', 'dog', 'egg', 'nyanko'],
+    goal: { type: 'mix', items: { sloth: 25 }, orders: { wrap: 2 } }, stars: [13000, 26000, 39000],
+    mask: GEAR, jelly: null,
+    seed: 10215,
+    obstacles: [
+      '.......',
+      '.......',
+      '.L...L.',
+      '.......',
+      '.......',
+      '.......',
+      '.L...L.',
+      '.......',
+      '.......',
+    ],
+    hint: '連成L形或T形就是包裝糖',
+  },
+  {
+    id: 103, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'moodeng'],
+    goal: { type: 'mix', jelly: true, orders: { combo: 1 } }, stars: [23000, 46000, 69000],
+    mask: TOYCAR,
+    jelly: [
+      '.......',
+      '.......',
+      '.11111.',
+      '1111111',
+      '1111111',
+      '1111111',
+      '.11.11.',
+      '.......',
+      '.......',
+    ],
+    seed: 10315,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '1.....1',
+      '.1...1.',
+      '.......',
+    ],
+    hint: '把兩個特殊方塊換在一起試試看',
+  },
+  {
+    id: 104, rows: 9, cols: 7, moves: 31, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
+    goal: { type: 'order', orders: { bomb: 1 } }, stars: [24000, 48000, 72000],
+    mask: SOLDIER, jelly: null,
+    seed: 10415,
+    licorice: { rate: 0.05, max: 3 },
+    hint: '五個連成一排才有彩色炸彈',
+  },
+  {
+    id: 105, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'nyanko'],
+    goal: { type: 'mix', orders: { stripe: 3, wrap: 1 }, dinos: 2 }, stars: [12000, 24000, 36000],
+    mask: WINDUP, jelly: null,
+    seed: 10515,
+    obstacles: [
+      '.......',
+      '.......',
+      '...D...',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+    ],
+    portals: [[3, 1, 5, 1], [3, 5, 5, 5]],
+    dinos: { onBoard: 1, rate: 0.4 },
+    hint: '王關！先做特殊方塊，再救龍龍',
+  },
 ];
 
 // ---------- 規則（js/main.js 和 tests/sim.bots.js 都用這幾個，模擬才會跟真的玩法一模一樣）----------
@@ -3300,8 +3437,14 @@ export function isScoreLevel(L) {
 //   'collect' { items }、'jelly'、'score'（原本的三種）
 //   'dino' { count }                       救出 count 隻龍龍
 //   'clear' { what: ['frost', 'choco', 'cage'] }   把這幾種機關全部清掉（糖霜算層數）
-//   'mix' { items?, jelly?, dinos?, clear? }       王關：好幾個目標同時達成
-const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'mix'];
+//   'order' { orders: { stripe: 5 } }      訂單：做出幾個特殊方塊（stripe / wrap / bomb / fish）
+//                                          或打出幾次組合（'combo' = 任何兩個特殊方塊互換；'stripe+wrap' 這種 = 指定組合）
+//   'chocoGot' { count }                   收集巧克力：一共打掉 count 塊巧克力
+//   'mix' { items?, jelly?, dinos?, clear?, orders?, chocoGot? }   王關：好幾個目標同時達成
+const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'order', 'chocoGot', 'mix'];
+export const ORDER_SPECIALS = ['stripe', 'wrap', 'bomb', 'fish'];
+export const isOrderKey = w => w === 'combo' || ORDER_SPECIALS.includes(w)
+  || (/^[a-z]+\+[a-z]+$/.test(w) && w.split('+').every(x => ORDER_SPECIALS.includes(x)) && w.split('+').sort().join('+') === w);
 export function goalParts(L) {
   const g = (L && L.goal) || {}, out = [];
   const items = g.type === 'collect' || g.type === 'mix' ? g.items || {} : {};
@@ -3310,6 +3453,10 @@ export function goalParts(L) {
   const dinos = g.type === 'dino' ? g.count : g.type === 'mix' ? g.dinos : 0;
   if (dinos > 0) out.push({ kind: 'dino', need: dinos });
   for (const w of (g.type === 'clear' ? g.what : g.type === 'mix' ? g.clear : null) || []) out.push({ kind: w });
+  const orders = g.type === 'order' || g.type === 'mix' ? g.orders || {} : {};
+  for (const [what, n] of Object.entries(orders)) out.push({ kind: 'order', what, need: n });
+  const got = g.type === 'chocoGot' ? g.count : g.type === 'mix' ? g.chocoGot : 0;
+  if (got > 0) out.push({ kind: 'chocoGot', need: got });
   if (!out.length) out.push({ kind: 'score' });
   return out;
 }
@@ -3334,6 +3481,12 @@ export function partLeft(part, stats, kindOf) {
     case 'frost': return Math.max(0, st.frostLeft | 0);
     case 'choco': return Math.max(0, st.chocoLeft | 0);
     case 'cage': return Math.max(0, st.locksLeft | 0);
+    case 'order': {
+      const done = ORDER_SPECIALS.includes(part.what) ? (st.made || {})[part.what]
+        : part.what === 'combo' ? st.comboCount : (st.combos || {})[part.what];
+      return Math.max(0, part.need - (done | 0));
+    }
+    case 'chocoGot': return Math.max(0, part.need - (st.chocoGot | 0));
     default: return 0;
   }
 }
@@ -3446,7 +3599,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (layers) bad('collect 關不要放果凍（目標面板不會顯示）');
     } else if (g.type === 'jelly') {
       if (!layers) bad('jelly 關卻沒有果凍');
-    } else if (!['dino', 'clear', 'mix'].includes(g.type)) {
+    } else if (!['dino', 'clear', 'order', 'chocoGot', 'mix'].includes(g.type)) {
       bad(`不認識的目標類型：${g.type}`);
     }
 
@@ -3481,9 +3634,17 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (part.kind === 'cage' && !has.L) bad('要開籠子，盤面上卻沒有鐵籠子');
       if (part.kind === 'jelly' && !layers) bad('目標有果凍，盤面上卻沒有果凍');
       if (part.kind === 'collect' && !kinds.includes(part.id)) bad(`collect 的 ${part.id} 不在 kinds 裡`);
+      if (part.kind === 'order') {
+        if (!isOrderKey(part.what)) bad(`不認識的訂單：${part.what}`);
+        if (!(Number.isInteger(part.need) && part.need > 0 && part.need <= 10)) bad(`訂單 ${part.what} 的數量要 1–10`);
+      }
+      if (part.kind === 'chocoGot') {
+        if (!(Number.isInteger(part.need) && part.need > 0 && part.need <= 30)) bad('收集巧克力的數量要 1–30');
+        if (!has.C) bad('要收集巧克力，盤面上卻沒有巧克力');
+      }
     }
     if (g.type === 'mix' && parts.length < 2) bad('mix 王關至少要兩個目標');
-    if (['dino', 'clear'].includes(g.type) && layers) bad(`${g.type} 關不要放果凍（目標面板不會顯示）`);
+    if (['dino', 'clear', 'order', 'chocoGot'].includes(g.type) && layers) bad(`${g.type} 關不要放果凍（目標面板不會顯示）`);
     if (has.D && !parts.some(q => q.kind === 'dino')) bad('盤面上有龍龍，目標卻沒有救龍龍');
   });
   return out;

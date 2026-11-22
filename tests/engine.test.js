@@ -54,6 +54,7 @@ test('API surface, isCell / cell / snapshot copies', () => {
   ok(e.cell(0, 0).kind !== 99 && e.jellyAt(0, 0) === 2 && e.isCell(0, 0), 'snapshot() is a deep copy');
   const st = e.stats;
   deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0,
+    made: { stripe: 0, wrap: 0, bomb: 0, fish: 0 }, combos: {}, comboCount: 0, chocoGot: 0,
     dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0 });
   st.cleared[0] = 50;
   eq(e.stats.cleared[0], 0, 'stats is a copy');
@@ -136,6 +137,8 @@ test('a 2x2 square on its own makes a fish at the swapped cell: shape "square", 
   eq(c.created.length, 1);
   deq(c.created[0], { r: 2, c: 2, piece: { id, kind: 0, special: 'fish' } });
   eq(e.stats.specialsMade, 1);
+  eq(e.stats.made.fish, 1, 'order counter: fish');
+  eq(c.cnt.made.fish, 1, 'the clear event carries the counters');
   eq(c.gained, 120);
 });
 
@@ -400,6 +403,8 @@ test('combo striped + wrapped = 3 rows + 3 columns', () => {
   const cells = cellSet(cl.removed);
   eq(cells.size, 33);
   for (let i = 0; i < 7; i++) for (const d of [2, 3, 4]) ok(cells.has(`${d},${i}`) && cells.has(`${i},${d}`), 'band');
+  eq(e.stats.comboCount, 1, 'order counter: one combo');
+  deq(e.stats.combos, { 'stripe+wrap': 1 }, 'combo keys are sorted names');
 });
 
 test('combo wrapped + wrapped = 5x5', () => {
@@ -811,6 +816,7 @@ test('chocolate: a match next to it removes it (no spread); a move that breaks n
   ok(firstClear(res).removed.some(x => x.piece.block === 'choco'), 'chocolate removed');
   eq(evOf(res, 'spread').length, 0, 'no spread on a move that broke chocolate');
   eq(e.stats.chocoLeft, 0);
+  eq(e.stats.chocoGot, 1, 'order counter: chocolate broken');
   // far away from the chocolate: it spreads
   const e2 = mo(['______', '______', '______', '______', '______', '00_0__'],
     ['C.....', '......', '......', '......', '......', '......']);

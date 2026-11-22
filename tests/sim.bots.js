@@ -64,9 +64,9 @@ export const PROFILES = {
   // board mechanics: block = one layer of a goal blocker (frosting / chocolate / cage), chocoAny = clearing chocolate
   // that is not a goal (it would spread), dino = one row a dino moves down
   casual: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3,
-    block: 2, chocoAny: 1, dino: 2.5 },
+    block: 2, chocoAny: 1, dino: 2.5, order: 3 },
   decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5,
-    block: 3, chocoAny: 1.5, dino: 4 },
+    block: 3, chocoAny: 1.5, dino: 4, order: 8 },
 };
 
 // top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
@@ -133,9 +133,19 @@ function bestMove(s, moves, level, e, W, rnd) {
   const urg = k => 1 + W.urgency / Math.max(1, leftOf(k));
   const BLK = {
     frost: leftOf('frost') > 0 ? W.block * urg('frost') : 0.3,
-    choco: leftOf('choco') > 0 ? W.block * urg('choco') : W.chocoAny,
+    choco: leftOf('choco') > 0 ? W.block * urg('choco') : leftOf('chocoGot') > 0 ? W.block * urg('chocoGot') : W.chocoAny,
     cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
     licorice: 0.4,
+  };
+  // 訂單：還要做的特殊方塊 / 組合（做出來加分；組合訂單也會想先做出那兩種特殊方塊）
+  const orderNeed = {};
+  for (const q of parts) if (q.kind === 'order' && partLeft(q, st, kindOf) > 0) orderNeed[q.what] = true;
+  const sk = x => (x === 'h' || x === 'v' ? 'stripe' : x);
+  const shapeBonus = shape => (orderNeed[shape] ? W.order
+    : Object.keys(orderNeed).some(w => w === 'combo' ? shape !== 'fish' : w.split('+').includes(shape)) ? W.order * 0.4 : 0);
+  const comboBonus = (s1, s2) => {
+    if (s1 === 'none' || s2 === 'none') return 0;
+    return (orderNeed[[sk(s1), sk(s2)].sort().join('+')] || orderNeed.combo) ? W.order * 1.5 : 0;
   };
   const dinoW = leftOf('dino') > 0 ? W.dino * (1 + 2 / Math.max(1, leftOf('dino'))) : 0;
   const dinos = [];
@@ -246,7 +256,7 @@ function bestMove(s, moves, level, e, W, rnd) {
         else addSq(area, b.r, b.c, 2);
       }
       for (const k of area) v += cellVal(k);
-      v += W.combo + mech(new Set(), area, null);
+      v += W.combo + comboBonus(p.special, q.special) + mech(new Set(), area, null);
     } else {
       g[a.r][a.c] = q; g[b.r][b.c] = p;
       const matched = new Set();
@@ -254,7 +264,7 @@ function bestMove(s, moves, level, e, W, rnd) {
       for (const [r, c] of [[a.r, a.c], [b.r, b.c]]) {
         const L = lineInfo(r, c);
         if (!L) continue;
-        if (L.shape) v += W[L.shape];
+        if (L.shape) v += W[L.shape] + shapeBonus(L.shape);
         low = Math.max(low, L.low);
         for (const k of L.cells) matched.add(k);
       }
