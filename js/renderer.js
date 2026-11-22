@@ -20,6 +20,7 @@
 //   R.paused    目前是否暫停（唯讀）。
 
 import { SLOGANS, cascadeSlogan } from './slogans.js';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -35,23 +36,75 @@ const SWAP_MS = 200;      // 成功交換（主動的那顆有一點點回彈）
 const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
+const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
 const POP_LEAD = 300;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
 const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
 const POP_SEQ = 55;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
-const LAND_MS = 270;      // 落地壓扁回彈
+const LAND_MS = 340;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復）
 const LAND_HOLD = 100;     // 下一輪連鎖：方塊落地後多久爆
 const G_FALL = 0.00005;   // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.45 秒（參考 Candy Crush 類遊戲：約 0.1 秒 / 格）
 const V0_FALL = 0.004;    // 掉落初速（格 / ms）
 const STAGGER_ROW = 60, STAGGER_MAX = 360, COL_JITTER = 30;   // 同一欄一顆接一顆落下（間隔約 0.06 秒），像瀑布
 // 特效傳到某格要多久
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
-// 小魚（2×2 正方形變的特殊方塊）游到目標的時間：基本 + 每格距離，最久 FISH_MAX
-const FISH_BASE = 260, FISH_PER = 32, FISH_MAX = 520;
+// 飛天玩偶（2×2 正方形變的特殊方塊，引擎裡叫 'fish'）飛到目標的時間：基本 + 每格距離，最久 FISH_MAX
+// （先往上飛出一段弧線再俯衝，看得清楚）
+const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
 const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r - e.r, e.to.c - e.c));
 
-const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40];
+const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40], SPARK_GOLD = [255, 186, 60];
+// 盤面主題（衣櫃的「棋盤背景主題」）：玻璃、格子、內壁影子、外框顏色、裝飾。預設是「夢幻馬卡龍」：
+// 半透明的奶白 → 淡薰衣草毛玻璃，粉白 / 淡紫交錯的格子，奶油粉外框
+const FRAME_CREAM = {
+  glow: 'rgba(255,236,248,0.9)', base: '#f6dbe4', drop: 'rgba(110,60,120,0.26)', dropBase: '#c98f9e',
+  side: ['#ecc3b4', '#dba597', '#c4877d'], ring: ['#fff7ec', '#fcecdc', '#f2d8c4'], ringShade: [190, 120, 110], innerEdge: 'rgba(170,110,150,0.45)',
+};
+export const BOARD_THEMES = {
+  macaron: {
+    glass: [[0, 'rgba(255,250,253,0.82)'], [0.55, 'rgba(246,236,252,0.84)'], [1, 'rgba(232,220,250,0.88)']],
+    glow: ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'],
+    cellA: 'rgba(255,220,237,0.86)', cellB: 'rgba(226,216,255,0.9)',
+    wallDark: 'rgba(130,90,170,0.3)', wallLit: 'rgba(255,255,255,0.95)', rimShadow: 'rgba(130,80,140,0.12)',
+    shadow: [110, 60, 140],          // 糖果落在盤面上的影子顏色
+    frame: FRAME_CREAM,
+  },
+  // 粉紅夾娃娃機台：桃紅色的機台外框、一圈會發亮的小燈泡，裡面粉粉的
+  claw: {
+    glass: [[0, 'rgba(255,247,251,0.86)'], [1, 'rgba(255,226,241,0.9)']],
+    glow: ['rgba(255,255,255,0.6)', 'rgba(255,255,255,0)'],
+    cellA: 'rgba(255,210,232,0.9)', cellB: 'rgba(255,242,249,0.92)',
+    wallDark: 'rgba(190,70,130,0.3)', wallLit: 'rgba(255,255,255,0.95)', rimShadow: 'rgba(170,40,110,0.14)',
+    shadow: [150, 40, 100],
+    frame: { glow: 'rgba(255,160,210,0.95)', base: '#ff9bcb', drop: 'rgba(150,30,90,0.3)', dropBase: '#c2427f',
+      side: ['#e0559b', '#c63d84', '#9e2a63'], ring: ['#ffd9ec', '#ff8cc2', '#ec5fa3'], ringShade: [150, 30, 90], innerEdge: 'rgba(170,40,110,0.5)' },
+    deco: 'bulbs',
+  },
+  // 野餐草莓格紋：紅白格子布、藤編籃子色的外框
+  picnic: {
+    glass: [[0, 'rgba(255,252,247,0.92)'], [1, 'rgba(255,245,238,0.94)']],
+    glow: ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0)'],
+    cellA: 'rgba(255,255,255,0.96)', cellB: 'rgba(255,240,240,0.96)',
+    wallDark: 'rgba(160,90,60,0.26)', wallLit: 'rgba(255,255,255,0.95)', rimShadow: 'rgba(120,70,30,0.14)',
+    shadow: [120, 60, 40],
+    pattern: 'gingham',
+    frame: { glow: 'rgba(255,238,205,0.85)', base: '#efd2a0', drop: 'rgba(110,60,20,0.3)', dropBase: '#b07a3c',
+      side: ['#c99456', '#b07a3c', '#8a5a26'], ring: ['#fbe6c0', '#eac68a', '#d6a560'], ringShade: [140, 90, 40], innerEdge: 'rgba(150,90,40,0.45)' },
+    deco: 'berries',
+  },
+  // 深邃夢幻星空：深紫藍的夜空玻璃、滿滿的小星星、紫色外框
+  galaxy: {
+    glass: [[0, 'rgba(56,42,128,0.95)'], [1, 'rgba(22,16,66,0.97)']],
+    glow: ['rgba(160,130,255,0.35)', 'rgba(160,130,255,0)'],
+    cellA: 'rgba(130,110,240,0.2)', cellB: 'rgba(96,76,210,0.13)',
+    wallDark: 'rgba(5,2,25,0.6)', wallLit: 'rgba(190,170,255,0.22)', rimShadow: 'rgba(5,2,30,0.3)',
+    shadow: [8, 4, 40],
+    frame: { glow: 'rgba(170,150,255,0.75)', base: '#8a78e0', drop: 'rgba(20,10,60,0.4)', dropBase: '#3a2a8a',
+      side: ['#4c3aa8', '#3a2a8a', '#24186a'], ring: ['#a493f2', '#6b56d0', '#4a36a8'], ringShade: [20, 10, 60], innerEdge: 'rgba(20,10,60,0.6)' },
+    deco: 'stars',
+  },
+};
 const now = () => performance.now();
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x);
 const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
@@ -181,48 +234,6 @@ function candyPath(g, shape, cx, cy, R) {
     default: g.arc(cx, cy, R, 0, Math.PI * 2);
   }
 }
-// 小魚：金色的胖胖小魚（跟條紋糖果的金色箭頭同一套顏色），頭朝 +x。L = 全長
-function paintFish(g, x, y, L, angle = 0) {
-  g.save();
-  g.translate(x, y); g.rotate(angle);
-  const bw = L * 0.36, bh = L * 0.25, bx = L * 0.08;            // 身體（橢圓）中心往前一點，尾巴在後面
-  const body = () => { g.beginPath(); g.ellipse(bx, 0, bw, bh, 0, 0, Math.PI * 2); };
-  const tail = () => {
-    g.beginPath();
-    g.moveTo(bx - bw * 0.78, 0);
-    g.quadraticCurveTo(-L * 0.42, -bh * 0.2, -L * 0.5, -bh * 1.05);
-    g.quadraticCurveTo(-L * 0.4, 0, -L * 0.5, bh * 1.05);
-    g.quadraticCurveTo(-L * 0.42, bh * 0.2, bx - bw * 0.78, 0);
-    g.closePath();
-  };
-  const fin = () => {
-    g.beginPath();
-    g.moveTo(bx - bw * 0.35, -bh * 0.82);
-    g.quadraticCurveTo(bx - bw * 0.05, -bh * 1.65, bx + bw * 0.42, -bh * 0.9);
-    g.closePath();
-  };
-  const gold = g.createLinearGradient(0, -bh * 1.4, 0, bh * 1.2);
-  gold.addColorStop(0, '#fffbe2'); gold.addColorStop(0.38, '#ffd845'); gold.addColorStop(1, '#f08400');
-  g.lineJoin = 'round';
-  // 外圈白邊（在糖果、玩具上都看得清楚）
-  g.lineWidth = L * 0.13; g.strokeStyle = 'rgba(255,255,255,0.95)';
-  tail(); g.stroke(); fin(); g.stroke(); body(); g.stroke();
-  g.lineWidth = L * 0.05; g.strokeStyle = '#a24a06';
-  for (const shape of [tail, fin, body]) { shape(); g.fillStyle = gold; g.fill(); g.stroke(); }
-  // 身上的亮面、鱗片、眼睛、嘴
-  g.save(); body(); g.clip();
-  const sh = g.createLinearGradient(0, -bh, 0, bh * 0.1);
-  sh.addColorStop(0, 'rgba(255,255,255,0.9)'); sh.addColorStop(1, 'rgba(255,255,255,0)');
-  g.beginPath(); g.ellipse(bx - bw * 0.05, -bh * 0.45, bw * 0.75, bh * 0.42, 0, 0, Math.PI * 2); g.fillStyle = sh; g.fill();
-  g.strokeStyle = 'rgba(190,90,0,0.55)'; g.lineWidth = L * 0.03;
-  for (const k of [-0.25, 0.1]) { g.beginPath(); g.arc(bx + bw * k, bh * 0.1, bh * 0.42, Math.PI * 0.6, Math.PI * 1.4, true); g.stroke(); }
-  g.restore();
-  g.beginPath(); g.arc(bx + bw * 0.5, -bh * 0.18, L * 0.055, 0, Math.PI * 2); g.fillStyle = '#3a1a08'; g.fill();
-  g.beginPath(); g.arc(bx + bw * 0.53, -bh * 0.26, L * 0.02, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
-  g.beginPath(); g.arc(bx + bw * 0.86, bh * 0.18, L * 0.04, Math.PI * 0.7, Math.PI * 1.3);
-  g.strokeStyle = '#a24a06'; g.lineWidth = L * 0.03; g.stroke();
-  g.restore();
-}
 // 四個角各自的圓角半徑（盤面外框用：只有凸出去的角才圓）
 function rr4(g, x, y, w, h, tl, tr, br, bl) {
   g.beginPath();
@@ -277,6 +288,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const watched = new WeakSet();
   const colorMemo = new Map();
   let scratch = null;
+  let BOARD_THEME = BOARD_THEMES.macaron;
+  // 衣櫃的外觀（R.setLook）：hat 配件、frame 方塊底座、theme 盤面主題；消除特效在 particleSkin
+  let look = { hat: 'none', fx: 'default', frame: 'jelly', theme: 'macaron' };
 
   // ================= 素材 =================
   function pieceInfo(kind) { return pieces[kind] || { id: '?', name: '?', color: '#cccccc' }; }
@@ -403,16 +417,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(glow, pad + Math.cos(t) * rr2, pad + Math.sin(t) * rr2); }
     }
     g.globalAlpha = 1;
-    // 落影：糖果色的深色版，往右下偏（光從左上來）。兩層：範圍大、很柔的影子（玩具像陷進糖果的凹槽裡）+ 貼著邊緣的接觸影
-    // 柔邊用 shadowBlur（不用 ctx.filter，Safari 也一樣）：玩具圖畫在原位、影子往右下偏，圖本身等一下會被玩具蓋住
+    // 貼紙白邊：玩偶照片外面一圈細細、柔柔的白色描邊（像高級貼紙），照片本身完全不改。
+    // 做法：白色剪影往 16 個方向各偏一點疊起來（外圈再一層更淡的），落影也照「含白邊」的形狀算
+    const sticker = makeCanvas(W, W), sq = sticker.getContext('2d'), white = silhouette(src, '#fff');
+    const ow = Math.max(1, box * 0.03);
+    for (const [r2, a] of [[ow * 1.35, 0.35], [ow, 1], [ow * 0.55, 1]]) {
+      sq.globalAlpha = a;
+      for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; sq.drawImage(white, pad + Math.cos(t) * r2, pad + Math.sin(t) * r2); }
+    }
+    sq.globalAlpha = 1;
+    // 落影：糖果色的深色版，往右下偏（光從左上來）。兩層：範圍大、很柔的影子（玩具像陷進糖果的凹槽裡）+ 貼著底部的接觸影
+    // 柔邊用 shadowBlur（不用 ctx.filter，Safari 也一樣）：白邊圖畫在原位、影子往右下偏
     const shc = mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
     const shadows = heart ? [[0.03, 0.085, 0.15, 0.62], [0.014, 0.04, 0.05, 0.4]] : [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]];
     for (const [ox2, oy2, blur, a] of shadows) {
       g.save();
       g.shadowColor = css(shc, a); g.shadowBlur = box * blur; g.shadowOffsetX = box * ox2; g.shadowOffsetY = box * oy2;
-      g.drawImage(src, pad, pad);
+      g.drawImage(sticker, 0, 0);
       g.restore();
     }
+    g.drawImage(sticker, 0, 0);
     // 玩具本身
     const lit = makeCanvas(src.width, src.height), lg = lit.getContext('2d');
     lg.drawImage(src, 0, 0);
@@ -435,6 +459,76 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (toyCache.size > 80) toyCache.clear();
     toyCache.set(key, c);
     return c;
+  }
+  // 選取時轉圈 / 彈跳用的圖也加同樣的貼紙白邊（整張旋轉序列一格一格加，白邊不會跨到隔壁格）；每張圖做一次
+  const outlineCache = new WeakMap();
+  function outlined(src, nx = 1, ny = 1) {
+    let c = outlineCache.get(src);
+    if (c) return c;
+    const w = src.width, h = src.height, fw = w / nx, fh = h / ny, ow = Math.max(1, Math.min(fw, fh) * 0.024);
+    c = makeCanvas(w, h);
+    const g = c.getContext('2d'), white = silhouette(src, '#fff');
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      g.save();
+      g.beginPath(); g.rect(i * fw, j * fh, fw, fh); g.clip();
+      for (const [r2, a] of [[ow * 1.35, 0.35], [ow, 1], [ow * 0.55, 1]]) {
+        g.globalAlpha = a;
+        for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(white, Math.cos(t) * r2, Math.sin(t) * r2); }
+      }
+      g.globalAlpha = 1;
+      g.drawImage(src, 0, 0);
+      g.restore();
+    }
+    outlineCache.set(src, c);
+    return c;
+  }
+  // ---- 配件（衣櫃）：SVG 先載成圖，疊在實拍玩偶照片「上面」的透明圖層，照片本身不動 ----
+  const accImgs = new Map();
+  function accImg(name) {
+    let im = accImgs.get(name);
+    if (!im) {
+      const svg = ACCESSORY_SVG[name];
+      if (!svg) return null;
+      // SVG 只有 viewBox 時，有的瀏覽器量不到圖的大小：補上 width / height（viewBox 的 4 倍，畫大一點也清楚）
+      const vb = (svg.match(/viewBox="([\d.\s-]+)"/) || [])[1], [, , vw, vh] = (vb || '0 0 100 100').split(/\s+/).map(Number);
+      im = new Image();
+      im.decoding = 'async';
+      im.src = svgUrl(svg.replace('<svg ', `<svg width="${vw * 4}" height="${vh * 4}" `));
+      im.addEventListener('load', () => { if (!destroyed) { tileCache.clear(); accCache.clear(); requestDraw(); } }, { once: true });
+      accImgs.set(name, im);
+    }
+    return im.complete && im.naturalWidth > 0 ? im : null;
+  }
+  // 配件畫在一張以「玩偶中心」為中心、邊長 box × 2 的透明小圖上（裝置像素）；照每隻玩偶的臉的位置 + 微調設定檔放
+  const accCache = new Map();
+  function accOverlay(kind, box) {
+    const name = look.hat;
+    if (!name || name === 'none') return null;
+    const key = name + '|' + kind + '|' + box;
+    if (accCache.has(key)) return accCache.get(key);
+    const img = accImg(name), toy = toyImage(kind);
+    if (!img || !toy) return null;
+    const id = pieceInfo(kind).id, face = TOY_FACE[id] || { x: 0.5, top: 0.05, eyes: 0.4, cheeks: 0.55, w: 0.7 };
+    const place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 };
+    const tune = Object.assign({ offsetX: 0, offsetY: 0, scale: 1 }, (ACCESSORY_TUNING[id] || {})[name]);
+    const b = toyBounds(toy), n = box * 2, c = makeCanvas(n, n), g = c.getContext('2d');
+    const bx0 = n / 2 - box / 2 + b.x0 * box, by0 = n / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
+    const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * natH(img) / Math.max(1, natW(img));
+    const ax = bx0 + face.x * bw + place.dx * fw + tune.offsetX * bw;
+    const ay = by0 + (face[place.anchor] != null ? face[place.anchor] : face.top) * bh - place.ay * ah + tune.offsetY * bh;
+    g.save();
+    if (name !== 'blush' && name !== 'halo') { g.shadowColor = 'rgba(60,20,80,0.32)'; g.shadowBlur = aw * 0.05; g.shadowOffsetY = aw * 0.03; }
+    g.drawImage(img, ax - aw / 2, ay, aw, ah);
+    g.restore();
+    if (accCache.size > 60) accCache.clear();
+    const out = { c, n };
+    accCache.set(key, out);
+    return out;
+  }
+  // 在 (tx, ty) 為中心、box 大小的玩偶上戴配件（g 是快取畫布，裝置像素）
+  function paintAccessory(g, kind, tx, ty, box) {
+    const a = accOverlay(kind, Math.round(box));
+    if (a) g.drawImage(a.c, tx - a.n / 2, ty - a.n / 2);
   }
   function toyImage(kind) {
     const all = imgsFor(pieceInfo(kind).id);
@@ -582,18 +676,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // 落影三層（深藍紫色、半透明，光從左上來所以都往右下）：
     //   1. 範圍大、很柔的落影，壓在格子的凹槽裡   2. 貼著底部的接觸陰影（糖果的重量）
     //   3. 四周一圈很窄的暗（環境光遮蔽）：糖果像重重地壓進格子裡，不是平平地懸空貼在上面
+    // （淺色毛玻璃盤面：影子用主題的淡紫玫瑰色、淡一點，不會在白底上變成髒髒的黑圈）
+    const shc = BOARD_THEME.shadow || [110, 60, 140];
     g.save();
-    g.shadowColor = 'rgba(12,4,46,0.78)'; g.shadowBlur = S * 0.11; g.shadowOffsetX = S * 0.06; g.shadowOffsetY = S * 0.095;
+    g.shadowColor = css(shc, 0.42); g.shadowBlur = S * 0.11; g.shadowOffsetX = S * 0.05; g.shadowOffsetY = S * 0.09;
     candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
     g.restore();
     g.save();
-    g.shadowColor = 'rgba(8,2,34,0.75)'; g.shadowBlur = S * 0.035; g.shadowOffsetX = S * 0.022; g.shadowOffsetY = S * 0.048;
+    g.shadowColor = css(mixc(shc, BLACK, 0.3), 0.45); g.shadowBlur = S * 0.035; g.shadowOffsetX = S * 0.018; g.shadowOffsetY = S * 0.045;
     candyPath(g, shape, cx, cy, R * 1.05); g.fillStyle = css(deep); g.fill();
     g.restore();
     g.save();
-    g.shadowColor = 'rgba(10,4,40,0.45)'; g.shadowBlur = S * 0.05; g.shadowOffsetX = S * 0.006; g.shadowOffsetY = S * 0.012;
+    g.shadowColor = css(shc, 0.22); g.shadowBlur = S * 0.05; g.shadowOffsetX = S * 0.006; g.shadowOffsetY = S * 0.012;
     candyPath(g, shape, cx, cy, R * 1.06); g.fillStyle = css(deep); g.fill();
     g.restore();
+    // 壓克力 / 果凍的厚度：往下錯開一點的深色底，露出底部一圈柔和的厚邊
+    {
+      const ty = S * 0.04, tg = g.createLinearGradient(0, cy, 0, cy + R + ty);
+      tg.addColorStop(0, css(mixc(dark, BLACK, 0.35))); tg.addColorStop(1, css(deeper));
+      candyPath(g, shape, cx, cy + ty, R * 1.05); g.fillStyle = tg; g.fill();
+    }
     if (shape === 'heart') {
       // 愛心外面一圈柔柔的光暈（沒有硬邊線，在深色的盤面上看得出是一顆飽滿、發亮的愛心糖）
       g.save();
@@ -726,6 +828,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const lc = mixc(saturate(col, 0.4), WHITE, 0.55), rl = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
     rl.addColorStop(0, css(lc, 0)); rl.addColorStop(0.7, css(lc, 0)); rl.addColorStop(1, css(lc, shape === 'heart' ? 0.2 : 0.45));
     g.lineWidth = R * 0.06; g.strokeStyle = rl; g.stroke();
+    // 頂部一片淡淡的弧形高光（壓克力 / 扭蛋殼的反光），薄薄地蓋過玩具的頭頂，玩具像是在同一顆糖果裡面
+    if (shape !== 'heart') {
+      const ag = g.createLinearGradient(0, cy - R, 0, cy - R * 0.25);
+      ag.addColorStop(0, 'rgba(255,255,255,0.36)'); ag.addColorStop(0.6, 'rgba(255,255,255,0.1)'); ag.addColorStop(1, 'rgba(255,255,255,0)');
+      g.beginPath(); g.ellipse(cx - R * 0.04, cy - R * 0.72, R * 0.92, R * 0.48, 0, Math.PI, Math.PI * 2);
+      g.ellipse(cx - R * 0.04, cy - R * 0.72, R * 0.92, R * 0.18, 0, 0, Math.PI);
+      g.fillStyle = ag; g.fill();
+    }
     g.restore();
     // 亮點：也放在左上的邊上
     g.beginPath(); g.arc(cx - R * 0.6, cy - R * 0.58, R * 0.075, 0, Math.PI * 2);
@@ -872,35 +982,163 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.fillStyle = gr; g.fillRect(-T, -T * 0.32, T * 2, T * 0.24);
     g.restore();
   }
+  // ---- 方塊底座（衣櫃）：果凍（預設，paintCandy）/ 透明扭蛋球 / 酥脆餅乾 / 花瓣 ----
+  // 底座的外形（條紋的亮帶、包裝的白點圈要沿著它走）
+  function bodyPath(g, kind, cx, cy, R) {
+    const f = look.frame;
+    if (!f || f === 'jelly') { candyPath(g, shapeOf(kind), cx, cy, R); return; }
+    g.beginPath();
+    if (f === 'cookie') {
+      const N = 72;
+      for (let i = 0; i <= N; i++) {
+        const a = (i / N) * Math.PI * 2, r0 = R * (1 + 0.04 * Math.cos(a * 14));
+        if (i) g.lineTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); else g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      }
+      g.closePath();
+    } else if (f === 'petal') {
+      for (let k = 0; k < 6; k++) {
+        const a = k * Math.PI / 3 - Math.PI / 2, x = cx + Math.cos(a) * R * 0.56, y = cy + Math.sin(a) * R * 0.56;
+        g.moveTo(x + R * 0.44, y); g.arc(x, y, R * 0.44, 0, Math.PI * 2);
+      }
+      g.moveTo(cx + R * 0.62, cy); g.arc(cx, cy, R * 0.62, 0, Math.PI * 2);
+    } else {
+      g.arc(cx, cy, R, 0, Math.PI * 2);
+    }
+  }
+  function paintAltBase(g, kind, cx, cy, S, col, special) {
+    const f = look.frame, R = S * CANDY_R * 1.02, shc = BOARD_THEME.shadow || [110, 60, 140];
+    const sat = saturate(col, 0.25), dark = saturate(col, 0.4), deep = mixc(dark, BLACK, 0.5);
+    // 落影（主題的顏色）
+    g.save();
+    g.shadowColor = css(shc, 0.4); g.shadowBlur = S * 0.1; g.shadowOffsetX = S * 0.045; g.shadowOffsetY = S * 0.085;
+    bodyPath(g, kind, cx, cy, R); g.fillStyle = css(deep); g.fill();
+    g.restore();
+    if (f === 'capsule') {
+      // 透明扭蛋球：下半顆是糖果色的殼、上半顆是透明的罩子（玩偶在裡面），中間一圈白色的接縫
+      const sh = g.createRadialGradient(cx - R * 0.3, cy + R * 0.1, R * 0.1, cx, cy + R * 0.2, R * 1.1);
+      sh.addColorStop(0, css(mixc(sat, WHITE, 0.45))); sh.addColorStop(0.6, css(sat)); sh.addColorStop(1, css(mixc(dark, BLACK, 0.25)));
+      g.save();
+      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+      g.fillStyle = css(mixc(sat, WHITE, 0.82), 0.55); g.fillRect(cx - R, cy - R, R * 2, R * 2);     // 上半：霧霧的透明罩
+      g.fillStyle = sh; g.fillRect(cx - R, cy + R * 0.02, R * 2, R);                               // 下半：糖果色的殼
+      if (special === 'h' || special === 'v') { g.fillStyle = 'rgba(255,255,255,0.8)'; paintStripes(g, cx - R, cy - R, R * 2, special); }
+      const seam = g.createLinearGradient(0, cy - R * 0.05, 0, cy + R * 0.1);
+      seam.addColorStop(0, '#ffffff'); seam.addColorStop(1, '#d9dbe8');
+      g.fillStyle = seam; g.fillRect(cx - R, cy - R * 0.04, R * 2, R * 0.12);
+      g.restore();
+      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2);
+      g.lineWidth = R * 0.06; g.strokeStyle = css(mixc(dark, BLACK, 0.3), 0.7); g.stroke();
+    } else if (f === 'cookie') {
+      // 酥脆餅乾：烤得金黃的圓餅乾（下面一點厚度）、表面小洞，一圈糖果色的糖霜（一眼看得出顏色）
+      g.save(); g.translate(0, S * 0.035); bodyPath(g, kind, cx, cy, R); g.fillStyle = '#9a5a1c'; g.fill(); g.restore();
+      const cg = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R * 1.05);
+      cg.addColorStop(0, '#f9dba4'); cg.addColorStop(0.6, '#e4aa5c'); cg.addColorStop(1, '#b8742c');
+      bodyPath(g, kind, cx, cy, R); g.fillStyle = cg; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = '#9a5a1c'; g.stroke();
+      const rnd = mulberry(77 + kind);
+      g.fillStyle = 'rgba(130,70,18,0.75)';
+      for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + rnd() * 0.3, rr0 = R * (0.86 + rnd() * 0.06); g.beginPath(); g.arc(cx + Math.cos(a) * rr0, cy + Math.sin(a) * rr0, R * 0.035, 0, Math.PI * 2); g.fill(); }
+      g.beginPath(); g.arc(cx, cy, R * 0.72, 0, Math.PI * 2);
+      const ig = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      ig.addColorStop(0, css(mixc(sat, WHITE, 0.5))); ig.addColorStop(1, css(sat));
+      g.fillStyle = ig; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = css(mixc(dark, BLACK, 0.25), 0.8); g.stroke();
+      if (special === 'h' || special === 'v') {
+        g.save(); g.beginPath(); g.arc(cx, cy, R * 0.72, 0, Math.PI * 2); g.clip();
+        g.fillStyle = 'rgba(255,255,255,0.85)'; paintStripes(g, cx - R, cy - R, R * 2, special); g.restore();
+      }
+    } else {
+      // 花瓣：六片圓圓的花瓣（糖果色的淡色版）+ 白白的花心
+      g.lineWidth = R * 0.05;
+      for (let k = 0; k < 6; k++) {
+        const a = k * Math.PI / 3 - Math.PI / 2, x = cx + Math.cos(a) * R * 0.56, y = cy + Math.sin(a) * R * 0.56;
+        const pg = g.createRadialGradient(x - R * 0.1, y - R * 0.12, R * 0.05, x, y, R * 0.46);
+        pg.addColorStop(0, css(mixc(sat, WHITE, 0.6))); pg.addColorStop(1, css(sat));
+        g.beginPath(); g.arc(x, y, R * 0.44, 0, Math.PI * 2); g.fillStyle = pg; g.fill();
+        g.strokeStyle = css(mixc(dark, BLACK, 0.3), 0.75); g.stroke();
+      }
+      g.beginPath(); g.arc(cx, cy, R * 0.62, 0, Math.PI * 2);
+      g.fillStyle = css(mixc(sat, WHITE, 0.72)); g.fill();
+      g.strokeStyle = css(mixc(dark, BLACK, 0.2), 0.6); g.stroke();
+      if (special === 'h' || special === 'v') {
+        g.save(); bodyPath(g, kind, cx, cy, R); g.clip();
+        g.fillStyle = 'rgba(255,255,255,0.75)'; paintStripes(g, cx - R, cy - R, R * 2, special); g.restore();
+      }
+    }
+    if (special === 'wrap') {
+      g.beginPath(); g.arc(cx, cy, R * 0.86, 0, Math.PI * 2);
+      g.save(); g.setLineDash([0.001, R * 0.3]); g.lineCap = 'round';
+      g.lineWidth = R * 0.16; g.strokeStyle = 'rgba(255,255,255,0.92)'; g.stroke();
+      g.restore();
+    }
+  }
+  // 蓋在玩偶上面的反光
+  function paintAltGloss(g, kind, cx, cy, S) {
+    const f = look.frame, R = S * CANDY_R * 1.02;
+    if (f === 'capsule') {
+      // 球面反光罩住玩偶：左上一大片弧形亮面、上緣一條亮邊、右下一小塊反光
+      g.save();
+      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+      g.translate(cx - R * 0.28, cy - R * 0.5); g.rotate(-0.5);
+      const hg = g.createLinearGradient(0, -R * 0.35, 0, R * 0.3);
+      hg.addColorStop(0, 'rgba(255,255,255,0.75)'); hg.addColorStop(0.6, 'rgba(255,255,255,0.18)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+      g.beginPath(); g.ellipse(0, 0, R * 0.72, R * 0.34, 0, 0, Math.PI * 2); g.fillStyle = hg; g.fill();
+      g.restore();
+      g.beginPath(); g.arc(cx, cy, R * 0.92, Math.PI * 1.08, Math.PI * 1.75);
+      g.lineWidth = R * 0.06; g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,0.85)'; g.stroke();
+      g.beginPath(); g.arc(cx, cy, R * 0.9, Math.PI * 0.15, Math.PI * 0.4);
+      g.lineWidth = R * 0.045; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.stroke();
+      g.lineCap = 'butt';
+      g.beginPath(); g.arc(cx - R * 0.52, cy - R * 0.55, R * 0.07, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    } else if (f === 'cookie') {
+      g.fillStyle = 'rgba(255,255,255,0.85)';
+      for (const [x, y, r0] of [[-0.6, -0.55, 0.05], [-0.42, -0.74, 0.03], [0.62, 0.5, 0.03]]) { g.beginPath(); g.arc(cx + x * R, cy + y * R, r0 * R, 0, Math.PI * 2); g.fill(); }
+    } else {
+      g.beginPath(); g.ellipse(cx - R * 0.1, cy - R * 0.86, R * 0.2, R * 0.1, -0.3, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,0.7)'; g.fill();
+      g.beginPath(); g.arc(cx - R * 0.55, cy - R * 0.5, R * 0.05, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    }
+  }
   function buildTile(kind, special, S) {
     const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, col = kindColor(kind);
     const base = makeCanvas(P, P), bg = base.getContext('2d');
     if (special === 'wrap') paintWrapEnds(bg, cx, cy, S, col);
-    paintCandy(bg, kind, cx, cy, S, col, special);
+    if (look.frame === 'jelly' || !look.frame) paintCandy(bg, kind, cx, cy, S, col, special);
+    else paintAltBase(bg, kind, cx, cy, S, col, special);
     let top = null;
-    if (special === 'h' || special === 'v' || special === 'wrap' || special === 'fish') {
+    if (special === 'h' || special === 'v' || special === 'wrap') {
       top = makeCanvas(P, P);
       const tg = top.getContext('2d');
       if (special === 'wrap') paintCellophane(tg, cx, cy, S);
-      else if (special === 'fish') paintFish(tg, cx + S * TILE * 0.17, cy + S * TILE * 0.25, S * 0.62, -0.32);   // 右下角一隻小魚
       else paintArrows(tg, cx, cy, S, special);
     }
     const full = makeCanvas(P, P), fg = full.getContext('2d');
     fg.drawImage(base, 0, 0);
     // 玩具幾乎塞滿糖果（照玩具實際的輪廓算大小，置中）
     const L = toyLayout(kind, special, S), tx = cx + L.dx, ty = cy + L.dy;
-    paintSprite(fg, kind, tx, ty, L.box);
+    let toy = null;
+    if (special === 'fish') {
+      // 飛天玩偶：玩偶另外存一張（畫的時候上下飄、飛出去的時候也用這張；翅膀在 drawPieceAt 畫）
+      toy = makeCanvas(P, P);
+      paintSprite(toy.getContext('2d'), kind, tx, ty, L.box);
+      paintAccessory(toy.getContext('2d'), kind, tx, ty, L.box);
+      fg.drawImage(toy, 0, 0);
+    } else {
+      paintSprite(fg, kind, tx, ty, L.box);
+      paintAccessory(fg, kind, tx, ty, L.box);
+    }
     if (special === 'h' || special === 'v') {
       const R = S * CANDY_R;
       paintToyStripes(fg, kind, tx, ty, L.box, cx - R, cy - R, R * 2, special);
     }
     // 玻璃反光蓋在玩具上面；選取時（轉圈 / 彈跳）也要蓋，所以合併進 top
     const gloss = makeCanvas(P, P);
-    paintCandyGloss(gloss.getContext('2d'), kind, cx, cy, S);
+    if (look.frame === 'jelly' || !look.frame) paintCandyGloss(gloss.getContext('2d'), kind, cx, cy, S);
+    else paintAltGloss(gloss.getContext('2d'), kind, cx, cy, S);
     if (top) top.getContext('2d').drawImage(gloss, 0, 0);
     else top = gloss;
     fg.drawImage(top, 0, 0);
-    return { full, base, top, P };
+    return { full, base, top, toy, P };
   }
   // 三寶排成扇形（左右兩隻在後面、往外歪，中間那隻在前面），每隻一圈金光 + 往右下的影子；彩色炸彈和「三寶合體！」口號共用
   const fanCache = new Map();
@@ -1065,14 +1303,20 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     glowImg = c;
     return c;
   }
-  // 游動中的小魚（一張圖，畫的時候旋轉）
-  let fishSprite = null, fishSpriteKey = '';
-  function getFishSprite() {
-    const n = Math.max(16, Math.round(cs * dpr * 1.1)), k = n + '|' + dpr;
-    if (fishSprite && fishSpriteKey === k) return fishSprite;
-    fishSprite = makeCanvas(n, n); fishSpriteKey = k;
-    paintFish(fishSprite.getContext('2d'), n / 2, n / 2, n * 0.82, 0);
-    return fishSprite;
+  // 飄落的小羽毛（白色、淡藍邊）
+  let featherImg = null;
+  function getFeather() {
+    if (featherImg) return featherImg;
+    const n = 48, c = makeCanvas(n, n), g = c.getContext('2d');
+    g.translate(n / 2, n / 2); g.rotate(-0.6);
+    g.beginPath(); g.ellipse(0, 0, n * 0.42, n * 0.15, 0, 0, Math.PI * 2);
+    const fg = g.createLinearGradient(-n * 0.4, 0, n * 0.4, 0);
+    fg.addColorStop(0, 'rgba(255,255,255,0.95)'); fg.addColorStop(1, 'rgba(214,234,255,0.9)');
+    g.fillStyle = fg; g.fill();
+    g.lineWidth = 1.2; g.strokeStyle = 'rgba(140,170,230,0.7)'; g.stroke();
+    g.beginPath(); g.moveTo(-n * 0.44, 0); g.lineTo(n * 0.38, 0); g.strokeStyle = 'rgba(150,180,235,0.8)'; g.stroke();
+    featherImg = c;
+    return c;
   }
   function getStar() {
     if (starImg) return starImg;
@@ -1195,57 +1439,120 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const top = Y0 - S * FO, btm = Y0 + rows * S + S * FO;
     const vgrad = (stops, y0 = top, y1 = btm) => q => { const gr = q.createLinearGradient(0, y0, 0, y1); stops.forEach(([o, col]) => gr.addColorStop(o, col)); return gr; };
     const thick = Math.max(2, Math.round(S * 0.1));
-    // 整個盤子壓在背景上的投影（暖暖的深玫瑰色，不是灰黑）
+    // 整個盤子壓在背景上的投影（暖暖的淡紫玫瑰色，不是灰黑）+ 外圈一層柔柔的白粉光（盤子像微微發光）
+    const th = BOARD_THEME, fr = th.frame || FRAME_CREAM;
     g.save();
-    g.shadowColor = 'rgba(96,40,62,0.3)'; g.shadowBlur = S * 0.16; g.shadowOffsetY = S * 0.08;
-    g.drawImage(paint(outer, '#c98f86', thick), 0, 0);
+    g.shadowColor = fr.glow; g.shadowBlur = S * 0.34;
+    g.drawImage(paint(outer, fr.base, thick), 0, 0);
+    g.shadowColor = fr.drop; g.shadowBlur = S * 0.18; g.shadowOffsetY = S * 0.09;
+    g.drawImage(paint(outer, fr.dropBase, thick), 0, 0);
     g.restore();
     // 盤子的厚度：下緣露出一圈焦糖玫瑰色的側面（實心色塊，只有一點點上下明暗）
-    g.drawImage(paint(outer, vgrad([[0, '#ecc3b4'], [0.6, '#dba597'], [1, '#c4877d']], btm - S * 0.4, btm + thick), thick), 0, 0);
+    g.drawImage(paint(outer, vgrad([[0, fr.side[0]], [0.6, fr.side[1]], [1, fr.side[2]]], btm - S * 0.4, btm + thick), thick), 0, 0);
     g.save(); g.globalCompositeOperation = 'destination-out'; g.drawImage(inner, 0, 0); g.restore();
     // 外框：乾淨的奶油色實心塊面 —— 上緣一條很細的亮邊、下緣淡淡的暗（不再是發光的塑膠管）
-    g.drawImage(paint(ring(outer, inner), vgrad([[0, '#fff7ec'], [0.5, '#fcecdc'], [1, '#f2d8c4']])), 0, 0);
+    g.drawImage(paint(ring(outer, inner), vgrad([[0, fr.ring[0]], [0.5, fr.ring[1]], [1, fr.ring[2]]])), 0, 0);
     g.drawImage(paint(ring(outer, shape(S * (FO - 0.016), S * 0.35)), vgrad([[0, 'rgba(255,255,255,0.9)'], [0.08, 'rgba(255,255,255,0)']])), 0, 0);
-    g.drawImage(paint(ring(outer, shape(S * (FO - 0.05), S * 0.32)), vgrad([[0, 'rgba(190,120,110,0)'], [0.8, 'rgba(190,120,110,0)'], [1, 'rgba(190,120,110,0.35)']])), 0, 0);
+    g.drawImage(paint(ring(outer, shape(S * (FO - 0.05), S * 0.32)), vgrad([[0, css(fr.ringShade, 0)], [0.8, css(fr.ringShade, 0)], [1, css(fr.ringShade, 0.35)]])), 0, 0);
     // 內緣一圈細細的暗邊：盤面看起來是嵌進外框裡
-    g.drawImage(paint(ring(shape(S * (FI + 0.022), S * 0.26), inner), 'rgba(150,96,90,0.35)'), 0, 0);
-    // 盤面：安靜的深藍色半透明玻璃（像 Candy Crush 的深色凹槽），亮色的糖果放上去才會像寶石一樣跳出來；中間一點點柔光
-    g.drawImage(paint(inner, vgrad([[0, 'rgba(42,48,108,0.9)'], [1, 'rgba(30,34,84,0.93)']])), 0, 0);
+    g.drawImage(paint(ring(shape(S * (FI + 0.022), S * 0.26), inner), fr.innerEdge), 0, 0);
+    // 盤面：半透明的淺色毛玻璃（奶白 → 淡薰衣草），深灰、白色的玩偶都看得清楚。
+    // 不用 CSS 的 backdrop-filter：背景在動時每一幀都要重算模糊，手機會燙；改成「霧面奶白」，看起來一樣、不耗電
+    g.drawImage(paint(inner, vgrad(th.glass)), 0, 0);
     const glass = makeCanvas(Wd, Hd), gq = glass.getContext('2d');
-    const gx = X0 + cols * S / 2, gy = Y0 + rows * S * 0.42, gR = Math.max(cols, rows) * S * 0.6;
+    const gx = X0 + cols * S / 2, gy = Y0 + rows * S * 0.3, gR = Math.max(cols, rows) * S * 0.7;
     const cg = gq.createRadialGradient(gx, gy, 0, gx, gy, gR);
-    cg.addColorStop(0, 'rgba(150,170,255,0.12)'); cg.addColorStop(1, 'rgba(150,170,255,0)');
+    cg.addColorStop(0, th.glow[0]); cg.addColorStop(1, th.glow[1]);
     gq.fillStyle = cg; gq.fillRect(0, 0, Wd, Hd);
+    if (th.deco === 'stars') {
+      // 星空：滿滿的小星點 + 幾顆四角星（固定的亂數，每次一樣）
+      const rnd = mulberry(rows * 131 + cols * 17), n = rows * cols * 3;
+      for (let i = 0; i < n; i++) {
+        const x = X0 + rnd() * cols * S, y = Y0 + rnd() * rows * S, r0 = S * (0.008 + rnd() * 0.018);
+        gq.beginPath(); gq.arc(x, y, r0, 0, Math.PI * 2); gq.fillStyle = `rgba(255,255,255,${(0.35 + rnd() * 0.6).toFixed(2)})`; gq.fill();
+      }
+      for (let i = 0; i < rows * cols / 4; i++) {
+        const x = X0 + rnd() * cols * S, y = Y0 + rnd() * rows * S, a = S * (0.05 + rnd() * 0.06);
+        gq.beginPath(); gq.moveTo(x, y - a); gq.quadraticCurveTo(x, y, x + a, y); gq.quadraticCurveTo(x, y, x, y + a);
+        gq.quadraticCurveTo(x, y, x - a, y); gq.quadraticCurveTo(x, y, x, y - a);
+        gq.fillStyle = i % 3 ? 'rgba(255,255,255,0.85)' : 'rgba(255,230,150,0.9)'; gq.fill();
+      }
+    }
     gq.globalCompositeOperation = 'destination-in'; gq.drawImage(inner, 0, 0);
     g.drawImage(glass, 0, 0);
-    // 格子：一格一格淺淺的圓角凹槽，深色上面再深一點 / 亮一點的棋盤格；沒有框線、也沒有星光（不要在縫裡搶戲）。
-    // 光從左上來：左上的內壁有影子、右下的內壁受一點光；糖果往右下的落影就落在槽底
+    // 格子：一格一格淺淺的圓角凹槽，粉白 / 淡薰衣草交錯；沒有框線、也沒有星光（不要在縫裡搶戲）。
+    // 光從左上來：左上的內壁有一點淡紫的影子、右下的內壁受光（白）；糖果往右下的落影就落在槽底
     const cells = makeCanvas(Wd, Hd), q = cells.getContext('2d');
     const gap = S * 0.03, crad = S * 0.17, cw = S - gap * 2, big = S * 0.4;
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
       const x = X0 + c2 * S + gap, y = Y0 + r * S + gap;
       rr(q, x, y, cw, cw, crad);
-      q.fillStyle = (r + c2) % 2 ? 'rgba(200,210,255,0.1)' : 'rgba(170,180,255,0.075)';   // 槽底比盤面亮一點，糖果的深色落影才看得出來
+      q.fillStyle = (r + c2) % 2 ? th.cellA : th.cellB;
       q.fill();
+      if (th.pattern === 'gingham') {
+        // 紅白格子布：橫直各兩條半透明的紅帶，交叉的地方自然比較深
+        q.save();
+        rr(q, x, y, cw, cw, crad); q.clip();
+        q.fillStyle = 'rgba(236,72,92,0.32)';
+        const bw = cw / 4;
+        for (const k of [0.125, 0.625]) { q.fillRect(x, y + cw * k, cw, bw); q.fillRect(x + cw * k, y, bw, cw); }
+        q.restore();
+      }
       // 內壁：比槽大一圈、中間挖空的框，往右下 / 左上投影 —— 框本身在槽外面被裁掉，只有影子落進槽裡
       q.save();
       rr(q, x, y, cw, cw, crad); q.clip();
       q.beginPath(); q.rect(x - big, y - big, cw + big * 2, cw + big * 2); rrSub(q, x, y, cw, cw, crad);
       q.fillStyle = '#000';
-      q.shadowColor = 'rgba(6,8,36,0.6)'; q.shadowBlur = S * 0.07; q.shadowOffsetX = S * 0.026; q.shadowOffsetY = S * 0.04;
+      q.shadowColor = th.wallDark; q.shadowBlur = S * 0.07; q.shadowOffsetX = S * 0.026; q.shadowOffsetY = S * 0.04;
       q.fill('evenodd');
-      q.shadowColor = 'rgba(190,200,255,0.14)'; q.shadowBlur = S * 0.05; q.shadowOffsetX = -S * 0.018; q.shadowOffsetY = -S * 0.026;
+      q.shadowColor = th.wallLit; q.shadowBlur = S * 0.05; q.shadowOffsetX = -S * 0.018; q.shadowOffsetY = -S * 0.026;
       q.fill('evenodd');
       q.restore();
     }
-    // 外框投在盤面上緣的影子：盤面像凹進盤子裡
-    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.12)), 'rgba(8,6,36,0.22)'), 0, 0);
-    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.05)), 'rgba(8,6,36,0.22)'), 0, 0);
+    // 外框投在盤面上緣的影子（淡淡的玫瑰紫，不是黑）：盤面像凹進盤子裡
+    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.12)), th.rimShadow), 0, 0);
+    q.drawImage(paint(ring(inner, shape(S * 0.06, S * 0.24, S * 0.05)), th.rimShadow), 0, 0);
+    // 外框內緣的內陰影 + 一圈微微的白光（毛玻璃的邊）
+    q.drawImage(paint(ring(inner, shape(S * 0.02, S * 0.24)), 'rgba(255,255,255,0.55)'), 0, 0);
     q.globalCompositeOperation = 'destination-in';
     q.drawImage(inner, 0, 0);
     q.globalCompositeOperation = 'source-over';
     g.drawImage(cells, 0, 0);
+    if (th.deco === 'bulbs' || th.deco === 'berries') {
+      // 外框上的裝飾：沿著盤面外緣，每一格的外側邊中間放一顆（任何形狀的盤面都貼著框走）
+      const mid = S * (FO + FI) / 2;
+      let k = 0;
+      for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
+        if (!mask[r][c2]) continue;
+        const cx2 = X0 + (c2 + 0.5) * S, cy2 = Y0 + (r + 0.5) * S;
+        for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+          if (on(r + dr, c2 + dc)) continue;
+          const x = cx2 + dc * (S / 2 + mid), y = cy2 + dr * (S / 2 + mid);
+          if (th.deco === 'bulbs') {
+            const warm = (k++ % 2) === 0, rad = S * 0.075;
+            g.save();
+            g.shadowColor = warm ? 'rgba(255,230,120,0.95)' : 'rgba(255,255,255,0.95)'; g.shadowBlur = S * 0.12;
+            const bg2 = g.createRadialGradient(x - rad * 0.3, y - rad * 0.3, 0, x, y, rad);
+            bg2.addColorStop(0, '#fff'); bg2.addColorStop(0.6, warm ? '#ffe98a' : '#fff4fb'); bg2.addColorStop(1, warm ? '#f5b800' : '#ffb6da');
+            g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fillStyle = bg2; g.fill();
+            g.restore();
+          } else if ((k++ % 3) === 0) {
+            // 小草莓
+            const z = S * 0.12;
+            g.save(); g.translate(x, y);
+            g.beginPath(); g.moveTo(0, -z * 0.55); g.bezierCurveTo(z * 0.9, -z * 0.75, z * 0.75, z * 0.45, 0, z * 0.8);
+            g.bezierCurveTo(-z * 0.75, z * 0.45, -z * 0.9, -z * 0.75, 0, -z * 0.55);
+            g.fillStyle = '#ff4d6a'; g.fill(); g.lineWidth = Math.max(1, S * 0.012); g.strokeStyle = '#b8243e'; g.stroke();
+            g.fillStyle = '#fff3a8';
+            for (const [px, py] of [[-0.25, 0], [0.22, -0.05], [0, 0.3], [-0.1, -0.25]]) { g.beginPath(); g.arc(px * z, py * z, z * 0.06, 0, Math.PI * 2); g.fill(); }
+            g.beginPath(); g.moveTo(-z * 0.4, -z * 0.6); g.lineTo(0, -z * 0.35); g.lineTo(z * 0.4, -z * 0.6); g.lineTo(0, -z * 0.85); g.closePath();
+            g.fillStyle = '#4cbf6a'; g.fill();
+            g.restore();
+          }
+        }
+      }
+    }
     // 橫幅出現時用的暗色遮罩：和盤面外框同形狀（不會在盤面外畫出一個方框）
     const shade = makeCanvas(Wd, Hd), sg = shade.getContext('2d');
     sg.drawImage(outer, 0, 0);
@@ -1459,7 +1766,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (destroyed) return;
     gen++;
     abortWaits();
-    sched = []; ghosts = []; fx = []; parts = []; texts = []; word = null; shakes = []; surpriseUsed = false;
+    sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
     if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
@@ -1515,21 +1822,164 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (parts.length >= MAX_PARTS) parts.splice(0, parts.length - MAX_PARTS + 1);
     parts.push(p);
   }
-  function burst(x, y, col, n, t, { speed = 3.4, stars = 2, up = 0.8 } = {}) {
-    const fl = getFluff(col), sc = getStarCol(col);
-    for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, v = speed * (0.45 + Math.random() * 0.75);
-      emit({ type: 0, img: fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.4, t0: t,
-        life: 380 + Math.random() * 260, size: 0.14 + Math.random() * 0.14 });
-    }
-    for (let i = 0; i < stars; i++) {
-      const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
-      emit({ type: 1, img: sc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.8, t0: t,
-        life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
-    }
+  // 小愛心（方塊顏色，左上一點亮光）
+  const heartCache = new Map();
+  function getHeart(col) {
+    const key = col.join(',');
+    let c = heartCache.get(key);
+    if (c) return c;
+    const n = 48, h = n / 2;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d'), k = saturate(mixc(col, WHITE, 0.1), 0.5);
+    candyPath(g, 'heart', h, h, n * 0.42);
+    const hg = g.createLinearGradient(0, n * 0.1, 0, n * 0.9);
+    hg.addColorStop(0, css(mixc(k, WHITE, 0.45))); hg.addColorStop(1, css(mixc(k, BLACK, 0.08)));
+    g.fillStyle = hg; g.fill();
+    g.lineWidth = n * 0.06; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
+    g.beginPath(); g.ellipse(h - n * 0.14, h - n * 0.12, n * 0.08, n * 0.05, -0.6, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    heartCache.set(key, c);
+    return c;
   }
+  // 細碎閃粉（很小的四角星）
+  let glitterImg = null;
+  function getGlitter() {
+    if (glitterImg) return glitterImg;
+    const n = 24, h = n / 2, c = makeCanvas(n, n), g = c.getContext('2d');
+    g.beginPath();
+    g.moveTo(h, 1); g.quadraticCurveTo(h, h, n - 1, h); g.quadraticCurveTo(h, h, h, n - 1); g.quadraticCurveTo(h, h, 1, h); g.quadraticCurveTo(h, h, h, 1);
+    g.fillStyle = '#fff6c8'; g.fill();
+    g.lineWidth = 1; g.strokeStyle = 'rgba(230,150,40,0.85)'; g.stroke();
+    glitterImg = c;
+    return c;
+  }
+  // 消除爆開的粒子（帶重力、慢慢淡出）：方塊顏色的棉花團 + 蓬鬆白棉花球 + 圓潤星星 + 小愛心 + 細碎閃粉。
+  // 粒子造型（衣櫃的「消除特效」）照 particleSkin 換
+  let particleSkin = 'default';
+  function burst(x, y, col, n, t, { speed = 3.4, stars = 2, up = 0.8 } = {}) {
+    const skin = PARTICLE_SKINS[particleSkin] || PARTICLE_SKINS.default;
+    skin(x, y, col, n, t, speed, stars, up);
+  }
+  // 櫻花花瓣、彩虹泡泡、金粉亮片
+  let petalImg = null;
+  function getPetal() {
+    if (petalImg) return petalImg;
+    const n = 40, c = makeCanvas(n, n), g = c.getContext('2d');
+    g.translate(n / 2, n / 2);
+    g.beginPath(); g.moveTo(0, -n * 0.42);
+    g.bezierCurveTo(n * 0.36, -n * 0.3, n * 0.3, n * 0.3, 0, n * 0.42);
+    g.bezierCurveTo(-n * 0.3, n * 0.3, -n * 0.36, -n * 0.3, 0, -n * 0.42);
+    const pg = g.createLinearGradient(0, -n * 0.4, 0, n * 0.4);
+    pg.addColorStop(0, '#fff0f6'); pg.addColorStop(0.5, '#ffc1d9'); pg.addColorStop(1, '#ff8fb8');
+    g.fillStyle = pg; g.fill(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(230,100,150,0.7)'; g.stroke();
+    g.beginPath(); g.moveTo(-n * 0.06, -n * 0.42); g.lineTo(0, -n * 0.32); g.lineTo(n * 0.06, -n * 0.42); g.fillStyle = '#fff'; g.fill();
+    petalImg = c;
+    return c;
+  }
+  const bubbleCache = new Map();
+  function getBubble(hue) {
+    hue = Math.round(hue / 30) * 30 % 360;
+    let c = bubbleCache.get(hue);
+    if (c) return c;
+    const n = 48, h = n / 2;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d'), rg = g.createRadialGradient(h, h, h * 0.55, h, h, h * 0.95);
+    rg.addColorStop(0, `hsla(${hue},100%,85%,0.08)`); rg.addColorStop(0.8, `hsla(${hue},95%,70%,0.55)`); rg.addColorStop(1, `hsla(${(hue + 60) % 360},95%,70%,0)`);
+    g.beginPath(); g.arc(h, h, h * 0.92, 0, Math.PI * 2); g.fillStyle = rg; g.fill();
+    g.lineWidth = 3; g.strokeStyle = `hsla(${hue},92%,58%,0.95)`; g.stroke();
+    g.beginPath(); g.ellipse(h - h * 0.32, h - h * 0.36, h * 0.2, h * 0.11, -0.7, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill();
+    bubbleCache.set(hue, c);
+    return c;
+  }
+  let sequinImg = null;
+  function getSequin() {
+    if (sequinImg) return sequinImg;
+    const n = 32, h = n / 2, c = makeCanvas(n, n), g = c.getContext('2d');
+    g.beginPath();
+    for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; const x = h + Math.cos(a) * h * 0.85, y = h + Math.sin(a) * h * 0.85; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+    g.closePath();
+    const sg = g.createLinearGradient(0, 0, n, n);
+    sg.addColorStop(0, '#fff8c8'); sg.addColorStop(0.45, '#ffd23c'); sg.addColorStop(1, '#c88200');
+    g.fillStyle = sg; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#8a5200'; g.stroke();
+    g.beginPath(); g.arc(h - h * 0.25, h - h * 0.25, h * 0.16, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    sequinImg = c;
+    return c;
+  }
+  const PARTICLE_SKINS = {
+    // 櫻花花瓣雨：粉紅花瓣往外散開、慢慢旋轉飄落 + 一點粉色棉花
+    sakura(x, y, col, n, t, speed) {
+      const pt = getPetal(), fl = getFluff([255, 190, 215]);
+      for (let i = 0; i < n + 2; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.4 + Math.random() * 0.6);
+        emit({ type: 1, img: pt, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.2, g: 2.2, drag: 2.6, t0: t,
+          life: 700 + Math.random() * 400, size: 0.26 + Math.random() * 0.14, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 7 });
+      }
+      for (let i = 0; i < Math.ceil(n / 3); i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.4 + Math.random() * 0.6);
+        emit({ type: 0, img: fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.6, g: 5, drag: 2.4, t0: t, life: 380 + Math.random() * 200, size: 0.14 + Math.random() * 0.1 });
+      }
+    },
+    // 彩虹愛心泡泡：各種顏色的透明泡泡往上飄 + 小愛心
+    bubbles(x, y, col, n, t, speed) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.3 + Math.random() * 0.5);
+        emit({ type: 1, img: getBubble(Math.random() * 360), x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.5, g: -1.6, drag: 2.2, t0: t,
+          life: 650 + Math.random() * 350, size: 0.22 + Math.random() * 0.22 });
+      }
+      const hc = getHeart(col);
+      for (let i = 0; i < (n >= 6 ? 3 : 1); i++) {
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, v = speed * (0.5 + Math.random() * 0.4);
+        emit({ type: 1, img: hc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, g: 1.5, drag: 2.2, t0: t,
+          life: 600 + Math.random() * 260, size: 0.26 + Math.random() * 0.1, rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 3 });
+      }
+    },
+    // 奢華金粉亮片：金色亮片翻轉著噴出來、重重地落下，加上閃閃發亮的金粉
+    gold(x, y, col, n, t, speed, stars) {
+      const sq = getSequin(), gl = getGlitter(), st = getStarCol(SPARK_GOLD);
+      for (let i = 0; i < n + 2; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.5 + Math.random() * 0.8);
+        emit({ type: 1, img: sq, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1.4, g: 9, drag: 2, t0: t,
+          life: 520 + Math.random() * 300, size: 0.16 + Math.random() * 0.12, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 12 });
+      }
+      for (let i = 0; i < 5; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.6 + Math.random() * 0.9);
+        emit({ type: 1, img: gl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.8, g: 5, drag: 3, t0: t + Math.random() * 80, life: 420 + Math.random() * 260, size: 0.14 + Math.random() * 0.1 });
+      }
+      for (let i = 0; i < stars; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
+        emit({ type: 1, img: st, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5, g: 2.5, drag: 2.8, t0: t, life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
+      }
+    },
+    default(x, y, col, n, t, speed, stars, up) {
+      const fl = getFluff(col), cotton = getFluff([255, 248, 252]), sc = getStarCol(col);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.45 + Math.random() * 0.75);
+        emit({ type: 0, img: i % 3 === 2 ? cotton : fl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 7, drag: 2.4, t0: t,
+          life: 380 + Math.random() * 260, size: (i % 3 === 2 ? 0.17 : 0.14) + Math.random() * 0.14 });
+      }
+      for (let i = 0; i < stars; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
+        emit({ type: 1, img: sc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.6, g: 2.5, drag: 2.8, t0: t,
+          life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
+      }
+      if (n >= 4) {
+        const hc = getHeart(col);
+        for (let i = 0; i < (n >= 8 ? 2 : 1); i++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2, v = speed * (0.5 + Math.random() * 0.4);
+          emit({ type: 1, img: hc, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up, g: 4.5, drag: 2.2, t0: t,
+            life: 520 + Math.random() * 240, size: 0.26 + Math.random() * 0.1, rot: (Math.random() - 0.5) * 0.6, vr: (Math.random() - 0.5) * 3 });
+        }
+      }
+      const gl = getGlitter();
+      for (let i = 0; i < Math.min(4, Math.ceil(n / 2)); i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.6 + Math.random() * 0.9);
+        emit({ type: 1, img: gl, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - up * 0.5, g: 5, drag: 3, t0: t + Math.random() * 60,
+          life: 360 + Math.random() * 260, size: 0.12 + Math.random() * 0.1 });
+      }
+    },
+  };
   function sparkle(x, y, n, t, spread = 0.5) {
-    const st = getStar();
+    const st = getStarCol(SPARK_GOLD);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, v = 1 + Math.random() * 2.4;
       emit({ type: 1, img: st, x: x + Math.cos(a) * spread * Math.random(), y: y + Math.sin(a) * spread * Math.random(),
@@ -1703,6 +2153,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       lastPop = Math.max(lastPop, tm);
     }
 
+    // --- 告訴 main.js 每一顆 / 每一格果凍什麼時候爆（收集目標要從那裡飛到上面的目標圖示）---
+    for (const it of removed) {
+      const p = it.piece;
+      if (p && p.kind >= 0) cue('gone', tOf(it.r, it.c) + POP_HIT, { r: it.r, c: it.c, kind: p.kind });
+    }
+    for (const jh of ev.jellyHits || []) if (jh) cue('jellyhit', tOf(jh.r, jh.c) + POP_HIT, { r: jh.r, c: jh.c });
+
     // --- 特效 ---
     for (const x of E) {
       const st = x.start * f, at0 = t0 + st, e = x.e;
@@ -1731,9 +2188,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         cue('bomb', st, { n: ts.length });
       } else if (e.fx === 'fish' && e.to) {
         const dur = fishMs(e) * f, x1 = e.to.c + 0.5, y1 = e.to.r + 0.5;
-        fx.push({ type: 'fishfly', x0: e.c + 0.5, y0: e.r + 0.5, x1, y1, t0: at0, dur, carry: e.carry || null, seed: (e.to.r * 31 + e.to.c * 7 + e.r) % 2 ? 1 : -1 });
-        at(at0 + dur, tt => { fx.push({ type: 'flash', x: x1, y: y1, t0: tt, dur: 260, R: 1.1 }); sparkle(x1, y1, 6, tt, 0.3); });
-        cue('fish', st, { carry: e.carry || null });
+        fx.push({ type: 'wingfly', kind: sk, x0: e.c + 0.5, y0: e.r + 0.5, x1, y1, t0: at0, dur, carry: e.carry || null,
+          seed: (e.to.r * 31 + e.to.c * 7 + e.r) % 2 ? 1 : -1, lastEmit: 0 });
+        // 俯衝撞到目標：一圈可愛的爆炸光波 + 閃光 + 星星，盤面輕輕一震
+        at(at0 + dur, tt => {
+          fx.push({ type: 'ring', x: x1, y: y1, R: 1.5, t0: tt, dur: 460, col: RING_GOLD });
+          fx.push({ type: 'pring', x: x1, y: y1, t0: tt + 60, dur: 380, col: RING_BLUE, R: 1.3 });
+          fx.push({ type: 'flash', x: x1, y: y1, t0: tt, dur: 300, R: 1.3 });
+          sparkle(x1, y1, 10, tt, 0.35);
+          shake(3, 200, tt);
+        });
+        cue('fish', st, { carry: e.carry || null, dur });
       } else if (e.fx === 'board') {
         fx.push({ type: 'boardfx', t0: at0, dur: 800 });
         shake(9, 560, at0);
@@ -1745,7 +2210,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     // --- 消除音效：每一顆碎開的那一刻「咔啦」一聲（殘影放大變白之後才碎：POP_MS 的 30%），音一顆比一顆高 ---
     groups.forEach((g, i) => {
       seqCells(g).forEach((q, j) => {
-        const tm = (remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f) + POP_MS * 0.3;
+        const tm = (remT.has(key(q.r, q.c)) ? tOf(q.r, q.c) : (i * GROUP_STAGGER + j * POP_SEQ) * f) + POP_HIT;
         cue('pop', tm, { cascade, group: i, idx: j, size: g.cells.length, shape: g.shape });
       });
     });
@@ -1773,6 +2238,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         sparkle(cr.c + 0.5, cr.r + 0.5, 10, tt, 0.3);
       });
       cue('special', tm, { special: p.special });
+      shake(p.special === 'bomb' ? 4.5 : 3, 210, t0 + tm);     // 四消 / 五消 / L、T：做出特殊方塊的那一下也震一下
     }
 
     // --- 果凍 ---
@@ -1839,7 +2305,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
     }
     if (cascade >= 2) cue('chime', 40, { level: cascade + 1 });   // 每次跳口號都叮咚一下
-    if (cascade >= 4) shake(1.8 + 0.4 * Math.min(4, cascade - 4), 220, t0 + 40);
+    // 稱讚字：在消除的地方彈出來（2 連消以上、或特殊組合），連越多字越大、越華麗
+    if (cascade >= 2 || isCombo) {
+      let sx = 0, sy = 0;
+      for (const it of removed) { sx += it.c; sy += it.r; }
+      const n = removed.length || 1;
+      addPraise(Math.max(cascade, isCombo ? 4 : 2), removed.length ? sx / n + 0.5 : cols / 2, removed.length ? sy / n + 0.5 : rows / 2, t0 + 140);
+    }
+    if (cascade >= 2) shake(Math.min(5, 2.8 + 0.55 * (cascade - 2)), 230, t0 + 40);   // 2 連消以上：盤面微微一震（3~5px）
     // 最後一顆開始爆之後一下下就讓上面的方塊開始掉（爆的動畫在背景收尾）
     await wait(t0 + lastPop + POP_LEAD - now());
   }
@@ -1901,7 +2374,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const dur = fallDur(dist, vel);
         v.mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
         v.landT = t + delay + dur;
-        v.landAmp = clamp((vel + G_FALL * dur) * 2.4, 0.07, 0.2);
+        v.landAmp = clamp((vel + G_FALL * dur) * 2.2, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
@@ -2023,7 +2496,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const k = dpr, sc = scratchCtx();
     sc.font = `900 ${Math.max(6, size * k)}px ${FONT}`;
     const mw = sc.measureText(text).width / k;
-    const depth = ext ? size * 0.13 : 0;
+    const depth = ext ? size * 0.075 : 0;          // 厚度：字高的 7.5%（以前 13%，手機上像多一份錯開的字）
     const pad = size * (outer ? 0.36 : 0.28) + (shadow ? size * 0.22 : 0) + depth;
     const w = mw + pad * 2, h = size * 1.25 + pad * 2;
     const c = makeCanvas(w * k, h * k), g = c.getContext('2d');
@@ -2032,7 +2505,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     const x = w / 2, y = h / 2;
     const fs = typeof fill === 'function' ? fill(g, size) : fill;
-    const ow = size * (outer ? 0.34 : 0.22);    // 最外圈描邊的粗細
+    const ow = size * (outer ? 0.24 : 0.15);    // 最外圈描邊的粗細（細一點，字的筆畫和數字的洞才不會被填滿）
     // 陰影不用 shadowBlur（很貴）：往右下偏的半透明粗描邊，兩層疊出柔和的邊
     if (shadow) {
       g.strokeStyle = 'rgba(50,10,80,0.18)'; g.lineWidth = ow + size * 0.16; g.strokeText(text, x + depth + size * 0.04, y + depth + size * 0.1);
@@ -2043,14 +2516,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       g.strokeStyle = ext; g.fillStyle = ext; g.lineWidth = ow;
       for (let i = n; i >= 1; i--) {
         const d = depth * i / n;
-        g.strokeText(text, x + d * 0.6, y + d); g.fillText(text, x + d * 0.6, y + d);
+        g.strokeText(text, x + d * 0.15, y + d); g.fillText(text, x + d * 0.15, y + d);
       }
     }
     if (outer) { g.lineWidth = ow; g.strokeStyle = outer; g.strokeText(text, x, y); }
-    g.lineWidth = size * (outer ? 0.17 : 0.22); g.strokeStyle = outline; g.strokeText(text, x, y);
+    g.lineWidth = size * (outer ? 0.12 : 0.15); g.strokeStyle = outline; g.strokeText(text, x, y);
     // 字面加胖：描邊一半畫在字裡面，會把字吃瘦；用字面的顏色再描一圈，把字撐回來、再胖一點
     // （只有數字和符號胖很多；中文筆畫多，只補回一點點，不然「關」「蛋」會糊成一團）
-    g.lineWidth = size * (/^[\d\s+\-×.,%/!！]+$/.test(text) ? 0.07 : 0.02); g.strokeStyle = fs; g.strokeText(text, x, y);
+    g.lineWidth = size * (/^[\d\s+\-×.,%/!！]+$/.test(text) ? 0.04 : 0.015); g.strokeStyle = fs; g.strokeText(text, x, y);
     g.fillStyle = fs; g.fillText(text, x, y);
     return { c, w, h };
   }
@@ -2200,12 +2673,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (t >= v.landT) {
       const p = (t - v.landT) / LAND_MS;
       if (p < 1) {
-        const k = Math.exp(-4.6 * p) * Math.cos(p * Math.PI * 2.5);
-        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * 0.7 * k;
+        const k = Math.exp(-2.6 * p) * Math.cos(p * Math.PI * 2.5);
+        sy *= 1 - v.landAmp * k; sx *= 1 + v.landAmp * k;
       }
     }
     if (t >= v.popT) { const p = (t - v.popT) / POPIN_MS; if (p < 1) s *= popCurve(p); }
-    if (v.special === 'wrap') s *= 1 + 0.045 * Math.sin(t / 230 + v.phase);
+    if (v.special === 'wrap') s *= 1 + 0.07 * Math.sin(t / 230 + v.phase);      // 包裝炸彈：明顯的呼吸縮放
     if (dragState && dragState.id === v.id) {
       const o = dragOffset(t);
       x += o.x; y += o.y; top = true; s *= 1.06;
@@ -2224,7 +2697,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   }
 
   function drawBomb(cx, cy, s, t, phase, spinRate = 1) {
+    s *= 1 + 0.055 * Math.sin(t / 260 + phase);                  // 脈動呼吸縮放
     const e = getTile(-1, 'bomb'), P = e.P / dpr * s;
+    {
+      // 外圈一圈會轉的彩虹光環（一段一段、一明一暗）
+      const k = 0.5 + 0.5 * Math.sin(t / 200 + phase), R = cs * 0.57 * s, n = 12, ga0 = ctx.globalAlpha;
+      ctx.lineWidth = cs * 0.06 * s; ctx.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * Math.PI * 2 + t / 700 + phase;
+        ctx.beginPath(); ctx.arc(cx, cy, R, a0, a0 + (Math.PI * 2 / n) * 0.62);
+        ctx.strokeStyle = `hsla(${(i / n) * 360},95%,62%,${((0.45 + 0.45 * k) * ga0).toFixed(3)})`; ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
     {
       // 外圈的金光一明一暗（和條紋糖果的箭頭同一套）
       const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), z = cs * (1.25 + 0.1 * k) * s, ga = ctx.globalAlpha;
@@ -2253,6 +2738,87 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.globalCompositeOperation = op; ctx.globalAlpha = ga;
   }
 
+  // ---- 特殊方塊的待機動畫（一眼看得出是什麼）----
+  // 霓虹光暈：方塊顏色的柔光，畫在方塊後面（淺色盤面上用一般疊色，不用加亮）
+  const neonCache = new Map();
+  function getNeon(col) {
+    const key = col.join(',');
+    let c = neonCache.get(key);
+    if (c) return c;
+    const n = 96, h = n / 2, k = mixc(saturate(col, 0.7), WHITE, 0.15);
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d'), rg = g.createRadialGradient(h, h, 0, h, h, h);
+    rg.addColorStop(0, css(k, 0.7)); rg.addColorStop(0.55, css(k, 0.55)); rg.addColorStop(0.78, css(k, 0.22)); rg.addColorStop(1, css(k, 0));
+    g.fillStyle = rg; g.fillRect(0, 0, n, n);
+    neonCache.set(key, c);
+    return c;
+  }
+  // 掃過糖果的亮帶（橫切面的漸層，畫的時候拉長）
+  let sheenImg = null;
+  function getSheen() {
+    if (sheenImg) return sheenImg;
+    const c = makeCanvas(64, 4), g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 64, 0);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.42, 'rgba(255,255,255,0.55)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+    gr.addColorStop(0.58, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 4);
+    sheenImg = c;
+    return c;
+  }
+  // 翅膀（右邊那一片，根部在左下）：半透明、微微發光的白色小天使翅膀，三層圓圓的羽毛，羽尖帶一點淡藍
+  let wingImg = null, wingKey = '';
+  function getWing() {
+    const n = Math.max(16, Math.round(cs * dpr * 0.8)), k = n + '|' + dpr;
+    if (wingImg && wingKey === k) return wingImg;
+    const c = makeCanvas(n, n), g = c.getContext('2d');
+    const rx = n * 0.12, ry = n * 0.72;                           // 根部
+    const feathers = [                                            // 角度（往右上張開）、長度、寬度
+      [-0.95, 0.62, 0.2], [-0.62, 0.74, 0.21], [-0.3, 0.8, 0.2], [0.02, 0.74, 0.18], [0.32, 0.6, 0.16],
+    ];
+    const paintSet = (fill, stroke, lw, scale = 1) => {
+      for (const [a, L, wd] of feathers) {
+        g.save();
+        g.translate(rx, ry); g.rotate(a - 0.25);
+        g.beginPath();
+        g.ellipse(n * L * 0.5 * scale, 0, n * L * 0.5 * scale, n * wd * 0.5 * scale, 0, 0, Math.PI * 2);
+        g.fillStyle = fill; g.fill();
+        if (stroke) { g.lineWidth = lw; g.strokeStyle = stroke; g.stroke(); }
+        g.restore();
+      }
+    };
+    g.save();
+    g.shadowColor = 'rgba(170,215,255,0.95)'; g.shadowBlur = n * 0.08;
+    paintSet('rgba(214,236,255,0.9)', null, 0, 1.04);              // 外圈淡藍的光
+    g.restore();
+    const fg = g.createLinearGradient(rx, ry, n, 0);
+    fg.addColorStop(0, 'rgba(255,255,255,0.98)'); fg.addColorStop(0.65, 'rgba(250,252,255,0.95)'); fg.addColorStop(1, 'rgba(206,230,255,0.92)');
+    paintSet(fg, 'rgba(130,155,220,0.8)', Math.max(1, n * 0.02));
+    // 羽毛中間的羽軸（細細的淡藍線）＋ 根部一團亮光
+    g.strokeStyle = 'rgba(160,185,235,0.5)'; g.lineWidth = Math.max(1, n * 0.012); g.lineCap = 'round';
+    for (const [a, L] of feathers) {
+      g.beginPath(); g.moveTo(rx, ry);
+      g.lineTo(rx + Math.cos(a - 0.25) * n * L * 0.78, ry + Math.sin(a - 0.25) * n * L * 0.78); g.stroke();
+    }
+    const rg = g.createRadialGradient(rx, ry, 0, rx, ry, n * 0.22);
+    rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, n, n);
+    wingImg = c; wingKey = k;
+    return c;
+  }
+  // 一對翅膀：根部在 (cx ± gap, cy)，flap 0..1（0 = 收起、1 = 往上張開）
+  function drawWings(cx, cy, size, gap, flap, alpha = 1) {
+    const img = getWing(), ga = ctx.globalAlpha, a = -0.15 - 0.55 * flap;
+    ctx.globalAlpha = ga * alpha;
+    for (const d of [-1, 1]) {
+      ctx.save();
+      ctx.translate(cx + d * gap, cy);
+      ctx.scale(d, 1);
+      ctx.rotate(a);
+      ctx.drawImage(img, -size * 0.12, -size * 0.72, size, size);
+      ctx.restore();
+    }
+    ctx.globalAlpha = ga;
+  }
+  const RING_GOLD = [255, 205, 70], RING_BLUE = [140, 205, 255];
   function drawPieceAt(kind, special, cx, cy, s, sx, sy, t, phase, white = 0) {
     if (special === 'bomb' || kind < 0) {
       drawBomb(cx, cy, s * Math.sqrt(sx * sy), t, phase);
@@ -2266,28 +2832,83 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     const e = getTile(kind, special), P = e.P / dpr;
     const w = P * s * sx, h = P * s * sy, dy = (1 - sy) * cs * TILE * s * 0.5;
-    ctx.drawImage(e.full, cx - w / 2, cy - h / 2 + dy, w, h);
-    if (special === 'h' || special === 'v') {
-      // 金色箭頭的光一明一暗（待機動畫）
-      const k = 0.5 + 0.5 * Math.sin(t / 260 + phase), gl = getGlowCol(GOLD), z = cs * 0.5 * s, off = cs * 0.38 * s;
-      const ga = ctx.globalAlpha;
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.12 + 0.3 * k);
-      for (const d of [-1, 1]) {
-        const x = cx + (special === 'h' ? d * off : 0), y = cy + dy + (special === 'v' ? d * off : 0);
-        ctx.drawImage(gl, x - z / 2, y - z / 2, z, z);
-      }
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+    const ga = ctx.globalAlpha, col = kindColor(kind);
+    const striped = special === 'h' || special === 'v';
+    if (striped || special === 'wrap') {
+      // 會呼吸的霓虹外光暈（方塊顏色）
+      const k = 0.5 + 0.5 * Math.sin(t / 380 + phase), z = cs * (1.32 + 0.14 * k) * s;
+      ctx.globalAlpha = ga * (0.42 + 0.4 * k);
+      ctx.drawImage(getNeon(col), cx - z / 2, cy + dy - z / 2, z, z);
+      ctx.globalAlpha = ga;
+    }
+    if (special === 'wrap') {
+      // 外圈一明一暗的光環（金 / 白交替）
+      const k = 0.5 + 0.5 * Math.sin(t / 210 + phase), R = cs * (0.56 + 0.03 * k) * s;
+      ctx.beginPath(); ctx.arc(cx, cy + dy, R, 0, Math.PI * 2);
+      ctx.lineWidth = cs * 0.075 * s; ctx.strokeStyle = css(mixc(RING_GOLD, WHITE, 0.25 + 0.5 * k), (0.45 + 0.45 * k) * ga); ctx.stroke();
+      ctx.lineWidth = cs * 0.025 * s; ctx.strokeStyle = css(WHITE, 0.85 * ga); ctx.stroke();
     }
     if (special === 'fish') {
-      // 小魚的金光一明一暗（待機動畫）
-      const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), gl = getGlowCol(GOLD), z = cs * 0.75 * s;
-      const ga = ctx.globalAlpha;
-      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.1 + 0.25 * k);
-      ctx.drawImage(gl, cx + cs * TILE * 0.17 * s - z / 2, cy + dy + cs * TILE * 0.25 * s - z / 2, z, z);
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ga;
+      // 飛天玩偶：底座周圍一圈金 / 淺藍的星光環（在糖果下面）+ 背後一對會拍動的翅膀
+      const k = 0.5 + 0.5 * Math.sin(t / 300 + phase), z = cs * (1.34 + 0.08 * k) * s;
+      ctx.globalAlpha = ga * (0.5 + 0.3 * k);
+      ctx.drawImage(getNeon(k > 0.5 ? RING_GOLD : RING_BLUE), cx - z / 2, cy + dy - z / 2 + cs * 0.06 * s, z, z);
+      ctx.globalAlpha = ga;
+      const flap = 0.5 + 0.5 * Math.sin(t / 150 + phase);
+      drawWings(cx, cy + dy - cs * 0.08 * s, cs * 0.66 * s, cs * 0.26 * s, flap, 0.95);
+      // 糖果底座 → 懸浮的玩偶（上下飄）→ 玻璃反光
+      const hy = -cs * 0.055 * s * (0.5 + 0.5 * Math.sin(t / 340 + phase));
+      ctx.drawImage(e.base, cx - w / 2, cy - h / 2 + dy, w, h);
+      if (e.toy) ctx.drawImage(e.toy, cx - w / 2, cy - h / 2 + dy + hy, w, h);
+      if (e.top) ctx.drawImage(e.top, cx - w / 2, cy - h / 2 + dy, w, h);
+    } else {
+      ctx.drawImage(e.full, cx - w / 2, cy - h / 2 + dy, w, h);
+    }
+    if (striped) {
+      const R = cs * CANDY_R * s, hz = special === 'h';
+      // 1. 持續流動的亮帶：沿著條紋的方向一道白光掃過（只在糖果裡面）
+      const u = ((t / 820 + phase * 0.3) % 1 + 1) % 1, pos = (u * 2 - 1) * R * 1.5;
+      ctx.save();
+      bodyPath(ctx, kind, cx, cy + dy, R * 1.02); ctx.clip();
+      ctx.globalAlpha = ga * 0.75;
+      const sh = getSheen(), bw = R * 0.9;
+      if (hz) { ctx.translate(cx + pos, cy + dy); ctx.rotate(0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
+      else { ctx.translate(cx, cy + dy + pos); ctx.rotate(Math.PI / 2 + 0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
+      ctx.restore();
+      ctx.globalAlpha = ga;
+      // 2. 金色箭頭的光一明一暗
+      const k = 0.5 + 0.5 * Math.sin(t / 260 + phase), gl = getGlowCol(GOLD), z = cs * 0.5 * s, off = cs * 0.38 * s;
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.18 + 0.32 * k);
+      for (const d of [-1, 1]) {
+        const x = cx + (hz ? d * off : 0), y = cy + dy + (hz ? 0 : d * off);
+        ctx.drawImage(gl, x - z / 2, y - z / 2, z, z);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      // 3. 方向提示：箭頭外面兩顆小光點一直往外跑、淡掉（橫的往左右、直的往上下）
+      const star = getStarCol(GOLD);
+      for (let i = 0; i < 2; i++) {
+        const q = ((t / 700 + phase + i * 0.5) % 1 + 1) % 1, o = cs * (0.5 + 0.32 * q) * s, sz = cs * 0.26 * (1 - q * 0.5) * s;
+        ctx.globalAlpha = ga * (1 - q) * 0.95;
+        for (const d of [-1, 1]) {
+          const x = cx + (hz ? d * o : 0), y = cy + dy + (hz ? 0 : d * o);
+          ctx.drawImage(star, x - sz / 2, y - sz / 2, sz, sz);
+        }
+      }
+      ctx.globalAlpha = ga;
+    }
+    if (special === 'wrap' || special === 'fish') {
+      // 繞著轉的小星星（包裝：金色 4 顆；飛天玩偶：金 / 淺藍交錯 5 顆，一閃一閃）
+      const n = special === 'wrap' ? 4 : 5, rad = cs * (special === 'wrap' ? 0.58 : 0.52) * s;
+      for (let i = 0; i < n; i++) {
+        const a = t / (special === 'wrap' ? 650 : 900) + phase + (i * Math.PI * 2) / n;
+        const tw = 0.55 + 0.45 * Math.sin(t / 170 + i * 1.9 + phase), sz = cs * 0.24 * tw * s;
+        const star = getStarCol(special === 'wrap' || i % 2 ? RING_GOLD : RING_BLUE);
+        ctx.globalAlpha = ga * (0.5 + 0.5 * tw);
+        ctx.drawImage(star, cx + Math.cos(a) * rad - sz / 2, cy + dy + Math.sin(a) * rad * (special === 'fish' ? 0.55 : 1) + (special === 'fish' ? cs * 0.18 * s : 0) - sz / 2, sz, sz);
+      }
+      ctx.globalAlpha = ga;
     }
     if (white > 0.01) {
-      const ga = ctx.globalAlpha;
       ctx.globalAlpha = ga * white;
       ctx.drawImage(tileWhite(e), cx - w / 2, cy - h / 2 + dy, w, h);
       ctx.globalAlpha = ga;
@@ -2319,7 +2940,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     ctx.globalAlpha = 1;
     // 按下去：先輕輕一壓，再彈大（立刻有反應）
     const s = st.s * (age < 60 ? lerp(1, 0.94, age / 60) : age < 220 ? lerp(0.94, 1.12, easeOutBack((age - 60) / 160, 3)) : 1.12 + 0.025 * Math.sin(age / 130));
+    // 俏皮的左右輕晃：剛選到時晃大一點、慢慢收小，之後一直輕輕擺
+    const rot = age < 520 ? 0.1 * Math.sin(age / 42) * (1 - age / 520) : 0.03 * Math.sin((age - 520) / 240);
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-cx, -cy);
+    try { drawSelectedBody(v, cx, cy, s, t, age); } finally { ctx.restore(); }
+  }
+  function drawSelectedBody(v, cx, cy, s, t, age) {
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
+    if (v.special === 'fish') drawWings(cx, cy - cs * 0.08 * s, cs * 0.66 * s, cs * 0.26 * s, 0.5 + 0.5 * Math.sin(age / 90), 1);   // 選著的飛天玩偶翅膀拍快一點
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
     const info = pieceInfo(v.kind), imgs = imgsFor(info.id), spin = usable(imgs.spinClean) ? imgs.spinClean : imgs.spin, sprite = usable(imgs.clean) ? imgs.clean : imgs.sprite, spinScale = imgs.spinScale;
     // 跟盤面上的玩具一樣大、一樣的位置（再乘上選取時的放大 s）
@@ -2330,12 +2959,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       // spinScale（manifest）：旋轉序列裡玩具比靜態圖小多少，放大回來讓大小一致
       const fw = natW(spin) / 6, fh = natH(spin) / 4, i = Math.floor(age / 50) % 24;
       const sb = box / clamp(+spinScale || 1, 0.5, 2);
-      ctx.drawImage(vivid(spin), (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, tx - sb / 2, ty - sb / 2, sb, sb);
+      ctx.drawImage(outlined(vivid(spin), 6, 4), (i % 6) * fw, Math.floor(i / 6) * fh, fw, fh, tx - sb / 2, ty - sb / 2, sb, sb);
+      const acc = accOverlay(v.kind, L.box);
+      if (acc) { const an = acc.n / dpr * s; ctx.drawImage(acc.c, tx - an / 2, ty - an / 2, an, an); }
       if (e.top) ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
     } else if (usable(sprite)) {
       // 沒有旋轉序列（照片方塊）：原地彈跳，落地壓扁、跳起拉長（彈跳豬特別彈）
       ctx.drawImage(e.base, cx - P / 2, cy - P / 2, P, P);
-      const sc = vivid(scaled(sprite, Math.round(L.box * 1.12)));
+      const sc = outlined(vivid(scaled(sprite, Math.round(L.box * 1.12))));
       const amp = info.id === 'moodeng' ? 1.45 : 1;
       const ph = (age % 560) / 560, hop = Math.sin(ph * Math.PI);
       const land = Math.exp(-Math.min(ph, 1 - ph) * 14);         // 碰到地面附近 → 1
@@ -2344,6 +2975,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       ctx.translate(tx, ty + box / 2 - hop * cs * 0.13 * amp);
       ctx.scale(sx, sy);
       ctx.drawImage(sc, -box / 2, -box, box, box);
+      const acc = accOverlay(v.kind, L.box);
+      if (acc) { const an = acc.n / dpr * s; ctx.drawImage(acc.c, -an / 2, -box / 2 - an / 2, an, an); }
       ctx.restore();
       if (e.top) ctx.drawImage(e.top, cx - P / 2, cy - P / 2, P, P);
     } else {
@@ -2394,7 +3027,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (v === sel && !v.mv) { selSt = st; continue; }
       if (st.falling) falling.push([v, st]);
       else if (st.top) tops.push([v, st]);
-      else if (v.special === 'wrap') late.push([v, st]);   // 糖果紙兩端要蓋在鄰居上面
+      else if (v.special === 'wrap' || v.special === 'fish') late.push([v, st]);   // 糖果紙兩端 / 翅膀要蓋在鄰居上面
       else still.push([v, st]);
     }
     // 由上往下、由左往右畫：糖果往右下的落影只會落在盤面上，不會蓋到鄰居
@@ -2444,7 +3077,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
         if (g.to) sparkle(g.x + 0.5, g.y + 0.5, 1, g.t0, 0.2);
         else {
-          g.shatterAt = g.t0 + g.dur * 0.3;
+          g.shatterAt = g.t0 + POP_HIT;
           burst(g.x + 0.5, g.y + 0.5, col, g.heavy ? 5 : 9, g.shatterAt, { stars: g.heavy ? 2 : 5, speed: g.special !== 'none' ? 3.8 : 3 });
           shatter(g.x + 0.5, g.y + 0.5, g.kind, g.special, g.shatterAt, g.special !== 'none' ? 1.3 : 1);
           fx.push({ type: 'flash', x: g.x + 0.5, y: g.y + 0.5, t0: g.t0, dur: 200, R: 0.8 });
@@ -2459,8 +3092,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       } else {
         // 一下子放大 + 變白（「啵」），接著整顆碎開（碎片粒子接手）
         if (g.shatterAt && t >= g.shatterAt && g.kind >= 0) continue;
-        const q = 0.3;
-        if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.8 * u; }
+        const q = POP_HIT / g.dur;
+        if (p < q) { const u = easeOutCubic(p / q); s = 1 + 0.2 * u; wh = 0.92 * u; }
         else { const u = (p - q) / (1 - q); s = 1.2 * (1 - u * u * (3 - 2 * u)); wh = 0.8 * (1 - u) * (1 - u); }
         a = p < 0.55 ? 1 : 1 - (p - 0.55) / 0.45;
       }
@@ -2576,28 +3209,40 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
             ctx.drawImage(flash, tx - fr / 2, ty - fr / 2, fr, fr);
           }
         }
-      } else if (f.type === 'fishfly') {
-        // 沿著一條弧線游過去（弧往側邊彎、隨機左右），頭朝前進方向；後面拖一串金色亮點
+      } else if (f.type === 'wingfly') {
+        // 長翅膀的玩偶放大飛離盤面：先往上飛一段優雅的弧線，再俯衝撞進目標格；身後拖著星塵和羽毛
         const u = easeInOutSine(clamp01(p));
         const x0 = ox + f.x0 * cs, y0 = oy + f.y0 * cs, x1 = ox + f.x1 * cs, y1 = oy + f.y1 * cs;
-        const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1;
-        const bend = Math.min(cs * 1.6, d * 0.35) * f.seed;
-        const mx = (x0 + x1) / 2 - dy / d * bend, my = (y0 + y1) / 2 + dx / d * bend - cs * 0.3;
-        const qx = (k) => (1 - k) * (1 - k) * x0 + 2 * (1 - k) * k * mx + k * k * x1;
-        const qy = (k) => (1 - k) * (1 - k) * y0 + 2 * (1 - k) * k * my + k * k * y1;
-        const gl = getGlowCol(GOLD);
-        for (let i = 6; i >= 1; i--) {
-          const k = Math.max(0, u - i * 0.045), z = cs * (0.5 - i * 0.05);
-          ctx.globalAlpha = 0.5 * (1 - i / 7);
-          ctx.drawImage(gl, qx(k) - z / 2, qy(k) - z / 2, z, z);
+        const top = oy - MARGIN * cs * 0.6 + cs * 0.6;                    // 不要飛出畫布上緣
+        const ay = Math.max(top, Math.min(y0, y1) - cs * 2.3), side = Math.min(cs * 1.4, Math.abs(x1 - x0) * 0.4 + cs * 0.6) * f.seed;
+        const c1x = x0 + side, c1y = ay, c2x = x1 - side * 0.35, c2y = ay - cs * 0.2;
+        const bz = (k, a0, a1, a2, a3) => { const m = 1 - k; return m * m * m * a0 + 3 * m * m * k * a1 + 3 * m * k * k * a2 + k * k * k * a3; };
+        const x = bz(u, x0, c1x, c2x, x1), y = bz(u, y0, c1y, c2y, y1);
+        const nx = bz(Math.min(1, u + 0.02), x0, c1x, c2x, x1), ny = bz(Math.min(1, u + 0.02), y0, c1y, c2y, y1);
+        const tilt = clamp(Math.atan2(ny - y, nx - x) * 0.25, -0.5, 0.5) + (nx < x ? -0.05 : 0.05);
+        // 星塵 + 羽毛（每 40ms 灑一次，跟著當下的位置）
+        if (t - f.lastEmit > 40 && p < 0.97) {
+          f.lastEmit = t;
+          const gx = (x - ox) / cs, gy = (y - oy) / cs;
+          for (let i = 0; i < 2; i++) {
+            emit({ type: 1, img: getStarCol(i ? RING_BLUE : RING_GOLD), x: gx + (Math.random() - 0.5) * 0.3, y: gy + (Math.random() - 0.5) * 0.3,
+              vx: (Math.random() - 0.5) * 0.8, vy: Math.random() * 0.6, g: 1.2, drag: 2.5, t0: t, life: 420 + Math.random() * 200, size: 0.22 + Math.random() * 0.16 });
+          }
+          if (Math.random() < 0.45) emit({ type: 1, img: getFeather(), x: gx, y: gy, vx: (Math.random() - 0.5) * 1.2, vy: -0.2, g: 0.9, drag: 2.2, t0: t,
+            life: 700 + Math.random() * 300, size: 0.34 + Math.random() * 0.12, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 5 });
         }
-        const x = qx(u), y = qy(u), ang = Math.atan2(qy(Math.min(1, u + 0.02)) - qy(Math.max(0, u - 0.02)), qx(Math.min(1, u + 0.02)) - qx(Math.max(0, u - 0.02)));
-        const wig = Math.sin(t / 45) * 0.18, sz = cs * (1.2 + 0.2 * Math.sin(Math.PI * u));
+        const grow = Math.sin(Math.PI * Math.min(1, u * 1.1));
+        const sz = cs * (1.1 + 0.55 * grow);
         ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-        const spr = getFishSprite();
-        const flip = Math.cos(ang) < 0;      // 往左游的時候不要肚子朝上
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ang + wig); if (flip) ctx.scale(1, -1);
-        ctx.drawImage(spr, -sz / 2, -sz / 2, sz, sz);
+        // 身後一圈柔光
+        const gz = sz * 1.5;
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(getNeon(RING_BLUE), x - gz / 2, y - gz / 2, gz, gz);
+        ctx.globalAlpha = 1;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+        drawWings(0, -sz * 0.12, sz * 0.72, sz * 0.2, 0.5 + 0.5 * Math.sin(t / 55), 1);       // 飛的時候拍很快
+        const e2 = f.kind >= 0 ? getTile(f.kind, 'fish') : null;
+        if (e2 && e2.toy) { const P2 = e2.P / dpr * (sz / cs); ctx.drawImage(e2.toy, -P2 / 2, -P2 / 2, P2, P2); }
         ctx.restore();
         ctx.globalCompositeOperation = 'lighter';
       } else if (f.type === 'boardfx') {
@@ -2652,7 +3297,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     }
     parts.length = w;
     if (stars) {
-      ctx.globalCompositeOperation = 'lighter';
+      // 星星 / 閃粉：淺色盤面上不用「加亮」混色（白底上加亮會看不見），一般疊上去；p.add 的才加亮（光點）
       for (const p of parts) {
         if (p.type === 0 || p.type === 3) continue;
         const age = (t - p.t0) / p.life;
@@ -2660,8 +3305,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         const s = (t - p.t0) / 1000, k = p.drag, fd = k ? (1 - Math.exp(-k * s)) / k : s;
         const x = ox + (p.x + p.vx * fd) * cs, y = oy + (p.y + p.vy * fd + 0.5 * p.g * s * s) * cs;
         const z = p.size * cs * (0.6 + 0.4 * Math.sin(age * Math.PI));
+        ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
         ctx.globalAlpha = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4;
-        ctx.drawImage(p.img, x - z / 2, y - z / 2, z, z);
+        if (p.rot != null) {
+          ctx.save(); ctx.translate(x, y); ctx.rotate(p.rot + (p.vr || 0) * s);
+          ctx.drawImage(p.img, -z / 2, -z / 2, z, z);
+          ctx.restore();
+        } else ctx.drawImage(p.img, x - z / 2, y - z / 2, z, z);
       }
       ctx.globalCompositeOperation = 'source-over';
     }
@@ -2754,6 +3404,46 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       drawSprite(f.sp, ox + q.x * cs, oy + q.y * cs, q.s / TEXT_MAXS);
     }
     texts.length = w;
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- 稱讚字（在消除的地方彈出來，Q 彈地放大、晃一晃、往上飄、淡掉）----
+  const PRAISE = { 2: ['超可愛!', '軟綿綿!'], 3: ['好Q彈!', '甜滋滋!'], 4: ['大爆發!', '超厲害!'], 5: ['神操作!', '無敵可愛!'] };
+  let praises = [];
+  function addPraise(level, x, y, t0) {
+    const lv = clamp(Math.round(level), 2, 5), list = PRAISE[lv];
+    praises.push({ text: list[Math.floor(Math.random() * list.length)], lv, x, y, t0, dur: 1050, sp: null, spCs: 0, tilt: (Math.random() - 0.5) * 0.3 });
+    if (praises.length > 3) praises.shift();
+    if (lv >= 4) at(t0, tt => sparkle(x, y, 4 + lv * 2, tt, 0.6));
+    requestDraw();
+  }
+  function drawPraises(t) {
+    let w = 0;
+    for (const f of praises) {
+      const p = (t - f.t0) / f.dur;
+      if (p >= 1) continue;
+      praises[w++] = f;
+      if (p < 0) continue;
+      if (!f.sp || f.spCs !== cs) {
+        const pal = WORD_PAL[f.lv - 2], size = cs * (0.6 + 0.13 * (f.lv - 2));
+        f.sp = textSprite(f.text, size, (g, sz) => {
+          const w0 = g.canvas.width / dpr / 2, h0 = g.canvas.height / dpr / 2;
+          const gr = g.createLinearGradient(w0, h0 - sz / 2, w0, h0 + sz / 2);
+          gr.addColorStop(0, pal[0]); gr.addColorStop(0.5, pal[1]); gr.addColorStop(1, pal[2]);
+          return gr;
+        }, '#fff', css(PLUM), true, css(PLUM_D));
+        f.spCs = cs;
+      }
+      const pin = clamp01(p / 0.2), sc = easeOutBack(pin, 3.2) * (1 + (p > 0.2 ? 0.04 * Math.sin((p - 0.2) * 18) * (1 - p) : 0));
+      const half = f.sp.w / cs / 2, x = clamp(f.x, half, Math.max(half, cols - half)), y = Math.max(0.5, f.y - 0.2 - 0.7 * easeOutCubic(p));
+      ctx.save();
+      ctx.translate(ox + x * cs, oy + y * cs);
+      ctx.rotate(f.tilt + 0.08 * Math.sin(p * 14) * (1 - p));
+      ctx.globalAlpha = p < 0.72 ? 1 : 1 - (p - 0.72) / 0.28;
+      drawSprite(f.sp, 0, 0, Math.max(0.001, sc));
+      ctx.restore();
+    }
+    praises.length = w;
     ctx.globalAlpha = 1;
   }
 
@@ -2910,6 +3600,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       drawFx(t);
       drawParticles(t);
       drawTexts(t);
+      drawPraises(t);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawWord(t);
     }
@@ -2919,7 +3610,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
 
   // ================= 主迴圈 =================
   function moving(t) {
-    if (sched.length || ghosts.length || fx.length || parts.length || texts.length || word || banners.length || shakes.length || dragState || jellyFx.size) return true;
+    if (sched.length || ghosts.length || fx.length || parts.length || texts.length || praises.length || word || banners.length || shakes.length || dragState || jellyFx.size) return true;
     for (const v of visuals.values()) {
       const m = v.mv;
       if (m && t < m.t0 + m.dur + 20) return true;
@@ -3003,8 +3694,41 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear();
   }
 
+  // 衣櫃的外觀：{ hat, fx, frame, theme }（沒給的不變）。換了就把方塊圖、盤面重畫
+  function setLook(l) {
+    if (!l || destroyed) return;
+    const next = { ...look, ...l };
+    const tiles = next.hat !== look.hat || next.frame !== look.frame || next.theme !== look.theme;
+    const theme = next.theme !== look.theme;
+    look = next;
+    particleSkin = PARTICLE_SKINS[look.fx] ? look.fx : 'default';
+    BOARD_THEME = BOARD_THEMES[look.theme] || BOARD_THEMES.macaron;
+    if (look.hat && look.hat !== 'none') accImg(look.hat);
+    if (tiles) { tileCache.clear(); accCache.clear(); }
+    if (theme) geom();
+    if (tiles && rows) prewarm();
+    requestDraw();
+  }
+  // 衣櫃預覽：在某一格放一次消除的特效（粒子 + 閃光），不改盤面
+  function demoBurst(r, c) {
+    const v = cellV({ r, c }), t = now();
+    if (!v) return;
+    const col = v.kind >= 0 ? kindColor(v.kind) : [255, 214, 120];
+    fx.push({ type: 'flash', x: c + 0.5, y: r + 0.5, t0: t, dur: 260, R: 1 });
+    fx.push({ type: 'pring', x: c + 0.5, y: r + 0.5, t0: t, dur: 260, col, R: 0.8 });
+    burst(c + 0.5, r + 0.5, col, 9, t, { stars: 5, speed: 3.2 });
+    v.popT = t + 120;
+    requestDraw();
+  }
+  // 某一格在畫面上的位置（CSS px，視窗座標）：main.js 讓收集目標從這裡飛到上面的目標圖示
+  function cellRect(r, c) {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !W) return null;
+    const k = rect.width / W;
+    return { x: rect.left + (ox + (c + 0.5) * cs) * k, y: rect.top + (oy + (r + 0.5) * cs) * k, size: cs * k };
+  }
   const R = {
-    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume,
+    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect, setLook, demoBurst,
     get busy() { return busyCount > 0; },
     get paused() { return paused; },
   };

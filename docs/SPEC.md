@@ -89,7 +89,7 @@ Pure logic: no DOM, no timers, no `Math.random` (seeded PRNG only, e.g. mulberry
   - `id` is unique for the engine's lifetime and never reused.
   - `'h'` striped: clears its whole **row**. `'v'` striped: clears its whole **column**.
   - `'wrap'` wrapped: clears the 3×3 around it.
-  - `'fish'` fish (from a 2×2 square, Candy Crush's Swedish fish): swims to one target and removes it —
+  - `'fish'` winged flying plush (from a 2×2 square, Candy Crush's Swedish fish; shown as the plush with flapping angel wings): flies to one target and removes it —
     a piece on jelly first, else a piece the collect goal still needs (`createEngine({ collect: { [kind]: count } })`),
     else a random normal piece.
   - `'bomb'` color bomb: `kind === -1`, never part of a normal match.
@@ -296,6 +296,16 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - `<model-viewer>` (pinned jsDelivr version) showing one toy at a time, tabs/thumbnails to switch between all six.
 - `ar` with `ar-modes="webxr scene-viewer quick-look"`, `src` = GLB, `ios-src` = USDZ, camera-controls, auto-rotate,
   soft shadow. Shows 「這是暫代模型」 for placeholders. Back link to `index.html`. zh-TW labels.
+
+## 8b. Wardrobe (three-star cosmetics) — `js/cosmetics.js`
+
+- `DEBUG_UNLOCK_ALL_COSMETICS` (top of the file): `true` unlocks every cosmetic for previewing; ship with `false`.
+- `ITEMS` (4 categories: `hat`, `fx`, `frame`, `theme`), `CHESTS` (star milestones), `TOY_FACE` / `ACCESSORY_PLACE` /
+  `ACCESSORY_TUNING` (where accessories sit on each plush photo; per-toy `offsetX`, `offsetY`, `scale`), `ACCESSORY_SVG`.
+- `createCloset()` → `{ load(key), coins(stars), isUnlocked(item, stars), canBuy, buy, equip, chestState(i, stars), openChest, look(stars) }`.
+  Coins = levels with 3 stars + chest coins − spent; state `{ owned, chests, equip }` in `localStorage[saveKey + '.closet']`.
+- Renderer: `R.setLook({ hat, fx, frame, theme })` (accessory overlay on the toy, particle skin, tile frame, board theme from
+  `BOARD_THEMES`), `R.demoBurst(r, c)` (wardrobe preview), `R.cellRect(r, c)` (HUD goal flights).
 
 ## 9. Tests
 

@@ -1,13 +1,13 @@
 // 毛絨消消樂 — 關卡資料（docs/SPEC.md §4）
 // 盤面都是 8×8。mask：'.' = 洞，其他字元 = 格子；jelly：數字 = 果凍層數（0–2），'.' = 0。
-// 進度：收集（1–4，第 2 關條紋、第 3 關小魚、第 4 關包裝）→ 造型盤面（5–6）→ 果凍（7–9）→ 綜合挑戰（10–15）
+// 進度：收集（1–4，第 2 關條紋、第 3 關飛天玩偶、第 4 關包裝）→ 造型盤面（5–6）→ 果凍（7–9）→ 綜合挑戰（10–15）
 //   → 第 16–60 關：每五關一章，新的造型盤面輪流收集 / 果凍；章末（20、25、…、60）最難，下一章開頭先放鬆一點。
 //   第 31–60 關六章：海邊、甜點、天空、花園、玩具屋、大冒險。
 // 掃描的三隻（dog / sloth / egg）每一關都會出現；收集目標大多用牠們，偶爾用照片玩具。
 // 步數和星星門檻用 tests/sim.html 調（python tests/run_tests.py --sim；新關卡先用 python tests/tune_levels.py 找初值）：
 // 兩種玩家照正式流程各玩上千局（目標一達成就結束 → 毛絨狂歡 → 星星；每局換一個「第 n 次玩」的盤面，
 // 另外單獨檢查每次打開都會先看到的第 0 個盤面）。
-//   casual = 60% 隨便走、40% 挑眼前最好的一步；decent = 每步都挑最好的，會找條紋 / 包裝 / 小魚 / 彩色炸彈和組合技。
+//   casual = 60% 隨便走、40% 挑眼前最好的一步；decent = 每步都挑最好的，會找條紋 / 包裝 / 飛天玩偶 / 彩色炸彈和組合技。
 //   每一關的平衡目標（過關率、三星比例的下限，casual 和 decent 都有三星目標）在 tests/sim.js 的 targetsFor：
 //   難度 t 從第 1 關的 0 慢慢到第 15 關的 0.85，之後每章從 0.55 / 0.60 / 0.65 / 0.70 / 0.75 開始、每關 +0.07。
 //   （2026-11 依玩家回饋整體調簡單一點、三星好拿很多，全部 60 關用 tests/tune_levels.py 重新找步數、種子和星星門檻。）
@@ -284,7 +284,7 @@ const CROWN = [        // 王冠（最後一關）
 ];
 
 // ---------- 第 31–60 關：每五關一章（海邊 / 甜點 / 天空 / 花園 / 玩具屋 / 大冒險）----------
-const FISH = [   // 小魚（新的特殊方塊）
+const FISH = [   // 小魚造型的盤面（第 31 關）
   '...#...',
   '..###..',
   '.#####.',
@@ -661,7 +661,7 @@ export const LEVELS = [
     id: 3, rows: 9, cols: 7, moves: 20, kinds: ['dog', 'sloth', 'egg', 'moodeng', 'snoopy'], antiCascade: 0.72,
     goal: { type: 'collect', items: { egg: 20 } }, stars: [10000, 20000, 30000],
     mask: null, jelly: null, seed: 303,
-    hint: '四顆排成田字，會變出會飛的小魚！',
+    hint: '四顆排成田字，會變出長翅膀的飛天玩偶！',
   },
   {
     id: 4, rows: 9, cols: 7, moves: 23, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.72,
@@ -999,7 +999,7 @@ export const LEVELS = [
     goal: { type: 'collect', items: { sloth: 20 } }, stars: [8000, 16000, 24000],
     mask: FISH, jelly: null,
     seed: 3116,
-    hint: '海邊篇！四顆排成田字會變出小魚',
+    hint: '海邊篇！四顆排成田字會變出飛天玩偶',
   },
   {
     id: 32, rows: 9, cols: 7, moves: 30, kinds: ['dog', 'sloth', 'egg', 'nyanko', 'moodeng'], antiCascade: 0.8,
@@ -1017,7 +1017,7 @@ export const LEVELS = [
       '..111..',
     ],
     seed: 3213,
-    hint: '帆船上的果凍，讓小魚去融化！',
+    hint: '帆船上的果凍，讓飛天玩偶去融化！',
   },
   {
     id: 33, rows: 9, cols: 7, moves: 32, kinds: ['dog', 'sloth', 'egg', 'snoopy', 'dino'], antiCascade: 0.8,

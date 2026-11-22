@@ -11,6 +11,8 @@
 // 全部經過壓縮器 + 限幅器，不會爆音。
 
 const PENTA = [0, 2, 4, 7, 9];                       // C 大調五聲音階
+const MAJOR = [0, 2, 4, 5, 7, 9, 11];                // C 大調：Do Re Mi Fa So La Si
+const major = (base, step) => base + 12 * Math.floor(step / 7) + MAJOR[((step % 7) + 7) % 7];
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
 const penta = (base, step) => base + 12 * Math.floor(step / 5) + PENTA[((step % 5) + 5) % 5];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -32,7 +34,7 @@ const lastPlayed = Object.create(null);   // name -> 最近排定的幾個時間
 
 // 同一個音效最短間隔（秒，用「排定要響的時間」比），避免同時疊太多變得很吵
 const GAP = { land: 0.016, tap: 0.04, match: 0.03, pop: 0.022, special: 0.05, star: 0.05, stripe: 0.035, wrap: 0.05,
-  bomb: 0.12, chime: 0.3, swap: 0.05, invalid: 0.1, combo: 0.15, board: 0.3, fish: 0.06 };
+  bomb: 0.12, chime: 0.3, swap: 0.05, invalid: 0.1, combo: 0.15, board: 0.3, fish: 0.06, fly: 0.05, collect: 0.04 };
 
 // ---------- 建立音訊圖 ----------
 function makeContext() {
@@ -429,19 +431,16 @@ const SFX = {
     tone(mtof(62), t, { dur: 0.07, attack: 0.006, gain: 0.09, type: 'triangle', lp: 1000, to: mtof(60), glide: 0.07 });
     tone(mtof(57), t + 0.075, { dur: 0.1, attack: 0.006, gain: 0.08, type: 'triangle', lp: 900, to: mtof(55), glide: 0.1 });
   },
-  // 消除：連鎖每多一層、同一步每多一組，音就往五聲音階上走（像 Candy Crush 越連越高）
+  // 消除：清脆軟 Q 的「啵」。連鎖每多一步，音就照 Do → Re → Mi → Fa → So → La → Si → 高音 Do 往上爬（越連越亢奮）；
+  // 同一步裡的第二、三組再往上一階。同一組的幾顆是同一個音，「啵、啵、啵」
   pop(t, o) {
-    // 硬糖碎掉的「咔啦」（renderer 在糖果碎開的那一刻叫）：清脆的裂聲 + 一點點跟著五聲音階往上的「叮」+ 很輕的身體；
-    // 同一組一顆比一顆高、連鎖越多越高（裂聲的音高只跟著走一半，太高會變尖）
-    const c = clamp(Math.round(o.cascade || 1), 1, 12), g = clamp(Math.round(o.group || 0), 0, 8), j = clamp(Math.round(o.idx || 0), 0, 8);
-    const step = (c - 1) * 2 + g + j;
-    const m = penta(60, Math.min(step, 14));
-    const f = mtof(m);
+    const c = clamp(Math.round(o.cascade || 1), 1, 15), g = clamp(Math.round(o.group || 0), 0, 6), j = clamp(Math.round(o.idx || 0), 0, 8);
+    const m = major(72, Math.min(14, (c - 1) + g));            // C5 起跳，最多兩個八度
     const pan = clamp((j - 2) * 0.18, -0.5, 0.5);
-    crunch(t, 0.92 * Math.pow(2, (m - 60) / 30), 0.32, pan);
-    tone(f * 2, t + 0.002, { dur: 0.06, attack: 0.001, gain: 0.035, type: 'sine', pan });
-    tone(190, t, { dur: 0.03, attack: 0.001, gain: 0.07, to: 120, glide: 0.03 });
-    if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 5), 0.02, 88);
+    bubble(m, t, 0.11, pan);                                  // 軟 Q 的啵（音高跟著音階）
+    crunch(t, 0.95 * Math.pow(2, (m - 72) / 36), 0.16, pan);  // 一點點糖果碎掉的脆
+    if (j === 0) tone(mtof(m + 12), t + 0.01, { dur: 0.09, attack: 0.002, gain: 0.03, type: 'sine', pan });   // 每組第一顆加一點高八度的亮
+    if (c >= 3 && j === 0 && g === 0) sparkle(t + 0.05, Math.min(c, 6), 0.02, 88);
   },
   match(t, o) { SFX.pop(t, o); },
   // 做出特殊方塊：亮晶晶往上爬
@@ -454,6 +453,9 @@ const SFX = {
   },
   // 條紋：「咻——滋」掃過去
   stripe(t) {
+    // 雷射：「啾——」從高往下掃的方波 + 很低的「嗡」，比以前有份量
+    tone(2200, t, { dur: 0.22, attack: 0.002, gain: 0.05, to: 240, glide: 0.2, type: 'square', lp: 3200, q: 2 });
+    tone(62, t, { dur: 0.3, attack: 0.004, gain: 0.2, to: 40, glide: 0.28 });
     tone(260, t, { dur: 0.18, attack: 0.006, gain: 0.11, to: 1500, glide: 0.16, type: 'sawtooth', lp: 1700, q: 1 });
     tone(390, t + 0.01, { dur: 0.16, attack: 0.006, gain: 0.05, to: 1900, glide: 0.15 });
     tone(110, t, { dur: 0.2, attack: 0.003, gain: 0.12, to: 55, glide: 0.18 });
@@ -461,20 +463,29 @@ const SFX = {
     pop(t, 900, 300, 0.05, 0.05);
     sparkle(t + 0.12, 3, 0.026, 98);
   },
-  // 小魚：「咻～」往上滑的口哨 + 水泡泡的「啵啵」+ 一點亮片（帶著條紋 / 包裝的時候再厚一點）
+  // 飛天玩偶：翅膀「啪噠啪噠」拍幾下 +「咻～」往上飛的滑音，俯衝撞到目標時「碰」一聲 + 亮晶晶（帶著條紋 / 包裝的時候再厚一點）
   fish(t, o) {
-    tone(520, t, { dur: 0.22, attack: 0.01, gain: 0.07, to: 1250, glide: 0.2 });
-    tone(780, t + 0.015, { dur: 0.18, attack: 0.01, gain: 0.035, to: 1700, glide: 0.17, type: 'triangle' });
-    noise(t, { dur: 0.2, attack: 0.02, gain: 0.05, type: 'bandpass', f0: 1200, f1: 3000, q: 1.2 });
-    pop(t + 0.05, 700, 1100, 0.045, 0.04);
-    pop(t + 0.12, 900, 1400, 0.035, 0.035);
-    if (o && o.carry) tone(140, t, { dur: 0.22, attack: 0.004, gain: 0.08, to: 70, glide: 0.2 });
-    sparkle(t + 0.18, 2, 0.02, 99);
+    const land = t + clamp((+o.dur || 520) / 1000, 0.25, 1.2);
+    for (let i = 0; i < 4; i++) noise(t + i * 0.07, { dur: 0.05, attack: 0.004, gain: 0.05, type: 'bandpass', f0: 900, f1: 1500, q: 1.6 });
+    tone(480, t, { dur: 0.3, attack: 0.02, gain: 0.06, to: 1300, glide: 0.28 });
+    tone(720, t + 0.02, { dur: 0.26, attack: 0.02, gain: 0.03, to: 1800, glide: 0.24, type: 'triangle' });
+    tone(1500, land - 0.18, { dur: 0.18, attack: 0.01, gain: 0.04, to: 500, glide: 0.17 });      // 俯衝
+    tone(150, land, { dur: 0.3, attack: 0.003, gain: 0.22, to: 45, glide: 0.26 });               // 撞到
+    noise(land, { dur: 0.18, attack: 0.002, gain: 0.08, type: 'lowpass', f0: 1600, f1: 200, q: 0.6 });
+    if (o && o.carry) tone(110, land, { dur: 0.32, attack: 0.004, gain: 0.12, to: 50, glide: 0.3 });
+    sparkle(land + 0.02, 4, 0.03, 96);
+  },
+  // 收集目標飛進上面的圖示：「叮」一聲（音高跟著還差幾個往上）
+  collect(t, o) {
+    const m = 84 + Math.min(7, Math.max(0, +o.step || 0));
+    bell(m, t, 0.06, 0.4);
+    pop(t, 1200, 1700, 0.04, 0.04);
   },
   // 包裝：低沉的「碰」
   wrap(t, o) {
     const big = (o.radius || 1) > 1;
     tone(big ? 140 : 170, t, { dur: big ? 0.5 : 0.36, attack: 0.003, gain: big ? 0.4 : 0.34, to: 38, glide: big ? 0.45 : 0.3 });
+    tone(55, t, { dur: big ? 0.6 : 0.45, attack: 0.004, gain: big ? 0.3 : 0.24, to: 32, glide: big ? 0.55 : 0.4 });   // 胸口那一下的低頻爆炸
     noise(t, { dur: big ? 0.42 : 0.3, attack: 0.002, gain: 0.18, type: 'lowpass', f0: 1800, f1: 160, q: 0.6 });
     noise(t + 0.01, { dur: 0.12, attack: 0.001, gain: 0.07, type: 'highpass', f0: 2500, q: 0.6 });
     pop(t + 0.04, 520, 200, 0.06, 0.08);

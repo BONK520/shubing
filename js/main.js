@@ -1,6 +1,7 @@
 // 毛絨消消樂 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
 import { PIECES, TRIO, spritePath, spinPath } from './pieces.js';
 import { SLOGANS } from './slogans.js';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js';
 
 window.__plushBooted = true;
 
@@ -155,6 +156,9 @@ async function pushCloud() {
 function setSync(s) { syncState = s; renderAccount(); }
 function refreshAfterSwitch() {
   if (LEVELS && save.unlocked > LEVELS.length + 1) save.unlocked = LEVELS.length + 1;
+  closet.load(closetKey());
+  applyLook();
+  renderClosetBtn();
   renderAccount();
   if (screen === 'map') buildMap();
   if (screen === 'game') renderBoosters();
@@ -325,6 +329,210 @@ function show(name) {
   }
 }
 
+// ---------- 背景漂浮光點 ----------
+// 約每秒 10 次把光點往上移一點點、左右晃、一閃一閃（飄得很慢，看起來和每秒 60 張一樣順，但背景不用一直合成）。
+// 分頁藏起來、有對話框時停住；系統設定「減少動態」時只留淡淡的靜止光點
+const motes = [];
+let moteTimer = 0;
+function initMotes() {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (const m of $$('.sky .mote')) {
+    if (reduce) { m.style.opacity = '.25'; continue; }
+    motes.push({ el: m, sp: 5 + Math.random() * 6, ph: Math.random() * 6.283, tw: 2.4 + Math.random() * 1.8, off: Math.random() });
+  }
+  if (motes.length) tickMotes();
+}
+function tickMotes() {
+  moteTimer = 0;
+  if (document.hidden || document.documentElement.dataset.modal) { moteTimer = setTimeout(tickMotes, 500); return; }
+  const t = performance.now() / 1000, span = Math.max(300, window.innerHeight * 0.7), edge = span * 0.12;
+  for (const m of motes) {
+    const y = (t * m.sp + m.off * span) % span;             // 往上飄了多少 px（一輪 span，循環）
+    const fade = Math.min(1, y / edge, (span - y) / edge);  // 兩端淡入淡出，循環接回去時看不出來
+    const op = fade * (0.12 + 0.43 * (0.5 + 0.5 * Math.sin(t * 6.283 / m.tw + m.ph)));
+    m.el.style.transform = `translate(${(Math.sin(t * 0.35 + m.ph) * 14).toFixed(1)}px, ${(-y).toFixed(1)}px)`;
+    m.el.style.opacity = op.toFixed(2);
+  }
+  moteTimer = setTimeout(tickMotes, 100);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && motes.length && !moteTimer) tickMotes(); });
+
+// ---------- 玩偶衣櫃（三星外觀獎勵，js/cosmetics.js）----------
+// 衣櫃存在這台裝置的 localStorage，每個帳號一份（key 跟著存檔走）；造型幣、星星照存檔裡的關卡星星算
+const closet = createCloset();
+const closetKey = () => saveKey + '.closet';
+let clR = null, clCat = 'hat', tryOn = {};
+// 預覽用的小盤面：3 × 4，七種玩偶都有，再放一顆條紋和一隻飛天玩偶
+const CL_GRID = [[[1], [0], [2], [3]], [[6], [5, 'h'], [4], [1, 'fish']], [[2], [6], [0], [5]]];
+function applyLook() {
+  const l = closet.look(save.stars);
+  if (R && R.setLook) R.setLook(l);
+  if (clR) clR.setLook(previewLook());
+}
+function previewLook() {
+  const l = closet.look(save.stars);
+  for (const [cat, id] of Object.entries(tryOn)) l[cat] = id.split('.')[1];
+  return l;
+}
+function renderClosetBtn() {
+  const coins = closet.coins(save.stars), ready = closet.readyChests(save.stars).length > 0;
+  setNum($('#cf-coins'), coins);
+  $('#cf-dot').hidden = !ready;
+  $('#btn-closet').classList.toggle('ready', ready);
+}
+function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
+function openCloset() {
+  tryOn = {};
+  renderCloset();
+  openModal('m-closet');
+  if (!clR) {
+    try { clR = createRenderer($('#cl-board'), { pieces: PIECES, images }); } catch (e) { console.error(e); clR = null; }
+  }
+  if (clR) {
+    let id = 1;
+    const grid = CL_GRID.map(row => row.map(([kind, sp]) => ({ id: id++, kind: Math.min(kind, PIECES.length - 1), special: sp || 'none' })));
+    clR.resume();
+    clR.setBoard({ rows: grid.length, cols: grid[0].length, grid });
+    clR.setLook(previewLook());
+    setTimeout(() => { if (clR && isOpen('m-closet')) clR.layout(); }, 420);    // 卡片彈出來的動畫結束後再量一次大小
+  }
+}
+function closetClosed() {
+  tryOn = {};
+  $('#cl-pop').hidden = true;
+  if (clR) { clR.setBoard(null); clR.pause(); }
+  applyLook();
+  renderClosetBtn();
+}
+// 試試消除特效：預覽盤面上連續爆三下
+function closetDemo() {
+  if (!clR) return;
+  audio.play('pop', { cascade: 1 });
+  [[0, 1], [1, 2], [2, 0]].forEach(([r, c], i) => setTimeout(() => { if (clR && isOpen('m-closet')) { clR.demoBurst(r, c); audio.play('pop', { cascade: i + 1 }); } }, i * 220));
+}
+function unlockText(it) {
+  const u = it.unlock;
+  if (!u) return '';
+  if (u.coins) return `${u.coins} 枚兌換`;
+  if (u.stars) return `★ ${u.stars} 解鎖`;
+  if (u.chest != null) return `寶箱 ★${CHESTS[u.chest].stars}`;
+  return '';
+}
+function renderCloset() {
+  const stars = save.stars, coins = closet.coins(stars);
+  setNum($('#cl-coins'), coins);
+  setNum($('#cl-stars'), totalStars(stars));
+  $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
+  // 分類頁籤
+  const tabs = $('#cl-tabs');
+  tabs.innerHTML = '';
+  for (const c of CATEGORIES) {
+    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : ''));
+    b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === clCat ? 'true' : 'false');
+    b.textContent = c.name;
+    b.addEventListener('click', () => { if (clCat === c.id) return; clCat = c.id; audio.play('tap'); renderCloset(); });
+    tabs.appendChild(b);
+  }
+  // 這一類的外觀
+  const grid = $('#cl-grid');
+  grid.innerHTML = '';
+  const equipped = closet.look(stars)[clCat];
+  for (const it of ITEMS.filter(x => x.cat === clCat)) {
+    const unlocked = closet.isUnlocked(it, stars), on = unlocked && it.id.split('.')[1] === equipped && !tryOn[clCat];
+    const trying = tryOn[clCat] === it.id;
+    const can = !unlocked && closet.canBuy(it, stars);
+    const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
+    b.type = 'button';
+    const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
+    const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false;
+    pic.appendChild(img);
+    if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
+    b.appendChild(pic);
+    b.appendChild(el('span', 'ci-name', it.name));
+    const stt = el('span', 'ci-state');
+    if (on) stt.textContent = '穿著中';
+    else if (unlocked) stt.textContent = trying ? '試穿中' : '點一下穿上';
+    else if (it.unlock.coins) { stt.appendChild(coinEl()); stt.appendChild(document.createTextNode(trying && can ? `${it.unlock.coins} 再點一下兌換` : unlockText(it))); }
+    else stt.textContent = unlockText(it);
+    b.appendChild(stt);
+    b.addEventListener('click', () => onClosetItem(it));
+    grid.appendChild(b);
+  }
+  $('#cl-try').hidden = !Object.keys(tryOn).length;
+  // 寶箱
+  const box = $('#cl-chests');
+  box.innerHTML = '';
+  CHESTS.forEach((ch, i) => {
+    const stt = closet.chestState(i, stars);
+    const b = el('button', 'cl-chest ' + stt);
+    b.type = 'button';
+    b.setAttribute('aria-label', `寶箱：星星 ${ch.stars} 顆（${stt === 'open' ? '開過了' : stt === 'ready' ? '可以開了' : '還沒到'}）`);
+    b.appendChild(el('span', 'cc-box'));
+    b.appendChild(el('span', 'cc-need', `★${ch.stars}`));
+    if (stt === 'ready') b.addEventListener('click', () => openChest(i));
+    else b.addEventListener('click', () => toast(stt === 'open' ? `開過了：${ch.name}` : `星星總數到 ${ch.stars} 顆就能開：${ch.name}`, 1700));
+    box.appendChild(b);
+  });
+}
+function onClosetItem(it) {
+  const stars = save.stars;
+  if (closet.isUnlocked(it, stars)) {
+    closet.equip(it, stars);
+    delete tryOn[it.cat];
+    audio.play('select');
+    applyLook(); renderCloset(); renderClosetBtn();
+    if (it.cat === 'fx') setTimeout(closetDemo, 120);
+    return;
+  }
+  const u = it.unlock || {};
+  if (u.coins && tryOn[it.cat] === it.id && closet.canBuy(it, stars)) {
+    // 第二下：兌換 + 穿上
+    closet.buy(it, stars);
+    closet.equip(it, stars);
+    delete tryOn[it.cat];
+    audio.play('special');
+    toast(`兌換成功！穿上「${it.name}」`, 1600);
+    applyLook(); renderCloset(); renderClosetBtn();
+    return;
+  }
+  // 沒解鎖：先試穿（預覽盤面上看得到），告訴玩家怎麼拿
+  tryOn[it.cat] = it.id;
+  audio.play('tap');
+  if (clR) clR.setLook(previewLook());
+  if (it.cat === 'fx') setTimeout(closetDemo, 120);
+  const need = u.coins ? u.coins - closet.coins(stars) : 0;
+  if (u.coins) toast(need > 0 ? `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！` : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
+  else if (u.stars) toast(`試穿中～星星總數到 ${u.stars} 顆就會解鎖（現在 ${totalStars(stars)} 顆）`, 2000);
+  else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
+  renderCloset();
+}
+// 開寶箱：寶箱抖一抖 → 蓋子彈開 → 獎勵一個一個跳出來；開到的外觀直接穿上
+function openChest(i) {
+  const res = closet.openChest(i, save.stars);
+  if (!res) return;
+  const pop = $('#cl-pop'), items = $('#cp-items'), chest = $('#cp-chest');
+  items.innerHTML = '';
+  for (const it of res.items) {
+    const d = el('span', 'cp-item');
+    const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id));
+    d.appendChild(img); d.appendChild(el('small', '', it.name));
+    items.appendChild(d);
+    closet.equip(it, save.stars);
+  }
+  if (res.coins) {
+    const d = el('span', 'cp-item coins');
+    d.appendChild(coinEl(true)); d.appendChild(el('small', '', `造型幣 +${res.coins}`));
+    items.appendChild(d);
+  }
+  $('#cp-text').textContent = `打開了「${CHESTS[i].name}」！`;
+  pop.hidden = false;
+  restartAnim(chest, 'opening');
+  restartAnim(items, 'reveal');
+  audio.play('chime', { level: 6 });
+  setTimeout(() => audio.play('win'), 450);
+  applyLook(); renderClosetBtn();
+}
+
 // ---------- 對話框 ----------
 let lastFocus = null;
 let usingKeyboard = false;
@@ -335,6 +543,7 @@ function openModal(id) {
   lastFocus = document.activeElement;
   m.classList.add('open');
   m.setAttribute('aria-hidden', 'false');
+  document.documentElement.dataset.modal = '1';     // CSS：有對話框（模糊遮罩）時背景的漂浮光點停住
   // 對話框蓋住盤面時，盤面不用重畫（待機動畫在模糊的遮罩後面看不清楚；後面每一幀都在變的話，模糊也得每一幀重算）。
   // renderer 暫停時 play() 的流程照樣用 setTimeout 走完，只是不畫；關掉最後一個對話框再接回來
   if (R) R.pause();
@@ -348,7 +557,8 @@ function closeModal(id) {
   m.classList.remove('open');
   m.setAttribute('aria-hidden', 'true');
   if (id === 'm-merge' && mergeAnswer) mergeAnswer(false);
-  if (R && !document.querySelector('.modal.open')) R.resume();
+  if (id === 'm-closet') closetClosed();
+  if (!document.querySelector('.modal.open')) { delete document.documentElement.dataset.modal; if (R) R.resume(); }
   if (usingKeyboard && lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
 }
 const isOpen = id => document.getElementById(id).classList.contains('open');
@@ -557,6 +767,7 @@ function buildMap(popIndex = -1) {
 }
 function showMap({ pop = -1, thenOpen = -1 } = {}) {
   const pts = buildMap(pop);
+  renderClosetBtn();
   show('map');
   const sc = $('#map-scroll');
   const cur = currentIndex();
@@ -589,7 +800,7 @@ function goalText(lvl) {
 // ---------- 中文換行 ----------
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
-const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間'];
+const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -719,7 +930,7 @@ async function startLevel(idx) {
   const dims = boardDims(level);
   const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed };
   if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
-  if (level.goal && level.goal.type === 'collect') {      // 小魚優先游去目標還要收集的毛絨
+  if (level.goal && level.goal.type === 'collect') {      // 飛天玩偶優先飛去目標還要收集的毛絨
     opts.collect = {};
     for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
   }
@@ -728,6 +939,7 @@ async function startLevel(idx) {
   movesLeft = dispMoves = level.moves;
   dispScore = shownScore = 0;
   liveCleared = {};
+  resetFlights();
   selected = null;
   moving = false;
   sugarMode = false;
@@ -765,6 +977,7 @@ async function startLevel(idx) {
 
 function leaveToMap(opts) {
   session++;
+  resetFlights();
   state = 'idle';
   clearHint();
   closeAllModals();
@@ -880,17 +1093,19 @@ function renderGoal(init = false) {
   for (const r of goalRefs) {
     let txt, done = false;
     if (r.kind === 'collect') {
-      const left = Math.max(0, r.need - clearedOf(r.k));
+      // 還在飛向圖示的那幾顆先不扣（飛到了才扣，數字「ㄉㄨㄞ」一下）
+      const left = Math.max(0, r.need - clearedOf(r.k) + (flyIn[r.k] || 0));
       txt = String(left); done = left === 0;
     } else if (r.kind === 'jelly') {
-      txt = String(Math.max(0, jellyLive)); done = jellyLive <= 0;
+      const left = Math.max(0, jellyLive + flyJelly);
+      txt = String(left); done = left <= 0;
     } else {
       const t = scoreTarget(level);
       txt = fmt(t); done = shownScore >= t;
     }
     if (r.last !== txt) {
       setNum(r.cnt, txt);
-      if (!init && r.kind !== 'score') restartAnim(r.gi.querySelector('.ic'), 'bump');
+      if (!init && r.kind !== 'score') { restartAnim(r.gi.querySelector('.ic'), 'boing'); restartAnim(r.cnt, 'boing'); }
       r.last = txt;
     }
     r.gi.classList.toggle('done', done);
@@ -998,12 +1213,106 @@ function onCue(name, data, token) {
   const snd = CUE_SOUND[name];
   if (snd) audio.play(snd, data);
   const d = (data && data.delay) || 0;
+  if (name === 'gone' || name === 'jellyhit') { launchFlight(name, data, token); return; }
   switch (name) {
     case 'pop': buzzLater(d, 10, 80); break;
     case 'special': buzzLater(d, 12, 60); break;
     case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
   }
+}
+
+// ---------- 收集目標的弧線飛行 ----------
+// 消掉關卡目標（玩偶 / 果凍）時，一顆發光的小玩偶沿著彎彎的貝茲曲線從那一格飛到上面的目標圖示；
+// 飛到了才扣數字，圖示和數字「ㄉㄨㄞ」一下、閃出星芒。onEvent 先把這一步要飛的數量記成一批（batch），
+// renderer 在每一顆爆開的那一刻送 'gone' / 'jellyhit'，從這一批領一個名額起飛。沒領完的 3 秒後自動結清，數字不會卡住。
+let flyIn = {}, flyJelly = 0, flyBatches = [], flyLive = 0, flyLayer = null;
+const FLY_MAX = 12;                 // 同時最多幾顆在飛（超過的直接算到）
+function resetFlights() {
+  for (const b of flyBatches) clearTimeout(b.timer);
+  flyBatches = []; flyIn = {}; flyJelly = 0; flyLive = 0;
+  if (flyLayer) flyLayer.textContent = '';
+}
+function queueFlights(before, jellyBefore) {
+  const b = { k: {}, jelly: 0, timer: 0 };
+  let any = false;
+  for (const r of goalRefs) {
+    if (r.kind === 'collect') {
+      const was = before[r.k] || 0, now = clearedOf(r.k), n = Math.min(now - was, Math.max(0, r.need - was));
+      if (n > 0) { b.k[r.k] = n; flyIn[r.k] = (flyIn[r.k] || 0) + n; any = true; }
+    } else if (r.kind === 'jelly') {
+      const n = Math.max(0, jellyBefore - jellyLive);
+      if (n > 0) { b.jelly = n; flyJelly += n; any = true; }
+    }
+  }
+  if (!any) return;
+  b.timer = setTimeout(() => settleBatch(b), 3000);
+  flyBatches.push(b);
+}
+function settleBatch(b) {
+  clearTimeout(b.timer);
+  for (const k in b.k) { flyIn[k] = Math.max(0, (flyIn[k] || 0) - b.k[k]); b.k[k] = 0; }
+  if (b.jelly) { flyJelly = Math.max(0, flyJelly - b.jelly); b.jelly = 0; }
+  flyBatches = flyBatches.filter(x => x !== b);
+  renderGoal();
+}
+function launchFlight(name, data, token) {
+  const jelly = name === 'jellyhit', kind = data.kind;
+  const b = flyBatches.find(x => (jelly ? x.jelly > 0 : x.k[kind] > 0));
+  if (!b) return;
+  if (jelly) b.jelly--; else b.k[kind]--;
+  const ref = goalRefs.find(r => (jelly ? r.kind === 'jelly' : r.kind === 'collect' && r.k === kind));
+  const arrive = () => {
+    if (token !== session) return;
+    if (jelly) flyJelly = Math.max(0, flyJelly - 1); else flyIn[kind] = Math.max(0, (flyIn[kind] || 0) - 1);
+    if (b.jelly <= 0 && Object.values(b.k).every(v => v <= 0)) { clearTimeout(b.timer); flyBatches = flyBatches.filter(x => x !== b); }
+    renderGoal();
+    if (ref) starBurst(ref.gi.querySelector('.ic'));
+  };
+  setTimeout(() => {
+    if (token !== session) return;
+    const from = R && R.cellRect ? R.cellRect(data.r, data.c) : null;
+    if (!ref || !from || flyLive >= FLY_MAX || document.hidden) { arrive(); return; }
+    flyLive++;
+    flyToGoal(jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });
+  }, Math.max(0, data.delay || 0));
+}
+function flyToGoal(p, from, icon, done) {
+  if (!flyLayer) { flyLayer = el('div', 'fly-layer'); flyLayer.setAttribute('aria-hidden', 'true'); document.body.appendChild(flyLayer); }
+  const to = icon.getBoundingClientRect();
+  const ex = to.left + to.width / 2, ey = to.top + to.height / 2, sx = from.x, sy = from.y;
+  const sz = Math.max(24, Math.round(from.size * 0.92));
+  const f = el('div', 'flyer' + (p ? '' : ' jelly'));
+  f.style.width = f.style.height = sz + 'px';
+  f.appendChild(p ? toyEl(p, 14) : jellyIcon());
+  flyLayer.appendChild(f);
+  // 二次貝茲曲線：控制點往旁邊、往上拉，飛起來是一道彎彎的弧
+  const dist = Math.hypot(ex - sx, ey - sy), side = (sx < ex ? -1 : 1) * Math.min(110, 40 + Math.abs(ex - sx) * 0.45);
+  const cx = (sx + ex) / 2 + side, cy = Math.min(sy, ey) - 60 - dist * 0.08;
+  const N = 18, frames = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N, m = 1 - u;
+    const x = m * m * sx + 2 * m * u * cx + u * u * ex, y = m * m * sy + 2 * m * u * cy + u * u * ey;
+    const sc = (1 + 0.38 * Math.sin(Math.PI * Math.min(1, u * 1.2))) * (1 - 0.42 * u * u);
+    frames.push({ offset: u, transform: `translate(${(x - sz / 2).toFixed(1)}px, ${(y - sz / 2).toFixed(1)}px) scale(${sc.toFixed(3)}) rotate(${(Math.sin(u * 9) * 14 * (1 - u)).toFixed(1)}deg)` });
+  }
+  const dur = clamp(520 + dist * 0.45, 560, 900);
+  let finished = false;
+  const end = () => { if (finished) return; finished = true; f.remove(); done(); };
+  try {
+    const a = f.animate(frames, { duration: dur, easing: 'cubic-bezier(.42,0,.6,1)', fill: 'forwards' });
+    a.onfinish = end; a.oncancel = end;
+  } catch (e) { end(); return; }
+  setTimeout(end, dur + 400);      // 保險：動畫事件沒來也會結束
+}
+// 飛到了：圖示閃出一圈星芒 +「叮」
+function starBurst(icon) {
+  if (!icon) return;
+  audio.play('collect', { step: 0 });
+  const s = el('span', 'star-burst');
+  for (let i = 0; i < 8; i++) { const r = el('i'); r.style.setProperty('--a', (i * 45) + 'deg'); s.appendChild(r); }
+  icon.appendChild(s);
+  setTimeout(() => s.remove(), 560);
 }
 
 // ---------- 事件 → HUD ----------
@@ -1025,11 +1334,13 @@ function onEvent(ev, token) {
       const cascade = Math.max(1, ev.cascade || 1);
       const fx = new Set((ev.effects || []).map(e => e.fx));
       const removed = ev.removed || [];
+      const before = { ...liveCleared }, jellyBefore = jellyLive;
       for (const r of removed) {
         const k = r.piece ? r.piece.kind : -1;
         if (k >= 0) liveCleared[k] = (liveCleared[k] || 0) + 1;
       }
       if (ev.jelly) jellyLive = sumJelly(ev.jelly, jellyCountsLayers);
+      queueFlights(before, jellyBefore);
       dispScore += ev.gained || 0;
       renderScore();
       renderGoal();
@@ -1360,7 +1671,7 @@ async function winFlow() {
   state = 'won';
   await sleep(450);
   if (token !== session) return;
-  showWin(stars, score, newBest && prevBest > 0, prevBest, firstClear);
+  showWin(stars, score, newBest && prevBest > 0, prevBest, firstClear, stars === 3 && prevStars < 3);
 }
 
 let winTimers = [];
@@ -1372,9 +1683,24 @@ function setPhoto(id, src) {
   im.classList.remove('broken');
   im.src = src;
 }
-function showWin(stars, score, newBest, best, firstClear) {
+function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   winTimers.forEach(clearTimeout);
   winTimers = [];
+  // 三星：第一次拿到這關的三星 → 送 1 枚三星造型幣（金幣翻進來 + 金光），卡片整張閃金光
+  const card = $('#m-win .win-card'), mc = $('#mw-coin'), ready = closet.readyChests(save.stars).length;
+  card.classList.toggle('three', stars === 3);
+  mc.hidden = true; mc.classList.remove('show');
+  $('#mc-sub').textContent = ready ? '有三星豪華寶箱可以開了！快去衣櫃～' : '去衣櫃幫玩偶換裝吧！';
+  $('#mw-closet-dot').hidden = !ready;
+  renderClosetBtn();
+  if (newThree) {
+    winTimers.push(setTimeout(() => {
+      if (!isOpen('m-win')) return;
+      mc.hidden = false; restartAnim(mc, 'show');
+      audio.play('special'); audio.play('collect', { step: 4, delay: 120 });
+      confetti(true);
+    }, 500 + 3 * 420 + 300));
+  }
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
   const rw = $('#mw-reward');
@@ -1408,11 +1734,11 @@ function showWin(stars, score, newBest, best, firstClear) {
   };
   requestAnimationFrame(tick);
 }
-function confetti() {
+function confetti(gold = false) {
   const box = $('#confetti');
-  box.innerHTML = '';
-  const colors = ['#ff5fa8', '#ffd23f', '#6fe39a', '#6cc8ff', '#b98cff', '#ff9a3c', '#ffffff'];
-  for (let i = 0; i < 46; i++) {
+  if (!gold) box.innerHTML = '';
+  const colors = gold ? ['#ffd23f', '#ffe98a', '#ffb800', '#fff6c8', '#ffffff'] : ['#ff5fa8', '#ffd23f', '#6fe39a', '#6cc8ff', '#b98cff', '#ff9a3c', '#ffffff'];
+  for (let i = 0; i < (gold ? 36 : 46); i++) {
     const c = document.createElement('i');
     c.style.left = (Math.random() * 100) + '%';
     c.style.background = colors[i % colors.length];
@@ -1672,6 +1998,10 @@ function bindUI() {
   });
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-map').addEventListener('click', () => leaveToMap());
+  $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  $('#cl-demo').addEventListener('click', closetDemo);
+  $('#cp-ok').addEventListener('click', () => { $('#cl-pop').hidden = true; renderCloset(); });
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#ml-more').addEventListener('click', () => {
     if (state !== 'lost' || (save.boosters.moves5 || 0) <= 0) return;
@@ -1758,6 +2088,7 @@ function installDebug() {
 
 // ---------- 開機 ----------
 async function boot() {
+  initMotes();
   setProgress(0.03);
   const modP = loadModules();
   const imgP = loadImages(f => setProgress(0.08 + f * 0.9));
@@ -1780,6 +2111,9 @@ async function boot() {
     return;
   }
   try { audio.setMuted(save.muted); audio.setMusic(save.music); } catch (e) {}
+  closet.load(closetKey());
+  applyLook();
+  renderClosetBtn();
   buildTitle();
   bindUI();
   syncToggles();
