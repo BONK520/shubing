@@ -37,18 +37,19 @@ const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
 const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
-const POP_LEAD = 300;     // 最後一顆開始爆之後多久就開始掉落（讓碎開看得清楚）
-const GROUP_STAGGER = 36; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
-const POP_SEQ = 55;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
+const POP_LEAD = 105;     // 最後一顆閃光之後 ~100ms 上面的方塊就開始往下灌（碎開的動畫在背景收尾，不等）
+const GROUP_STAGGER = 24; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
+const POP_SEQ = 26;       // 同一組裡一顆接一顆爆（「啵、啵、啵」，很快）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 340;     // 新特殊方塊 / 變身的彈出
-const LAND_MS = 340;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復）
-const LAND_HOLD = 100;     // 下一輪連鎖：方塊落地後多久爆
-const G_FALL = 0.00005;   // 掉落重力（格 / ms²）：一格約 0.13 秒、整欄約 0.45 秒（參考 Candy Crush 類遊戲：約 0.1 秒 / 格）
-const V0_FALL = 0.004;    // 掉落初速（格 / ms）
-const STAGGER_ROW = 60, STAGGER_MAX = 360, COL_JITTER = 30;   // 同一欄一顆接一顆落下（間隔約 0.06 秒），像瀑布
+const LAND_MS = 130;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復），約 120ms 內做完
+const LAND_HOLD = 80;     // 下一輪連鎖：會被消掉的方塊落地後 80ms 就爆（瀑布一樣接著連消）
+const G_FALL = 0.00009;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.1 秒、整欄約 0.35 秒
+const V0_FALL = 0.006;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 30, STAGGER_MAX = 150, COL_JITTER = 16;   // 同一欄一顆接一顆落下（間隔約 0.03 秒），像瀑布
 // 特效傳到某格要多久
-const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 38, BOMB_FIRST = 110, CLEAR_CAP = 800;
+// CHAIN_MS：被波及的特殊方塊，一個接一個接力引爆的間隔（70ms）
+const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 110, CLEAR_CAP = 900;
 // 飛天玩偶（2×2 正方形變的特殊方塊，引擎裡叫 'fish'）飛到目標的時間：基本 + 每格距離，最久 FISH_MAX
 // （先往上飛出一段弧線再俯衝，看得清楚）
 const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
@@ -2034,9 +2035,24 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return -1;
   }
 
+  // 兩個特殊方塊合體：先吸在一起、放大、震動（條紋 + 包裝放大到 3 倍），再發動
+  const CHARGE = { 'h+wrap': [320, 3], 'v+wrap': [320, 3], 'wrap+wrap': [280, 2.6], 'h+h': [190, 2], 'h+v': [190, 2], 'v+v': [190, 2],
+    'bomb+bomb': [300, 2.6], 'bomb+h': [240, 2.2], 'bomb+v': [240, 2.2], 'bomb+wrap': [260, 2.4], 'bomb+fish': [240, 2.2],
+    'fish+h': [220, 2.2], 'fish+v': [220, 2.2], 'fish+wrap': [240, 2.4], 'fish+fish': [200, 2] };
   async function animClear(ev) {
-    const t0 = now();
     const removed = (ev.removed || []).filter(Boolean), effects = (ev.effects || []).filter(Boolean);
+    const comboPair = (ev.cascade | 0) <= 1 ? removed.filter(it => it.cause === 'combo' && it.piece && it.piece.special && it.piece.special !== 'none') : [];
+    let charge = null;
+    if (comboPair.length >= 2 && effects.length) {
+      const key2 = comboPair.slice(0, 2).map(it => it.piece.special).sort().join('+'), c = CHARGE[key2];
+      if (c) {
+        const ctr = effects.find(e => e.fx !== 'board' && e.r != null) || comboPair[1];
+        charge = { dur: c[0], S: c[1], at: { r: ctr.r, c: ctr.c }, ids: new Set(comboPair.slice(0, 2).map(it => it.piece.id)), t: now() };
+        shake(2.2, c[0], charge.t);
+        cue('combo', 0);
+      }
+    }
+    const t0 = now() + (charge ? charge.dur : 0);
     const groups = (ev.groups || []).filter(g => g && Array.isArray(g.cells)), created = (ev.created || []).filter(Boolean);
     const cascade = Math.max(1, ev.cascade | 0);
     const key = (r, c) => r * 1024 + c;
@@ -2124,8 +2140,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const k = key(it.r, it.c);
       const m = it.cause === 'match' ? mergeTo.get(k) : null;
       const tm = tOf(it.r, it.c);
+      const ch = charge && it.piece && charge.ids.has(it.piece.id) ? { t: charge.t, dur: charge.dur, S: charge.S, x: charge.at.c, y: charge.at.r } : null;
       ghosts.push({ kind: p.kind, special: p.special || 'none', x: gx, y: gy, t0: t0 + tm,
-        dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase });
+        dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase, charge: ch });
       lastPop = Math.max(lastPop, tm);
     }
 
@@ -2181,7 +2198,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
         cue('board', st);
       }
     }
-    if (removed.some(r => r.cause === 'combo')) cue('combo', 0);
+    if (!charge && removed.some(r => r.cause === 'combo')) cue('combo', 0);
 
     // --- 消除音效：每一顆碎開的那一刻「咔啦」一聲（殘影放大變白之後才碎：POP_MS 的 30%），音一顆比一顆高 ---
     groups.forEach((g, i) => {
@@ -2293,12 +2310,33 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     await wait(t0 + lastPop + POP_LEAD - now());
   }
 
-  // 掉落中的方塊：位置、速度
+  // 掉落中的方塊：位置、速度（重力加速度：v += g·dt）。有 pts 的是沿著折線走（斜向滑落），用走過的距離算位置
   function fallState(m, t) {
     const dt = t - m.t0;
+    if (m.pts) {
+      const len = m.len;
+      if (dt <= 0) return { s: 0, vel: 0, done: false, ...along(m, 0) };
+      if (dt >= m.dur) return { s: len, vel: 0, done: true, ...along(m, len) };
+      const d = m.v0 * dt + 0.5 * G_FALL * dt * dt;
+      return { s: d, vel: m.v0 + G_FALL * dt, done: false, ...along(m, d) };
+    }
     if (dt <= 0) return { y: m.y0, vel: 0, done: false };
     if (dt >= m.dur) return { y: m.y1, vel: 0, done: true };
     return { y: m.y0 + m.v0 * dt + 0.5 * G_FALL * dt * dt, vel: m.v0 + G_FALL * dt, done: false };
+  }
+  function polyline(pts) {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+    return { pts, cum, len: cum[cum.length - 1] };
+  }
+  function along(m, d) {
+    const { pts, cum } = m;
+    if (d <= 0) return { x: pts[0].x, y: pts[0].y };
+    for (let i = 1; i < pts.length; i++) {
+      if (d <= cum[i]) { const k = (d - cum[i - 1]) / Math.max(1e-6, cum[i] - cum[i - 1]); return { x: lerp(pts[i - 1].x, pts[i].x, k), y: lerp(pts[i - 1].y, pts[i].y, k) }; }
+    }
+    const q = pts[pts.length - 1];
+    return { x: q.x, y: q.y };
   }
   function fallDur(dist, v0) { return dist <= 0 ? 1 : (-v0 + Math.sqrt(v0 * v0 + 2 * G_FALL * dist)) / G_FALL; }
   function topCell(c) { for (let r = 0; r < rows; r++) if (mask[r] && mask[r][c]) return r; return 0; }
@@ -2310,20 +2348,21 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     for (const m of ev.moves || []) {
       if (!m || !m.from || !m.to) continue;
       const v = visuals.get(m.id) || cellV(m.from);
-      if (v) items.push({ v, to: m.to, spawn: -1 });
+      if (v) items.push({ v, to: m.to, spawn: -1, path: m.path || null });
     }
-    for (const s of ev.spawns || []) {
-      if (!s || !s.piece || !s.to) continue;
-      const v = newVisual(s.piece, s.to.r, s.to.c);
-      visuals.set(s.piece.id, v);
-      const j = s.from && s.from.r < 0 ? -1 - s.from.r : 0;
-      items.push({ v, to: s.to, spawn: j });
+    for (const s2 of ev.spawns || []) {
+      if (!s2 || !s2.piece || !s2.to) continue;
+      const v = newVisual(s2.piece, s2.to.r, s2.to.c);
+      visuals.set(s2.piece.id, v);
+      const j = s2.from && s2.from.r < 0 ? -1 - s2.from.r : 0;
+      items.push({ v, to: s2.to, spawn: j, path: s2.path || null, col: s2.from ? s2.from.c : s2.to.c });
     }
     // 同一欄由下往上，每顆晚一點點出發；每欄再有一點點不同（看起來比較自然）
     const byCol = new Map();
     for (const it of items) {
-      let l = byCol.get(it.to.c);
-      if (!l) byCol.set(it.to.c, l = []);
+      const c = it.col != null ? it.col : it.to.c;
+      let l = byCol.get(c);
+      if (!l) byCol.set(c, l = []);
       l.push(it);
     }
     let endAll = t + 30, firstLand = Infinity;
@@ -2334,23 +2373,39 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       const top = topCell(c);
       list.forEach((it, k) => {
         const v = it.v;
-        let y0, vel, delay;
+        let x0, y0, vel, delay;
         const m = v.mv;
-        if (it.spawn >= 0) { y0 = top - 1 - it.spawn; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW); }
-        else if (m && m.fall && t < m.t0 + m.dur) {
+        if (it.spawn >= 0) {
+          x0 = it.path ? it.path[0].c : c; y0 = it.path ? it.path[0].r : top - 1 - it.spawn;
+          vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
+        } else if (m && m.fall && t < m.t0 + m.dur) {
           // 還在掉：接著目前的位置和速度繼續
-          const fs = fallState(m, t);
-          y0 = fs.y; vel = Math.max(V0_FALL, fs.vel); delay = t < m.t0 ? m.t0 - t : 0;
+          const fs = fallState(m, t), cur = evalVisual(v, t);
+          x0 = cur.x; y0 = cur.y; vel = Math.max(V0_FALL, fs.vel); delay = t < m.t0 ? m.t0 - t : 0;
         } else {
           const cur = evalVisual(v, t);
-          y0 = cur.y; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
+          x0 = cur.x; y0 = cur.y; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
         }
-        const dist = it.to.r - y0;
-        if (dist <= 0.001) { v.mv = null; return; }
-        const dur = fallDur(dist, vel);
-        v.mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
-        v.landT = t + delay + dur;
-        v.landAmp = clamp((vel + G_FALL * dur) * 2.2, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
+        let mv;
+        if (it.path) {
+          // 斜向滑落：從目前的位置沿著引擎給的折線走（第一點換成畫面上的位置）
+          const pts = [{ x: x0, y: y0 }];
+          const rest = it.spawn >= 0 ? it.path.slice(1) : it.path.slice(1);
+          if (it.spawn < 0) { const p0 = it.path[0]; if (Math.abs(p0.c - x0) + Math.abs(p0.r - y0) > 0.01) pts.push({ x: p0.c, y: p0.r }); }
+          for (const q of rest) pts.push({ x: q.c, y: q.r });
+          const pl = polyline(pts);
+          if (pl.len <= 0.001) { v.mv = null; return; }
+          const dur = fallDur(pl.len, vel);
+          mv = { fall: true, ...pl, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
+        } else {
+          const dist = it.to.r - y0;
+          if (dist <= 0.001) { v.mv = null; return; }
+          const dur = fallDur(dist, vel);
+          mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
+        }
+        v.mv = mv;
+        v.landT = mv.t0 + mv.dur;
+        v.landAmp = clamp((vel + G_FALL * mv.dur) * 2.2, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
@@ -2626,7 +2681,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     if (m) {
       if (m.fall) {
         const fs = fallState(m, t);
-        x = m.x1; y = fs.y;
+        if (m.pts) { x = fs.x; y = fs.y; } else { x = m.x1; y = fs.y; }
         if (!fs.done) {
           falling = true;
           const k = Math.min(0.11, fs.vel * 1.5);        // 掉得快時拉長一點
@@ -3017,7 +3072,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       for (let c = 0; c < cols; c++) fallCols[c] = null;
       for (const it of falling) {
         const m = it[0].mv;
-        if (!m || !m.fall) continue;
+        if (!m || !m.fall || m.pts) continue;
         const c = m.x1 | 0;
         if (c < 0 || c >= cols) continue;
         (fallCols[c] || (fallCols[c] = [])).push(it);
@@ -3047,7 +3102,20 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
       if (p >= 1) continue;
       ghosts[w++] = g;
       const cx0 = ox + (g.x + 0.5) * cs, cy0 = oy + (g.y + 0.5) * cs;
+      if (p < 0 && g.charge && t >= g.charge.t) {
+        // 合體蓄力：往中心吸過去、越來越大、一直抖、越來越白
+        const q = clamp01((t - g.charge.t) / g.charge.dur), e = easeInCubic(q), jig = cs * 0.06 * q;
+        const x = lerp(cx0, ox + (g.charge.x + 0.5) * cs, easeOutCubic(Math.min(1, q * 1.6))) + (Math.random() - 0.5) * jig * 2;
+        const y = lerp(cy0, oy + (g.charge.y + 0.5) * cs, easeOutCubic(Math.min(1, q * 1.6))) + (Math.random() - 0.5) * jig * 2;
+        const z = cs * (1.2 + g.charge.S * 0.8 * e);
+        ctx.globalAlpha = 0.5 * q;
+        ctx.drawImage(getGlowCol(GOLD), x - z / 2, y - z / 2, z, z);
+        ctx.globalAlpha = 1;
+        drawPieceAt(g.kind, g.special, x, y, 1 + (g.charge.S - 1) * e, 1, 1, t, g.phase, 0.6 * e);
+        continue;
+      }
       if (p < 0) { drawPieceAt(g.kind, g.special, cx0, cy0, 1, 1, 1, t, g.phase); continue; }
+      if (!g.fired && g.charge) { g.x = g.charge.x; g.y = g.charge.y; g.charge = null; }
       if (!g.fired) {
         g.fired = true;
         const col = g.kind >= 0 ? kindColor(g.kind) : kindColor(Math.floor(Math.random() * Math.max(1, pieces.length)));
