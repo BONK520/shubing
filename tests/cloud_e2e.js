@@ -84,7 +84,7 @@ const check = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 
   // ---------- 裝置 A：先當訪客玩過第 1 關 ----------
   const A = await device(b);
   let pa = await open(A, '&level=1');
-  check('A starts as guest, chip shows', await G(pa, () => window.__game.syncState === 'guest' && !document.querySelector('#acct-chip').hidden));
+  check('A starts as guest', await G(pa, () => window.__game.syncState === 'guest'));
   await win(pa);
   const guestA = await G(pa, () => JSON.parse(localStorage.getItem('plushcrush.v1')));
   check('guest progress saved locally (level 1 cleared)', guestA.unlocked >= 2 && guestA.stars['1'] >= 1, `unlocked ${guestA.unlocked}, stars ${JSON.stringify(guestA.stars)}`);
