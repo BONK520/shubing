@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123o") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123o") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123p") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123p") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -1490,6 +1490,47 @@ svg.on .hi { opacity: .9; }
 .lg-switch { border: 0; background: none; padding: 4px; font: 900 16px/1.3 var(--font); color: #e8287f; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .lg-note { margin: 0; font-weight: 800; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .merge-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
+/* 好友排行榜（登入、讀得到排行榜才出現：main.js initFriends） */
+.icon-btn.gold { --c1: #ffe9a0; --c2: #ffc23d; --c3: #f59a0e; --sh: #b0600a; --rim: #d77a0a; }
+html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上方多一顆獎盃按鈕 */
+.friends-card { gap: 12px; }
+.fr-list { list-style: none; margin: 4px 0 0; padding: 2px 2px 6px; width: 100%; display: flex; flex-direction: column; gap: 8px; max-height: min(42vh, 330px); overflow-y: auto; scrollbar-width: none; }
+.fr-row {
+  display: grid; grid-template-columns: 30px 36px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: 18px; border: 3px solid #fff; background: #fdf1e8;
+  box-shadow: 0 4px 0 #ecc9c0, 0 6px 10px rgba(112, 40, 64, .1);
+}
+.fr-row.me { background: #ffe6f1; box-shadow: 0 4px 0 #f3b7cf, 0 6px 10px rgba(112, 40, 64, .1); }
+.fr-rank { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 900 16px/1 var(--font-num); color: var(--ink); background: #f3d9d0; }
+.fr-row[data-rank="1"] .fr-rank { background: linear-gradient(180deg, #ffe58a, #f7b51e); color: #fff; text-shadow: 0 1px 0 #b36d00; box-shadow: 0 0 0 2px #fff, 0 2px 0 #c98400; }
+.fr-row[data-rank="2"] .fr-rank { background: linear-gradient(180deg, #eef1f6, #b9c2d0); color: #fff; text-shadow: 0 1px 0 #6f7a8b; box-shadow: 0 0 0 2px #fff, 0 2px 0 #8d97a6; }
+.fr-row[data-rank="3"] .fr-rank { background: linear-gradient(180deg, #f6c79e, #d98a52); color: #fff; text-shadow: 0 1px 0 #8a4c1f; box-shadow: 0 0 0 2px #fff, 0 2px 0 #a5612e; }
+.fr-av { width: 36px; height: 36px; font-size: 17px; }
+.fr-row.me .fr-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
+.fr-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-weight: 900; font-size: 17px; color: var(--ink); }
+.fr-nm small { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.fr-st { display: flex; align-items: center; gap: 3px; }
+.fr-st svg { width: 22px; height: 22px; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.4; paint-order: stroke; filter: drop-shadow(0 1.5px 0 #c46d00); }
+.fr-st b { font: 900 18px/1 var(--font-num); color: var(--ink); min-width: 1.6em; text-align: right; }
+.fr-empty { margin: 0; font-weight: 800; font-size: 14px; line-height: 1.55; color: var(--ink-soft); text-align: center; text-wrap: balance; }
+.fr-code {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 18px;
+  border: 3px dashed #f3bfd3; background: #fffaf6;
+}
+.fr-code span { flex: none; font-weight: 900; font-size: 14px; color: var(--ink-soft); }
+.fr-code b { flex: 1; min-width: 0; text-align: center; font: 900 24px/1 var(--font-num); letter-spacing: .12em; color: #e8287f; -webkit-user-select: text; user-select: text; }
+.fr-add { width: 100%; display: flex; align-items: flex-end; gap: 10px; }
+.fr-add .fld { flex: 1; min-width: 0; }
+.fr-add .btn { flex: none; min-height: 48px; padding: 8px 18px; font-size: 18px; }
+#fr-input { text-transform: uppercase; letter-spacing: .14em; }
+#fr-input::placeholder { text-transform: none; letter-spacing: 0; }
+#fr-submit[disabled] { filter: grayscale(.5) brightness(.95); }
+#fr-err:empty { margin-top: -12px; }
+/* 關卡卡片：好友在這一關的最高分 */
+.ms-friends { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 8px; margin-top: -4px; max-width: 100%; font-weight: 800; font-size: 14px; color: var(--ink-soft); }
+.msf-one { display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%; padding: 4px 10px; border-radius: 999px; background: #fff; box-shadow: 0 2px 0 #ecc9c0; color: var(--ink); }
+.msf-one i { font-style: normal; max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msf-one b { font: 900 15px/1 var(--font-num); color: #e8287f; }
 
 /* ---------- 省電：看不到的東西不要動 ----------
    換畫面只是把 .screen 設成 visibility: hidden（不是 display: none），裡面的無限動畫其實一直在跑：

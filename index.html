@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123o">
+<link rel="stylesheet" href="style.css?v=20261123p">
 </head>
 <body>
 
@@ -42,6 +42,7 @@
     <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2.2v11.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3.1" ry="2.5"/><ellipse cx="16.6" cy="15.4" rx="3.1" ry="2.5"/></symbol>
     <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8l8.2 4.6v9.2L12 21.2l-8.2-4.6V7.4z M3.8 7.4L12 12l8.2-4.6 M12 12v9.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6.8 3.4h10.4v5.4a5.2 5.2 0 0 1-10.4 0z"/><path d="M6.9 5.6H4.1v1.5a3.7 3.7 0 0 0 3.5 3.7M17.1 5.6h2.8v1.5a3.7 3.7 0 0 1-3.5 3.7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M10.5 13.6h3v3.3h-3z"/><rect x="7.2" y="16.5" width="9.6" height="3.8" rx="1.5"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7.2 19.2a4.7 4.7 0 0 1-.6-9.37 6 6 0 0 1 11.4 1.4 4 4 0 0 1-.5 7.97z"/></symbol>
   </defs>
 </svg>
@@ -102,6 +103,8 @@
     <div class="topbar">
       <button class="icon-btn" id="map-back" aria-label="回到標題"><svg><use href="#i-back"/></svg></button>
       <span class="map-here" id="map-here" aria-live="polite"></span>
+      <!-- 好友排行榜：登入、而且讀得到排行榜才出現（main.js initFriends） -->
+      <button class="icon-btn gold" id="map-friends" aria-label="好友排行榜" hidden><svg><use href="#i-trophy"/></svg></button>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
     <div class="map-scroll" id="map-scroll">
@@ -179,6 +182,7 @@
       <div class="goal-big" id="ms-goal" role="group"></div>
     </div>
     <div class="moves-line">有 <b id="ms-moves" data-t="20">20</b> 步可以用</div>
+    <div class="ms-friends" id="ms-friends" hidden></div>
     <div class="hint-bubble" id="ms-hint-box">
       <span class="hint-avatar" id="ms-avatar"></span>
       <p id="ms-hint"></p>
@@ -330,6 +334,26 @@
   </div>
 </div>
 
+<!-- 好友排行榜：比總星星數；輸入朋友的好友碼就加好友（main.js 好友排行榜） -->
+<div class="modal" id="m-friends" role="dialog" aria-modal="true" aria-labelledby="fr-title" aria-hidden="true">
+  <div class="card friends-card">
+    <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
+    <div class="ribbon"><span id="fr-title">好友排行榜</span></div>
+    <ol class="fr-list" id="fr-list" aria-label="總星星數排名"></ol>
+    <p class="fr-empty" id="fr-empty">還沒有好友。把好友碼傳給朋友，或輸入朋友的好友碼，就能比星星</p>
+    <div class="fr-code">
+      <span>我的好友碼</span>
+      <b id="fr-mycode"></b>
+      <button class="acct-out" id="fr-copy" type="button">複製</button>
+    </div>
+    <form class="fr-add" id="fr-form" novalidate>
+      <label class="fld"><span>朋友的好友碼</span><input id="fr-input" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="8" placeholder="6 個字" enterkeyhint="done"></label>
+      <button class="btn green" id="fr-submit" type="submit"><span class="bt" data-t="加好友">加好友</span></button>
+    </form>
+    <p class="lg-err" id="fr-err" role="alert"></p>
+  </div>
+</div>
+
 <!-- 登入時：這台裝置上有沒登入時玩的進度，問要不要帶進帳號 -->
 <div class="modal" id="m-merge" role="dialog" aria-modal="true" aria-labelledby="mm-title" aria-hidden="true">
   <div class="card merge-card">
@@ -356,6 +380,6 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/main.js?v=20261123o"></script>
+<script type="module" src="js/main.js?v=20261123p"></script>
 </body>
 </html>

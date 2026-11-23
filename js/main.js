@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123o';
-import { SLOGANS } from './slogans.js?v=20261123o';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123o';
-import { blockerCanvas } from './blockers.js?v=20261123o';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123o';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123p';
+import { SLOGANS } from './slogans.js?v=20261123p';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123p';
+import { blockerCanvas } from './blockers.js?v=20261123p';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123p';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123o';
+const MOD_V = '?v=20261123p';
 
 window.__plushBooted = true;
 
@@ -98,7 +98,7 @@ async function initCloud() {
   let q = Promise.resolve();          // 登入狀態的變化一個一個處理（快速登入又登出也不會打架）
   cloud.onUser(u => { q = q.then(() => switchAccount(u)).catch(e => console.error('[cloud]', e)); });
   cloud.ready.catch(() => { syncState = 'off'; document.documentElement.classList.remove('has-cloud'); renderAccount(); });
-  window.addEventListener('online', () => { if (account) pushCloud(); });
+  window.addEventListener('online', () => { if (account) { pushCloud(); if (!friendsOn) initFriends(account.uid); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && account && pushTimer) pushCloud(); });
 }
 async function switchAccount(u) {
@@ -107,12 +107,14 @@ async function switchAccount(u) {
   clearTimeout(pushTimer); pushTimer = 0;
   if (!u) {                                  // 登出 → 回到這台裝置的訪客存檔
     account = null; saveKey = SAVE_KEY; lastPushed = '';
+    initFriends(null);
     applySave(loadSave(SAVE_KEY));
     setSync('guest');
     refreshAfterSwitch();
     return;
   }
   account = u; saveKey = SAVE_KEY + '.u.' + uid; lastPushed = '';
+  initFriends(null);                       // 上一個人的好友排行榜先收起來，讀完存檔再換這個人的
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
   setSync('syncing');
   let remote = null, online = true;
@@ -134,7 +136,7 @@ async function switchAccount(u) {
   try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* ignore */ }
   if (remote) lastPushed = JSON.stringify(progressOf(remote));
   refreshAfterSwitch();
-  if (online) pushCloud(); else setSync('offline');
+  if (online) { pushCloud(); initFriends(uid); } else setSync('offline');
   if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
 }
 function schedulePush() {
@@ -153,6 +155,7 @@ async function pushCloud() {
     if (!account || account.uid !== uid) return;
     lastPushed = json;
     setSync(JSON.stringify(progressOf(save)) === json ? 'synced' : 'syncing');
+    publishProfile();                           // 排行榜上的星星和最高分也跟著更新（沒開好友排行榜就不做事）
   } catch (e) {
     console.warn('[cloud] 寫入失敗，連上網路或下次存檔時再試', e);
     if (account && account.uid === uid) setSync('offline');
@@ -167,6 +170,176 @@ function refreshAfterSwitch() {
   renderAccount();
   if (screen === 'map') buildMap();
   if (screen === 'game') renderBoosters();
+}
+
+// ---------- 好友排行榜（js/cloud.js 的 players/{uid}；規則在 firestore.rules） ----------
+// 登入後才有。先試讀一次自己的公開資料：規則還沒部署（被擋）或連不上 → 入口不出現，遊戲照玩、不跳錯誤。
+// 排行榜上的人 = 我加的好友 + 把我加成好友的人（只要一方輸入好友碼，兩邊都看得到）。別人的資料一律當純文字顯示
+let friendsOn = false, friendsTry = 0, board = [], boardAt = 0, boardLoading = null, lastPublished = '';
+function setFriendsOn(on) {
+  friendsOn = on;
+  document.documentElement.classList.toggle('has-friends', on);
+  const b = $('#map-friends');
+  if (b) b.hidden = !on;
+  if (!on) { board = []; boardAt = 0; if (isOpen('m-friends')) closeModal('m-friends'); }
+  const ms = $('#ms-friends');
+  if (ms && !on) ms.hidden = true;
+}
+const friendsQuiet = (what, e) => console.info(`[friends] ${what}（好友排行榜先藏起來，遊戲照玩）`, (e && e.code) || e);
+async function initFriends(uid) {
+  const tryId = ++friendsTry;
+  setFriendsOn(false);
+  lastPublished = '';
+  if (!uid || !cloud) return;
+  try {
+    await cloud.player(uid);                    // 規則沒部署：permission-denied
+    if (tryId !== friendsTry || !account || account.uid !== uid) return;
+    setFriendsOn(true);
+    await publishProfile();
+    loadBoard(true);
+  } catch (e) {
+    if (tryId === friendsTry) friendsQuiet('讀不到排行榜', e);
+  }
+}
+// 只算現在有的關卡（跟地圖下方的星星總數一樣；舊版或測試留下的關卡編號不算）
+const levelIds = () => LEVELS ? LEVELS.map(l => String(l.id)) : Object.keys(save.stars);
+const sumStars = () => levelIds().reduce((s, id) => s + Math.max(0, Math.min(3, Number(save.stars[id]) || 0)), 0);
+function myProfile() {
+  const best = {};
+  for (const id of levelIds()) { const v = Number(save.best[id]); if (v > 0) best[id] = Math.round(v); }
+  return { code: cloud.friendCode(account.uid), name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: Math.min(3000, sumStars()), best };
+}
+// 寫自己的公開資料（星星、每關最高分）。沒變就不寫；addUid：順便加好友（失敗時丟出去，讓「加好友」顯示錯誤）
+async function publishProfile(addUid) {
+  if (!friendsOn || !account) return;
+  const uid = account.uid, p = myProfile(), key = JSON.stringify(p);
+  if (!addUid && key === lastPublished) return;
+  try {
+    await cloud.publish({ ...p, t: Date.now() }, uid, addUid);
+    if (account && account.uid === uid) lastPublished = key;
+  } catch (e) {
+    if (addUid) throw e;
+    friendsQuiet('分數沒寫上排行榜，下次存檔再試', e);
+    if (e && e.code === 'permission-denied') setFriendsOn(false);
+  }
+}
+// 別人的公開資料：只留看得懂的欄位，名字最多 12 個字
+function cleanPlayer(p) {
+  if (!p || typeof p.uid !== 'string') return null;
+  const name = Array.from(String(p.name || '').normalize('NFKC').replace(/\s+/g, ' ').trim()).slice(0, 12).join('') || '玩家';
+  const best = {};
+  if (p.best && typeof p.best === 'object') {
+    for (const [k, v] of Object.entries(p.best)) { const n = Math.round(Number(v)); if (Number.isFinite(n) && n > 0) best[k] = n; }
+  }
+  return { uid: p.uid, name, stars: Math.max(0, Math.min(3000, Math.round(Number(p.stars) || 0))), best };
+}
+// 讀排行榜（一分鐘內讀過就用上次的；force 一定重讀）
+function loadBoard(force = false) {
+  if (!friendsOn || !account) return Promise.resolve(board);
+  if (boardLoading) return boardLoading;
+  if (!force && Date.now() - boardAt < 60000) return Promise.resolve(board);
+  const uid = account.uid;
+  const job = (async () => {
+    const me = await cloud.player(uid);
+    const ids = Array.isArray(me && me.friends) ? me.friends.filter(x => typeof x === 'string' && x !== uid).slice(0, 50) : [];
+    const [mine, them] = await Promise.all([
+      Promise.all(ids.map(id => cloud.player(id).catch(() => null))),
+      cloud.addedMe().catch(() => []),
+    ]);
+    if (!account || account.uid !== uid || !friendsOn) return board;
+    const byId = new Map();
+    for (const p of [...mine, ...them]) { const c = cleanPlayer(p); if (c && c.uid !== uid && !byId.has(c.uid)) byId.set(c.uid, c); }
+    board = [...byId.values()];
+    boardAt = Date.now();
+    return board;
+  })().catch(e => {
+    friendsQuiet('排行榜讀取失敗', e);
+    if (e && e.code === 'permission-denied') setFriendsOn(false);
+    return board;
+  }).finally(() => { if (boardLoading === job) boardLoading = null; });
+  boardLoading = job;
+  return job;
+}
+function renderBoard() {
+  const list = $('#fr-list');
+  if (!list || !account) return;
+  const me = { uid: account.uid, name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: sumStars(), me: true };
+  const rows = [me, ...board].sort((a, b) => b.stars - a.stars || (a.me ? -1 : b.me ? 1 : a.name.localeCompare(b.name)));
+  list.replaceChildren();
+  let rank = 0, prev = -1;
+  rows.forEach((p, i) => {
+    if (p.stars !== prev) { rank = i + 1; prev = p.stars; }      // 星星一樣多 → 同一名
+    const li = el('li', 'fr-row' + (p.me ? ' me' : ''));
+    li.dataset.rank = rank;
+    const rk = el('span', 'fr-rank'); rk.textContent = rank;
+    const av = el('span', 'acct-av fr-av'); av.textContent = Array.from(p.name)[0] || '?';
+    const nm = el('span', 'fr-nm'); nm.textContent = p.name;
+    if (p.me) nm.appendChild(el('small', '', '（我）'));
+    const st = el('span', 'fr-st'); st.appendChild(starSvg('on')); st.appendChild(numEl('b', fmt(p.stars)));
+    li.append(rk, av, nm, st);
+    list.appendChild(li);
+  });
+  $('#fr-empty').hidden = board.length > 0;
+}
+function openFriends() {
+  if (!friendsOn || !account) return;
+  $('#fr-mycode').textContent = cloud.friendCode(account.uid);
+  $('#fr-err').textContent = '';
+  $('#fr-input').value = '';
+  renderBoard();
+  openModal('m-friends');
+  loadBoard(true).then(() => { if (isOpen('m-friends')) renderBoard(); });
+}
+async function copyCode() {
+  if (!account) return;
+  const code = cloud.friendCode(account.uid);
+  try { await navigator.clipboard.writeText(code); toast('好友碼複製好了，貼給朋友吧'); }
+  catch (e) { toast('我的好友碼：' + code, 2600); }
+}
+let frBusy = false;
+async function submitFriend(e) {
+  e.preventDefault();
+  if (frBusy || !friendsOn || !account) return;
+  const err = $('#fr-err'), btn = $('#fr-submit');
+  const code = String($('#fr-input').value || '').normalize('NFKC').toUpperCase().replace(/[\s-]/g, '');
+  if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) { err.textContent = '好友碼是 6 個英文字母和數字'; return; }
+  if (code === cloud.friendCode(account.uid)) { err.textContent = '這是你自己的好友碼喔'; return; }
+  const uid = account.uid;
+  frBusy = true; btn.disabled = true; err.textContent = '';
+  try {
+    const found = (await cloud.findCode(code)).map(cleanPlayer).filter(p => p && p.uid !== uid);
+    if (!found.length) { err.textContent = '找不到這個好友碼，請朋友先登入遊戲一次'; return; }
+    const f = found[0];
+    await publishProfile(f.uid);
+    if (!account || account.uid !== uid) return;
+    if (boardLoading) await boardLoading;
+    await loadBoard(true);
+    if (isOpen('m-friends')) { renderBoard(); $('#fr-input').value = ''; }
+    audio.play('tap');
+    toast(`加好友了：${f.name}`, 2000);
+  } catch (ex) {
+    friendsQuiet('加好友失敗', ex);
+    err.textContent = navigator.onLine === false ? '現在離線，連上網路再試一次' : '沒加成功，等一下再試一次';
+  } finally {
+    frBusy = false; btn.disabled = false;
+  }
+}
+// 關卡卡片：好友在這一關的最高分（最多三個人）
+function renderCardFriends(i) {
+  const box = $('#ms-friends');
+  if (!box) return;
+  const lvl = LEVELS[i], id = lvl ? String(lvl.id) : '';
+  const rows = friendsOn ? board.map(p => ({ name: p.name, s: p.best[id] || 0 })).filter(r => r.s > 0).sort((a, b) => b.s - a.s).slice(0, 3) : [];
+  box.replaceChildren();
+  box.hidden = !rows.length;
+  if (!rows.length) return;
+  box.appendChild(el('span', 'msf-lbl', '好友最高分'));
+  for (const r of rows) {
+    const one = el('span', 'msf-one');
+    const n = el('i'); n.textContent = r.name;
+    one.append(n, numEl('b', fmt(r.s)));
+    box.appendChild(one);
+  }
 }
 
 // ---------- 模組 ----------
@@ -1050,6 +1223,8 @@ function openStartCard(i) {
   const av = $('#ms-avatar');
   av.innerHTML = '';
   av.appendChild(toyEl(TITLE_TOYS[i % TITLE_TOYS.length], 24));
+  renderCardFriends(i);
+  if (friendsOn) loadBoard().then(() => { if (cardLevel === i && isOpen('m-start')) renderCardFriends(i); });
   openModal('m-start');
 }
 
@@ -2252,8 +2427,8 @@ function bindUI() {
   $('#btn-pause').addEventListener('click', () => { if (canPause()) openSettings(); });
   $('#ms-play').addEventListener('click', () => { if (cardLevel >= 0) startLevel(cardLevel); });
   for (const b of $$('[data-close]')) b.addEventListener('click', () => closeModal(b.closest('.modal').id));
-  // 點背景關閉（只限開始卡和設定）
-  for (const id of ['m-start', 'm-settings']) {
+  // 點背景關閉（只限開始卡、設定、好友排行榜）
+  for (const id of ['m-start', 'm-settings', 'm-friends']) {
     const m = document.getElementById(id);
     m.addEventListener('click', e => { if (e.target === m) closeModal(id); });
   }
@@ -2275,6 +2450,9 @@ function bindUI() {
   $('#lg-switch').addEventListener('click', () => setLoginMode(lgMode === 'up' ? 'in' : 'up'));
   $('#lg-show').addEventListener('change', e => { const t = e.target.checked ? 'text' : 'password'; $('#lg-pass').type = t; $('#lg-pass2').type = t; });
   $('#acct-out').addEventListener('click', signOut);
+  $('#map-friends').addEventListener('click', () => { audio.play('tap'); openFriends(); });
+  $('#fr-form').addEventListener('submit', submitFriend);
+  $('#fr-copy').addEventListener('click', copyCode);
   $('#set-map').addEventListener('click', () => leaveToMap());
   $('#set-restart').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-next').addEventListener('click', () => {

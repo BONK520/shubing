@@ -14,6 +14,23 @@ service cloud.firestore {
         && request.resource.data.best is map && request.resource.data.best.size() <= 1000
         && request.resource.data.boosters is map && request.resource.data.boosters.size() <= 20;
     }
+    // 好友排行榜的公開資料：players/{登入帳號的 uid}。登入的人都能讀（排行榜、用好友碼找人）；
+    // 只有本人能寫，而且只能有這幾個欄位、大小有限。存檔（上面的 saves）還是只有本人看得到
+    match /players/{uid} {
+      allow read: if request.auth != null;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['code', 'name', 'stars', 'best', 'friends', 't'])
+        && request.resource.data.code is string && request.resource.data.code.matches('^[A-HJ-NP-Z2-9]{6}$')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.stars is int
+        && request.resource.data.stars >= 0 && request.resource.data.stars <= 3000
+        && request.resource.data.best is map && request.resource.data.best.size() <= 1000
+        && (!('friends' in request.resource.data)
+            || (request.resource.data.friends is list && request.resource.data.friends.size() <= 50))
+        && (!('t' in request.resource.data) || request.resource.data.t is int);
+    }
     // 其他東西一律不能讀寫
     match /{document=**} {
       allow read, write: if false;

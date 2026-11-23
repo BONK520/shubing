@@ -9,6 +9,12 @@
 //   cloud.signOut()
 //   cloud.load()           讀自己的存檔 → 物件或 null（還沒存過）
 //   cloud.save(data, uid)  寫自己的存檔（整份覆蓋）；目前登入的不是 uid 就不寫
+//   好友排行榜（players/{uid}，登入的人都能讀、只有本人能寫；存檔 saves 還是只有本人看得到）：
+//   cloud.friendCode(uid)  這個帳號的好友碼（6 個字，從 uid 算出來，不會變）
+//   cloud.player(uid)      讀一個人的公開資料 → { uid, code, name, stars, best, friends } 或 null
+//   cloud.publish(data, uid, addUid)  寫自己的公開資料（只改給的欄位）；addUid：順便加進自己的好友名單
+//   cloud.findCode(code)   用好友碼找人 → 清單
+//   cloud.addedMe()        把我加成好友的人 → 清單（對方加了我，我這邊也看得到對方）
 //
 // SDK 從 Google 的 CDN 載（只有設定了雲端存檔才會載，約 110 KB gzip），不會拖慢遊戲開始。
 // 存檔在 Firestore 的 saves/{uid}；規則只讓本人讀寫（firestore.rules）。
@@ -55,6 +61,17 @@ export function nameFromEmail(email) {
     if (bits >= 8) { bytes.push((val >>> (bits - 8)) & 255); bits -= 8; }
   }
   try { return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); } catch (e) { return null; }
+}
+
+// 好友碼：uid 算出來的 6 個字，去掉容易看錯的 I、O、0、1（firestore.rules 也照這個格式檢查）
+const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const CODE_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+export function friendCode(uid) {
+  let h = 0x811c9dc5;
+  for (const ch of String(uid)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  let s = '';
+  for (let i = 0; i < 6; i++) { s += CODE_ABC[h & 31]; h >>>= 5; }
+  return s;
 }
 
 export function createCloud(config, { emulator = false } = {}) {
@@ -128,6 +145,33 @@ export function createCloud(config, { emulator = false } = {}) {
       await ready;
       if (uid && (!user || user.uid !== uid)) throw Object.assign(new Error('account changed'), { code: 'cloud/account-changed' });
       await F.setDoc(ref(), data);
+    },
+    // ---------- 好友排行榜 ----------
+    friendCode,
+    async player(uid) {
+      await ready;
+      const s = await F.getDoc(F.doc(db, 'players', uid));
+      return s.exists() ? { ...s.data(), uid } : null;
+    },
+    async publish(data, uid, addUid) {
+      await ready;
+      if (!user || (uid && user.uid !== uid)) throw Object.assign(new Error('account changed'), { code: 'cloud/account-changed' });
+      const ref = F.doc(db, 'players', user.uid);
+      // 平常：只換給的欄位（best 整個換掉，不會留下已經沒有的關卡），friends 不動。
+      // 加好友：merge＋arrayUnion（mergeFields 跟 arrayUnion 一起用會先把整個 friends 清空，所以分開寫）
+      if (addUid) await F.setDoc(ref, { ...data, friends: F.arrayUnion(addUid) }, { merge: true });
+      else await F.setDoc(ref, { ...data }, { mergeFields: Object.keys(data) });
+    },
+    async findCode(code) {
+      await ready;
+      const r = await F.getDocs(F.query(F.collection(db, 'players'), F.where('code', '==', code), F.limit(5)));
+      return r.docs.map(d => ({ ...d.data(), uid: d.id }));
+    },
+    async addedMe() {
+      await ready;
+      if (!user) return [];
+      const r = await F.getDocs(F.query(F.collection(db, 'players'), F.where('friends', 'array-contains', user.uid), F.limit(50)));
+      return r.docs.map(d => ({ ...d.data(), uid: d.id }));
     },
   };
 }
