@@ -2080,7 +2080,7 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
-  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino',
+  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino', hatch: 'hatch',
   tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift', belt: 'belt' };
 function onCue(name, data, token) {
   if (token !== session) return;
@@ -2096,6 +2096,7 @@ function onCue(name, data, token) {
     case 'cage': case 'frost': case 'choco': case 'gift': buzzLater(d, 12, 60); break;
     case 'shell': buzzLater(d, 16, 60); break;
     case 'dino': buzzLater(d, [12, 30, 12], 80); break;
+    case 'hatch': buzzLater(d + ((data && data.crack) || 0), 18, 60); break;     // 破殼那一下
     case 'alarm': buzzLater(d, [30, 40, 30, 40, 30], 80); break;
     case 'alarmoff': buzzLater(d, 12, 60); break;
   }
@@ -2156,6 +2157,7 @@ function launchFlight(name, data, token) {
   setTimeout(() => {
     if (token !== session) return;
     const from = R && R.cellRect ? R.cellRect(data.r, data.c) : null;
+    if (from && data.dy) from.y += data.dy * from.size;       // 龍龍破殼後先往上飛了幾格，從那裡接著飛
     if (!ref || !from || flyLive >= FLY_MAX || document.hidden) { arrive(); return; }
     flyLive++;
     flyToGoal(dino ? 'dino' : jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });

@@ -639,6 +639,19 @@ const SFX = {
     noise(t, { dur: 0.25, attack: 0.03, gain: 0.05, type: 'lowpass', f0: 700, f1: 250, q: 1.2 });
     bubble(52, t + 0.18, 0.06);
   },
+  // 龍龍破殼：蛋殼被頂了三下「叩、叩、叩」（越來越大聲）→ o.crack 毫秒後「喀啦」裂開 + 往上的「啾」
+  hatch(t, o) {
+    const c = t + clamp((+o.crack || 420) / 1000, 0.2, 1);
+    for (let i = 0; i < 3; i++) {
+      const at = t + (c - t) * (i / 3), g = 0.05 + i * 0.02;
+      tone(620 + i * 40, at, { dur: 0.05, attack: 0.002, gain: g, to: 420, glide: 0.04, type: 'triangle', lp: 2200 });
+      noise(at, { dur: 0.02, attack: 0.001, gain: g * 0.6, type: 'bandpass', f0: 2400, q: 1.2 });
+    }
+    crunch(c, 1.25, 0.26);
+    crunch(c + 0.03, 0.9, 0.16);
+    noise(c, { dur: 0.05, attack: 0.001, gain: 0.08, type: 'highpass', f0: 3000, q: 0.7 });
+    tone(700, c + 0.05, { dur: 0.16, attack: 0.004, gain: 0.06, to: 1600, glide: 0.14, type: 'sine' });
+  },
   // 龍龍救出來：開心的上行琶音 + 亮晶晶
   dino(t) {
     [72, 76, 79, 84].forEach((m, i) => marimba(m, t + i * 0.06, 0.1, 0.3));
