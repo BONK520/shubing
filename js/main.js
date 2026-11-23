@@ -1,11 +1,11 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123p';
-import { SLOGANS } from './slogans.js?v=20261123p';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123p';
-import { blockerCanvas } from './blockers.js?v=20261123p';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123p';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123q';
+import { SLOGANS } from './slogans.js?v=20261123q';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123q';
+import { blockerCanvas } from './blockers.js?v=20261123q';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123q';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123p';
+const MOD_V = '?v=20261123q';
 
 window.__plushBooted = true;
 
@@ -919,8 +919,10 @@ function buildTitle() {
 
 // ---------- 關卡地圖 ----------
 const MAP_GAP = 116, MAP_TOP = 150, MAP_BOTTOM = 110;
+// 頂部按鈕列浮在地圖上（地圖畫到螢幕最上緣），地圖最上面多留按鈕列的高度（含瀏海），最後一關和「製作中」的牌子才不會被蓋住
+function mapTopOf() { const tb = $('#scr-map .topbar'); return MAP_TOP + Math.round((tb && tb.offsetHeight) || 64); }
 let mapNodes = [];
-let mapSt = [], mapArtKey = '', mapArtStr = '';   // 目前畫的各站範圍、背景快取（寬度|關卡數）
+let mapSt = [], mapArtKey = '', mapArtStr = '';   // 目前畫的各站範圍、背景快取（寬度|關卡數|高度）
 function isUnlocked(i) { return i < save.unlocked; }
 function currentIndex() { return clamp(save.unlocked, 1, LEVELS.length) - 1; }
 function nodePos(i, n, H) {
@@ -970,7 +972,8 @@ function buildMap(popIndex = -1) {
   const inner = $('#map-inner');
   inner.innerHTML = '';
   const n = LEVELS.length;
-  const H = MAP_TOP + (n - 1) * MAP_GAP + MAP_BOTTOM;
+  const top = mapTopOf();
+  const H = top + (n - 1) * MAP_GAP + MAP_BOTTOM;
   inner.style.height = H + 'px';
   const pts = LEVELS.map((_, i) => nodePos(i, n, H));
   const cur = currentIndex();
@@ -1045,7 +1048,7 @@ function buildMap(popIndex = -1) {
   if (ava) ava.replaceChildren(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22));   // 中間那隻（薯餅）當頭像
 
   const end = el('span', 'map-end', '更多關卡製作中…');
-  end.style.top = (MAP_TOP * 0.42) + 'px';
+  end.style.top = (top - MAP_TOP * 0.58) + 'px';   // 按鈕列下面一點（和最後一關的距離跟以前一樣）
   inner.appendChild(end);
 
   // 星星總數
@@ -1056,7 +1059,7 @@ function buildMap(popIndex = -1) {
 }
 // 地圖背景：只跟地圖寬度和關卡數有關，同一個寬度畫一次就好
 function mapArt(inner, n, H) {
-  const W = Math.round(inner.clientWidth) || 375, key = W + '|' + n;
+  const W = Math.round(inner.clientWidth) || 375, key = W + '|' + n + '|' + H;
   if (key !== mapArtKey) { mapArtKey = key; mapArtStr = mapArtHTML(W, n, H); }
   return mapArtStr;
 }
@@ -1066,8 +1069,7 @@ function refreshMapArt() {
   if (!art) return;
   const W = Math.round(inner.clientWidth);
   if (!W || Math.abs(W - (parseInt(mapArtKey, 10) || 0)) <= 2) return;
-  const n = LEVELS.length;
-  art.innerHTML = mapArt(inner, n, MAP_TOP + (n - 1) * MAP_GAP + MAP_BOTTOM);
+  art.innerHTML = mapArt(inner, LEVELS.length, parseFloat(inner.style.height));   // 高度照這次排好的地圖
 }
 // 右上角顯示畫面中間是哪一站
 function updateMapHere() {
