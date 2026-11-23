@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123q") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123q") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123r") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123r") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -258,87 +258,78 @@ svg use { pointer-events: none; }
   0%, 100% { translate: 0 0; }
   50% { translate: 0 -.07em; }
 }
-.logo-sm { font-size: clamp(40px, 12vw, 60px); }
-
-/* ---------- 載入畫面 ---------- */
-#scr-loading { justify-content: center; align-items: center; }
-.load-wrap { width: min(86%, 360px); display: flex; flex-direction: column; align-items: center; gap: 22px; }
-.load-deco { /* 進度條上面跳跳的貼紙（薯餅頂橘子） */
-  position: relative; height: clamp(92px, 17vh, 140px); width: 100%;
-  display: flex; justify-content: center; align-items: flex-end;
-  margin: -8px 0 -12px;
-}
-.load-deco img {
-  position: relative; z-index: 1; height: 100%; width: auto; max-width: 70%; object-fit: contain;
-  transform-origin: 50% 100%; filter: drop-shadow(0 0 5px rgba(255, 240, 252, .95)) var(--stk-shadow);
-  animation: stkHop .95s cubic-bezier(.45, 0, .55, 1) infinite;
-}
-.load-deco::after { /* 地上的影子 */
-  content: ''; position: absolute; left: 50%; bottom: -4px; width: 46%; max-width: 110px; height: 12px; margin-left: min(-23%, -55px);
-  border-radius: 50%; background: rgba(105, 37, 60, .2);
-  animation: shadowPulse .95s cubic-bezier(.45, 0, .55, 1) infinite;
-}
-@keyframes stkHop {
-  0%, 100% { transform: translateY(0) scale(1.1, .88); }
-  14%      { transform: translateY(-6%) scale(.94, 1.07); }
-  48%      { transform: translateY(-24%) scale(1, 1) rotate(-4deg); }
-  82%      { transform: translateY(-3%) scale(.97, 1.04) rotate(2deg); }
-}
+/* ---------- 載入條（還在載入時放在封面按鈕的位置，html.is-loading） ---------- */
+.cv-load { width: min(80vw, 300px); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .loadbar {
-  width: 100%; height: 28px; border-radius: 999px; padding: 4px;
-  background: linear-gradient(180deg, #f3e8ff, #fff); border: 3px solid #fff;
-  box-shadow: 0 0 0 2.5px #ff6fb3, 0 4px 0 2.5px var(--pink-rim), var(--shadow), inset 0 2px 4px rgba(111, 40, 64, .2);
+  width: 100%; height: 24px; border-radius: 999px; padding: 4px;
+  background: linear-gradient(180deg, #eef8ea, #fff); border: 3px solid #fff;
+  box-shadow: 0 0 0 2.5px #5cc98a, 0 4px 0 2.5px #2f9a5f, 0 8px 14px rgba(30, 80, 60, .22), inset 0 2px 4px rgba(30, 80, 50, .18);
 }
 .loadbar-fill {
   height: 100%; width: 0%; border-radius: 999px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .55) 0 40%, rgba(255, 255, 255, 0) 41%),
     repeating-linear-gradient(-45deg, rgba(255, 255, 255, .35) 0 10px, rgba(255, 255, 255, 0) 10px 20px),
-    linear-gradient(180deg, #ffa8d6, #ff4fa3 60%, #e8288a);
+    linear-gradient(180deg, #a6f0bf, #4cd37f 60%, #27a95e);
   background-size: 100% 100%, 28px 28px, 100% 100%;
   animation: stripes .8s linear infinite;
   transition: width .25s ease;
-  box-shadow: inset 0 -2px 0 rgba(160, 20, 90, .25);
+  box-shadow: inset 0 -2px 0 rgba(20, 110, 60, .25);
 }
 @keyframes stripes { to { background-position: 0 0, 28px 0, 0 0; } }
-.load-text { margin: 0; font-weight: 800; font-size: 18px; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(143, 51, 82, .45); line-height: 1.5; }
-.load-text small { font-size: 14px; font-weight: 700; }
+.load-text { margin: 0; font-weight: 800; font-size: 16px; color: var(--ink); text-align: center; text-shadow: 0 0 4px #fff, 0 0 2px #fff, 0 1px 0 #fff; line-height: 1.5; }
+.load-text small { font-size: 13px; font-weight: 700; }
+html.is-loading .title-btns, html.is-loading #scr-title .topbar { visibility: hidden; }
+html:not(.is-loading) .cv-load { display: none; }
 
-/* ---------- 標題畫面 ---------- */
-.title-main {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: clamp(8px, 2.2vh, 22px); min-height: 0;
-}
-.title-head, .title-play { display: contents; }   /* 直式不分欄；橫式手機才變成兩欄（見最下面） */
-.logo-sub { /* 主角名字：皮蛋・薯餅・蛋黃哥（跟下面玩具由左到右同順序） */
-  margin: calc(-1 * clamp(14px, 4.2vw, 24px)) 0 0; position: relative; z-index: 1;
+/* ---------- 封面：站在蛋蛋碼頭（背景是 .cover-bg，main.js 的 buildCover 照這裡量到的位置畫沙灘和海） ---------- */
+.title-main { flex: 1; display: flex; flex-direction: column; align-items: center; min-height: 0; width: 100%; }
+#scr-title .topbar { position: relative; z-index: 3; }
+.title-head { flex: none; display: flex; flex-direction: column; align-items: center; }
+.logo-sub { /* 主角名字：皮蛋・薯餅・蛋黃哥（跟雲台上的玩具由左到右同順序），字小一點、退在標題後面 */
+  margin: calc(-1 * clamp(8px, 2.6vw, 16px)) 0 0; position: relative; z-index: 1;
   display: flex; align-items: center; gap: .1em;
-  font-weight: 900; font-size: clamp(20px, 5.8vw, 28px); letter-spacing: .08em; line-height: 1.2;
-  color: #fff;
+  font-weight: 900; font-size: clamp(14px, 4.2vw, 19px); letter-spacing: .08em; line-height: 1.2;
+  color: #fff; opacity: .92;
   text-shadow:
-    1.5px 0 0 #b4357b, -1.5px 0 0 #b4357b, 0 1.5px 0 #b4357b, 0 -1.5px 0 #b4357b,
-    1.1px 1.1px 0 #b4357b, -1.1px 1.1px 0 #b4357b, 1.1px -1.1px 0 #b4357b, -1.1px -1.1px 0 #b4357b,
-    0 3px 0 #b4357b, 0 4px 4px rgba(70, 10, 70, .25);
+    1px 0 0 #b4357b, -1px 0 0 #b4357b, 0 1px 0 #b4357b, 0 -1px 0 #b4357b,
+    .8px .8px 0 #b4357b, -.8px .8px 0 #b4357b, .8px -.8px 0 #b4357b, -.8px -.8px 0 #b4357b,
+    0 2px 0 #b4357b, 0 3px 4px rgba(70, 10, 70, .2);
 }
 .logo-sub i { font-style: normal; color: #ffd23f; }
-.tagline { /* 實體的糖果牌：亮邊 + 外圈 + 底下深玫瑰的厚度 */
-  margin: -2px 0 6px; padding: 6px 18px 7px; border-radius: 999px;
-  background: linear-gradient(180deg, #fffdf8 0%, #fff3ea 58%, #fde4da 100%); border: 3px solid #fff;
-  font-weight: 900; font-size: 15px; color: #b8325f; letter-spacing: .06em;
-  text-shadow: 0 1.5px 0 #fff;
-  box-shadow: inset 0 3px 0 #fff, inset 0 -4px 0 rgba(230, 120, 140, .2),
-    0 0 0 2px #f7a6c0, 0 5px 0 2px #d0567f, 0 10px 12px 2px rgba(110, 50, 60, .24);
+.tagline {
+  margin: 6px 0 0; padding: 3px 12px 4px; border-radius: 999px;
+  background: rgba(255, 255, 255, .62);
+  font-weight: 800; font-size: 12px; color: #a23d66; letter-spacing: .06em;
+  box-shadow: 0 2px 6px rgba(70, 50, 90, .12);
 }
+/* 沙灘上主人的玩具合照、雲後探頭的娃娃（buildCover 放進來；太擠就不放，橫向手機藏起來） */
+.cv-deco { position: relative; flex: 1 1 0; min-height: 0; width: 100%; max-width: 440px; pointer-events: none; }
+.cv-deco .map-spot { transform: translate(-50%, -100%) scale(var(--s, 1)); transform-origin: 50% 100%; }
+.title-play {
+  flex: none; width: 100%; display: grid; justify-items: center; align-items: center;
+  grid-template-columns: minmax(0, 1fr); grid-template-areas: "toys" "act"; padding-bottom: clamp(6px, 2.4vh, 26px);
+}
+.cv-load, .title-btns { grid-area: act; }
+/* 皮蛋、薯餅、蛋黃哥站在沙灘上的一朵立體雲台上 */
 .title-toys {
-  position: relative; width: 100%; max-width: 440px;
-  height: clamp(150px, 29vh, 250px); padding-bottom: clamp(18px, 3.4vh, 30px); box-sizing: content-box;
+  grid-area: toys; position: relative; width: 100%; max-width: 420px;
+  height: clamp(100px, min(37vw, 23vh), 190px); padding-bottom: clamp(24px, 4.6vh, 44px); box-sizing: content-box;
   display: flex; justify-content: center; align-items: flex-end; gap: 2%;
 }
-.title-toys::before { /* 展示台後面一片柔光（舞台的燈） */
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 70%;
-  border-radius: 50%; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, .55) 0%, rgba(255, 236, 250, .28) 40%, rgba(255, 255, 255, 0) 70%);
+.title-toys::before {
+  content: ''; position: absolute; left: 1%; right: 1%; bottom: 0; height: clamp(54px, 10.5vh, 98px);
+  /* 三朵立體雲排成一座雲台：中間大的在前面，兩邊小一點 */
+  background:
+    var(--cloud) 50% 100% / auto 100% no-repeat,
+    var(--cloud) 0 100% / auto 84% no-repeat,
+    var(--cloud) 100% 100% / auto 84% no-repeat;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 8px rgba(40, 80, 110, .22));
 }
+.ttoy .ped { display: none; }
+.title-toys .ttoy { animation: ttoyIn .55s cubic-bezier(.3, 1.6, .5, 1) backwards; animation-delay: calc(var(--k) * .09s + .05s); }
+@keyframes ttoyIn { from { transform: translateY(18%) scale(.4); opacity: 0; } }
 .ttoy {
   --sz: clamp(84px, min(31vw, 19vh), 160px);
   position: relative; width: var(--sz); height: var(--sz);
@@ -403,17 +394,12 @@ svg use { pointer-events: none; }
   45%      { transform: translateY(-20%) scale(1, 1); }
   80%      { transform: translateY(-2%) scale(.98, 1.03); }
 }
-@keyframes shadowPulse {
-  0%, 100% { transform: translateY(var(--lift, 0)) scale(1); opacity: 1; }
-  45% { transform: translateY(var(--lift, 0)) scale(.7); opacity: .55; }
-}
-.ttoy .shadow { --lift: 0; }
 @keyframes wobble { 0%, 100% { rotate: 0deg; } 20% { rotate: -14deg; } 45% { rotate: 12deg; } 70% { rotate: -6deg; } }
 @keyframes boing { 0% { transform: scale(1); } 30% { transform: scale(1.18, .82); } 55% { transform: translateY(-26%) scale(.92, 1.1); } 100% { transform: none; } }
 
-.title-btns { display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top: 6px; }
+.title-btns { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 4px; }
 .title-btns .btn.xl { min-width: 240px; }
-.title-btns .btn.pink { min-width: 200px; font-size: 18px; min-height: 48px; }
+.title-btns .btn.pink { min-width: 170px; font-size: 16px; min-height: 44px; }
 
 /* 玩具沒有圖時的替代圓形 */
 .toy-fallback {
@@ -989,7 +975,8 @@ svg.on .hi { opacity: .9; }
   .hud-goal { min-height: 54px; }
   .gi .ic { width: 38px; height: 38px; }
   .hud-moves b { font-size: 36px; }
-  .title-toys { height: 130px; }
+  .title-toys { height: 96px; }
+  .ttoy { --sz: 88px; } .ttoy:nth-child(2) { --sz: 100px; }
   .card:not(.sheet-card) { gap: 10px; padding-top: 40px; }
   .goal-big .gb .ic { width: 58px; height: 58px; }
   .hint-avatar { width: 50px; height: 50px; }
@@ -1008,20 +995,19 @@ svg.on .hi { opacity: .9; }
   #app { max-width: 1100px; }
   #app::before { display: none; }
 
-  /* 標題：左欄 logo＋名字、右欄玩具＋按鈕 */
+  /* 封面：左欄 logo＋名字、右欄雲台＋按鈕；沙灘上的合照藏起來 */
   #scr-title .topbar { position: absolute; top: calc(6px + var(--safe-t)); right: calc(12px + var(--safe-r)); z-index: 3; min-height: 0; }
-  .title-main { flex-direction: row; gap: clamp(12px, 4vw, 48px); }
-  .title-head, .title-play {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    flex: 1 1 0; min-width: 0; max-width: 430px;
-  }
-  .logo:not(.logo-sm) { font-size: clamp(40px, min(8vw, 15vh), 72px); }
-  .logo-sub { margin-top: -14px; font-size: clamp(18px, 6vh, 26px); }
-  .tagline { margin-top: 0; }
-  .title-toys { height: clamp(96px, 34vh, 170px); }
-  .ttoy { --sz: clamp(64px, 24vh, 124px); }
-  .ttoy:nth-child(2) { --sz: clamp(76px, 29vh, 150px); }
-  .title-btns { gap: 14px; margin-top: 0; }
+  .title-main { flex-direction: row; justify-content: center; gap: clamp(12px, 4vw, 48px); }
+  .title-head, .title-play { flex: 1 1 0; min-width: 0; max-width: 430px; align-self: center; margin: 0; }
+  .title-play { padding-bottom: 0; row-gap: 6px; }
+  .cv-deco { display: none; }
+  .logo { font-size: clamp(40px, min(8vw, 15vh), 72px); }
+  .logo-sub { font-size: clamp(14px, 4.4vh, 19px); }
+  .title-toys { height: clamp(64px, 29vh, 150px); max-width: 360px; padding-bottom: clamp(16px, 6vh, 30px); }
+  .title-toys::before { height: clamp(36px, 14vh, 66px); }
+  .ttoy { --sz: clamp(56px, 24vh, 124px); }
+  .ttoy:nth-child(2) { --sz: clamp(64px, 29vh, 150px); }
+  .title-btns { gap: 10px; margin-top: 0; }
 
   /* 地圖：維持手機欄寬，不拉成整個橫向螢幕 */
   #scr-map { left: max(0px, calc(50% - 280px)); right: max(0px, calc(50% - 280px)); }
@@ -1121,32 +1107,8 @@ svg.on .hi { opacity: .9; }
   0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); }
   50% { transform: rotate(calc(var(--r, 0deg) * -0.5)) translateY(-7px); }
 }
-/* 標題畫面：角落探頭的貼紙，在標題和按鈕後面 */
 .title-main { position: relative; z-index: 1; }
-/* 角落的玩具站在一朵小小的浮空雲台上（有接觸陰影），跟中間的展示台是同一個空間 */
-.title-stk {
-  position: absolute; z-index: 0; pointer-events: none; user-select: none;
-  animation: isleFloat 5.2s ease-in-out infinite;
-}
-.title-stk img {
-  position: relative; z-index: 1; display: block; width: 100%; height: auto; transform-origin: 50% 100%;
-  animation: stk-sway 4.6s ease-in-out infinite; animation-delay: inherit;
-  filter: drop-shadow(0 0 7px rgba(255, 196, 240, .75));
-}
 @keyframes stk-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-.title-stk::before { /* 雲台：上面亮、底下一圈淡粉的厚度、再往下的投影 */
-  content: ''; position: absolute; left: -10%; right: -10%; bottom: -12%; height: 26%; border-radius: 50%;
-  background: radial-gradient(ellipse 70% 80% at 50% 30%, #fff 0%, #fff4ee 45%, #f6d9d6 100%);
-  box-shadow: inset 0 2px 0 #fff, inset 0 -4px 6px rgba(220, 140, 150, .35), 0 5px 0 #efc0c4, 0 8px 0 #d8999f, 7px 15px 14px rgba(82, 29, 47, .28);
-}
-.title-stk::after { /* 腳下的接觸陰影 */
-  content: ''; position: absolute; left: 20%; right: 20%; bottom: -3%; height: 9%; border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 50%, rgba(66, 24, 38, .5) 0%, rgba(66, 24, 38, .22) 45%, rgba(66, 24, 38, 0) 72%);
-}
-@keyframes isleFloat { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
-.stk-pig { --r: -12deg; width: clamp(58px, 15vw, 96px); left: calc(4px + var(--safe-l)); top: calc(70px + var(--safe-t)); }
-.stk-snoopy { --r: 9deg; width: clamp(72px, 19vw, 116px); right: calc(0px + var(--safe-r)); top: calc(70px + var(--safe-t)); animation-delay: -2.1s; }
-@media (max-height: 700px) { .stk-snoopy { width: clamp(60px, 15vw, 92px); top: calc(54px + var(--safe-t)); } }
 
 .map-inner { z-index: 1; }
 
@@ -1427,24 +1389,15 @@ svg.on .hi { opacity: .9; }
 .sb-star.on { fill: url(#g-gold); stroke: #a8520a; filter: drop-shadow(0 2px 0 #8a4204) drop-shadow(0 0 6px rgba(255, 196, 40, .85)); }
 .sb-star.on .hi { opacity: .95; }
 
-/* ---------- 帳號（雲端存檔）：標題左上的小牌子、設定裡的帳號列、「帶進帳號？」對話框 ---------- */
-.acct-chip {
-  display: inline-flex; align-items: center; gap: 8px; height: 42px; max-width: 46vw; padding: 0 14px 0 4px;
-  border-radius: 999px; border: 3px solid #fff; cursor: pointer;
-  background: linear-gradient(180deg, #fffaf3 0%, #fff3ea 50%, #fde6dc 100%);
-  box-shadow: 0 0 0 2.5px #f78fb0, 0 4px 0 2.5px #d0567f, 0 8px 12px rgba(110, 50, 60, .22);
-  font: 900 15px/1 var(--font); color: var(--ink);
-  transition: transform .09s;
-}
-.acct-chip:active { transform: translateY(2px); }
-.acct-chip[hidden], .acct[hidden], .acct-out[hidden] { display: none; }
+/* ---------- 帳號（雲端存檔）：設定裡的帳號列、「帶進帳號？」對話框 ---------- */
+.acct[hidden], .acct-out[hidden] { display: none; }
 .acct-av {
   width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; overflow: hidden;
   background: linear-gradient(180deg, #8fe6ff, #38aef8); color: #fff; font-weight: 900; font-size: 15px;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12), 0 0 0 2px #fff;
 }
 .acct-av svg { width: 19px; height: 19px; fill: #fff; filter: drop-shadow(0 1px 0 rgba(13, 82, 163, .5)); }
-.acct-chip.in .acct-av, .acct[data-sync]:not([data-sync="guest"]) .acct-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
+.acct[data-sync]:not([data-sync="guest"]) .acct-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
 .acct-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .acct { width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .sheet.in-game .acct { display: none; }      /* 玩到一半不換帳號 */
@@ -1960,4 +1913,57 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
     bottom: -18px; color: #6b2d4a; font-size: 11px; font-weight: 700; text-shadow: none; filter: none;
   }
   #scr-game .bst.on { box-shadow: 0 0 0 4px #ffe14d, 0 0 22px 6px rgba(255, 220, 80, .8), 0 4px 0 #e7b9cf; }
+}
+
+/* ---------- 封面背景（蛋蛋碼頭 A／整座島 B），在 #app 後面、天空前面；離開封面就淡掉 ---------- */
+.cover-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: linear-gradient(180deg, #c6eaa9 0%, #d7f2c0 52%, #fdeccb 56%, #ffe3b6 78%, #8fd3ef 81%, #7fcbeb 100%);
+  transition: opacity .4s ease;
+}
+:root[data-screen]:not([data-screen="title"]) .cover-bg { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
+:root[data-screen]:not([data-screen="title"]) .cover-bg * { animation-play-state: paused !important; }
+.cover-bg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cover-b .cover-bg { background: #8fd3ef; }
+.cover-b .cover-bg svg { filter: blur(3px); opacity: .55; transform: scale(1.04) translateZ(0); }
+.cv-wv { animation: cvWave 3.2s ease-in-out infinite; animation-delay: var(--k, 0s); }
+@keyframes cvWave { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+.cv-boat { transform-box: fill-box; transform-origin: 50% 100%; animation: cvBoat 3.6s ease-in-out infinite; }
+@keyframes cvBoat { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.cv-cloud { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; opacity: .92; animation: cvDrift 26s ease-in-out infinite alternate; }
+@keyframes cvDrift { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+
+/* ---------- 開頭動畫（js/opening.js），蓋在最上面 ---------- */
+.op {
+  position: fixed; inset: 0; z-index: 2147483001; overflow: hidden; background: #8fd3ef;
+  touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.op-stage { position: absolute; top: 0; bottom: 0; left: 50%; overflow: hidden; transform-origin: 50% 50%; }
+.op-strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.op-island { position: absolute; inset: 0; opacity: 0; transform-origin: 50% 72%; }
+.op-island svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.op-title { position: absolute; inset: 0; pointer-events: none; }
+.op-cloud { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; transform-origin: 50% 56%; opacity: 0; }
+.op-cloud i {
+  position: absolute; left: 0; top: 45%; width: 100%; height: 100%; background: inherit; transform: scaleY(-1); opacity: 0;
+  -webkit-mask-image: linear-gradient(#000 55%, transparent 92%); mask-image: linear-gradient(#000 55%, transparent 92%);   /* 倒過來的雲上緣慢慢淡掉，跟上面那朵接起來不會有一條線 */
+}
+.op-logo { position: absolute; margin: 0; z-index: 1; }
+.op-trio { position: absolute; display: flex; gap: 4px; transform: translateX(-50%); z-index: 1; }
+.op-trio img { display: block; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(40, 60, 90, .25)); }
+.op-white { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.op-burst { position: absolute; inset: 0; pointer-events: none; }
+.op-burst i { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; }
+.op.op-reveal { background: transparent !important; }
+.op-skip {
+  position: absolute; right: calc(16px + var(--safe-r)); bottom: calc(14px + var(--safe-b));
+  font: 700 12px/1 var(--font); letter-spacing: .2em; color: #fff; opacity: .55;
+  text-shadow: 0 1px 2px rgba(30, 60, 90, .35); pointer-events: none;
+}
+.op .node { pointer-events: none; }
+html.op-playing #app *, html.op-playing #app *::before, html.op-playing #app *::after,
+html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paused !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-wv, .cv-boat, .cv-cloud, .title-toys .ttoy { animation: none !important; }
 }

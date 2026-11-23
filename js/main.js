@@ -1,11 +1,12 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123q';
-import { SLOGANS } from './slogans.js?v=20261123q';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123q';
-import { blockerCanvas } from './blockers.js?v=20261123q';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261123q';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123r';
+import { SLOGANS } from './slogans.js?v=20261123r';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123r';
+import { blockerCanvas } from './blockers.js?v=20261123r';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123r';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123r';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123q';
+const MOD_V = '?v=20261123r';
 
 window.__plushBooted = true;
 
@@ -595,6 +596,7 @@ function show(name) {
   for (const s of $$('.screen')) s.classList.toggle('active', s.id === 'scr-' + name);
   screen = name;
   document.documentElement.dataset.screen = name;   // CSS：遊戲畫面時背景的泡泡、雲停住（省電）
+  if (name === 'title' && coverDirty) { clearTimeout(coverTimer); coverTimer = setTimeout(buildCover, 550); }   // 等封面縮放動畫（.5s）做完再量
   // 背景音樂：首頁、地圖播同一首；關卡一關一首（單數關、雙數關各一首），重新開始不換歌（audio.js 會淡入淡出）
   try { if (audio && audio.setScene) audio.setScene(name === 'game' ? 'level' : 'home', levelIdx + 1); } catch (e) { /* ignore */ }
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
@@ -875,6 +877,47 @@ function setProgress(f) {
   const pct = Math.round(clamp(f, 0, 1) * 100);
   $('#load-fill').style.width = pct + '%';
   $('.loadbar').setAttribute('aria-valuenow', String(pct));
+}
+
+// ---------- 封面背景 ----------
+// A（預設）：第 1 站蛋蛋碼頭，上面草地、中間沙灘、下面海；沙灘和海的高度照雲台、按鈕量到的位置畫，物件避開標題和按鈕。
+// B（?cover=b）：開頭動畫第 2 段那張整座島的縮圖，模糊、變淡。開頭動畫最後雲散開時看到的就是這一張。
+const COVER_B = document.documentElement.classList.contains('cover-b');
+let coverKey = '', coverDirty = false, coverTimer = 0;
+function buildCover() {
+  const bg = $('#cover-bg'), deco = $('#cv-deco'), title = $('#scr-title');
+  if (!bg || !title || !title.classList.contains('active')) { coverDirty = true; return; }
+  coverDirty = false;
+  const W = innerWidth, H = innerHeight;
+  const rc = n => { if (!n) return null; const r = n.getBoundingClientRect(); return r.width || r.height ? r : null; };
+  // 沙灘上的玩具合照、雲後探頭的娃娃：中間空間夠才放
+  if (deco) {
+    const d = rc(deco), s = d ? Math.min(1.05, .8 * d.height / 94) : 0;
+    const html = d && d.height >= 90 && s >= .65
+      ? spotHTML(['ph', 'group'], `left:30%;top:92%;width:100px;height:94px;--s:${s.toFixed(2)}`, 0)
+        + spotHTML(['pk', 'moodeng', 'piggy', 'nyanko'], `left:72%;top:92%;width:122px;height:76px;--s:${Math.min(s, 1.15).toFixed(2)}`, 1)
+      : '';
+    if (deco.dataset.k !== html.length + ':' + (d ? Math.round(d.height) : 0)) { deco.innerHTML = html; deco.dataset.k = html.length + ':' + (d ? Math.round(d.height) : 0); }
+  }
+  const head = rc($('#scr-title .title-head')), gear = rc($('#scr-title .topbar .icon-btn')), toys = rc($('#title-toys'));
+  // 載入條和按鈕在同一格（載入時按鈕只是看不見），所以載入前後量到的一樣，載完不用整張重畫
+  const start = rc($('#btn-start')), ar = rc($('#btn-ar')), dd = deco && deco.innerHTML ? rc(deco) : null;
+  const key = [W, H, COVER_B, head, gear, toys, start, ar, dd].map(r => r && r.top !== undefined ? [r.left, r.top, r.right, r.bottom].map(Math.round).join(',') : String(r)).join('|');
+  if (key === coverKey) return;
+  coverKey = key;
+  let sandY = toys ? toys.top + toys.height * .3 : H * .55;
+  if (dd) sandY = Math.min(sandY, dd.top + dd.height * .45);
+  const seaY = Math.min(H - 30, Math.max(sandY + 60, start ? start.top - 6 : H * .8));
+  // 背景上的兩朵雲：左邊一朵在標題下面、右邊一朵在上面
+  const cw = Math.round(Math.min(W * .3, 150)), chh = Math.round(cw * .525);
+  const clouds = [[-cw * .32, head ? head.bottom - chh * .2 : H * .3], [W - cw * .68, Math.max(gear ? gear.bottom + 8 : 0, H * .05)]];
+  const pad = (r, p, sx = 0) => r && [r.left - p + r.width * sx, r.top - p, r.right + p - r.width * sx, r.bottom + p];
+  const lw = start ? Math.max(0, (Math.min(W * .8, 300) - start.width) / 2) : 0;   // 載入條比按鈕寬一點
+  const act = start && [start.left - lw - 4, start.top - 4, start.right + lw + 4, start.bottom + 4];
+  const avoid = [pad(head, 6), pad(gear, 4), act, pad(ar, 4), pad(toys, 0, .12)]
+    .concat(clouds.map(([x, y]) => [x, y, x + cw, y + chh])).filter(Boolean);
+  bg.innerHTML = (COVER_B ? islandMiniHTML(W, H, 'cb-') : coverArtHTML(W, H, { sandY, seaY, avoid }, 'cv-'))
+    + clouds.map(([x, y], j) => `<i class="cv-cloud" style="left:${Math.round(x)}px;top:${Math.round(y)}px;width:${cw}px;height:${chh}px;animation-delay:${-j * 9}s"></i>`).join('');
 }
 
 // ---------- 標題 ----------
@@ -2305,14 +2348,10 @@ function paintAvatar(box) {
 }
 function renderAccount() {
   const on = !!cloud && syncState !== 'off';
-  const chip = $('#acct-chip'), box = $('#acct-box');
-  if (!chip || !box) return;
-  chip.hidden = !on; box.hidden = !on;
+  const box = $('#acct-box');       // 帳號只放在設定最上面（封面左上的小牌子 11/23 拿掉了，跟右上齒輪重複）
+  if (!box) return;
+  box.hidden = !on;
   if (!on) return;
-  chip.classList.toggle('in', !!account);
-  paintAvatar($('.acct-av', chip));
-  $('.acct-nm', chip).textContent = account ? account.name : '登入存檔';
-  chip.setAttribute('aria-label', account ? `帳號：${account.name}（打開設定）` : '登入雲端存檔');
   paintAvatar($('.acct-av', box));
   $('#acct-name').textContent = account ? account.name : '雲端存檔';
   $('#acct-sub').textContent = account ? (SYNC_TEXT[syncState] || '') : SYNC_TEXT.guest;
@@ -2406,6 +2445,7 @@ let mergeAnswer = null;
 function syncToggles() {
   $('#tg-sound').setAttribute('aria-pressed', String(!save.muted));
   $('#tg-music').setAttribute('aria-pressed', String(!!save.music));
+  $('#tg-op').setAttribute('aria-pressed', String(getOpAlways()));
 }
 function openSettings() {
   const inGame = screen === 'game' && (state === 'play' || state === 'intro');
@@ -2445,8 +2485,8 @@ function bindUI() {
     audio.setMusic(save.music);
     writeSave(); syncToggles();
   });
+  $('#tg-op').addEventListener('click', () => { setOpAlways(!getOpAlways()); syncToggles(); audio.play('tap'); });
   $('#set-close').addEventListener('click', () => closeModal('m-settings'));
-  $('#acct-chip').addEventListener('click', openSettings);
   $('#acct-pw').addEventListener('click', () => openLogin('in'));
   $('#lg-form').addEventListener('submit', submitLogin);
   $('#lg-switch').addEventListener('click', () => setLoginMode(lgMode === 'up' ? 'in' : 'up'));
@@ -2508,7 +2548,10 @@ function bindUI() {
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault());
 
-  const onResize = () => { if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); } };
+  const onResize = () => {
+    if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); }
+    if (screen === 'title') { clearTimeout(coverTimer); coverTimer = setTimeout(buildCover, 250); } else coverDirty = true;
+  };
   window.addEventListener('resize', onResize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);
   window.addEventListener('orientationchange', () => setTimeout(onResize, 250));
@@ -2557,6 +2600,7 @@ function installDebug() {
 
 // ---------- 開機 ----------
 async function boot() {
+  try { buildCover(); } catch (e) { console.warn('[cover]', e); }   // 封面背景先畫好：載入條就放在封面上
   initMotes();
   setProgress(0.03);
   const modP = loadModules();
@@ -2590,6 +2634,8 @@ async function boot() {
   initCloud();          // 不等它：SDK 在背景載，登入狀態恢復後才換成那個帳號的存檔
   setProgress(1);
   await sleep(250);
+  document.documentElement.classList.remove('is-loading');   // 載入條換成「開始遊戲」
+  try { buildCover(); } catch (e) { console.warn('[cover]', e); }
   show('title');
   const lv = parseInt(params.get('level'), 10);
   if (DEBUG && lv >= 1 && lv <= LEVELS.length) startLevel(lv - 1);

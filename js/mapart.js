@@ -242,15 +242,16 @@ function bridge(type, W, gx, rng, a, b) {
 // 座標跟 main.js 的 MAP_GAP / MAP_BOTTOM 一樣（第 i 關在 H - 110 - i × 116，i 從 0 起算）
 const GAP = 116, BOT = 110;
 // 立體雲（跟 style.css 的 --cloud 同一朵：上白下淡紫、底部柔和陰影），地圖上的雲都用這個 <use href="#ma-cloud">
-const CLOUD_DEFS = '<svg class="ma-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>'
-  + '<linearGradient id="ma-cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f8f5ff"/><stop offset="1" stop-color="#cbbfff"/></linearGradient>'
-  + '<clipPath id="ma-cc"><circle cx="42" cy="54" r="24"/><circle cx="72" cy="38" r="30"/><circle cx="106" cy="42" r="26"/><circle cx="130" cy="56" r="20"/><rect x="20" y="50" width="128" height="28" rx="14"/></clipPath>'
-  + '<filter id="ma-cb" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>'
-  + '<filter id="ma-cs" x="-20%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#fff" flood-opacity=".75"/><feDropShadow dx="4" dy="7" stdDeviation="3.5" flood-color="#8f3352" flood-opacity=".2"/></filter>'
-  + '<symbol id="ma-cloud" viewBox="0 0 160 84" overflow="visible"><g filter="url(#ma-cs)"><g clip-path="url(#ma-cc)"><rect width="160" height="84" fill="url(#ma-cg)"/>'
-  + '<ellipse cx="86" cy="88" rx="78" ry="22" fill="#8b76ef" opacity=".5" filter="url(#ma-cb)"/><ellipse cx="68" cy="17" rx="22" ry="9" fill="#fff" filter="url(#ma-cb)"/>'
-  + '<ellipse cx="108" cy="24" rx="15" ry="7" fill="#fff" opacity=".85" filter="url(#ma-cb)"/><ellipse cx="40" cy="36" rx="12" ry="6" fill="#fff" opacity=".8" filter="url(#ma-cb)"/></g></g></symbol>'
-  + '</defs></svg>';
+function cloudDefs(p) {
+  return '<linearGradient id="' + p + 'cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f8f5ff"/><stop offset="1" stop-color="#cbbfff"/></linearGradient>'
+  + '<clipPath id="' + p + 'cc"><circle cx="42" cy="54" r="24"/><circle cx="72" cy="38" r="30"/><circle cx="106" cy="42" r="26"/><circle cx="130" cy="56" r="20"/><rect x="20" y="50" width="128" height="28" rx="14"/></clipPath>'
+  + '<filter id="' + p + 'cb" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>'
+  + '<filter id="' + p + 'cs" x="-20%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#fff" flood-opacity=".75"/><feDropShadow dx="4" dy="7" stdDeviation="3.5" flood-color="#8f3352" flood-opacity=".2"/></filter>'
+  + '<symbol id="' + p + 'cloud" viewBox="0 0 160 84" overflow="visible"><g filter="url(#' + p + 'cs)"><g clip-path="url(#' + p + 'cc)"><rect width="160" height="84" fill="url(#' + p + 'cg)"/>'
+  + '<ellipse cx="86" cy="88" rx="78" ry="22" fill="#8b76ef" opacity=".5" filter="url(#' + p + 'cb)"/><ellipse cx="68" cy="17" rx="22" ry="9" fill="#fff" filter="url(#' + p + 'cb)"/>'
+  + '<ellipse cx="108" cy="24" rx="15" ry="7" fill="#fff" opacity=".85" filter="url(#' + p + 'cb)"/><ellipse cx="40" cy="36" rx="12" ry="6" fill="#fff" opacity=".8" filter="url(#' + p + 'cb)"/></g></g></symbol>';
+}
+const CLOUD_DEFS = '<svg class="ma-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>' + cloudDefs('ma-') + '</defs></svg>';
 const sinX = t => 50 + 27 * Math.sin(t * 1.05 + 0.4);
 
 // 路的橫向位置（%）：跟 main.js 的 smoothPath 是同一條曲線（關卡點之間的三次貝茲）。t 是第幾關，可以有小數
@@ -378,15 +379,146 @@ export function mapSignsHTML(n, H, unlocked) {
     html += `<div class="map-sign" style="top:${g.y}px;${g.left ? 'left:5%' : 'right:5%'}"><b>第${g.r.k}站</b>${g.r.name}</div>`;
   });
   dollSpots(st, n, H).forEach(s => {
-    const lock = s.from > unlocked ? ' lock' : '', pos = `left:${s.pct}%;top:${s.y}px;width:${s.w}px;height:${s.h}px;--k:${s.k}`;
-    if (s.sp[0] === 'ph') {
-      html += `<div class="map-spot ph${lock}" style="${pos}"><img src="assets/deco/${s.sp[1]}.webp" alt="" decoding="async" draggable="false"></div>`;
-      return;
-    }
-    const ids = s.sp.slice(1), m = ids.length;
-    const imgs = ids.map((id, j) => `<img src="assets/sprites/${id}_n.png" alt="" decoding="async" draggable="false" style="left:${(s.w - 36 * m - 14) / 2 + 36 * j}px;--k:${(-j * 1.1 - s.k * .4).toFixed(1)}s">`).join('');
-    const clouds = ids.map((_, j) => `<i style="left:${((s.w - 36 * (m - 1) - 86) / 2 + 36 * j).toFixed(0)}px;bottom:${j % 2 * 5}px"></i>`).join('');
-    html += `<div class="map-spot pk${lock}" style="${pos}">${imgs}${clouds}</div>`;
+    html += spotHTML(s.sp, `left:${s.pct}%;top:${s.y}px;width:${s.w}px;height:${s.h}px;--k:${s.k}`, s.k, s.from > unlocked ? ' lock' : '');
   });
   return html;
+}
+
+/* ---------- 駐站娃娃的畫法（地圖、開頭動畫、封面共用） ---------- */
+// sp：['ph', 合照] 或 ['pk', 娃娃1, 娃娃2…]；pos 是 style 字串（位置和寬高），k 決定晃動的錯開時間
+export function spotSize(sp) {
+  if (sp[0] === 'ph') { const w = PHOTO[sp[1]][0]; return [w, Math.round(w * PHOTO[sp[1]][1])]; }
+  return [36 * (sp.length - 2) + 50, 76];
+}
+export function spotHTML(sp, pos, k = 0, lock = '') {
+  if (sp[0] === 'ph') return `<div class="map-spot ph${lock}" style="${pos}"><img src="assets/deco/${sp[1]}.webp" alt="" decoding="async" draggable="false"></div>`;
+  const ids = sp.slice(1), m = ids.length, w = 36 * (m - 1) + 50;
+  const imgs = ids.map((id, j) => `<img src="assets/sprites/${id}_n.png" alt="" decoding="async" draggable="false" style="left:${(w - 36 * m - 14) / 2 + 36 * j}px;--k:${(-j * 1.1 - k * .4).toFixed(1)}s">`).join('');
+  const clouds = ids.map((_, j) => `<i style="left:${((w - 36 * (m - 1) - 86) / 2 + 36 * j).toFixed(0)}px;bottom:${j % 2 * 5}px"></i>`).join('');
+  return `<div class="map-spot pk${lock}" style="${pos}">${imgs}${clouds}</div>`;
+}
+
+// 同一頁放第二份地圖或封面時，SVG 裡的 id 換一個開頭，才不會跟地圖的 #ma-… 撞在一起
+export function prefixIds(html, p) {
+  return html.replace(/id="ma-/g, `id="${p}`).replace(/url\(#ma-/g, `url(#${p}`).replace(/href="#ma-/g, `href="#${p}`);
+}
+const fx = v => v.toFixed(1);
+function closedCurve(P) {   // 封閉的平滑曲線（Catmull-Rom 換成三次貝茲）
+  const n = P.length;
+  let d = `M${fx(P[0][0])} ${fx(P[0][1])}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+    d += `C${fx(p1[0] + (p2[0] - p0[0]) / 6)} ${fx(p1[1] + (p2[1] - p0[1]) / 6)} ${fx(p2[0] - (p3[0] - p1[0]) / 6)} ${fx(p2[1] - (p3[1] - p1[1]) / 6)} ${fx(p2[0])} ${fx(p2[1])}`;
+  }
+  return d + 'Z';
+}
+function openCurve(P) {
+  const n = P.length, Q = j => P[Math.max(0, Math.min(n - 1, j))];
+  let d = `M${fx(P[0][0])} ${fx(P[0][1])}`;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = Q(i - 1), p1 = P[i], p2 = P[i + 1], p3 = Q(i + 2);
+    d += `C${fx(p1[0] + (p2[0] - p0[0]) / 6)} ${fx(p1[1] + (p2[1] - p0[1]) / 6)} ${fx(p2[0] - (p3[0] - p1[0]) / 6)} ${fx(p2[1] - (p3[1] - p1[1]) / 6)} ${fx(p2[0])} ${fx(p2[1])}`;
+  }
+  return d;
+}
+const place = (x, y, sc, inner) => `<g transform="translate(${fx(x)} ${fx(y)}) scale(${sc})">${inner}</g>`;
+
+/* ---------- 全島縮圖（開頭動畫第二段、封面 B 的背景） ---------- */
+// 24 站的顏色由下往上疊成一座小島，中間一條彎彎的路，每站一顆圓點；下面是碼頭和船
+export function islandMiniHTML(W, H, p = 'oi-') {
+  const rng = rngOf(2411), cx = W / 2, cy = H * .5;
+  const rx = Math.min(W * .42, H * .3), ry = Math.min(H * .4, rx * 2.1);
+  const blob = Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, k = 1 + (rng() - .5) * .14; return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]; });
+  const isl = closedCurve(blob);
+  const half = y => { const t = (y - cy) / ry; return rx * Math.sqrt(Math.max(0, 1 - t * t)); };
+  const y0 = cy + ry * .86, y1 = cy - ry * .86, band = (y0 - y1) / 23;
+  const road = R.map((_, k) => { const y = y0 - k * band; return [cx + half(y) * .45 * Math.sin(k * 1.05 + .4), y]; });
+  // 第 1 站在小島最下面，從沙灘開始（海水畫在島外面）
+  const st1 = [[0, '#ffecc8'], [.35, '#fdeccb'], [.55, '#d4f1bd'], [1, '#cdeeb4']];
+  let stops = '';
+  R.forEach((r, k) => (k ? r.stops : st1).forEach(([o, c]) => { stops += `<stop offset="${((k + o) / 24).toFixed(4)}" stop-color="${c}"/>`; }));
+  let s = `<defs>${cloudDefs('ma-')}<linearGradient id="ma-ig" gradientUnits="userSpaceOnUse" x1="0" y1="${fx(y0 + band / 2)}" x2="0" y2="${fx(y0 + band / 2 - 24 * band)}">${stops}</linearGradient></defs>`;
+  s += `<rect width="${W}" height="${H}" fill="#8fd3ef"/>`;
+  // 海浪
+  for (let i = 0, n = 0; i < 60 && n < 12; i++) {
+    const x = W * (.05 + rng() * .9), y = H * (.04 + rng() * .92);
+    if (((x - cx) / (rx + 34)) ** 2 + ((y - cy) / (ry + 34)) ** 2 < 1) continue;
+    s += place(x, y, (.45 + rng() * .2).toFixed(2), PR.wave(rng)); n++;
+  }
+  // 島：淺海、浪花、沙邊，再填 24 站的顏色
+  s += `<path d="${isl}" fill="none" stroke="#b8e6f4" stroke-width="34" stroke-linejoin="round"/><path d="${isl}" fill="none" stroke="#fff" stroke-width="16" opacity=".6" stroke-linejoin="round"/>`;
+  s += `<path d="${isl}" fill="#fbe3b4" stroke="#fbe3b4" stroke-width="8" stroke-linejoin="round"/><path d="${isl}" fill="url(#ma-ig)"/>`;
+  // 碼頭和船（島的最下面）
+  const px = road[0][0], py = cy + ry * .95;
+  s += `<path d="M${fx(px - 7)} ${fx(py - 10)}h14v${fx(ry * .14 + 10)}h-14Z" fill="#d6a874"/>`;
+  for (let j = 0; j < 5; j++) s += `<path d="M${fx(px - 7)} ${fx(py - 4 + j * (ry * .14 / 5))}h14" stroke="#b9875a" stroke-width="1.4"/>`;
+  s += place(px + 30, py + ry * .12, .5, PR.boat(rng));
+  // 每站兩個小物件，放在路的兩邊
+  R.forEach((r, k) => {
+    const list = (k ? r.props : ['palm', 'umbrella', 'shell', 'starfish']).filter(id => id !== 'spot');
+    [-1, 1].forEach(side => {
+      const y = road[k][1] + (rng() - .5) * band * .5 + band * .35, hw = half(y);
+      const x = cx + side * hw * (.5 + rng() * .28);
+      if (Math.abs(x - road[k][0]) < 22 || hw < 30) return;
+      s += place(x, y, .42, PR[pick(rng, list)](rng));
+    });
+  });
+  const rd = openCurve(road);
+  s += `<path d="${rd}" fill="none" stroke="rgba(87,31,50,.2)" stroke-width="9" stroke-linecap="round" transform="translate(0 2)"/><path d="${rd}" fill="none" stroke="#f1d9c4" stroke-width="8" stroke-linecap="round"/><path d="${rd}" fill="none" stroke="#fffaf3" stroke-width="5.5" stroke-linecap="round"/><path d="${rd}" fill="none" stroke="#ecc6b2" stroke-width="2.4" stroke-dasharray="0 7" stroke-linecap="round"/>`;
+  road.forEach(([x, y], k) => { s += `<circle cx="${fx(x)}" cy="${fx(y)}" r="4.2" fill="${PINKS[k % 6]}" stroke="#fff" stroke-width="1.6"/>`; });
+  // 四角的立體雲
+  [[.1, .12], [.86, .2], [.08, .78], [.9, .86]].forEach(([a, b], j) => {
+    const w = 78 + j * 6;
+    s += `<use href="#ma-cloud" x="${fx(W * a - w / 2)}" y="${fx(H * b - w * .26)}" width="${w}" height="${fx(w * .525)}"/>`;
+  });
+  return prefixIds(`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">${s}</svg>`, p);
+}
+
+/* ---------- 封面 A：第 1 站的碼頭風景 ---------- */
+// 上面草地、中間沙灘、下面海；o.sandY / o.seaY 是沙灘和海開始的高度，o.avoid 是不放物件的區塊（logo、娃娃、按鈕）[左,上,右,下]
+export function coverArtHTML(W, H, o = {}, p = 'cv-') {
+  const rng = rngOf(77), sandY = o.sandY ?? H * .55, seaY = o.seaY ?? H * .8, avoid = o.avoid || [];
+  const wavy = (y0, amp, n) => { let d = `M0 ${fx(y0)}`; for (let i = 0; i < n; i++) d += `Q${fx(W * (i + .5) / n)} ${fx(y0 + (i % 2 ? amp : -amp))} ${fx(W * (i + 1) / n)} ${fx(y0)}`; return d; };
+  const sandTop = wavy(sandY, 9, 4), seaTop = wavy(seaY, 6, 6);
+  let s = `<defs>${cloudDefs('ma-')}`
+    + `<linearGradient id="ma-cvg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6eaa9"/><stop offset="1" stop-color="#d7f2c0"/></linearGradient>`
+    + `<linearGradient id="ma-cvs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdeccb"/><stop offset="1" stop-color="#ffe3b6"/></linearGradient>`
+    + `<linearGradient id="ma-cvw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b8e6f4"/><stop offset="1" stop-color="#7fcbeb"/></linearGradient></defs>`;
+  s += `<rect width="${W}" height="${H}" fill="url(#ma-cvg)"/>`;
+  s += `<path d="${sandTop}V${H}H0Z" fill="url(#ma-cvs)"/><path d="${sandTop}" fill="none" stroke="#bde5a0" stroke-width="7"/>`;
+  s += `<path d="${seaTop}" fill="none" stroke="#f2d3a2" stroke-width="12" transform="translate(0 -5)"/><path d="${seaTop}V${H}H0Z" fill="url(#ma-cvw)"/><path d="${seaTop}" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".85"/>`;
+  const placed = [];
+  const free = (x, y, w, h) => !avoid.some(([l, t, r, b]) => x + w / 2 > l && x - w / 2 < r && y > t && y - h < b) && !placed.some(([px, py]) => Math.hypot(px - x, py - y) < 44);
+  const put = (list, y0, y1, cnt, sc0, xs) => {
+    let out = '';
+    for (let i = 0, n = 0; i < cnt * 30 && n < cnt; i++) {
+      const kind = list[n % list.length], sc = sc0 + rng() * .14;
+      const x = xs ? W * xs[n % xs.length] + (rng() - .5) * 16 : W * (.05 + rng() * .9), y = y0 + rng() * (y1 - y0);
+      if (y1 <= y0 || !free(x, y, 52 * sc, 56 * sc)) continue;
+      placed.push([x, y]); n++;
+      out += place(x, y, sc.toFixed(2), PR[kind](rng));
+    }
+    return out;
+  };
+  // 沙灘：兩邊一定有椰子樹，再撒貝殼、海星、陽傘
+  s += put(['palm', 'palm'], sandY + 30, seaY - 8, 2, .9, [.07, .93]);
+  s += put(['shell', 'starfish', 'umbrella', 'shell', 'egg', 'starfish'], sandY + 16, seaY - 10, Math.round(W / 70), .8);
+  // 草地：一間房子、花、樹叢、蛋、薯餅
+  s += put(['house'], 70, sandY - 12, 1, .95, [.14, .86]);
+  s += put(['flower', 'bush', 'egg', 'flower', 'hashbrown', 'bush', 'flower', 'house'], 60, sandY - 10, Math.min(14, Math.round(W * sandY / 11000)), .78);
+  // 海：會晃的船和浪
+  let sea = '';
+  // 船先試海面附近，被按鈕擋住就放到畫面最下面
+  boat: for (const by of [seaY + Math.min(54, (H - seaY) * .55) + 10, H - 22]) {
+    if (by > H - 12) continue;
+    for (const bx of [.12, .88, .5]) { const x = W * bx; if (free(x, by, 64, 56)) { sea += `<g transform="translate(${fx(x)} ${fx(by)}) scale(.85)"><g class="cv-boat">${PR.boat(rng)}</g></g>`; placed.push([x, by]); break boat; } }
+  }
+  for (let i = 0, n = 0; i < 80 && n < Math.round(W / 50); i++) {
+    const x = W * (.04 + rng() * .92), y = seaY + 18 + rng() * Math.max(0, H - seaY - 24);
+    if (placed.some(([px, py]) => Math.hypot(px - x, py - y) < 40)) continue;
+    placed.push([x, y]); n++;
+    sea += `<g transform="translate(${fx(x)} ${fx(y)}) scale(${(.7 + rng() * .3).toFixed(2)})"><g class="cv-wv" style="--k:${(-rng() * 3).toFixed(1)}s">${PR.wave(rng)}</g></g>`;
+  }
+  s += sea;
+  return prefixIds(`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">${s}</svg>`, p);
 }

@@ -12,7 +12,32 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123q">
+<link rel="stylesheet" href="style.css?v=20261123r">
+<!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
+     減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
+<style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
+<script>
+(function () {
+  var h = document.documentElement, q = location.search, play = false;
+  try {
+    if (/[?&]cover=b(&|$)/.test(q)) h.classList.add('cover-b');
+    if (/[?&]intro=1(&|$)/.test(q)) play = true;
+    else if (/[?&]intro=0(&|$)/.test(q)) play = false;
+    else if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) play = false;
+    else {
+      var o = null, d = new Date();
+      try { o = JSON.parse(localStorage.getItem('shubing-op') || 'null'); } catch (e) { o = null; }
+      play = !o || !!o.always || o.d !== d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    }
+  } catch (e) { play = false; }
+  h.classList.add('is-loading');
+  if (play) {
+    window.__opPlay = true; h.classList.add('op-pending');
+    // 4 秒內動畫還沒開始（網路很慢）就不播了，直接給封面＋載入條
+    setTimeout(function () { if (!window.__opStarted) { window.__opLate = true; h.classList.remove('op-pending'); } }, 4000);
+  }
+})();
+</script>
 </head>
 <body>
 
@@ -56,27 +81,14 @@
   <i class="mote m6"></i><i class="mote m7"></i><i class="mote m8"></i><i class="mote m9"></i><i class="mote m10"></i>
 </div>
 
+<!-- 封面背景：第 1 站蛋蛋碼頭（B 款是整座島），main.js buildCover() 畫；只在封面顯示 -->
+<div class="cover-bg" id="cover-bg" aria-hidden="true"></div>
+
 <div id="app">
 
-  <!-- 載入中 -->
-  <section id="scr-loading" class="screen active" aria-label="載入中">
-    <div class="load-wrap">
-      <h1 class="logo logo-sm" aria-label="薯餅蛋蛋島"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="薯" style="--i:0"><b>薯</b></span><span class="ch" data-ch="餅" style="--i:1"><b>餅</b></span><span class="ch" data-ch="蛋" style="--i:2"><b>蛋</b></span><span class="ch" data-ch="蛋" style="--i:3"><b>蛋</b></span><span class="ch" data-ch="島" style="--i:4"><b>島</b></span></span></h1>
-      <!-- 貼紙照片（assets/deco/）：檔案不在就整個拿掉，不留空位 -->
-      <div class="load-deco" aria-hidden="true"><img src="assets/deco/sloth_orange.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></div>
-      <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
-      <p class="load-text" id="load-text">毛絨玩具準備中…</p>
-    </div>
-  </section>
-
   <!-- 標題 -->
-  <section id="scr-title" class="screen" aria-label="標題畫面">
-    <!-- 角落的貼紙（主人的玩具照片去背）：在內容後面輕輕搖；圖不在就拿掉 -->
-    <span class="title-stk stk-pig" aria-hidden="true"><img src="assets/deco/pig.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
-    <span class="title-stk stk-snoopy" aria-hidden="true"><img src="assets/deco/snoopy_sloth.webp" alt="" decoding="async" onerror="this.parentNode.remove()"></span>
+  <section id="scr-title" class="screen active" aria-label="標題畫面">
     <div class="topbar">
-      <!-- 雲端存檔（設定了 js/cloud-config.js 才會出現）：沒登入是「登入存檔」，登入後是頭像＋名字；按了打開設定 -->
-      <button class="acct-chip" id="acct-chip" type="button" hidden><span class="acct-av" aria-hidden="true"></span><span class="acct-nm"></span></button>
       <span class="spacer"></span>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
@@ -88,8 +100,15 @@
         <p class="logo-sub" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
         <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
       </div>
+      <!-- 草地上的合照和雲後探頭的娃娃：填標題和展示台中間空出來的地方（main.js buildCover） -->
+      <div class="cv-deco" id="cv-deco" aria-hidden="true"></div>
       <div class="title-play">
         <div class="title-toys" id="title-toys"></div>
+        <!-- 還在載入時，按鈕的位置先放載入條（html.is-loading），載完才換成按鈕 -->
+        <div class="cv-load">
+          <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
+          <p class="load-text" id="load-text">毛絨玩具準備中…</p>
+        </div>
         <div class="title-btns">
           <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg><span class="bt" data-t="開始遊戲">開始遊戲</span></button>
           <a class="btn pink" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg><span class="bt" data-t="3D 看看">3D 看看</span></a>
@@ -307,6 +326,7 @@
     <div class="toggles">
       <button class="toggle" id="tg-sound" aria-pressed="true"><svg class="ti"><use href="#i-sound"/></svg><span class="tl">音效</span><span class="sw" aria-hidden="true"><i></i></span></button>
       <button class="toggle" id="tg-music" aria-pressed="true"><svg class="ti"><use href="#i-music"/></svg><span class="tl">音樂</span><span class="sw" aria-hidden="true"><i></i></span></button>
+      <button class="toggle" id="tg-op" aria-pressed="false"><svg class="ti"><use href="#i-play"/></svg><span class="tl">每次都播開頭動畫</span><span class="sw" aria-hidden="true"><i></i></span></button>
     </div>
     <div class="sheet-actions">
       <button class="btn blue" id="set-map">回到地圖</button>
@@ -380,6 +400,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/main.js?v=20261123q"></script>
+<script type="module" src="js/opening.js?v=20261123r"></script>
+<script type="module" src="js/main.js?v=20261123r"></script>
 </body>
 </html>
