@@ -1746,6 +1746,24 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 /* 新機關教學小卡 */
 #m-intro { cursor: pointer; }
 .intro-card { padding-top: 42px; gap: 10px; text-align: center; max-width: 320px; }
+/* 劇情卡（每一站第一次進去，js/story.js）：緞帶寫第幾站，下面站名，三寶左右交錯說話，一句接一句跳出來 */
+.story-card { padding-top: 42px; gap: 12px; max-width: 350px; }
+.st-place { font-size: 26px; font-weight: 900; color: var(--ink); letter-spacing: .06em; }
+.st-lines { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.st-line { display: flex; align-items: center; gap: 8px; opacity: 0; animation: stLineIn .45s cubic-bezier(.3, 1.4, .5, 1) forwards; animation-delay: calc(var(--k) * .6s + .2s); }
+.st-line.r { flex-direction: row-reverse; }
+.st-av { width: 58px; height: 58px; flex: none; display: flex; flex-direction: column; align-items: center; }
+.st-av img, .st-av .toy-fallback { width: 48px; height: 48px; object-fit: contain; }
+.st-av .toy-fallback { --fs: 20px; }
+.st-av b { font-size: 12px; font-weight: 900; color: var(--ink-soft); line-height: 1.2; white-space: nowrap; }
+.st-say {
+  position: relative; flex: 1; margin: 0; padding: 10px 13px; border-radius: 18px; text-align: left;
+  background: #fff; border: 3px solid #ffd0e6; font-weight: 800; font-size: 16px; line-height: 1.45; color: var(--ink);
+  box-shadow: 0 4px 10px rgba(112, 40, 64, .1); word-break: keep-all; overflow-wrap: anywhere; text-wrap: pretty;
+}
+.st-line.r .st-say { border-color: #cfe6ff; }
+@keyframes stLineIn { from { opacity: 0; transform: translateY(10px) scale(.95); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .st-line { animation: none; opacity: 1; } }
 .intro-icon {
   width: 120px; height: 120px; display: grid; place-items: center; border-radius: 50%;
   background: radial-gradient(circle at 50% 42%, #fff 0 40%, #ffe3f0 70%, rgba(255, 214, 236, 0) 72%);

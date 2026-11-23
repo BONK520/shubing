@@ -1,13 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123x';
-import { SLOGANS } from './slogans.js?v=20261123x';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123x';
-import { blockerCanvas } from './blockers.js?v=20261123x';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123x';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123x';
-import { DEMO, demoEngine } from './demos.js?v=20261123x';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123y';
+import { SLOGANS } from './slogans.js?v=20261123y';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123y';
+import { blockerCanvas } from './blockers.js?v=20261123y';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123y';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123y';
+import { DEMO, demoEngine } from './demos.js?v=20261123y';
+import { STORY } from './story.js?v=20261123y';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123x';
+const MOD_V = '?v=20261123y';
 
 window.__plushBooted = true;
 
@@ -1356,7 +1357,7 @@ function buildMap(popIndex = -1) {
       for (let k = 0; k < 3; k++) st.appendChild(starSvg(k < stars ? 'on' : ''));
       b.appendChild(st);
       b.appendChild(goalBadge(lvl));
-      b.addEventListener('click', () => openStartCard(i));
+      b.addEventListener('click', () => openLevel(i));
     }
     inner.appendChild(b);
     mapNodes.push(b);
@@ -1419,7 +1420,7 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
     sc.scrollTop = target(cur);
   }
   updateMapHere();
-  if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openStartCard(thenOpen); }, 750);
+  if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openLevel(thenOpen); }, 750);
   else setTimeout(offerResume, 450);       // 剛剛有玩到一半的關（網頁被重新載入）：問要不要接著玩
 }
 
@@ -1483,6 +1484,47 @@ function softWrap(text) {
 
 // ---------- 關卡開始卡 ----------
 let cardLevel = -1;
+// ---------- 劇情（js/story.js）：在地圖上點一站的第一關，第一次先跳這一站的小故事，看完再開關卡卡片 ----------
+const STORY_DONE = from => 'story:' + from;           // 看過了記在 save.seen（跟教學小卡一樣，只存在這台裝置）
+let storyBusy = false;
+function openLevel(i) {
+  const st = STORY.find(x => x.from === i + 1);
+  if (!st || save.seen.includes(STORY_DONE(st.from)) || storyBusy) { if (!storyBusy) openStartCard(i); return; }
+  storyBusy = true;
+  showStory(st).then(() => {
+    storyBusy = false;
+    save.seen.push(STORY_DONE(st.from));
+    writeSave();
+    if (screen === 'map') openStartCard(i);
+  });
+}
+async function showStory(st) {
+  const station = LEVELS ? mapStations(LEVELS.length, 0).find(x => x.from === st.from) : null;
+  $('#st-ribbon').textContent = station ? `第 ${station.k} 站` : '新的一站';
+  $('#st-place').textContent = station ? station.name : '';
+  const box = $('#st-lines');
+  box.replaceChildren();
+  st.lines.forEach(([who, text], k) => {
+    const p = pieceById(who), line = el('div', 'st-line' + (k % 2 ? ' r' : ''));
+    line.style.setProperty('--k', k);
+    const av = el('span', 'st-av');
+    if (p) { av.appendChild(toyEl(p, 20)); av.appendChild(el('b', '', '')).textContent = p.name; }
+    const say = el('p', 'st-say');
+    say.textContent = softWrap(text);
+    line.append(av, say);
+    box.appendChild(line);
+  });
+  openModal('m-story');
+  audio.play('chime', { level: 3 });
+  await new Promise(res => {
+    const m = $('#m-story');
+    const done = () => { m.removeEventListener('click', done); clearInterval(chk); res(); };
+    const chk = setInterval(() => { if (!isOpen('m-story')) done(); }, 200);
+    setTimeout(() => m.addEventListener('click', done), 450);     // 剛跳出來的那一下不算（避免連點直接跳過）
+  });
+  closeModal('m-story');
+}
+
 function openStartCard(i) {
   const lvl = LEVELS[i];
   cardLevel = i;
@@ -3133,6 +3175,7 @@ function installDebug() {
     save,
     startLevel,
     openStartCard,
+    openLevel,
     showMap,
     quickWin() {
       debugWin = true;
