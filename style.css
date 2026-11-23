@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123v") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123v") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123w") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123w") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -297,12 +297,6 @@ html:not(.is-loading) .cv-load { display: none; }
     0 2px 0 #b4357b, 0 3px 4px rgba(70, 10, 70, .2);
 }
 .logo-sub i { font-style: normal; color: #ffd23f; }
-.tagline {
-  margin: 6px 0 0; padding: 3px 12px 4px; border-radius: 999px;
-  background: rgba(255, 255, 255, .62);
-  font-weight: 800; font-size: 12px; color: #a23d66; letter-spacing: .06em;
-  box-shadow: 0 2px 6px rgba(70, 50, 90, .12);
-}
 /* 沙灘上主人的玩具合照、雲後探頭的娃娃（buildCover 放進來；太擠就不放，橫向手機藏起來） */
 .cv-deco { position: relative; flex: 1 1 0; min-height: 0; width: 100%; max-width: 440px; pointer-events: none; }
 .cv-deco .map-spot { transform: translate(-50%, -100%) scale(var(--s, 1)); transform-origin: 50% 100%; }
@@ -1791,7 +1785,22 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .idemo-chip.done b { color: #1f9d4f; }
 .idemo-chip.pop { animation: idemo-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes idemo-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
-/* 減少動態：換之前 → 箭頭 → 爆開，兩張靜態圖 */
+/* 數字變多（巧克力長大）紅一下 */
+.idemo-chip.up { border-color: #ffa3ad; }
+.idemo-chip.up b { color: #e0323e; }
+/* 每一步演完在格子右上角跳一個：灰 ✕＝這樣不行，綠 ✓＝這樣可以（不蓋住機關本身） */
+.idemo-mark {
+  position: absolute; width: calc(var(--s) * .62); min-width: 16px; aspect-ratio: 1; margin: calc(var(--s) * -.3) 0 0 calc(var(--s) * .3);
+  transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center; pointer-events: none;
+  box-shadow: 0 0 0 2px #fff, 0 2px 5px rgba(94, 33, 54, .35); animation: idemo-mark-in .34s cubic-bezier(.3, 1.6, .5, 1); transition: opacity .25s ease;
+}
+.idemo-mark svg { width: 72%; height: 72%; fill: none; stroke: #fff; stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; }
+.idemo-mark.x { background: #9b9096; }
+.idemo-mark.ok { background: #27ae5f; }
+.idemo-mark.gone { opacity: 0; }
+.idemo-board.sm .idemo-mark { min-width: 12px; }
+@keyframes idemo-mark-in { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
+/* 減少動態：兩張靜態圖中間一個箭頭（一步的：換之前 → 換之後；兩步的：不行 → 可以） */
 .idemo-frames { display: flex; align-items: center; gap: 6px; }
 .idemo-board.sm { width: min(116px, 34vw); border-radius: 12px; }
 .idemo-board.sm .idemo-finger { width: 18px; height: 18px; margin: -9px 0 0 -9px; transform: translate(30%, 30%); }
@@ -1804,7 +1813,20 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .idemo-beam { position: absolute; pointer-events: none; background: linear-gradient(90deg, rgba(255, 240, 200, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 240, 200, 0)); mix-blend-mode: screen; }
 .idemo-beam.h { left: 0; right: 0; height: var(--s); transform: translateY(-50%); background: linear-gradient(180deg, rgba(255, 220, 120, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 220, 120, 0)); }
 .idemo-beam.v { top: 0; bottom: 0; width: var(--s); transform: translateX(-50%); }
-@media (prefers-reduced-motion: reduce) { .idemo-board, .idemo-finger, .idemo-chip.pop { transition: none; animation: none; } }
+@media (prefers-reduced-motion: reduce) { .idemo-board, .idemo-finger, .idemo-chip.pop, .idemo-mark { transition: none; animation: none; } }
+/* 手機橫放（高 520 以下）：直排會比畫面高（812×375 時多 19～46px），改成示意動畫在左、標題和說明在右 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .modal .card.intro-card.has-demo {
+    width: min(100%, 560px); max-width: 560px; padding: 34px 22px 18px;
+    display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon title" "icon text" "icon tap";
+    column-gap: 20px; row-gap: 8px; align-items: center; align-content: center;
+  }
+  .intro-card.has-demo .intro-icon { grid-area: icon; }
+  .intro-card.has-demo .intro-title { grid-area: title; align-self: end; }
+  .intro-card.has-demo .intro-text { grid-area: text; }
+  .intro-card.has-demo .intro-tap { grid-area: tap; align-self: start; margin-top: 0; }
+  .intro-card.has-demo .idemo-board:not(.sm) { width: min(200px, 46vh); }
+}
 /* 目標列的特殊組合、彩色炸彈圖示可以點，再看一次說明 */
 .gi.tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .gi.tap:active .ic { transform: scale(.92); }

@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123v">
+<link rel="stylesheet" href="style.css?v=20261123w">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -98,7 +98,6 @@
         <h1 class="logo" aria-label="薯餅蛋蛋島"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="薯" style="--i:0"><b>薯</b></span><span class="ch" data-ch="餅" style="--i:1"><b>餅</b></span><span class="ch" data-ch="蛋" style="--i:2"><b>蛋</b></span><span class="ch" data-ch="蛋" style="--i:3"><b>蛋</b></span><span class="ch" data-ch="島" style="--i:4"><b>島</b></span></span></h1>
         <!-- 名字順序 = 下面玩具由左到右的順序（皮蛋、薯餅在中間、蛋黃哥） -->
         <p class="logo-sub" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
-        <p class="tagline">3D 掃描毛絨玩具的三消冒險</p>
       </div>
       <!-- 草地上的合照和雲後探頭的娃娃：填標題和展示台中間空出來的地方（main.js buildCover） -->
       <div class="cv-deco" id="cv-deco" aria-hidden="true"></div>
@@ -414,7 +413,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261123v"></script>
-<script type="module" src="js/main.js?v=20261123v"></script>
+<script type="module" src="js/opening.js?v=20261123w"></script>
+<script type="module" src="js/main.js?v=20261123w"></script>
 </body>
 </html>

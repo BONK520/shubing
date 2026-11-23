@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123v';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123v';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123v';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123w';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123w';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123w';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -2441,17 +2441,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
 
   // 掉落中的方塊：位置、速度（重力加速度：v += g·dt）。有 pts 的是沿著折線走（斜向滑落），用走過的距離算位置
   function fallState(m, t) {
-    const dt = t - m.t0;
+    const dt = t - m.t0, g = m.g || G_FALL;
     if (m.pts) {
       const len = m.len;
       if (dt <= 0) return { s: 0, vel: 0, done: false, ...along(m, 0) };
       if (dt >= m.dur) return { s: len, vel: 0, done: true, ...along(m, len) };
-      const d = m.v0 * dt + 0.5 * G_FALL * dt * dt;
-      return { s: d, vel: m.v0 + G_FALL * dt, done: false, ...along(m, d) };
+      const d = m.v0 * dt + 0.5 * g * dt * dt;
+      return { s: d, vel: m.v0 + g * dt, done: false, ...along(m, d) };
     }
     if (dt <= 0) return { y: m.y0, vel: 0, done: false };
     if (dt >= m.dur) return { y: m.y1, vel: 0, done: true };
-    return { y: m.y0 + m.v0 * dt + 0.5 * G_FALL * dt * dt, vel: m.v0 + G_FALL * dt, done: false };
+    return { y: m.y0 + m.v0 * dt + 0.5 * g * dt * dt, vel: m.v0 + g * dt, done: false };
   }
   function polyline(pts) {
     const cum = [0];
@@ -2467,12 +2467,15 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const q = pts[pts.length - 1];
     return { x: q.x, y: q.y };
   }
-  function fallDur(dist, v0) { return dist <= 0 ? 1 : (-v0 + Math.sqrt(v0 * v0 + 2 * G_FALL * dist)) / G_FALL; }
+  function fallDur(dist, v0, g = G_FALL) { return dist <= 0 ? 1 : (-v0 + Math.sqrt(v0 * v0 + 2 * g * dist)) / g; }
   function topCell(c) { for (let r = 0; r < rows; r++) if (mask[r] && mask[r][c]) return r; return 0; }
 
   async function animFall(ev, next) {
     const t = now();
     const seq = ++fallSeq;
+    // play(events, { slowFall: k })：慢 k 倍播掉落（教學小卡的傳送門要看清楚從哪裡掉出來）；遊戲裡不給，跟原本一樣
+    const slow = curOpts && curOpts.slowFall > 1 ? curOpts.slowFall : 1;
+    const g = G_FALL / (slow * slow), v0f = V0_FALL / slow;
     const items = [];
     for (const m of ev.moves || []) {
       if (!m || !m.from || !m.to) continue;
@@ -2506,14 +2509,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         const m = v.mv;
         if (it.spawn >= 0) {
           x0 = it.path ? it.path[0].c : c; y0 = it.path ? it.path[0].r : top - 1 - it.spawn;
-          vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
+          vel = v0f; delay = (jit + Math.min(STAGGER_MAX, k * STAGGER_ROW)) * slow;
         } else if (m && m.fall && t < m.t0 + m.dur) {
           // 還在掉：接著目前的位置和速度繼續
           const fs = fallState(m, t), cur = evalVisual(v, t);
-          x0 = cur.x; y0 = cur.y; vel = Math.max(V0_FALL, fs.vel); delay = t < m.t0 ? m.t0 - t : 0;
+          x0 = cur.x; y0 = cur.y; vel = Math.max(v0f, fs.vel); delay = t < m.t0 ? m.t0 - t : 0;
         } else {
           const cur = evalVisual(v, t);
-          x0 = cur.x; y0 = cur.y; vel = V0_FALL; delay = jit + Math.min(STAGGER_MAX, k * STAGGER_ROW);
+          x0 = cur.x; y0 = cur.y; vel = v0f; delay = (jit + Math.min(STAGGER_MAX, k * STAGGER_ROW)) * slow;
         }
         let mv;
         if (it.path) {
@@ -2532,17 +2535,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
           }
           const pl = polyline(pts);
           if (pl.len <= 0.001) { v.mv = null; return; }
-          const dur = fallDur(pl.len, vel);
-          mv = { fall: true, ...pl, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
+          const dur = fallDur(pl.len, vel, g);
+          mv = { fall: true, ...pl, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, g, clip: true };
         } else {
           const dist = it.to.r - y0;
           if (dist <= 0.001) { v.mv = null; return; }
-          const dur = fallDur(dist, vel);
-          mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, clip: true };
+          const dur = fallDur(dist, vel, g);
+          mv = { fall: true, x0: it.to.c, y0, x1: it.to.c, y1: it.to.r, t0: t + delay, dur, v0: vel, g, clip: true };
         }
         v.mv = mv;
         v.landT = mv.t0 + mv.dur;
-        v.landAmp = clamp((vel + G_FALL * mv.dur) * 2.2, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
+        v.landAmp = clamp((vel + g * mv.dur) * 2.2 * slow, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });

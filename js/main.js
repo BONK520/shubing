@@ -1,12 +1,13 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123v';
-import { SLOGANS } from './slogans.js?v=20261123v';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123v';
-import { blockerCanvas } from './blockers.js?v=20261123v';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123v';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123v';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123w';
+import { SLOGANS } from './slogans.js?v=20261123w';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123w';
+import { blockerCanvas } from './blockers.js?v=20261123w';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123w';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123w';
+import { DEMO, demoEngine } from './demos.js?v=20261123w';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123v';
+const MOD_V = '?v=20261123w';
 
 window.__plushBooted = true;
 
@@ -544,16 +545,17 @@ const INTRO = {
   dino: { name: '龍龍', text: '消掉龍龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！' },
   cage: { name: '鐵籠子', text: '被關住的玩偶不能動，和牠同色配對或用特效就能打開！', icon: () => blockerImg('cage') },
   frost: { name: '多層糖霜', text: '在旁邊配對就能敲掉一層，最多有三層喔！', icon: () => blockerImg('frost3') },
-  choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco') },
-  lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl') },
-  portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
-  alarm: { name: '鬧鐘', text: '每走一步，鬧鐘就少一格；數到0會爆開，扣掉3步！在旁邊配對或用特效就能拆掉。', icon: () => blockerImg('alarm') },
-  shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2') },
-  pot: { name: '巧克力壺', text: '巧克力壺打不掉。沒打到巧克力、或盤上的巧克力被打光時，它會再噴出新的。', icon: () => blockerImg('pot') },
-  gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap') },
+  choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco'), demo: 'choco' },
+  lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl'), demo: 'lic' },
+  portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal'), demo: 'portal' },
+  alarm: { name: '鬧鐘', text: '每走一步，鬧鐘就少一格；數到0會爆開，扣掉3步！在旁邊配對或用特效就能拆掉。', icon: () => blockerImg('alarm'), demo: 'alarm' },
+  shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2'), demo: 'shell' },
+  pot: { name: '巧克力壺', text: '巧克力壺打不掉。沒打到巧克力、或盤上的巧克力被打光時，它會再噴出新的。', icon: () => blockerImg('pot'), demo: 'pot' },
+  gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap'), demo: 'gift' },
   belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
-  // 工作單4：這兩張的圖示位置放示意動畫（introDemo），玩到一半點目標列的圖示也能再看一次
+  // 有 demo 的小卡，圖示位置放示意動畫（introDemo，資料在 js/demos.js）。以後加新機關，這裡和 DEMO 要一起加
+  // 特殊組合、彩色炸彈：玩到一半點目標列的圖示也能再看一次
   combo: { name: '特殊組合', text: '把兩個特殊方塊換在一起，就會一起爆開！條紋、包裝糖、彩色炸彈、飛天玩偶都可以。', icon: () => blockerImg('o-combo'), ribbon: '新目標！', demo: 'combo' },
   bomb: { name: '彩色炸彈', text: '五個一樣的連成一直線，就會變成彩色炸彈！L形、T形不算喔。', icon: () => blockerImg('o-bomb'), ribbon: '新目標！', demo: 'bomb' },
 };
@@ -577,16 +579,17 @@ function levelMechs(lvl) {
   for (const p of goalPartsOf(lvl)) if (p.kind === 'order') out.add(introOfOrder(p.what));
   return Object.keys(INTRO).filter(k => out.has(k));
 }
-// ---------- 教學小卡的示意動畫（11/23 工作單4） ----------
-// 用真的引擎和另一個盤面繪製器，在 5×5 的小盤面演一次：兩顆發亮 → 手指拖過去互換 → 爆開 → 目標 0/1 變 1/1 → 淡出重來（一輪約3.6秒）。
-// 版面的數字是 PIECES 的順序（0狗 1樹懶 2蛋 5河馬 6史努比），h 是條紋、w 是包裝糖；開頭沒有三個連在一起
-const DEMO = {
-  combo: { what: 'combo', kinds: [0, 1, 2, 5], a: { r: 2, c: 1 }, b: { r: 2, c: 2 },
-    layout: ['0 1 2 5 0', '1 2 5 0 1', '2 0h 1w 2 5', '5 0 1 5 2', '0 5 2 1 0'] },
-  bomb: { what: 'bomb', kinds: [0, 1, 2, 6], a: { r: 3, c: 2 }, b: { r: 2, c: 2 },
-    layout: ['0 1 2 0 1', '1 2 0 1 2', '6 6 0 6 6', '2 0 6 2 0', '0 1 2 0 1'] },
-};
+// ---------- 教學小卡的示意動畫（11/23 工作單4、工作單11） ----------
+// 用真的引擎和另一個盤面繪製器，在 5×5 的小盤面照 js/demos.js 的 DEMO 一步一步演：
+// 兩顆發亮 → 手指拖過去互換 → 爆開（或彈回來）→ 打 ✕／✓、目標數字跟著變 → 下一步 → 淡出，換下一個種子重來。
+// 一輪：一步的約 3.4 秒，兩步的約 5.3～6.5 秒（都不超過 7 秒）。以後加新機關，INTRO 和 DEMO（js/demos.js）要一起加
 let demoR = null, demoCv = null;
+// 盤面繪製器和 canvas 只有一份，誰最後開的誰用：舊小卡晚到的 stop() 不能把新小卡的盤面拿掉
+let demoOwner = 0;
+const MARK_SVG = {
+  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2L18.5 7.8"/></svg>',
+};
 function introDemo(kind, host) {
   const d = DEMO[kind];
   if (!d || typeof createEngine !== 'function' || typeof createRenderer !== 'function') return null;
@@ -596,28 +599,48 @@ function introDemo(kind, host) {
     try { demoR = createRenderer(demoCv, { pieces: PIECES, images, quiet: true }); } catch (e) { console.error(e); demoR = null; return null; }
   }
   const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const R2 = demoR, cv = demoCv;
-  const newEng = seed => createEngine({ kinds: d.kinds, layout: d.layout, seed });
-  // 目標小牌子：跟遊戲上方的目標列一樣是「圖示＋名字＋0/1」
-  const chip = el('div', 'idemo-chip');
-  chip.appendChild(blockerImg('o-' + d.what));
-  chip.appendChild(el('span', 'nm')).textContent = ORDER_NAME[d.what] || '';
-  const num = el('b');
-  chip.appendChild(num);
-  const setNumTxt = t => { num.textContent = t; };
+  const R2 = demoR, cv = demoCv, steps = d.steps;
+  const me = ++demoOwner;
+  const newEng = seed => demoEngine(createEngine, d, seed);
+  // 目標小牌子：跟遊戲上方的目標列一樣。訂單是「圖示＋名字＋0/1」，其他目標是「圖示＋還差＋數字」；不是目標的機關不放
+  let chip = null, num = null;
+  if (d.chip) {
+    chip = el('div', 'idemo-chip');
+    chip.appendChild(blockerImg(d.chip.icon));
+    chip.appendChild(el('span', 'nm')).textContent = d.chip.order ? d.chip.name : '還差';
+    num = el('b');
+    chip.appendChild(num);
+  }
+  const chipTxt = v => (d.chip.order ? v + '/1' : String(v));
+  const isDone = v => (d.chip.order ? v >= 1 : v <= 0);
+  const setChip = (v, prev) => {
+    if (!chip) return;
+    num.textContent = chipTxt(v);
+    chip.classList.toggle('done', isDone(v));
+    chip.classList.toggle('up', prev != null && !d.chip.order && v > prev);   // 巧克力長大：數字變多，紅一下
+    if (prev != null && v !== prev) restartAnim(chip, 'pop');
+  };
   const wrap = el('div', 'idemo' + (still ? ' still' : ''));
   host.classList.add('demo');
   host.appendChild(wrap);
   let gen = 0;
-  const wait = (ms, g) => new Promise(res => setTimeout(() => res(g === gen), ms));
-  // 某一格的中心和大小（佔盤面寬高的百分比），手指和光圈用；盤面要先 layout 過
+  const live = g => g === gen && demoOwner === me;
+  const wait = (ms, g) => new Promise(res => setTimeout(() => res(live(g)), ms));
+  // 某一格的中心和大小（佔盤面寬高的百分比），手指、光圈、✕✓ 用；盤面要先 layout 過
   const cellPct = (r, c) => {
     const cr = R2.cellRect(r, c), rect = cv.getBoundingClientRect();
     if (!cr || !rect.width) return null;
     return { x: (cr.x - rect.left) / rect.width * 100, y: (cr.y - rect.top) / rect.height * 100, s: cr.size / rect.width * 100 };
   };
   const putAt = (node, p) => { if (!p) return; node.style.left = p.x + '%'; node.style.top = p.y + '%'; node.style.setProperty('--s', p.s + '%'); };
-  const hit = ev => !!ev && !!ev.cnt && (d.what === 'combo' ? (ev.cnt.comboCount | 0) >= 1 : ((ev.cnt.made && ev.cnt.made.bomb) | 0) >= 1);
+  // ✕ 灰色＝這樣不行，✓ 綠色＝這樣可以；放在那一格的右上角，不蓋住機關
+  const mkMark = (t, p) => { const m = el('i', 'idemo-mark ' + t, MARK_SVG[t] || ''); putAt(m, p); return m; };
+  const markCell = (st, res) => {
+    if (!st.mark) return null;
+    if (st.mark.at === 'spread') { const e = res.events.find(v => v.t === 'spread'); return e ? e.to : null; }
+    return st.mark.at;
+  };
+  const playOpts = () => (d.slowFall ? { slowFall: d.slowFall } : {});
 
   // ---- 一般：循環播放 ----
   let board = null, finger = null;
@@ -626,95 +649,145 @@ function introDemo(kind, host) {
     board.appendChild(cv);
     finger = el('i', 'idemo-finger');
     board.appendChild(finger);
-    wrap.append(board, chip);
+    wrap.appendChild(board);
+    if (chip) wrap.appendChild(chip);
   }
+  const marks = () => board.querySelectorAll('.idemo-mark');
   async function loop(g) {
     let round = 0;
-    while (g === gen) {
-      const eng = newEng(4100 + round++);
+    while (live(g)) {
+      const eng = newEng(d.seeds[round++ % d.seeds.length]);
       board.classList.remove('out');
-      chip.classList.remove('done', 'pop');
-      setNumTxt('0/1');
+      for (const m of marks()) m.remove();
+      let val = chip ? d.chip.val(eng.stats) : null;
+      if (chip) chip.classList.remove('pop');
+      setChip(val, null);
       R2.setBoard(eng.snapshot());
       R2.layout();
-      R2.hint(d.a, d.b);                                        // 0～0.8秒：兩顆發亮、跳一跳
-      if (!await wait(800, g)) return;
-      R2.hint(null);
-      const pa = cellPct(d.a.r, d.a.c), pb = cellPct(d.b.r, d.b.c);
-      finger.classList.remove('go');
-      putAt(finger, pa);
-      finger.classList.add('on');                               // 0.8～1.6秒：手指按住一顆，拖到旁邊那顆
-      if (!await wait(180, g)) return;
-      finger.classList.add('go');
-      putAt(finger, pb);
-      const dx = d.b.c - d.a.c, dy = d.b.r - d.a.r;
-      for (let i = 1; i <= 5; i++) {
-        R2.drag(d.a, dx * 0.35 * i / 5, dy * 0.35 * i / 5);
-        if (!await wait(80, g)) { R2.drag(null); return; }
+      for (let i = 0; i < steps.length; i++) {
+        const st = steps[i];
+        for (const m of marks()) m.classList.add('gone');      // 上一步的 ✕ 淡掉
+        R2.hint(st.a, st.b);                                     // 兩顆發亮、跳一跳（第一步 0.6 秒，之後 0.4 秒）
+        if (!await wait(i ? 400 : 600, g)) return;
+        R2.hint(null);
+        for (const m of marks()) m.remove();
+        const pa = cellPct(st.a.r, st.a.c), pb = cellPct(st.b.r, st.b.c);
+        finger.classList.remove('go');
+        putAt(finger, pa);
+        finger.classList.add('on');                              // 手指按住一顆，拖到旁邊那顆（約 0.6 秒）
+        if (!await wait(180, g)) return;
+        finger.classList.add('go');
+        putAt(finger, pb);
+        const dx = st.b.c - st.a.c, dy = st.b.r - st.a.r;
+        for (let k = 1; k <= 5; k++) {
+          R2.drag(st.a, dx * 0.35 * k / 5, dy * 0.35 * k / 5);
+          if (!await wait(80, g)) { R2.drag(null); return; }
+        }
+        R2.drag(null);
+        finger.classList.remove('on');
+        const res = eng.swap(st.a, st.b);
+        if (!res || (!res.ok && !st.bounce)) { console.warn('[introDemo] 換不動', kind, i + 1); return; }
+        const opts = playOpts();
+        if (st.hit) {
+          // 特殊組合、彩色炸彈：看到爆的那一下就算做到，不用等後面的掉落
+          let saw = false, onHit = null;
+          const hitP = new Promise(r => { onHit = r; });
+          opts.onEvent = ev => { if (!saw && ev && ev.cnt && st.hit(ev.cnt)) { saw = true; onHit(); } };
+          const playing = R2.play(res.events, opts);
+          await Promise.race([hitP, playing]);
+          if (!live(g)) return;
+          if (!await wait(850, g)) return;                      // 看完爆炸才算數
+          if (i < steps.length - 1) { await playing; if (!live(g)) return; }
+        } else {
+          await R2.play(res.events, opts);
+          if (!live(g)) return;
+        }
+        if (chip) { const v = d.chip.val(eng.stats); setChip(v, val); val = v; }
+        const mc = markCell(st, res);
+        if (mc) board.appendChild(mkMark(st.mark.t, cellPct(mc.r, mc.c)));
+        // 停一下讓人看清楚；打 ✕ 的那一步停久一點，免得還沒看到就換下一步
+        if (!await wait(i < steps.length - 1 ? (st.mark && st.mark.t === 'x' ? 900 : 650) : 800, g)) return;
       }
-      R2.drag(null);
-      finger.classList.remove('on');
-      const res = eng.swap(d.a, d.b);
-      if (!res || !res.ok) { console.warn('[introDemo] 換不動', kind); return; }
-      let sawHit = false, onHit = null;
-      const hitP = new Promise(r => { onHit = r; });
-      const playing = R2.play(res.events, { onEvent: ev => { if (!sawHit && hit(ev)) { sawHit = true; onHit(); } } });
-      await Promise.race([hitP, playing]);                      // 約1.7秒：換好，開始爆
-      if (g !== gen) return;
-      if (!await wait(850, g)) return;                          // 1.7～2.6秒：十字爆開（看完爆炸才算數）
-      setNumTxt('1/1'); chip.classList.add('done'); restartAnim(chip, 'pop');   // 2.6秒：目標變 1/1
-      if (!await wait(800, g)) return;                          // 2.6～3.4秒：停一下讓人看清楚
-      board.classList.add('out');                               // 3.4～3.8秒：淡出，後面的連鎖掉落不用看
+      board.classList.add('out');                                // 淡出，下一輪換一個種子
       if (!await wait(400, g)) return;
-      R2.setBoard(null);                                        // 停掉還沒播完的掉落，下一輪重新開始
+      R2.setBoard(null);                                         // 停掉還沒播完的掉落
     }
   }
 
-  // ---- 減少動態：三格靜態圖（換之前 → 箭頭 → 爆開），下面寫 0/1 → 1/1 ----
+  // ---- 減少動態：兩張靜態圖，中間一個箭頭，目標寫成「1 → 2 → 1」 ----
+  // 一步的：換之前（兩顆光圈＋手指）→ 換之後；兩步的：第一步的結果（✕）→ 第二步的結果（✓）
   function stills() {
-    const f1 = el('div', 'idemo-board sm'), f3 = el('div', 'idemo-board sm');
+    const row = el('div', 'idemo-frames');
+    const f1 = el('div', 'idemo-board sm'), f2 = el('div', 'idemo-board sm');
     const arrow = el('span', 'idemo-arrow');
     arrow.textContent = '→';
     arrow.setAttribute('aria-hidden', 'true');
-    const row = el('div', 'idemo-frames');
-    row.append(f1, arrow, f3);
-    setNumTxt('0/1 → 1/1');
-    chip.classList.add('done');
-    wrap.append(row, chip);
+    row.append(f1, arrow, f2);
+    wrap.appendChild(row);
+    if (chip) wrap.appendChild(chip);
     f1.appendChild(cv);
-    const eng = newEng(4100);
+    const eng = newEng(d.seeds[0]);
     const snap0 = eng.snapshot();
-    R2.setBoard(snap0);
-    R2.layout();
     const shot = () => { try { return cv.toDataURL(); } catch (e) { return ''; } };
-    const img1 = shot();
-    const pa = cellPct(d.a.r, d.a.c), pb = cellPct(d.b.r, d.b.c);
-    const res = eng.swap(d.a, d.b);
-    const evs = (res && res.events) || [];
-    let b3 = null;
-    if (d.what === 'combo') b3 = evs[0] && evs[0].board;       // 剛換完、還沒爆的那一刻，上面再疊一個十字光
-    else {
-      const e = evs.find(ev => ev.board && ev.board[d.b.r] && ev.board[d.b.r][d.b.c] && ev.board[d.b.r][d.b.c].special === 'bomb');
-      b3 = e && e.board;                                        // 五個消掉、中間變成彩色炸彈的那一刻
+    const draw = ev => { R2.setBoard(ev ? { ...snap0, grid: ev.board, jelly: ev.jelly || snap0.jelly, lock: ev.lock || snap0.lock } : snap0); R2.layout(); return shot(); };
+    const vals = chip ? [d.chip.val(eng.stats)] : [];
+    const frames = [];                                           // { src, put: [[node, cell]] }
+    if (steps.length === 1) {
+      const st = steps[0];
+      const f = { src: draw(null), put: [] };
+      for (const c of [st.a, st.b]) f.put.push([el('i', 'idemo-ring'), c]);
+      f.put.push([el('i', 'idemo-finger on still'), st.a]);
+      frames.push(f);
+      const res = eng.swap(st.a, st.b);
+      const evs = (res && res.events) || [];
+      if (chip) vals.push(d.chip.val(eng.stats));
+      let ev = evs[evs.length - 1], at = st.b;
+      if (d.still === 'combo') ev = evs[0];                      // 剛換完、還沒爆的那一刻，上面再疊一個十字光
+      else if (d.still === 'ring') ev = evs.find(e => e.board && e.board[st.b.r] && e.board[st.b.r][st.b.c] && e.board[st.b.r][st.b.c].special === 'bomb') || ev;
+      else if (d.still === 'exit') { const q = d.opts.portals[0]; at = { r: q[2], c: q[3] }; }   // 傳送門：圈出口
+      const f2b = { src: ev ? draw(ev) : '', put: [] };
+      if (d.still === 'combo') f2b.beam = { at: st.b, dirs: ['h', 'v'] };
+      else f2b.put.push([el('i', 'idemo-ring big'), at]);
+      frames.push(f2b);
+    } else {
+      for (const st of steps) {
+        const res = eng.swap(st.a, st.b);
+        const evs = (res && res.events) || [];
+        if (chip) vals.push(d.chip.val(eng.stats));
+        const ev = (st.stillAt === 'clear' && evs.find(e => e.t === 'clear')) || evs[evs.length - 1];
+        const f = { src: ev ? draw(ev) : '', put: [] };
+        const mc = markCell(st, res);
+        if (mc) f.put.push([mkMark(st.mark.t, null), mc]);
+        if (st.stillBeam) f.beam = { at: st.b, dirs: [st.stillBeam] };   // 條紋掃過的那一排，空格上面疊一道光
+        frames.push(f);
+      }
     }
-    if (b3) { R2.setBoard({ ...snap0, grid: b3 }); R2.layout(); }
-    const img3 = b3 ? shot() : '';
-    const pc = cellPct(d.b.r, d.b.c);
+    // 位置要在盤面還在的時候量
+    for (const f of frames) for (const it of f.put) it[2] = cellPct(it[1].r, it[1].c);
+    for (const f of frames) if (f.beam) f.beam.p = cellPct(f.beam.at.r, f.beam.at.c);
     R2.setBoard(null);
     R2.pause();
     cv.remove();
-    const pic = (f, src) => { if (!src) return; const im = new Image(); im.alt = ''; im.draggable = false; im.src = src; f.appendChild(im); };
-    pic(f1, img1); pic(f3, img3);
-    for (const p of [pa, pb]) { const ring = el('i', 'idemo-ring'); putAt(ring, p); f1.appendChild(ring); }
-    const fg = el('i', 'idemo-finger on still');
-    putAt(fg, pa);
-    f1.appendChild(fg);
-    if (d.what === 'combo' && pc) {                           // 條紋＋包裝糖：三排三列一起爆
-      const h = el('i', 'idemo-beam h'), v = el('i', 'idemo-beam v');
-      h.style.top = pc.y + '%'; h.style.setProperty('--s', pc.s * 3 + '%');
-      v.style.left = pc.x + '%'; v.style.setProperty('--s', pc.s * 3 + '%');
-      f3.append(h, v);
-    } else if (pc) { const ring = el('i', 'idemo-ring big'); putAt(ring, pc); f3.appendChild(ring); }
+    [f1, f2].forEach((fr, i) => {
+      const f = frames[i];
+      if (!f) return;
+      if (f.src) { const im = new Image(); im.alt = ''; im.draggable = false; im.src = f.src; fr.appendChild(im); }
+      for (const [node, , p] of f.put) { putAt(node, p); fr.appendChild(node); }
+      const b = f.beam && f.beam.p;
+      if (!b) return;
+      // 光條：特殊組合是三排三列（寬 3 格），條紋是一排（寬 1 格）
+      const w = (f.beam.dirs.length > 1 ? 3 : 1.1) * b.s + '%';
+      for (const dir of f.beam.dirs) {
+        const ln = el('i', 'idemo-beam ' + dir);
+        if (dir === 'h') ln.style.top = b.y + '%'; else ln.style.left = b.x + '%';
+        ln.style.setProperty('--s', w);
+        fr.appendChild(ln);
+      }
+    });
+    if (chip) {
+      num.textContent = vals.map(chipTxt).join(' → ');
+      chip.classList.toggle('done', isDone(vals[vals.length - 1]));
+    }
   }
 
   return {
@@ -727,6 +800,7 @@ function introDemo(kind, host) {
     },
     stop() {
       gen++;
+      if (demoOwner !== me) return;                              // 已經有新的小卡在用盤面了
       R2.setBoard(null);
       R2.pause();
       cv.remove();
@@ -744,6 +818,7 @@ async function openIntroCard(k, alive) {
   ic.classList.remove('demo');
   const demo = it.demo ? introDemo(it.demo, ic) : null;
   if (!demo) ic.appendChild(it.icon());
+  ic.parentElement.classList.toggle('has-demo', !!demo);   // 手機橫放時示意動畫放左邊、字放右邊（style.css）
   $('#mi-title').textContent = it.name;
   $('#mi-text').textContent = softWrap(it.text);
   openModal('m-intro');

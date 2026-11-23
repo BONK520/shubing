@@ -1389,6 +1389,39 @@ test('exportState / restore: saved mid-level, restored into a fresh engine, the 
   eq(JSON.stringify(small.exportState()), before, 'refused restore leaves the engine as it was');
 });
 
+// 教學小卡的示意動畫（js/demos.js）：每張的 10 個種子，每一步都照預期（遊戲裡一輪一輪換種子播）
+test('教學示意動畫：每個 DEMO 的 10 個種子每一步都成功、開頭沒有三連、新的示意沒有連鎖', async () => {
+  const { DEMO, demoEngine } = await import('../js/demos.js');
+  const names = Object.keys(DEMO);
+  ok(names.length >= 9, 'DEMO 少於 9 張');
+  for (const nm of names) {
+    const d = DEMO[nm];
+    eq(d.seeds.length, 10, `${nm} 種子數`);
+    eq(new Set(d.seeds).size, 10, `${nm} 種子重複`);
+    ok(d.steps.length >= 1 && d.steps.length <= 2, `${nm} 步數`);
+    const clean = !!(d.opts && d.opts.antiCascade);
+    for (const seed of d.seeds) {
+      const e = demoEngine(createEngine, d, seed);
+      eq(matchesIn(e.snapshot().grid).length, 0, `${nm} seed ${seed} 開頭就有三連`);
+      d.steps.forEach((st, i) => {
+        const where = `${nm} seed ${seed} 第${i + 1}步`;
+        const s0 = e.stats;
+        const res = play(e, st.a, st.b);
+        const s1 = e.stats;
+        if (st.bounce) ok(!res.ok, `${where} 應該換不動`);
+        else ok(res.ok, `${where} 換不動`);
+        ok(!res.events.some(v => v.t === 'shuffle'), `${where} 洗牌了`);
+        if (clean) ok(!res.events.some(v => v.t === 'clear' && v.cascade > 1), `${where} 有連鎖`);
+        ok(st.ok(s0, s1, res), `${where} 結果不對`);
+        if (st.mark && st.mark.at === 'spread') ok(res.events.some(v => v.t === 'spread'), `${where} 沒有長出巧克力`);
+        if (st.hit) ok(res.events.some(v => v.cnt && st.hit(v.cnt)), `${where} 事件裡沒有 hit`);
+      });
+      if (d.chip) ok(Number.isFinite(d.chip.val(e.stats)), `${nm} 目標數字`);
+    }
+  }
+  note(`demos: ${names.join(', ')}`);
+});
+
 test('performance: a move resolves in a few ms', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 77 });
   const times = [];
