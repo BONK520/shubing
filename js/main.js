@@ -1,13 +1,13 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123w';
-import { SLOGANS } from './slogans.js?v=20261123w';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123w';
-import { blockerCanvas } from './blockers.js?v=20261123w';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123w';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123w';
-import { DEMO, demoEngine } from './demos.js?v=20261123w';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123x';
+import { SLOGANS } from './slogans.js?v=20261123x';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123x';
+import { blockerCanvas } from './blockers.js?v=20261123x';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123x';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123x';
+import { DEMO, demoEngine } from './demos.js?v=20261123x';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123w';
+const MOD_V = '?v=20261123x';
 
 window.__plushBooted = true;
 
@@ -347,18 +347,21 @@ async function submitFriend(e) {
     frBusy = false; btn.disabled = false;
   }
 }
-// 關卡卡片：好友在這一關的最高分（最多三個人）
+// 關卡卡片：這一關的最高分（自己＋好友最多三個人）
 function renderCardFriends(i) {
   const box = $('#ms-friends');
   if (!box) return;
   const lvl = LEVELS[i], id = lvl ? String(lvl.id) : '';
-  const rows = friendsOn ? board.map(p => ({ name: p.name, s: p.best[id] || 0 })).filter(r => r.s > 0).sort((a, b) => b.s - a.s).slice(0, 3) : [];
+  // 自己玩過就一定列出來（沒登入也看得到），再加上好友裡分數最高的三個人，照分數排；同分時自己排前面
+  const friends = friendsOn ? board.map(p => ({ name: p.name, s: p.best[id] || 0 })).filter(r => r.s > 0).sort((a, b) => b.s - a.s).slice(0, 3) : [];
+  const mine = Math.round(Number(save.best[id]) || 0);
+  const rows = mine > 0 ? [...friends, { name: '我', s: mine, me: true }].sort((a, b) => b.s - a.s || (a.me ? -1 : b.me ? 1 : 0)) : friends;
   box.replaceChildren();
   box.hidden = !rows.length;
   if (!rows.length) return;
-  box.appendChild(el('span', 'msf-lbl', '好友最高分'));
+  box.appendChild(el('span', 'msf-lbl', '最高分'));
   for (const r of rows) {
-    const one = el('span', 'msf-one');
+    const one = el('span', 'msf-one' + (r.me ? ' me' : ''));
     const n = el('i'); n.textContent = r.name;
     one.append(n, numEl('b', fmt(r.s)));
     box.appendChild(one);

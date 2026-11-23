@@ -9,7 +9,7 @@
 // 測的東西：
 //   1. 規則（直接打模擬器的 REST，不經過遊戲）：players 只有本人能寫、欄位和大小有限制、登入的人才能讀；saves 還是只有本人能讀
 //   2. 遊戲：登入後出現獎盃 → 用好友碼加好友 → 兩邊都看得到對方、照星星排名、同星同名次 → 關卡卡片看好友最高分
-//      → 別人亂寫的名字只當文字顯示 → 登出就收起來
+//      → 關卡卡片看自己和好友的最高分 → 別人亂寫的名字只當文字顯示 → 登出就收起來
 //   3. 規則還沒發布（模擬器換回只有 saves 的舊規則）：存檔照常、獎盃不出現、沒有錯誤
 const { chromium } = require('playwright');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -244,14 +244,18 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
   await G(pa, () => window.__game.openStartCard(0));
   await pa.waitForSelector('#m-start.open', { timeout: 5000 });
   await pa.waitForTimeout(800);
-  const card = await G(pa, () => { const b = document.querySelector('#ms-friends'); return { hidden: b.hidden, text: b.textContent }; });
+  const cardRows = pg => G(pg, () => { const b = document.querySelector('#ms-friends'); return { hidden: b.hidden, lbl: (b.querySelector('.msf-lbl') || {}).textContent, rows: [...b.querySelectorAll('.msf-one')].map(x => ({ name: x.querySelector('i').textContent, s: +x.querySelector('b').textContent.replace(/\D/g, ''), me: x.classList.contains('me') })) }; });
+  let card = await cardRows(pa);
+  const aliceBest1 = await G(pa, () => Math.round(window.__game.save.best['1']));
   await shot(pa, 'start_card');
-  check('start card: friend best score shown', !card.hidden && card.text.includes('好友最高分') && card.text.includes('bob') && card.text.replace(/\D/g, '').includes(String(bobBest1)), JSON.stringify(card));
+  check('start card: friend best score shown', !card.hidden && card.lbl === '最高分' && card.rows.some(x => x.name === 'bob' && x.s === bobBest1 && !x.me), JSON.stringify(card));
+  check('start card: my own best score shown too', card.rows.some(x => x.me && x.name === '我' && x.s === aliceBest1), JSON.stringify(card));
+  check('start card: sorted by score', card.rows.every((x, k) => !k || card.rows[k - 1].s >= x.s), JSON.stringify(card));
   await closeAll(pa);
   await G(pa, () => window.__game.openStartCard(40));
   await pa.waitForSelector('#m-start.open', { timeout: 5000 });
   await pa.waitForTimeout(500);
-  check('start card: hidden on a level no friend has played', await G(pa, () => document.querySelector('#ms-friends').hidden));
+  check('start card: hidden on a level nobody has played', await G(pa, () => document.querySelector('#ms-friends').hidden));
 
   // 有人自己改公開資料、塞奇怪的名字 → 只當文字顯示，不會跑程式
   const evil = await signUp('evil@players.test', 'evil123');
@@ -291,6 +295,13 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
   check('old rules: trophy stays hidden', !(await friendsOn(pc)));
   await G(pc, () => document.querySelector('#mw-map').click());
   await pc.waitForTimeout(1200);
+  await G(pc, () => window.__game.openStartCard(0));
+  await pc.waitForSelector('#m-start.open', { timeout: 5000 });
+  await pc.waitForTimeout(500);
+  card = await cardRows(pc);
+  check('start card without leaderboard: my own best score still shown', !card.hidden && card.rows.length === 1 && card.rows[0].me && card.rows[0].s > 0, JSON.stringify(card));
+  await closeAll(pc);
+  await pc.waitForTimeout(400);
   await shot(pc, 'old_rules_map');
   check('emulator back on the new rules', await setRules(RULES));
 
