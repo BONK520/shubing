@@ -437,7 +437,7 @@ const SFX = {
   // 同一步裡的第二、三組再往上一階。同一組的幾顆是同一個音，「啵、啵、啵」
   pop(t, o) {
     const c = clamp(Math.round(o.cascade || 1), 1, 15), g = clamp(Math.round(o.group || 0), 0, 6), j = clamp(Math.round(o.idx || 0), 0, 8);
-    const m = major(72, Math.min(14, (c - 1) + g));            // C5 起跳，最多兩個八度
+    const m = major(72, Math.min(9, (c - 1) + g));             // C5 起跳，最多爬到 E6（2026-11 從兩個八度收到 9 階：長連鎖爬太高很尖、聽久會煩）
     const pan = clamp((j - 2) * 0.18, -0.5, 0.5);
     bubble(m, t, 0.11, pan);                                  // 軟 Q 的啵（音高跟著音階）
     crunch(t, 0.95 * Math.pow(2, (m - 72) / 36), 0.16, pan);  // 一點點糖果碎掉的脆
@@ -644,6 +644,27 @@ const SFX = {
     [72, 76, 79, 84].forEach((m, i) => marimba(m, t + i * 0.06, 0.1, 0.3));
     bell(91, t + 0.24, 0.06, 0.6);
     sparkle(t + 0.2, 5, 0.035, 96);
+  },
+  // 過關煙花（main.js fireworks）：發射時輕輕「咻～」往上，o.boom 毫秒後在空中「碰」開，再一串細碎的「劈哩啪啦」
+  firework(t, o) {
+    const up = clamp((+o.boom || 800) / 1000, 0.3, 1.5), pan = clamp(+o.pan || 0, -0.8, 0.8), out = sfxBus;
+    tone(520, t, { dur: up, attack: 0.04, gain: 0.025, to: 1500, glide: up * 0.95, type: 'triangle', lp: 2600, dest: out });
+    noise(t, { dur: up * 0.9, attack: 0.05, gain: 0.025, type: 'bandpass', f0: 1200, f1: 3800, q: 1.6, dest: out });
+    const b = t + up;
+    tone(120, b, { dur: 0.42, attack: 0.003, gain: 0.15, to: 42, glide: 0.38, dest: out });
+    noise(b, { dur: 0.36, attack: 0.002, gain: 0.08, type: 'lowpass', f0: 2600, f1: 220, q: 0.6, dest: out });
+    for (let i = 0; i < 7; i++) {
+      noise(b + 0.14 + rnd(0, 0.55), { dur: 0.012, attack: 0.001, gain: rnd(0.012, 0.03), type: 'highpass', f0: rnd(3500, 6500), q: 0.7, dest: out });
+    }
+    bell(penta(84, Math.floor(rnd(0, 6))), b + 0.03, 0.03, 0.6, sfxBus, pan);
+  },
+  // 剩下的步數一步一步變成特效：每一步一個小小的「叮」，一步比一步高（以前每步都吹一次整段小號，疊起來很吵）
+  sugarstep(t, o) {
+    const i = clamp(Math.round(+o.n || 0), 0, 14);
+    const m = major(79, Math.min(9, i));
+    bell(m, t, 0.07, 0.5);
+    marimba(m - 12, t, 0.08, 0.3);
+    noise(t, { dur: 0.05, attack: 0.002, gain: 0.025, type: 'highpass', f0: 5000, q: 0.6 });
   },
   sugar(t) {
     const brass = (m, at, dur, g = 0.07) => {

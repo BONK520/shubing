@@ -34,21 +34,21 @@ const TILE = 0.8;         // 圓角方塊邊長 / 格（改版 2026-11：從 0.8
 const MAX_PARTS = 900;
 
 // ---- 節奏（毫秒）----
-const SWAP_MS = 200;      // 成功交換（主動的那顆有一點點回彈）
+const SWAP_MS = 220;      // 成功交換（主動的那顆有一點點回彈）
 const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
 const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
-const POP_LEAD = 105;     // 最後一顆閃光之後 ~100ms 上面的方塊就開始往下灌（碎開的動畫在背景收尾，不等）
-const GROUP_STAGGER = 24; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
-const POP_SEQ = 26;       // 同一組裡一顆接一顆爆（「啵、啵、啵」，很快）
+const POP_LEAD = 150;     // 最後一顆閃光之後 ~150ms 上面的方塊才開始往下灌（碎開的動畫在背景收尾，不等；2026-11 從 105 拉長，消掉的那一下看得到）
+const GROUP_STAGGER = 40; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高（2026-11 從 24 拉開，聲音不會黏成一團）
+const POP_SEQ = 34;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 420;     // 新特殊方塊 / 變身的彈出（放大到 1.3 倍再彈回；改版 2026-11 從 340 拉長，大的那一下看得清楚）
 const LAND_MS = 130;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復），約 120ms 內做完
-const LAND_HOLD = 80;     // 下一輪連鎖：會被消掉的方塊落地後 80ms 就爆（瀑布一樣接著連消）
-const G_FALL = 0.00009;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.1 秒、整欄約 0.35 秒
-const V0_FALL = 0.006;    // 掉落初速（格 / ms）
-const STAGGER_ROW = 30, STAGGER_MAX = 150, COL_JITTER = 16;   // 同一欄一顆接一顆落下（間隔約 0.03 秒），像瀑布
+const LAND_HOLD = 230;    // 下一輪連鎖：會被消掉的方塊落地後停一拍（230ms）才爆，每一段連鎖分得開（2026-11 從 80 拉長：玩家覺得太快、全部黏在一起）
+const G_FALL = 0.00006;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.12 秒、整欄約 0.44 秒（2026-11 放慢約兩成）
+const V0_FALL = 0.005;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 36, STAGGER_MAX = 180, COL_JITTER = 16;   // 同一欄一顆接一顆落下（間隔約 0.036 秒），像瀑布
 // 特效傳到某格要多久
 // CHAIN_MS：被波及的特殊方塊，一個接一個接力引爆的間隔（70ms）
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 110, CLEAR_CAP = 900;
@@ -280,6 +280,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   let texts = [];                   // 飄分
   let word = null;                  // 連鎖字（口號）
   let surpriseUsed = false;         // 照片驚喜口號每關最多一次（setBoard 重設）
+  // 口號語音（2026-11：玩家覺得太吵、每段連鎖都講一句全部黏在一起）：學 Candy Crush 平常安靜，
+  // 一步最多講一句，連到第 3 段以上（或組合技、照片驚喜）才講，兩句之間至少隔 VOICE_GAP 毫秒。字照樣每段都跳
+  const VOICE_GAP = 6000;
+  let lastVoiceAt = -Infinity, moveVoiced = false;
   let banners = [];
   let shakes = [];
   let sched = [];                   // 定時動作 { t, fn }
@@ -2106,7 +2110,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       fx.push({ type: 'flash', x: cl.c + 0.5, y: cl.r + 0.5, t0: tt, dur: 300, R: 0.95 });
       burst(cl.c + 0.5, cl.r + 0.5, kindColor(p.kind), 4, tt, { speed: 2.2, stars: 3 });
     }));
-    await wait((n - 1) * stagger + 220);
+    // 過關後剩下的步數一步一步變特效：play(events, { sugarStep }) 每步至少停 sugarStep 毫秒，看得清楚一顆一顆變
+    const hold = ev.sugar && curOpts && curOpts.sugarStep > 220 ? curOpts.sugarStep : 220;
+    await wait((n - 1) * stagger + hold);
     flushSched();
   }
 
@@ -2416,15 +2422,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
 
     // 口號（js/slogans.js）：連鎖第 2/3/4/5+ 步；組合技；很大的一步偶爾來一張照片驚喜（每關最多一次）
     const isCombo = removed.some(it => it.cause === 'combo') || effects.some(e => e.fx === 'board');
+    if (cascade <= 1) moveVoiced = false;                       // 新的一步
+    const canSpeak = lvl => lvl >= 3 && !moveVoiced && now() - lastVoiceAt >= VOICE_GAP;
     if (cascade >= 4 && !surpriseUsed && SLOGANS.surprise.length && Math.random() < 0.4) {
       surpriseUsed = true;
       const sl = SLOGANS.surprise[Math.floor(Math.random() * SLOGANS.surprise.length)];
-      showWord(sl.text, 5, sl);
+      showWord(sl.text, 5, sl, canSpeak(5));
     } else if (cascade >= 2) {
       const sl = cascadeSlogan(cascade);
-      if (sl) showWord(sl.text, cascade, sl);
+      if (sl) showWord(sl.text, cascade, sl, canSpeak(cascade));
     } else if (isCombo) {
-      showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
+      showWord(SLOGANS.combo.text, 4, SLOGANS.combo, canSpeak(4));
     }
     if (cascade >= 2) cue('chime', 40, { level: cascade + 1 });   // 每次跳口號都叮咚一下
     // 稱讚字：在消除的地方彈出來（2 連消以上、或特殊組合），連越多字越大、越華麗
@@ -2473,8 +2481,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   async function animFall(ev, next) {
     const t = now();
     const seq = ++fallSeq;
-    // play(events, { slowFall: k })：慢 k 倍播掉落（教學小卡的傳送門要看清楚從哪裡掉出來）；遊戲裡不給，跟原本一樣
-    const slow = curOpts && curOpts.slowFall > 1 ? curOpts.slowFall : 1;
+    // play(events, { slowFall: k })：慢 k 倍播掉落（教學小卡的傳送門要看清楚從哪裡掉出來）；k < 1 是快一點（過關後的剩餘步數獎勵）
+    const slow = curOpts && curOpts.slowFall > 0 ? clamp(curOpts.slowFall, 0.5, 4) : 1;
     const g = G_FALL / (slow * slow), v0f = V0_FALL / slow;
     const items = [];
     for (const m of ev.moves || []) {
@@ -2545,7 +2553,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         }
         v.mv = mv;
         v.landT = mv.t0 + mv.dur;
-        v.landAmp = clamp((vel + g * mv.dur) * 2.2 * slow, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
+        v.landAmp = clamp((vel + g * mv.dur) * 2.6 * slow, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84；掉落放慢後係數 2.2 → 2.6，Q 的程度不變）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
@@ -2576,7 +2584,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         const v = p ? visuals.get(p.id) : cellV(q);
         if (v && v.mv && v.mv.fall) endInv = Math.max(endInv, v.landT);
       }
-      if (cells.length) end = Math.min(endAll, endInv + LAND_HOLD);
+      // play(events, { landHold })：過關後的特效連爆不用每段停那麼久（main.js 的剩餘步數獎勵）
+      const hold = curOpts && curOpts.landHold != null ? curOpts.landHold : LAND_HOLD;
+      if (cells.length) end = Math.min(endAll, endInv + hold);
     }
     await wait(end - now());
   }
@@ -2876,10 +2886,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     photoCache.set(key, sp);
     return sp;
   }
-  function showWord(text, level, sl) {
+  function showWord(text, level, sl, speak = false) {
     if (!text || quiet) return;
     word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
-    if (sl && sl.voice) cue('voice', 60, { id: sl.voice });
+    if (speak && sl && sl.voice) { cue('voice', 60, { id: sl.voice }); lastVoiceAt = now(); moveVoiced = true; }
     requestDraw();
   }
   function banner(text, { sub = '', duration = 1600 } = {}) {
