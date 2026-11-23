@@ -1487,6 +1487,7 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .msf-one { display: inline-flex; align-items: baseline; gap: 5px; max-width: 100%; padding: 4px 10px; border-radius: 999px; background: #fff; box-shadow: 0 2px 0 #ecc9c0; color: var(--ink); }
 .msf-one i { font-style: normal; max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msf-one b { font: 900 15px/1 var(--font-num); color: #e8287f; }
+.msf-one.me { background: #ffe6f1; box-shadow: 0 2px 0 #f3b7cf; }   /* 自己那一格：跟排行榜上「我」那一排同色 */
 
 /* ---------- 省電：看不到的東西不要動 ----------
    換畫面只是把 .screen 設成 visibility: hidden（不是 display: none），裡面的無限動畫其實一直在跑：
