@@ -70,6 +70,7 @@
 4. 上面的「**規則**」（Rules）分頁：把裡面的東西全部刪掉，換成專案根目錄 **`firestore.rules`** 的內容，按「**發布**」。
 
    規則的意思：每個人的存檔放在 `saves/{帳號 ID}`，**只有本人能讀、能寫**，別人看不到也改不了；寫入的格式也會檢查。
+   好友排行榜的公開資料放在 `players/{帳號 ID}`：登入的人都能讀，只有本人能寫（見下面「好友排行榜」）。
 
 ## 6. 上傳、試玩
 
@@ -92,6 +93,19 @@
 - **登出**：換回那台裝置自己的訪客存檔。
 - **重新整理 / 關掉再開**：登入狀態會記住，不用每次登入。
 
+## 好友排行榜
+
+登入的玩家在地圖上方會看到獎盃按鈕：裡面有自己的 **好友碼**（6 個字，從帳號算出來，不會變），
+輸入朋友的好友碼就加好友，比 **總星星數**；關卡開始卡上也會顯示好友在這一關的最高分。
+只要一方輸入好友碼，兩邊的排行榜都看得到對方。
+
+- **公開什麼**（`players/{uid}`，登入的人都能讀）：遊戲名稱、好友碼、總星星數、每關最高分、自己加的好友名單。
+  存檔（`saves`）還是只有本人看得到。
+- **規則限制**：只有本人能寫自己那份；只能有 `code`、`name`、`stars`、`best`、`friends`、`t` 這幾個欄位；
+  名字 1～24 個字、星星 0～3000、好友最多 50 人。
+- **規則還沒發布、或讀不到**：獎盃按鈕不出現，遊戲和存檔照常，不會跳錯誤。發布後重新整理就會出現。
+- **想刪掉某個人的排行榜資料**：Firestore →「資料」→ `players` → 找到那個 ID → 刪除文件（下次他登入、存檔時會重新寫一份）。
+
 ## 常見問題
 
 - **帳號名稱**：2～12 個字，可以用任何語言的文字、數字、`_`、`-`；英文不分大小寫（`Alice` 和 `alice` 是同一個帳號）。
@@ -108,11 +122,12 @@
 
 ## 開發者：本機測試（不用真的 Firebase 專案）
 
-用 Firebase 的模擬器跑端對端測試（兩台「裝置」、登入、合併、換人、離線補傳）：
+用 Firebase 的模擬器跑端對端測試（兩台「裝置」、登入、合併、換人、離線補傳；好友排行榜和 `players` 規則）：
 
 ```sh
 npm i --no-save playwright firebase@13.2.0 firebase-tools   # 還要有 Java
 npx firebase emulators:exec --only auth,firestore --project demo-plush "node tests/cloud_e2e.js"
+npx firebase emulators:exec --only auth,firestore --project demo-plush "node tests/friends_e2e.js"
 ```
 
 或自己開模擬器（`npx firebase emulators:start --only auth,firestore --project demo-plush`），
