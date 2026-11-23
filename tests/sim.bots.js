@@ -68,6 +68,10 @@ export const PROFILES = {
     block: 2, chocoAny: 1, dino: 2.5, order: 3, alarm: 2 },
   decent: { randomP: 0, stripe: 5, wrap: 6, bomb: 10, fish: 4, fire: 1, combo: 8, low: 0.6, jelly: 3, urgency: 6, want: 2, noise: 1.5,
     block: 3, chocoAny: 1.5, dino: 4, order: 8, alarm: 4 },
+  // 11/23 工作單7：使用者在第116關的玩法 = 只要能打到巧克力就打（打得到的步裡挑最好的），打不到才像 casual 那樣走
+  //   ?profiles=chocofirst（目標表沒有它，只看過關率）
+  chocofirst: { randomP: 0.6, stripe: 1.5, wrap: 2, bomb: 3, fish: 1.5, fire: 1, combo: 2, low: 0, jelly: 3, urgency: 6, want: 2, noise: 0.3,
+    block: 2, chocoAny: 1, dino: 2.5, order: 3, alarm: 2, chocoFirst: true },
 };
 
 // top-left corners of the 2×2 squares a cell can be part of (offsets), same as js/engine.js
@@ -134,7 +138,8 @@ function bestMove(s, moves, level, e, W, rnd) {
   const urg = k => 1 + W.urgency / Math.max(1, leftOf(k));
   const BLK = {
     frost: leftOf('frost') > 0 ? W.block * urg('frost') : 0.3,
-    choco: leftOf('choco') > 0 ? W.block * urg('choco') : leftOf('chocoGot') > 0 ? W.block * urg('chocoGot') : W.chocoAny,
+    choco: (W.chocoFirst ? CHOCO_FIRST : 0) +
+      (leftOf('choco') > 0 ? W.block * urg('choco') : leftOf('chocoGot') > 0 ? W.block * urg('chocoGot') : W.chocoAny),
     cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
     shell: leftOf('shell') > 0 ? W.block * urg('shell') : 0.3,
     licorice: 0.4,
@@ -225,6 +230,7 @@ function bestMove(s, moves, level, e, W, rnd) {
   };
 
   let best = null, bestV = -Infinity;
+  lastBestV = -Infinity;
   for (const mv of moves) {
     const { a, b } = mv;
     const p = g[a.r][a.c], q = g[b.r][b.c];
@@ -287,14 +293,22 @@ function bestMove(s, moves, level, e, W, rnd) {
     v += rnd() * W.noise;   // people don't weigh moves exactly: near-equal moves are a coin flip
     if (v > bestV) { bestV = v; best = mv; }
   }
+  lastBestV = bestV;
   return best;
 }
+// chocofirst：打到一塊巧克力就加這麼多，所以能打巧克力的步一定排第一
+const CHOCO_FIRST = 1000;
+let lastBestV = -Infinity;
 
 export function pickMove(e, level, profile, rnd) {
   const W = PROFILES[profile];
   const s = e.snapshot();
   const moves = e.listMoves ? e.listMoves() : validMoves(s);
   if (!moves.length) return null;
+  if (W.chocoFirst) {
+    const mv = bestMove(s, moves, level, e, W, rnd);
+    if (lastBestV >= CHOCO_FIRST) return mv;                 // 這一步打得到巧克力
+  }
   if (W.randomP > 0 && rnd() < W.randomP) return moves[Math.floor(rnd() * moves.length)];
   return bestMove(s, moves, level, e, W, rnd);
 }

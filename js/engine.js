@@ -102,9 +102,10 @@
 //   stats also: dinosOut, dinosTotal, frostLeft (layers), chocoLeft, licoriceLeft, locksLeft, alarmsLeft, alarmsBurst,
 //   shellLeft (layers).
 //   Obstacle 'P' = a chocolate pot (block 'pot', kind -9): fills the cell, never moves, cannot be removed. After a
-//   player move that broke no chocolate, one pot spits one chocolate onto the nearest normal piece (event 'spread'
-//   with `from` = the pot; then plain chocolate does not grow by itself). Option `pot: { max = 8 }`: no spitting
-//   while that many chocolates are on the board. With dinos and no E, the cell above a pot is an exit too.
+//   player move that broke no chocolate, or that left no chocolate on the board, one pot spits one chocolate onto
+//   the nearest normal piece (event 'spread' with `from` = the pot; then plain chocolate does not grow by itself).
+//   Option `pot: { max = 8 }`: no spitting while that many chocolates are on the board. With dinos and no E, the
+//   cell above a pot is an exit too.
 //   Obstacles '-' / '|' / 'W' / 'B' = a gift: a special (stripe h / stripe v / wrapped / colour bomb) under plastic
 //   wrap (lock 2 in the cage layer). Like a cage it cannot be swapped and does not fall; a match through it, a match
 //   next to it or any effect only opens the wrap (clear `unlocks` item with `gift: true`) — the special inside does
@@ -968,7 +969,7 @@ export function createEngine(opts = {}) {
     chocoLeft++;
     events.push(ev({ t: 'spread', from: pick.from, to: pick.to, piece: cp(np), was: cp(was) }));
   }
-  // 巧克力壺：這一步沒打到巧克力 → 一個壺（隨機）往離它最近的一般方塊噴一塊巧克力
+  // 巧克力壺：這一步沒打到巧克力、或盤上的巧克力被打光了 → 一個壺（隨機）往離它最近的一般方塊噴一塊巧克力
   function potSpit(events) {
     if (chocoLeft >= potMax) return;
     const pots = [];
@@ -1331,7 +1332,8 @@ export function createEngine(opts = {}) {
       if (belts.length && runBelts(events)) last = Math.max(last, settle(events, last + 1, null));
       cascadesMax = Math.max(cascadesMax, last);
       const alarms = tickAlarms(events, ticking, last + 1);
-      if (potCount) { if (chocoBroken === 0) potSpit(events); }
+      // 11/23：盤上的巧克力被打光時，壺一定補一塊（不然一直打巧克力的玩家會沒東西打）
+      if (potCount) { if (chocoBroken === 0 || chocoLeft === 0) potSpit(events); }
       else if (chocoBefore > 0 && chocoBroken === 0 && chocoLeft > 0) spreadChoco(events);
       if (!hasValidMove()) events.push(shuffleInternal());
       const gained = events.reduce((s, e) => s + (e.gained || 0), 0);

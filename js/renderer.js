@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123s';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123s';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123s';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123t';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123t';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123t';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -59,6 +59,7 @@ const fishMs = e => Math.min(FISH_MAX, FISH_BASE + FISH_PER * Math.hypot(e.to.r 
 
 const DINO_GLOW = [110, 240, 150];       // 龍龍：綠色的光
 const ALARM_RED = [255, 84, 120];        // 鬧鐘爆開：紅色的圈和「-3步」
+const POT_GLOW = [255, 170, 200];        // 巧克力壺噴巧克力：壺亮一圈粉紅色的光
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], PLUM = [74, 34, 112], PLUM_D = [40, 12, 78], GOLD = [255, 196, 40], SPARK_GOLD = [255, 186, 60];
 // 盤面主題（衣櫃的「棋盤背景主題」）：玻璃、格子、內壁影子、外框顏色、裝飾。預設是「夢幻馬卡龍」：
 // 半透明的奶白 → 淡薰衣草毛玻璃，粉白 / 淡紫交錯的格子，奶油粉外框
@@ -2677,7 +2678,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     const v = newVisual(p, q.r, q.c);
     // 巧克力壺噴出來的：壺彈一下，巧克力畫一道弧線飛過去
     const far = Math.abs(f.r - q.r) + Math.abs(f.c - q.c) > 1, pot = cellV(f);
-    if (pot && pot.block === 'pot') { pot.landT = t; pot.landAmp = 0.18; }
+    if (pot && pot.block === 'pot') {
+      pot.landT = t; pot.landAmp = 0.18;
+      // 11/23：壺亮一圈，讓人知道巧克力是從這裡來的（盤上的巧克力打光時也會補一塊）
+      fx.push({ type: 'ring', x: f.c + 0.5, y: f.r + 0.5, R: 1.25, t0: t, dur: 460, col: POT_GLOW });
+    }
     const arc = far || (pot && pot.block === 'pot') ? 0.7 : 0;
     v.mv = { t0: t, dur: far ? 560 : 480, x1: q.c, y1: q.r, path: u => {
       const e = Math.min(1, easeOutBack(u, 2));

@@ -1,12 +1,12 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123s';
-import { SLOGANS } from './slogans.js?v=20261123s';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123s';
-import { blockerCanvas } from './blockers.js?v=20261123s';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123s';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123s';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123t';
+import { SLOGANS } from './slogans.js?v=20261123t';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123t';
+import { blockerCanvas } from './blockers.js?v=20261123t';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123t';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123t';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123s';
+const MOD_V = '?v=20261123t';
 
 window.__plushBooted = true;
 
@@ -528,7 +528,7 @@ const INTRO = {
   portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal') },
   alarm: { name: '鬧鐘', text: '每走一步，鬧鐘就少一格；數到0會爆開，扣掉3步！在旁邊配對或用特效就能拆掉。', icon: () => blockerImg('alarm') },
   shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2') },
-  pot: { name: '巧克力壺', text: '壺打不掉。這一步沒打到巧克力，它就會噴一塊出來，記得一直清喔！', icon: () => blockerImg('pot') },
+  pot: { name: '巧克力壺', text: '巧克力壺打不掉。沒打到巧克力、或盤上的巧克力被打光時，它會再噴出新的。', icon: () => blockerImg('pot') },
   gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap') },
   belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
@@ -1183,7 +1183,7 @@ function goalText(lvl) {
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
 const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
-  '龍龍', '鐵籠子', '糖霜', '巧克力', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關'];
+  '龍龍', '鐵籠子', '糖霜', '巧克力', '打光', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {

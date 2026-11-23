@@ -907,7 +907,7 @@ test('chocolate: a match next to it removes it (no spread); a move that breaks n
   ok(sp[0].was && sp[0].was.kind >= 0, 'the eaten piece is reported');
 });
 
-test('chocolate pot: never moves or breaks; a move that broke no chocolate spits one onto the nearest normal piece', () => {
+test('chocolate pot: never moves or breaks; a move that broke no chocolate (or left none on the board) spits one onto the nearest normal piece', () => {
   const e = mo(['______', '______', '______', '______', '______', '00_0__'],
     ['P.....', '......', '......', '......', '......', '......']);
   eq(e.cell(0, 0).block, 'pot');
@@ -929,13 +929,24 @@ test('chocolate pot: never moves or breaks; a move that broke no chocolate spits
   const s2 = evOf(play(e2, P(5, 3), P(5, 2)), 'spread');
   eq(s2.length, 1);
   eq(Math.abs(s2[0].to.r - 2) + Math.abs(s2[0].to.c - 2), 2, 'two steps from the pot');
-  // a move that breaks chocolate: no spitting
+  // a move that breaks chocolate while some is still on the board: no spitting
   const e3 = mo(['______', '______', '______', '00_0__', '______', '______'],
-    ['P.....', '......', '..C...', '......', '......', '......']);
+    ['P.....', '......', '..C...', '......', '......', '.....C']);
   const r3 = play(e3, P(3, 3), P(3, 2));
   ok(firstClear(r3).removed.some(x => x.piece.block === 'choco'), 'chocolate removed');
   eq(evOf(r3, 'spread').length, 0, 'no spit on a move that broke chocolate');
   eq(e3.stats.chocoGot, 1);
+  eq(e3.stats.chocoLeft, 1);
+  // 11/23: the move breaks the last chocolate on the board → the pot spits a new one right away
+  const e3b = mo(['______', '______', '______', '00_0__', '______', '______'],
+    ['P.....', '......', '..C...', '......', '......', '......']);
+  const r3b = play(e3b, P(3, 3), P(3, 2));
+  ok(firstClear(r3b).removed.some(x => x.piece.block === 'choco'), 'the last chocolate removed');
+  const s3b = evOf(r3b, 'spread');
+  eq(s3b.length, 1, 'board emptied of chocolate: the pot spits');
+  deq(s3b[0].from, { r: 0, c: 0 });
+  eq(e3b.stats.chocoGot, 1);
+  eq(e3b.stats.chocoLeft, 1);
   // cap: pot.max chocolates on the board → no spit, and with a pot plain chocolate does not grow on its own
   const e4 = mo(['______', '______', '______', '______', '______', '00_0__'],
     ['P....C', '......', 'C.....', '......', '.....C', '......'], { pot: { max: 3 } });
