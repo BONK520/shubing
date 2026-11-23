@@ -1,11 +1,11 @@
-// 毛絨消消樂 — 音效用 Web Audio 即時合成；背景音樂播 assets/music/ 的三首（載不到時退回合成的那首）
+// 毛絨消消樂 — 音效用 Web Audio 即時合成；背景音樂播 assets/music/ 的兩首（載不到時退回合成的那首）
 // API（docs/SPEC.md §5）：
 //   audio.unlock()            第一次 pointerdown / keydown 時呼叫；建立或喚醒 AudioContext（含 iOS 解鎖）
 //   audio.play(name, opts)    靜音或尚未解鎖時直接忽略；永遠不丟例外
 //                             opts.delay（毫秒）：排在多久之後響（照 AudioContext 的時鐘，和畫面的動畫時間對齊）
 //   audio.setMuted(b) / audio.muted     只管音效（sfx）；音樂另外用 setMusic 控制
 //   audio.setMusic(b) / audio.music     背景音樂開關；分頁隱藏時自動暫停
-//   audio.setScene(s, n)      'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡第 n 關：單數關 level-a、雙數關 level-b，整關循環同一首）
+//   audio.setScene(s, n)      'home'（首頁、地圖：home.mp3 循環）或 'level'（關卡：每一關都播 level-b，一直循環）
 // 音效名稱：tap select swap invalid match(opts.cascade 1..n) stripe wrap bomb special land shuffle belt
 //           win lose star(opts.n 1..3) sugar combo
 //           pop(opts.cascade, opts.group：連鎖越多、同一步的組數越多，音越高) board(炸彈+炸彈) chime(opts.level：長連鎖)
@@ -739,18 +739,17 @@ function stopSynth() {
 }
 
 // ---------- 背景音樂：assets/music/*.mp3 ----------
-// home = 〈かわいいきみ。〉、level-a = 〈Mini mini Kawaii Pop〉、level-b = 〈かわいいこねこ〉
-// 三首的響度不一樣（整首平均約 -21 / -17 / -11 dB），各自乘一個係數拉齊到 musicBus 上約 -34 dB RMS
+// home = 〈かわいいきみ。〉、level-b = 〈かわいいこねこ〉（11/23 使用者說〈Mini mini Kawaii Pop〉不要，level-a 拿掉）
+// 兩首的響度不一樣（整首平均約 -21 / -11 dB），各自乘一個係數拉齊到 musicBus 上約 -34 dB RMS
 // （舊的合成音樂約 -40 dB；真的歌比較滿，壓到一樣小會聽不清楚）。整體開關和淡入淡出還是 musicBus 的 MUSIC_VOL
 const TRACKS = {
   home: { url: 'assets/music/home.mp3', gain: 0.86, loop: true },
-  'level-a': { url: 'assets/music/level-a.mp3', gain: 0.53, loop: true },
   'level-b': { url: 'assets/music/level-b.mp3', gain: 0.28, loop: true },
 };
-const SCENES = { home: ['home'], level: ['level-a', 'level-b'] };
+const SCENES = { home: ['home'], level: ['level-b'] };
 const FADE_OUT = 0.6, FADE_IN = 0.9;      // 換曲：舊的先淡出，快淡完才淡入新的（兩首不會疊在一起）
-// 11/23 使用者指定：一關一首、一直循環（原本兩首輪流、播完換下一首，聽起來很怪）。單數關 level-a、雙數關 level-b，
-// 同一關每次玩都是同一首；重新開始、暫停後繼續都不換歌
+// 11/23 使用者指定：所有關卡都播〈かわいいこねこ〉、一直循環（原本單數關、雙數關各一首）。
+// 換關、重新開始、暫停後繼續都不換歌，也不會兩首疊在一起
 let scene = 'home', levelNo = 1;
 let musicLive = false;                    // musicBus 已經淡入（音樂「開著」）
 let song = null;                          // 正在播的 { name, src, g, t0, off, dur, loop, c, done }
@@ -788,8 +787,8 @@ function wantedTrack() {
   const list = SCENES[scene].filter(n => !trackFail[n]);
   if (!list.length) return null;
   if (scene !== 'level') return list[0];
-  const pref = levelNo % 2 === 1 ? 'level-a' : 'level-b';
-  return list.includes(pref) ? pref : list[0];     // 這關的歌抓不到：先用另一首
+  const pref = 'level-b';
+  return list.includes(pref) ? pref : list[0];     // level-b 抓不到時上面已回傳 null，改播合成音樂
 }
 function songAt(s, now) {
   let p = s.off + Math.max(0, now - s.t0);
@@ -852,11 +851,11 @@ function playScene(name) {
     if (my !== songSeq || !ctx || !musicLive) return;
     startSong(name, buf, had ? FADE_OUT - 0.1 : 0);
     setTimeout(dropUnused, (FADE_OUT + 0.5) * 1000);
-    // 關卡：先把另一首（下一關用的）抓好、解好
+    // 關卡有第二首時先抓好、解好（11/23 起關卡只剩一首，這段不會多抓）
     if (scene === 'level') {
       const next = SCENES.level.find(n => n !== name && !trackFail[n]);
       if (next) setTimeout(() => { if (scene === 'level' && ctx) getBuffer(next).catch(() => {}); }, 4000);
-    } else setTimeout(() => SCENES.level.forEach(n => fetchRaw(n).catch(() => {})), 8000);   // 首頁：先下載關卡的兩首（不解碼）
+    } else setTimeout(() => SCENES.level.forEach(n => fetchRaw(n).catch(() => {})), 8000);   // 首頁：先下載關卡那首（不解碼）
   }, () => {
     trackFail[name] = true;
     if (my !== songSeq) return;

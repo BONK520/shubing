@@ -1,12 +1,12 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123r';
-import { SLOGANS } from './slogans.js?v=20261123r';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123r';
-import { blockerCanvas } from './blockers.js?v=20261123r';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123r';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123r';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123s';
+import { SLOGANS } from './slogans.js?v=20261123s';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123s';
+import { blockerCanvas } from './blockers.js?v=20261123s';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123s';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123s';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123r';
+const MOD_V = '?v=20261123s';
 
 window.__plushBooted = true;
 
