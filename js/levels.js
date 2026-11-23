@@ -3659,7 +3659,7 @@ export const LEVELS = [
       '.1...1.',
       '.......',
     ],
-    hint: '把兩個特殊方塊換在一起試試看',
+    hint: '先做出兩個特殊方塊，讓它們靠在一起再互換！',
   },
   {
     id: 104, rows: 9, cols: 7, moves: 31, kinds: ['dog', 'sloth', 'egg', 'snoopy'],

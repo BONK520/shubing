@@ -469,54 +469,116 @@ export function paintBeltIcon(g, S) {
 }
 
 // ---------------- 訂單目標的小圖：條紋方塊 / 包裝糖 / 彩色炸彈 / 飛天玩偶；組合 = 兩個疊在一起 ----------------
-const ORDER_COL = { stripe: ['#ffb3d4', '#ff5f9e'], wrap: ['#ffe28a', '#ff9f1c'], fish: ['#b8f0ff', '#3fb6ff'] };
 function paintOrderOne(g, S, what) {
   const cx = S / 2, cy = S / 2;
   if (what === 'bomb') {
-    const R = S * 0.36;
-    const body = g.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
-    body.addColorStop(0, '#6b4b2e'); body.addColorStop(1, '#2b170b');
-    g.fillStyle = body; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill();
-    const dots = ['#ff4d6d', '#ffd23a', '#4fe06e', '#38d9ff', '#b26bff', '#ff9f1c'];
-    for (let i = 0; i < 12; i++) {
-      const a = i * 2.4, rad = R * (0.25 + 0.55 * ((i * 37) % 10) / 10);
-      g.fillStyle = dots[i % dots.length];
-      g.beginPath(); g.arc(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, S * 0.045, 0, Math.PI * 2); g.fill();
+    // 工作單4：照盤面上的彩色炸彈（renderer buildBomb）畫：巧克力球撒彩色糖粒、白圈、粉紅外圈，沒有黑框。
+    // 目標列只有二十幾 px，外圈和糖粒都比盤面上的粗一點，縮小後粉紅圈才看得到
+    const R = S * 0.3;
+    g.save();
+    g.shadowColor = 'rgba(94,20,60,0.35)'; g.shadowBlur = S * 0.05; g.shadowOffsetY = S * 0.03;
+    g.beginPath(); g.arc(cx, cy, S * 0.47, 0, Math.PI * 2); g.fillStyle = '#c92f78'; g.fill();
+    g.restore();
+    const pg = g.createLinearGradient(cx - S * 0.4, cy - S * 0.4, cx + S * 0.4, cy + S * 0.4);
+    pg.addColorStop(0, '#ffb3d6'); pg.addColorStop(0.4, '#ff5aa8'); pg.addColorStop(1, '#c92f78');
+    g.beginPath(); g.arc(cx, cy, S * 0.47, 0, Math.PI * 2); g.fillStyle = pg; g.fill();
+    g.beginPath(); g.arc(cx, cy, S * 0.47, 0, Math.PI * 2);
+    g.lineWidth = Math.max(1, S * 0.018); g.strokeStyle = 'rgba(130,20,70,0.7)'; g.stroke();
+    g.beginPath(); g.arc(cx, cy, S * 0.43, Math.PI * 0.9, Math.PI * 1.6);
+    g.lineWidth = Math.max(1, S * 0.025); g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.stroke();
+    g.beginPath(); g.arc(cx, cy, R * 1.17, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    const cg = g.createRadialGradient(cx, cy, 0, cx, cy, R);
+    cg.addColorStop(0, '#6e4129'); cg.addColorStop(0.7, '#56301c'); cg.addColorStop(1, '#3b2014');
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = cg; g.fill();
+    // 糖粒：短棒和圓點，顏色和盤面同一組
+    const cols = ['#ff3fb0', '#18c25a', '#ffc81a', '#4fb4ff', '#ffffff', '#ff8a2a'];
+    g.lineCap = 'round';
+    for (let i = 0; i < 13; i++) {
+      const d = R * 0.8 * Math.sqrt((i + 0.5) / 13), a = i * 2.39996 + 0.3;
+      const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, c = cols[i % cols.length];
+      if (i % 3 === 2) {
+        g.beginPath(); g.arc(x, y, R * 0.1, 0, Math.PI * 2); g.fillStyle = c; g.fill();
+      } else {
+        const r = (i * 1.7) % Math.PI, l = R * 0.17;
+        g.beginPath(); g.moveTo(x - Math.cos(r) * l, y - Math.sin(r) * l); g.lineTo(x + Math.cos(r) * l, y + Math.sin(r) * l);
+        g.lineWidth = R * 0.14; g.strokeStyle = c; g.stroke();
+      }
     }
-    g.lineWidth = S * 0.03; g.strokeStyle = 'rgba(0,0,0,0.6)';
-    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+    // 明暗和左上的反光
+    const lg = g.createRadialGradient(cx - R * 0.3, cy - R * 0.4, R * 0.05, cx, cy, R);
+    lg.addColorStop(0, 'rgba(255,225,200,0.3)'); lg.addColorStop(0.5, 'rgba(255,225,200,0)'); lg.addColorStop(1, 'rgba(20,6,2,0.35)');
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = lg; g.fill();
+    g.save();
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+    g.translate(cx - R * 0.36, cy - R * 0.5); g.rotate(-0.62);
+    const gl = g.createLinearGradient(0, -R * 0.36, 0, R * 0.26);
+    gl.addColorStop(0, 'rgba(255,255,255,0.55)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.beginPath(); g.ellipse(0, 0, R * 0.62, R * 0.26, 0, 0, Math.PI * 2); g.fillStyle = gl; g.fill();
+    g.restore();
     return;
   }
-  const [hi, lo] = ORDER_COL[what] || ORDER_COL.stripe;
-  const w = S * 0.6, x = cx - w / 2, y = cy - w / 2;
+  // 工作單4：條紋 / 包裝糖 / 飛天玩偶改成和盤面同一套記號。底座一律是粉紅圓糖果（訂單不分顏色），
+  // 條紋 = 白色橫條紋 + 左右兩個金色箭頭；包裝糖 = 白色糖果紙兩端（橘色邊）+ 白圈；飛天玩偶 = 背後一對白色翅膀
+  const R = what === 'fish' ? S * 0.27 : S * 0.3, by = what === 'fish' ? cy + S * 0.07 : cy;
   if (what === 'wrap') {
-    // 糖果紙的兩端
-    g.fillStyle = lo;
+    g.lineJoin = 'round';
     for (const d of [-1, 1]) {
-      g.beginPath(); g.moveTo(cx + d * w * 0.42, cy); g.lineTo(cx + d * S * 0.48, cy - S * 0.17); g.lineTo(cx + d * S * 0.48, cy + S * 0.17); g.closePath(); g.fill();
+      const x0 = cx + d * R * 0.85, x1 = cx + d * S * 0.49, h = S * 0.19, nk = S * 0.06;
+      g.beginPath();
+      g.moveTo(x0, cy - nk); g.quadraticCurveTo((x0 + x1) / 2, cy - nk, x1, cy - h);
+      g.quadraticCurveTo(x1 - d * S * 0.05, cy, x1, cy + h);
+      g.quadraticCurveTo((x0 + x1) / 2, cy + nk, x0, cy + nk); g.closePath();
+      g.save(); g.shadowColor = 'rgba(255,140,40,0.9)'; g.shadowBlur = S * 0.04; g.fillStyle = '#fff'; g.fill(); g.restore();
+      g.lineWidth = Math.max(1, S * 0.03); g.strokeStyle = '#ff7a12'; g.stroke();
     }
   }
   if (what === 'fish') {
-    g.fillStyle = '#ffffff';
-    for (const d of [-1, 1]) { g.beginPath(); g.ellipse(cx + d * w * 0.55, cy - S * 0.1, S * 0.15, S * 0.08, d * -0.5, 0, Math.PI * 2); g.fill(); }
+    for (const d of [-1, 1]) {
+      g.save();
+      g.translate(cx + d * R * 0.55, by - R * 0.35); g.scale(d, 1);
+      for (const [a, L, wd] of [[-1.25, 0.34, 0.1], [-0.85, 0.4, 0.11], [-0.45, 0.36, 0.1], [-0.08, 0.28, 0.09]]) {
+        g.save(); g.rotate(a);
+        g.beginPath(); g.ellipse(S * L * 0.5, 0, S * L * 0.5, S * wd * 0.5, 0, 0, Math.PI * 2);
+        g.shadowColor = 'rgba(150,200,255,0.9)'; g.shadowBlur = S * 0.03;
+        g.fillStyle = '#ffffff'; g.fill();
+        g.shadowColor = 'transparent'; g.lineWidth = Math.max(1, S * 0.018); g.strokeStyle = 'rgba(110,140,215,0.85)'; g.stroke();
+        g.restore();
+      }
+      g.restore();
+    }
   }
-  const gr = g.createLinearGradient(0, y, 0, y + w);
-  gr.addColorStop(0, hi); gr.addColorStop(1, lo);
-  rr(g, x, y, w, w, S * 0.14); g.fillStyle = gr; g.fill();
+  g.save();
+  g.shadowColor = 'rgba(94,20,60,0.3)'; g.shadowBlur = S * 0.04; g.shadowOffsetY = S * 0.025;
+  const gr = g.createRadialGradient(cx - R * 0.35, by - R * 0.4, R * 0.1, cx, by, R);
+  gr.addColorStop(0, '#ffe6f2'); gr.addColorStop(0.55, '#ff9cc8'); gr.addColorStop(1, '#e2508f');
+  g.beginPath(); g.arc(cx, by, R, 0, Math.PI * 2); g.fillStyle = gr; g.fill();
+  g.restore();
   if (what === 'stripe') {
-    g.save(); rr(g, x, y, w, w, S * 0.14); g.clip();
-    g.fillStyle = 'rgba(255,255,255,0.92)';
-    for (let i = 0; i < 3; i++) g.fillRect(x, y + w * (0.18 + i * 0.27), w, w * 0.11);
+    g.save(); g.beginPath(); g.arc(cx, by, R, 0, Math.PI * 2); g.clip();
+    g.fillStyle = 'rgba(255,255,255,0.88)';
+    for (let i = 0; i < 3; i++) g.fillRect(cx - R, by - R + R * 2 * (0.2 + i * 0.27), R * 2, R * 2 * 0.12);
     g.restore();
   }
   if (what === 'wrap') {
-    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = S * 0.035;
-    rr(g, x + S * 0.06, y + S * 0.06, w - S * 0.12, w - S * 0.12, S * 0.1); g.stroke();
+    g.beginPath(); g.arc(cx, by, R * 0.82, 0, Math.PI * 2);
+    g.lineWidth = Math.max(1, S * 0.04); g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
   }
-  g.lineWidth = S * 0.03; g.strokeStyle = 'rgba(60,20,40,0.55)';
-  rr(g, x, y, w, w, S * 0.14); g.stroke();
-  g.fillStyle = 'rgba(255,255,255,0.7)';
-  g.beginPath(); g.ellipse(x + w * 0.3, y + w * 0.22, w * 0.14, w * 0.07, -0.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(cx, by, R, 0, Math.PI * 2);
+  g.lineWidth = Math.max(1, S * 0.022); g.strokeStyle = 'rgba(120,20,70,0.55)'; g.stroke();
+  g.fillStyle = 'rgba(255,255,255,0.75)';
+  g.beginPath(); g.ellipse(cx - R * 0.38, by - R * 0.48, R * 0.3, R * 0.14, -0.6, 0, Math.PI * 2); g.fill();
+  if (what === 'stripe') {
+    // 金色箭頭（和盤面 paintArrows 同色：上亮下深、深橘邊）
+    g.lineJoin = 'round';
+    for (const d of [-1, 1]) {
+      const tx = cx + d * S * 0.49, bx = cx + d * (R + S * 0.02), a = S * 0.12;
+      g.beginPath(); g.moveTo(tx, cy); g.lineTo(bx, cy - a); g.lineTo(bx, cy + a); g.closePath();
+      const ag = g.createLinearGradient(0, cy - a, 0, cy + a);
+      ag.addColorStop(0, '#fffbe2'); ag.addColorStop(0.42, '#ffd845'); ag.addColorStop(1, '#f08400');
+      g.save(); g.shadowColor = 'rgba(255,190,30,0.95)'; g.shadowBlur = S * 0.05; g.fillStyle = ag; g.fill(); g.restore();
+      g.lineWidth = Math.max(1, S * 0.022); g.strokeStyle = '#a24a06'; g.stroke();
+    }
+  }
 }
 export function paintOrder(g, S, what) {
   if (what === 'combo' || what.includes('+')) {

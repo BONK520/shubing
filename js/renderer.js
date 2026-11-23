@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123u';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123u';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123u';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123v';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123v';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123v';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -264,7 +264,8 @@ const isImgEl = img => typeof HTMLImageElement !== 'undefined' && img instanceof
 const natW = img => img.naturalWidth || img.width || 0;
 const natH = img => img.naturalHeight || img.height || 0;
 
-export function createRenderer(canvas, { pieces = [], images = new Map() } = {}) {
+// quiet: true → 不畫飄分數、稱讚字和大標語（教學小卡的 5×5 示意盤面太小，字會蓋住整個盤面）
+export function createRenderer(canvas, { pieces = [], images = new Map(), quiet = false } = {}) {
   const ctx = canvas.getContext('2d');
 
   // ---- 版面 ----
@@ -2873,7 +2874,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return sp;
   }
   function showWord(text, level, sl) {
-    if (!text) return;
+    if (!text || quiet) return;
     word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
     if (sl && sl.voice) cue('voice', 60, { id: sl.voice });
     requestDraw();
@@ -4004,6 +4005,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
     return worst;
   }
   function addText(text, x, y, t0, col, big) {
+    if (quiet) return null;
     const f = { text, x, y, t0, dur: TEXT_DUR, col, big, w: 0, h: 0, sp: null, spCs: 0 };
     // 外框大小（格）：用實際字型量，加上描邊（小字級的字框會略高一點，多留 0.04）
     let wr = 0.62 * text.length, hr = 0.78;
@@ -4059,6 +4061,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map() } = {})
   const PRAISE = { 2: ['超可愛!', '軟綿綿!'], 3: ['好Q彈!', '甜滋滋!'], 4: ['大爆發!', '超厲害!'], 5: ['神操作!', '無敵可愛!'] };
   let praises = [];
   function addPraise(level, x, y, t0) {
+    if (quiet) return;
     const lv = clamp(Math.round(level), 2, 5), list = PRAISE[lv];
     praises.push({ text: list[Math.floor(Math.random() * list.length)], lv, x, y, t0, dur: 1050, sp: null, spCs: 0, tilt: (Math.random() - 0.5) * 0.3 });
     if (praises.length > 3) praises.shift();

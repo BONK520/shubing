@@ -1,12 +1,12 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123u';
-import { SLOGANS } from './slogans.js?v=20261123u';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123u';
-import { blockerCanvas } from './blockers.js?v=20261123u';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123u';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123u';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123v';
+import { SLOGANS } from './slogans.js?v=20261123v';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123v';
+import { blockerCanvas } from './blockers.js?v=20261123v';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123v';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123v';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123u';
+const MOD_V = '?v=20261123v';
 
 window.__plushBooted = true;
 
@@ -61,7 +61,7 @@ function normSave(s) {
     music: s.music !== false,
     boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
     t: Number.isFinite(s.t) ? s.t : 0,
-    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 20) : [],   // 看過教學小卡的機關（這台裝置）
+    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 40) : [],   // 看過教學小卡的機關（這台裝置）。小卡有15種，留空間給之後新增的
   };
 }
 function loadSave(key) {
@@ -553,7 +553,12 @@ const INTRO = {
   gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap') },
   belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt') },
   order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
+  // 工作單4：這兩張的圖示位置放示意動畫（introDemo），玩到一半點目標列的圖示也能再看一次
+  combo: { name: '特殊組合', text: '把兩個特殊方塊換在一起，就會一起爆開！條紋、包裝糖、彩色炸彈、飛天玩偶都可以。', icon: () => blockerImg('o-combo'), ribbon: '新目標！', demo: 'combo' },
+  bomb: { name: '彩色炸彈', text: '五個一樣的連成一直線，就會變成彩色炸彈！L形、T形不算喔。', icon: () => blockerImg('o-bomb'), ribbon: '新目標！', demo: 'bomb' },
 };
+// 訂單目標對到哪張小卡：組合（combo、'a+b'）→ combo，彩色炸彈 → bomb，條紋、包裝糖、飛天玩偶 → order
+const introOfOrder = what => (what === 'combo' || String(what).includes('+') ? 'combo' : what === 'bomb' ? 'bomb' : 'order');
 function levelMechs(lvl) {
   const out = new Set();
   if (lvl.jelly && lvl.jelly.some(row => /[12]/.test(row))) out.add('jelly');
@@ -569,28 +574,200 @@ function levelMechs(lvl) {
   if (/[-|WB]/.test(obs)) out.add('gift');
   if (lvl.portals && lvl.portals.length) out.add('portal');
   if (lvl.belts && lvl.belts.length) out.add('belt');
-  if (goalPartsOf(lvl).some(p => p.kind === 'order')) out.add('order');
+  for (const p of goalPartsOf(lvl)) if (p.kind === 'order') out.add(introOfOrder(p.what));
   return Object.keys(INTRO).filter(k => out.has(k));
+}
+// ---------- 教學小卡的示意動畫（11/23 工作單4） ----------
+// 用真的引擎和另一個盤面繪製器，在 5×5 的小盤面演一次：兩顆發亮 → 手指拖過去互換 → 爆開 → 目標 0/1 變 1/1 → 淡出重來（一輪約3.6秒）。
+// 版面的數字是 PIECES 的順序（0狗 1樹懶 2蛋 5河馬 6史努比），h 是條紋、w 是包裝糖；開頭沒有三個連在一起
+const DEMO = {
+  combo: { what: 'combo', kinds: [0, 1, 2, 5], a: { r: 2, c: 1 }, b: { r: 2, c: 2 },
+    layout: ['0 1 2 5 0', '1 2 5 0 1', '2 0h 1w 2 5', '5 0 1 5 2', '0 5 2 1 0'] },
+  bomb: { what: 'bomb', kinds: [0, 1, 2, 6], a: { r: 3, c: 2 }, b: { r: 2, c: 2 },
+    layout: ['0 1 2 0 1', '1 2 0 1 2', '6 6 0 6 6', '2 0 6 2 0', '0 1 2 0 1'] },
+};
+let demoR = null, demoCv = null;
+function introDemo(kind, host) {
+  const d = DEMO[kind];
+  if (!d || typeof createEngine !== 'function' || typeof createRenderer !== 'function') return null;
+  if (d.kinds.some(k => k >= PIECES.length)) return null;
+  if (!demoCv) { demoCv = document.createElement('canvas'); demoCv.className = 'idemo-cv'; }
+  if (!demoR) {
+    try { demoR = createRenderer(demoCv, { pieces: PIECES, images, quiet: true }); } catch (e) { console.error(e); demoR = null; return null; }
+  }
+  const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const R2 = demoR, cv = demoCv;
+  const newEng = seed => createEngine({ kinds: d.kinds, layout: d.layout, seed });
+  // 目標小牌子：跟遊戲上方的目標列一樣是「圖示＋名字＋0/1」
+  const chip = el('div', 'idemo-chip');
+  chip.appendChild(blockerImg('o-' + d.what));
+  chip.appendChild(el('span', 'nm')).textContent = ORDER_NAME[d.what] || '';
+  const num = el('b');
+  chip.appendChild(num);
+  const setNumTxt = t => { num.textContent = t; };
+  const wrap = el('div', 'idemo' + (still ? ' still' : ''));
+  host.classList.add('demo');
+  host.appendChild(wrap);
+  let gen = 0;
+  const wait = (ms, g) => new Promise(res => setTimeout(() => res(g === gen), ms));
+  // 某一格的中心和大小（佔盤面寬高的百分比），手指和光圈用；盤面要先 layout 過
+  const cellPct = (r, c) => {
+    const cr = R2.cellRect(r, c), rect = cv.getBoundingClientRect();
+    if (!cr || !rect.width) return null;
+    return { x: (cr.x - rect.left) / rect.width * 100, y: (cr.y - rect.top) / rect.height * 100, s: cr.size / rect.width * 100 };
+  };
+  const putAt = (node, p) => { if (!p) return; node.style.left = p.x + '%'; node.style.top = p.y + '%'; node.style.setProperty('--s', p.s + '%'); };
+  const hit = ev => !!ev && !!ev.cnt && (d.what === 'combo' ? (ev.cnt.comboCount | 0) >= 1 : ((ev.cnt.made && ev.cnt.made.bomb) | 0) >= 1);
+
+  // ---- 一般：循環播放 ----
+  let board = null, finger = null;
+  if (!still) {
+    board = el('div', 'idemo-board');
+    board.appendChild(cv);
+    finger = el('i', 'idemo-finger');
+    board.appendChild(finger);
+    wrap.append(board, chip);
+  }
+  async function loop(g) {
+    let round = 0;
+    while (g === gen) {
+      const eng = newEng(4100 + round++);
+      board.classList.remove('out');
+      chip.classList.remove('done', 'pop');
+      setNumTxt('0/1');
+      R2.setBoard(eng.snapshot());
+      R2.layout();
+      R2.hint(d.a, d.b);                                        // 0～0.8秒：兩顆發亮、跳一跳
+      if (!await wait(800, g)) return;
+      R2.hint(null);
+      const pa = cellPct(d.a.r, d.a.c), pb = cellPct(d.b.r, d.b.c);
+      finger.classList.remove('go');
+      putAt(finger, pa);
+      finger.classList.add('on');                               // 0.8～1.6秒：手指按住一顆，拖到旁邊那顆
+      if (!await wait(180, g)) return;
+      finger.classList.add('go');
+      putAt(finger, pb);
+      const dx = d.b.c - d.a.c, dy = d.b.r - d.a.r;
+      for (let i = 1; i <= 5; i++) {
+        R2.drag(d.a, dx * 0.35 * i / 5, dy * 0.35 * i / 5);
+        if (!await wait(80, g)) { R2.drag(null); return; }
+      }
+      R2.drag(null);
+      finger.classList.remove('on');
+      const res = eng.swap(d.a, d.b);
+      if (!res || !res.ok) { console.warn('[introDemo] 換不動', kind); return; }
+      let sawHit = false, onHit = null;
+      const hitP = new Promise(r => { onHit = r; });
+      const playing = R2.play(res.events, { onEvent: ev => { if (!sawHit && hit(ev)) { sawHit = true; onHit(); } } });
+      await Promise.race([hitP, playing]);                      // 約1.7秒：換好，開始爆
+      if (g !== gen) return;
+      if (!await wait(850, g)) return;                          // 1.7～2.6秒：十字爆開（看完爆炸才算數）
+      setNumTxt('1/1'); chip.classList.add('done'); restartAnim(chip, 'pop');   // 2.6秒：目標變 1/1
+      if (!await wait(800, g)) return;                          // 2.6～3.4秒：停一下讓人看清楚
+      board.classList.add('out');                               // 3.4～3.8秒：淡出，後面的連鎖掉落不用看
+      if (!await wait(400, g)) return;
+      R2.setBoard(null);                                        // 停掉還沒播完的掉落，下一輪重新開始
+    }
+  }
+
+  // ---- 減少動態：三格靜態圖（換之前 → 箭頭 → 爆開），下面寫 0/1 → 1/1 ----
+  function stills() {
+    const f1 = el('div', 'idemo-board sm'), f3 = el('div', 'idemo-board sm');
+    const arrow = el('span', 'idemo-arrow');
+    arrow.textContent = '→';
+    arrow.setAttribute('aria-hidden', 'true');
+    const row = el('div', 'idemo-frames');
+    row.append(f1, arrow, f3);
+    setNumTxt('0/1 → 1/1');
+    chip.classList.add('done');
+    wrap.append(row, chip);
+    f1.appendChild(cv);
+    const eng = newEng(4100);
+    const snap0 = eng.snapshot();
+    R2.setBoard(snap0);
+    R2.layout();
+    const shot = () => { try { return cv.toDataURL(); } catch (e) { return ''; } };
+    const img1 = shot();
+    const pa = cellPct(d.a.r, d.a.c), pb = cellPct(d.b.r, d.b.c);
+    const res = eng.swap(d.a, d.b);
+    const evs = (res && res.events) || [];
+    let b3 = null;
+    if (d.what === 'combo') b3 = evs[0] && evs[0].board;       // 剛換完、還沒爆的那一刻，上面再疊一個十字光
+    else {
+      const e = evs.find(ev => ev.board && ev.board[d.b.r] && ev.board[d.b.r][d.b.c] && ev.board[d.b.r][d.b.c].special === 'bomb');
+      b3 = e && e.board;                                        // 五個消掉、中間變成彩色炸彈的那一刻
+    }
+    if (b3) { R2.setBoard({ ...snap0, grid: b3 }); R2.layout(); }
+    const img3 = b3 ? shot() : '';
+    const pc = cellPct(d.b.r, d.b.c);
+    R2.setBoard(null);
+    R2.pause();
+    cv.remove();
+    const pic = (f, src) => { if (!src) return; const im = new Image(); im.alt = ''; im.draggable = false; im.src = src; f.appendChild(im); };
+    pic(f1, img1); pic(f3, img3);
+    for (const p of [pa, pb]) { const ring = el('i', 'idemo-ring'); putAt(ring, p); f1.appendChild(ring); }
+    const fg = el('i', 'idemo-finger on still');
+    putAt(fg, pa);
+    f1.appendChild(fg);
+    if (d.what === 'combo' && pc) {                           // 條紋＋包裝糖：三排三列一起爆
+      const h = el('i', 'idemo-beam h'), v = el('i', 'idemo-beam v');
+      h.style.top = pc.y + '%'; h.style.setProperty('--s', pc.s * 3 + '%');
+      v.style.left = pc.x + '%'; v.style.setProperty('--s', pc.s * 3 + '%');
+      f3.append(h, v);
+    } else if (pc) { const ring = el('i', 'idemo-ring big'); putAt(ring, pc); f3.appendChild(ring); }
+  }
+
+  return {
+    start() {
+      const g = ++gen;
+      R2.resume();
+      try { R2.setLook(closet.look(save.stars)); } catch (e) { /* 衣櫃外觀拿不到就用預設 */ }
+      if (still) { try { stills(); } catch (e) { console.error(e); } return; }
+      loop(g).catch(e => console.error(e));
+    },
+    stop() {
+      gen++;
+      R2.setBoard(null);
+      R2.pause();
+      cv.remove();
+      host.classList.remove('demo');
+    },
+  };
+}
+// 打開一張教學小卡，點一下或 alive() 變 false 就關掉。關卡開始前（showIntros）和玩到一半點目標圖示（reopenIntro）都用這個
+async function openIntroCard(k, alive) {
+  const it = INTRO[k];
+  if (!it) return;
+  $('#mi-ribbon').textContent = it.ribbon || '新機關！';
+  const ic = $('#mi-icon');
+  ic.innerHTML = '';
+  ic.classList.remove('demo');
+  const demo = it.demo ? introDemo(it.demo, ic) : null;
+  if (!demo) ic.appendChild(it.icon());
+  $('#mi-title').textContent = it.name;
+  $('#mi-text').textContent = softWrap(it.text);
+  openModal('m-intro');
+  if (demo) demo.start();
+  audio.play('chime', { level: 3 });
+  await new Promise(res => {
+    const m = $('#m-intro');
+    const done = () => { m.removeEventListener('click', done); clearInterval(chk); res(); };
+    const chk = setInterval(() => { if (!alive() || !isOpen('m-intro')) done(); }, 200);
+    setTimeout(() => m.addEventListener('click', done), 350);     // 剛跳出來的那一下不算（避免連點直接跳過）；動畫不用看完一輪
+  });
+  if (demo) demo.stop();
+  closeModal('m-intro');
+}
+// 玩到一半點目標列的「特殊組合」「彩色炸彈」圖示：再看一次小卡。不動盤面、步數、分數，也不再記一次看過
+function reopenIntro(k) {
+  if (state !== 'play' || moving || (R && R.busy) || document.querySelector('.modal.open')) return;
+  const token = session;
+  openIntroCard(k, () => token === session);
 }
 async function showIntros(lvl, token) {
   for (const k of levelMechs(lvl)) {
     if (save.seen.includes(k)) continue;
-    const it = INTRO[k];
-    $('#mi-ribbon').textContent = it.ribbon || '新機關！';
-    const ic = $('#mi-icon');
-    ic.innerHTML = '';
-    ic.appendChild(it.icon());
-    $('#mi-title').textContent = it.name;
-    $('#mi-text').textContent = softWrap(it.text);
-    openModal('m-intro');
-    audio.play('chime', { level: 3 });
-    await new Promise(res => {
-      const m = $('#m-intro');
-      const done = () => { m.removeEventListener('click', done); clearInterval(chk); res(); };
-      const chk = setInterval(() => { if (token !== session || !isOpen('m-intro')) done(); }, 200);
-      setTimeout(() => m.addEventListener('click', done), 350);     // 剛跳出來的那一下不算（避免連點直接跳過）
-    });
-    closeModal('m-intro');
+    await openIntroCard(k, () => token === session);
     if (token !== session) return;
     save.seen.push(k);
     writeSave();
@@ -1659,6 +1836,16 @@ function buildGoal() {
         const r = mkItem(partIcon(part), part.kind);
         r.need = part.need || 0; r.part = part;
         r.gi.setAttribute('aria-label', partName(part));
+        const ik = part.kind === 'order' ? introOfOrder(part.what) : '';
+        if (ik === 'combo' || ik === 'bomb') {      // 工作單4：點一下再看一次示意動畫（不動盤面、步數、分數）
+          r.gi.classList.add('tap');
+          r.gi.setAttribute('role', 'button');
+          r.gi.tabIndex = 0;
+          r.gi.title = '再看一次說明';
+          const go = e => { e.stopPropagation(); reopenIntro(ik); };
+          r.gi.addEventListener('click', go);
+          r.gi.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } });
+        }
       }
     }
   } else {

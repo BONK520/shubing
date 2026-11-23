@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123u") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123u") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123v") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123v") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -1762,6 +1762,53 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 @keyframes intro-bob { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.04); } }
 @keyframes intro-tap { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .intro-icon, .intro-tap { animation: none; } }
+/* 工作單4：特殊組合、彩色炸彈小卡的圖示位置改放示意動畫（5×5 小盤面＋手指＋目標小牌子），main.js introDemo */
+.intro-icon.demo { width: auto; height: auto; border-radius: 0; background: none; animation: none; display: block; }
+.idemo { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.idemo-board {
+  position: relative; width: min(200px, 56vw, 30vh); aspect-ratio: 1; border-radius: 16px; overflow: hidden;
+  background: #fff7fb; box-shadow: 0 3px 0 rgba(196, 42, 116, .18), 0 6px 14px rgba(94, 33, 54, .14);
+  transition: opacity .38s ease;
+}
+.idemo-board.out { opacity: 0; }
+.idemo-board canvas, .idemo-board img { display: block; width: 100%; height: 100%; }
+.idemo-finger {
+  position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 40% 36%, #fff 0 45%, rgba(255, 255, 255, .85) 60%, rgba(255, 255, 255, 0) 72%);
+  box-shadow: 0 0 0 3px rgba(255, 79, 158, .55), 0 4px 8px rgba(94, 33, 54, .35);
+  opacity: 0; transform: scale(1.3); transition: opacity .15s ease, transform .15s ease;
+}
+.idemo-finger.on { opacity: 1; transform: scale(1); }
+.idemo-finger.go { transition: left .42s cubic-bezier(.4, 0, .3, 1), top .42s cubic-bezier(.4, 0, .3, 1), opacity .15s ease, transform .15s ease; }
+.idemo-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px 3px 4px; border-radius: 999px;
+  background: #fff; border: 2px solid #ffd0e6; box-shadow: 0 2px 0 rgba(196, 42, 116, .15);
+  font-size: 15px; font-weight: 900; color: var(--ink); white-space: nowrap;
+}
+.intro-icon .idemo-chip img { width: 30px; height: 30px; filter: none; }
+.idemo-chip b { min-width: 2.4em; text-align: center; color: #c42a74; }
+.idemo-chip.done { border-color: #7fd89a; }
+.idemo-chip.done b { color: #1f9d4f; }
+.idemo-chip.pop { animation: idemo-pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes idemo-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+/* 減少動態：換之前 → 箭頭 → 爆開，兩張靜態圖 */
+.idemo-frames { display: flex; align-items: center; gap: 6px; }
+.idemo-board.sm { width: min(116px, 34vw); border-radius: 12px; }
+.idemo-board.sm .idemo-finger { width: 18px; height: 18px; margin: -9px 0 0 -9px; transform: translate(30%, 30%); }
+.idemo-arrow { font-size: 26px; font-weight: 900; color: #ff4f9e; }
+.idemo-ring {
+  position: absolute; width: var(--s); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 30%; pointer-events: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #ff4f9e, 0 0 10px 3px rgba(255, 214, 120, .9);
+}
+.idemo-ring.big { width: calc(var(--s) * 1.5); border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 14px 6px rgba(255, 214, 120, .95), 0 0 0 999px rgba(255, 255, 255, .25); }
+.idemo-beam { position: absolute; pointer-events: none; background: linear-gradient(90deg, rgba(255, 240, 200, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 240, 200, 0)); mix-blend-mode: screen; }
+.idemo-beam.h { left: 0; right: 0; height: var(--s); transform: translateY(-50%); background: linear-gradient(180deg, rgba(255, 220, 120, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 220, 120, 0)); }
+.idemo-beam.v { top: 0; bottom: 0; width: var(--s); transform: translateX(-50%); }
+@media (prefers-reduced-motion: reduce) { .idemo-board, .idemo-finger, .idemo-chip.pop { transition: none; animation: none; } }
+/* 目標列的特殊組合、彩色炸彈圖示可以點，再看一次說明 */
+.gi.tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.gi.tap:active .ic { transform: scale(.92); }
+.gi.tap:focus-visible { outline: 3px solid #ff4f9e; outline-offset: 2px; border-radius: 12px; }
 
 
 /* ==== 改版 2026-11：遊戲畫面 ==== */
