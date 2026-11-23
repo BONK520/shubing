@@ -1969,6 +1969,12 @@ function renderGoal(init = false) {
       r.last = txt;
     }
     r.gi.classList.toggle('done', done);
+    // 一個目標剛完成（打勾）：「叮叮！」＋圖示炸一圈星星（分數目標不算，星星條自己有音效）
+    if (!init && done && r.done === false && r.kind !== 'score' && (state === 'play' || state === 'ending')) {
+      audio.play('goaldone');
+      starBurst(r.gi.querySelector('.ic'));
+    }
+    r.done = done;
   }
 }
 function renderMoves() {
@@ -2399,7 +2405,7 @@ function afterMove() {
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
   if (movesLeft <= 0) { loseFlow(); return; }
-  if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); }
+  if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); audio.play('lowmoves'); }
   saveInProgress();
   scheduleHint();
 }

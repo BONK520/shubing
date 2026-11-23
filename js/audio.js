@@ -639,6 +639,20 @@ const SFX = {
     noise(t, { dur: 0.25, attack: 0.03, gain: 0.05, type: 'lowpass', f0: 700, f1: 250, q: 1.2 });
     bubble(52, t + 0.18, 0.06);
   },
+  // 一個目標完成（打勾）：兩個往上的亮音「叮叮！」＋ 一點亮晶晶
+  goaldone(t) {
+    bell(84, t, 0.08, 0.5);
+    bell(91, t + 0.09, 0.09, 0.8);
+    marimba(72, t, 0.08, 0.3);
+    marimba(79, t + 0.09, 0.08, 0.35);
+    sparkle(t + 0.12, 5, 0.03, 96);
+  },
+  // 只剩 5 步：輕輕的兩聲提醒（往下，不刺耳）
+  lowmoves(t) {
+    marimba(76, t, 0.1, 0.3);
+    marimba(71, t + 0.16, 0.1, 0.4);
+    tone(mtof(59), t + 0.16, { dur: 0.3, attack: 0.01, gain: 0.04, type: 'triangle', lp: 900 });
+  },
   // 龍龍破殼：蛋殼被頂了三下「叩、叩、叩」（越來越大聲）→ o.crack 毫秒後「喀啦」裂開 + 往上的「啾」
   hatch(t, o) {
     const c = t + clamp((+o.crack || 420) / 1000, 0.2, 1);
