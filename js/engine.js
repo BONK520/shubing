@@ -144,12 +144,16 @@ const NONE = 'none';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
-  return function () {
+  const next = function () {
     a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  // 玩到一半的存檔要能接著玩：亂數的位置也要存起來、再放回去
+  next.getState = () => a;
+  next.setState = v => { a = Number(v) | 0; };
+  return next;
 }
 
 function parseLayout(layout) {
@@ -1397,6 +1401,44 @@ export function createEngine(opts = {}) {
       const gained = events.reduce((s2, e) => s2 + (e.gained || 0), 0);
       score += gained;
       return { ok: true, events, gained };
+    },
+
+    // ---- 玩到一半的存檔（11/23）：整個盤面和計數，含亂數位置；同一關同一個 seed 才能還原 ----
+    exportState() {
+      return { v: 1, rows, cols, rng: rng.getState(), nextId, score, grid: gridCopy(), jelly: jellyCopy(),
+        lock: lock.map(row => row.slice()), exitAt: exitAt.map(row => row.slice()), cleared: { ...cleared },
+        jellyLeft, specialsMade, cascadesMax, frostLeft, chocoLeft, licoriceLeft, locksLeft, dinosOnBoard, dinosSpawned,
+        dinosOut, chocoBroken, dinosStart, alarmsLeft, alarmsBurst, shellLeft, giftLeft, potCount, biasNow,
+        made: { ...made }, combos: { ...combos }, comboCount, chocoGot };
+    },
+    restore(s) {
+      const num = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
+      const okRows = a => Array.isArray(a) && a.length === rows && a.every(row => Array.isArray(row) && row.length === cols);
+      if (!s || s.v !== 1 || s.rows !== rows || s.cols !== cols || !okRows(s.grid) || !okRows(s.jelly) || !okRows(s.lock) || !okRows(s.exitAt)) return false;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const q = s.grid[r][c];
+        grid[r][c] = cellMask[r][c] && q ? (q.block ? { id: num(q.id), kind: num(q.kind), special: q.special || NONE, block: String(q.block), hp: num(q.hp) }
+          : { id: num(q.id), kind: num(q.kind), special: q.special || NONE }) : null;
+        jel[r][c] = cellMask[r][c] ? num(s.jelly[r][c]) : 0;
+        lock[r][c] = cellMask[r][c] ? num(s.lock[r][c]) : 0;
+        exitAt[r][c] = cellMask[r][c] && !!s.exitAt[r][c];
+      }
+      for (const k of Object.keys(cleared)) delete cleared[k];
+      for (const k of kinds) cleared[k] = 0;
+      Object.assign(cleared, s.cleared || {});
+      for (const k of Object.keys(made)) made[k] = num(s.made && s.made[k]);
+      for (const k of Object.keys(combos)) delete combos[k];
+      Object.assign(combos, s.combos || {});
+      rng.setState(s.rng);
+      nextId = num(s.nextId) || 1; score = num(s.score);
+      jellyLeft = num(s.jellyLeft); specialsMade = num(s.specialsMade); cascadesMax = num(s.cascadesMax);
+      frostLeft = num(s.frostLeft); chocoLeft = num(s.chocoLeft); licoriceLeft = num(s.licoriceLeft); locksLeft = num(s.locksLeft);
+      dinosOnBoard = num(s.dinosOnBoard); dinosSpawned = num(s.dinosSpawned); dinosOut = num(s.dinosOut);
+      chocoBroken = num(s.chocoBroken); dinosStart = num(s.dinosStart);
+      alarmsLeft = num(s.alarmsLeft); alarmsBurst = num(s.alarmsBurst); shellLeft = num(s.shellLeft); giftLeft = num(s.giftLeft);
+      potCount = num(s.potCount); biasNow = Number.isFinite(Number(s.biasNow)) ? Number(s.biasNow) : cascadeBias;
+      comboCount = num(s.comboCount); chocoGot = num(s.chocoGot);
+      return true;
     },
 
     findHint,

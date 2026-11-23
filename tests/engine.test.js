@@ -1349,6 +1349,46 @@ test(`fuzz: random valid moves on many seeds/masks, every invariant after every 
   ok(moves >= configs.length * FUZZ * 50, 'enough moves');
 });
 
+// 11/23 工作單8：玩到一半被重新整理，要能接著玩。存 → 還原 → 再走同樣的步，結果跟沒中斷一模一樣
+test('exportState / restore: saved mid-level, restored into a fresh engine, the next moves play out identically', async () => {
+  const bots = await import('./sim.bots.js');
+  const { LEVELS } = await import('../js/levels.js');
+  const ids = [106, 116, 118, 126, 3, 25, 47, 61, 88, 103, 111, 120, 130];
+  for (const id of ids) {
+    const L = LEVELS.find(x => x.id === id);
+    if (!L) continue;
+    for (const cut of [0, 3, 7]) {
+      const A = bots.makeEngine(L, 0);
+      const rnd = mulberry(id * 31 + cut);
+      for (let i = 0; i < cut; i++) { const mv = bots.pickMove(A, L, 'decent', rnd); if (!mv) break; A.swap(mv.a, mv.b); }
+      const saved = JSON.parse(JSON.stringify(A.exportState()));
+      const B = bots.makeEngine(L, 0);
+      ok(B.restore(saved), `${id}/${cut}: restore refused`);
+      eq(JSON.stringify(B.snapshot()), JSON.stringify(A.snapshot()), `${id}/${cut}: snapshot`);
+      eq(JSON.stringify(B.stats), JSON.stringify(A.stats), `${id}/${cut}: stats`);
+      eq(B.score, A.score, `${id}/${cut}: score`);
+      const rA = mulberry(id * 7 + cut), rB = mulberry(id * 7 + cut);
+      for (let i = 0; i < 6; i++) {
+        const ma = bots.pickMove(A, L, 'decent', rA), mb = bots.pickMove(B, L, 'decent', rB);
+        eq(JSON.stringify(mb), JSON.stringify(ma), `${id}/${cut}+${i}: same move picked`);
+        if (!ma) break;
+        const ra = A.swap(ma.a, ma.b), rb = B.swap(mb.a, mb.b);
+        eq(JSON.stringify(rb), JSON.stringify(ra), `${id}/${cut}+${i}: same events`);
+        eq(B.score, A.score, `${id}/${cut}+${i}: score`);
+      }
+      eq(JSON.stringify(B.sugarCrush(4)), JSON.stringify(A.sugarCrush(4)), `${id}/${cut}: sugar crush`);
+      eq(JSON.stringify(B.exportState()), JSON.stringify(A.exportState()), `${id}/${cut}: final state`);
+    }
+  }
+  // wrong board size / missing pieces: refused, engine untouched
+  const small = mk(['012', '120', '201']);
+  const before = JSON.stringify(small.exportState());
+  const big = bots.makeEngine(LEVELS[0], 0);
+  ok(!small.restore(big.exportState()), 'other board size refused');
+  ok(!small.restore(null) && !small.restore({ v: 2 }), 'junk refused');
+  eq(JSON.stringify(small.exportState()), before, 'refused restore leaves the engine as it was');
+});
+
 test('performance: a move resolves in a few ms', () => {
   const e = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 77 });
   const times = [];

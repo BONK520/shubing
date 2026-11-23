@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123t") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123t") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123u") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123u") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -1446,6 +1446,12 @@ svg.on .hi { opacity: .9; }
 .lg-switch { border: 0; background: none; padding: 4px; font: 900 16px/1.3 var(--font); color: #e8287f; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .lg-note { margin: 0; font-weight: 800; font-size: 13px; color: var(--ink-soft); text-align: center; }
 .merge-text { margin: 0; text-align: center; font-weight: 800; font-size: 17px; line-height: 1.6; color: var(--ink); text-wrap: balance; }
+.nw { white-space: nowrap; }
+/* 接著玩小卡（main.js offerResume） */
+.mr-sub { margin: -6px 0 0; text-align: center; font-weight: 800; font-size: 15px; line-height: 1.4; font-family: var(--font-num, inherit); color: var(--ink-soft); }
+/* 設定最下面的版本小字；?debug=1 時多一段錯誤紀錄 */
+.set-ver { margin: 2px 0 0; text-align: center; font-weight: 800; font-size: 12px; line-height: 1.4; color: var(--ink-soft); opacity: .8; }
+.set-ver .dbg { display: block; margin-top: 6px; text-align: left; white-space: pre-wrap; word-break: break-all; font-size: 11px; }
 /* 好友排行榜（登入、讀得到排行榜才出現：main.js initFriends） */
 .icon-btn.gold { --c1: #ffe9a0; --c2: #ffc23d; --c3: #f59a0e; --sh: #b0600a; --rim: #d77a0a; }
 html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上方多一顆獎盃按鈕 */

@@ -1,14 +1,32 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123t';
-import { SLOGANS } from './slogans.js?v=20261123t';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123t';
-import { blockerCanvas } from './blockers.js?v=20261123t';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123t';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123t';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123u';
+import { SLOGANS } from './slogans.js?v=20261123u';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123u';
+import { blockerCanvas } from './blockers.js?v=20261123u';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123u';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123u';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123t';
+const MOD_V = '?v=20261123u';
 
 window.__plushBooted = true;
+
+// 出錯的線索（11/23 工作單8）：最後一個沒接住的錯誤存在這台裝置（shubing.lastError），不上傳到任何地方。
+// 設定最下面只顯示版本；網址加 ?debug=1 才看得到錯誤內容
+function noteError(msg, src, line, col) {
+  try {
+    const at = (() => { try { return { screen, level: level ? level.id : null, step: stepNo }; } catch (e) { return {}; } })();   // 還沒初始化完就出錯時拿不到
+    localStorage.setItem('shubing.lastError', JSON.stringify({
+      msg: String(msg).slice(0, 300), src: String(src || '').replace(location.origin, '').slice(0, 160),
+      line: line | 0, col: col | 0, ...at, v: MOD_V.slice(1), t: Date.now(),
+    }));
+  } catch (e) { /* 無痕模式等 */ }
+}
+window.addEventListener('error', e => { if (e && e.message) noteError(e.message, e.filename, e.lineno, e.colno); });
+window.addEventListener('unhandledrejection', e => {
+  const r = e && e.reason;
+  const stack = r && r.stack ? String(r.stack).split('\n').slice(1, 3).map(x => x.trim()).join(' | ') : '';
+  noteError('Promise：' + (r && r.message ? r.message : String(r)), stack, 0, 0);
+});
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
@@ -106,7 +124,9 @@ async function switchAccount(u) {
   const uid = u ? u.uid : null;
   if ((account ? account.uid : null) === uid) { account = u; renderAccount(); return; }
   clearTimeout(pushTimer); pushTimer = 0;
+  const prevKey = saveKey, wasUser = !!account;
   if (!u) {                                  // 登出 → 回到這台裝置的訪客存檔
+    clearInProgress(prevKey);                // 換帳號：上一個帳號玩到一半的關不留
     account = null; saveKey = SAVE_KEY; lastPushed = '';
     initFriends(null);
     applySave(loadSave(SAVE_KEY));
@@ -117,6 +137,7 @@ async function switchAccount(u) {
   account = u; saveKey = SAVE_KEY + '.u.' + uid; lastPushed = '';
   initFriends(null);                       // 上一個人的好友排行榜先收起來，讀完存檔再換這個人的
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
+  if (explicit || wasUser) clearInProgress(prevKey);   // 自己換帳號才清；重新整理後自動恢復登入時，訪客那份不動
   setSync('syncing');
   let remote = null, online = true;
   try { const d = await cloud.load(); remote = d ? normSave(d) : null; } catch (e) { online = false; console.warn('[cloud] 讀取失敗', e); }
@@ -169,7 +190,7 @@ function refreshAfterSwitch() {
   applyLook();
   renderClosetBtn();
   renderAccount();
-  if (screen === 'map') buildMap();
+  if (screen === 'map') { buildMap(); setTimeout(offerResume, 350); }   // 換成這個帳號後，看這個帳號有沒有玩到一半的關
   if (screen === 'game') renderBoosters();
 }
 
@@ -1144,6 +1165,7 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
   }
   updateMapHere();
   if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openStartCard(thenOpen); }, 750);
+  else setTimeout(offerResume, 450);       // 剛剛有玩到一半的關（網頁被重新載入）：問要不要接著玩
 }
 
 // ---------- 目標文字 ----------
@@ -1329,7 +1351,105 @@ function sumJelly(j, layers) {
   return n;
 }
 
-async function startLevel(idx) {
+// 這一關這次用的亂數種子：第一次玩用關卡的 seed，重來一次換一個
+function seedOf(lvl, idx, attempt) {
+  const baseSeed = Number.isFinite(lvl.seed) ? lvl.seed : 1 + idx;
+  return attempt === 0 ? baseSeed : ((baseSeed * 2654435761) ^ (attempt * 40503)) >>> 0;
+}
+// 開引擎用的設定（盤面大小、毛絨種類、果凍、機關…）
+function levelOpts(lvl, seed) {
+  const kinds = (lvl.kinds || PIECES.slice(0, 5).map(p => p.id)).map(kindOf).filter(k => k >= 0);
+  const dims = boardDims(lvl);
+  const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: lvl.mask || null, jelly: lvl.jelly || null, seed };
+  if (lvl.antiCascade != null) opts.antiCascade = lvl.antiCascade;
+  if (lvl.goal && lvl.goal.type === 'collect') {      // 飛天玩偶優先飛去目標還要收集的毛絨
+    opts.collect = {};
+    for (const [id, n] of Object.entries(lvl.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
+  }
+  if (levMod.mechOpts) Object.assign(opts, levMod.mechOpts(lvl));     // 盤面機關
+  return opts;
+}
+
+// ---------- 玩到一半的存檔（11/23 工作單8） ----------
+// 手機把背景分頁收掉、記憶體不夠時，瀏覽器會把網頁整個重新載入，回來就變成封面。
+// 每一步停下來就把這關的盤面存在這台裝置（一個帳號一份），重新載入後問要不要接著玩。
+// 不放進 save、不上雲端；過關、失敗、從暫停離開、換帳號、超過 24 小時、關卡設定改過，就不留。
+const IP_MAX_AGE = 24 * 3600 * 1000;
+const LIVE_KEY = 'shubing.live', INT_KEY = 'shubing.lastInterrupt', ERR_KEY = 'shubing.lastError';
+const ipKey = (k = saveKey) => k + '.inprogress';
+let stepNo = 0, curSeed = 0, liveRec = null, resumeOffered = '', pendingResume = null;
+// 關卡設定的指紋：seed、步數、盤面、機關、目標有任何改動，舊的存檔就不能用
+function levelSig(lvl, idx) {
+  const s = JSON.stringify([lvl.id, seedOf(lvl, idx, 0), lvl.moves, lvl.goal || null, levelOpts(lvl, 0)]);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36) + '.' + s.length;
+}
+function saveInProgress() {
+  if (!engine || !level || state !== 'play' || typeof engine.exportState !== 'function') return;
+  try {
+    const t = Date.now();
+    const rec = { v: 1, id: level.id, idx: levelIdx, attempt: attempts[levelIdx] | 0, seed: curSeed, sig: levelSig(level, levelIdx),
+      movesLeft, lowWarned, step: stepNo, score: engine.score, t, eng: engine.exportState() };
+    localStorage.setItem(ipKey(), JSON.stringify(rec));
+    liveRec = { n: levelIdx + 1, id: level.id, step: stepNo, movesLeft, t, hid: (liveRec && document.hidden && liveRec.hid) || 0 };
+    localStorage.setItem(LIVE_KEY, JSON.stringify(liveRec));
+  } catch (e) { /* 無痕模式、空間滿了：照玩，只是不能接著玩 */ }
+}
+function clearInProgress(k = saveKey) {
+  liveRec = null;
+  try { localStorage.removeItem(ipKey(k)); localStorage.removeItem(LIVE_KEY); } catch (e) { /* ignore */ }
+}
+// 讀出還能用的中途存檔（不能用的直接丟掉）
+function readInProgress() {
+  let rec = null;
+  try { const raw = localStorage.getItem(ipKey()); rec = raw ? JSON.parse(raw) : null; } catch (e) { rec = null; }
+  if (!rec || typeof rec !== 'object') return null;
+  const drop = () => { try { localStorage.removeItem(ipKey()); } catch (e) { /* ignore */ } return null; };
+  const L = LEVELS && Number.isInteger(rec.idx) ? LEVELS[rec.idx] : null;
+  if (rec.v !== 1 || !L || L.id !== rec.id) return drop();
+  if (!(Date.now() - rec.t < IP_MAX_AGE)) return drop();
+  if (rec.idx + 1 > save.unlocked) return drop();                 // 這份存檔還沒開到這關（換過帳號之類）
+  if (rec.sig !== levelSig(L, rec.idx)) return drop();             // 關卡改過了
+  if (!(rec.movesLeft > 0) || !rec.eng) return drop();
+  try { if (!createEngine(levelOpts(L, rec.seed)).restore(rec.eng)) return drop(); } catch (e) { return drop(); }
+  return rec;
+}
+// 地圖出現時：有還沒玩完的關，跳小卡問要不要接著玩（每個帳號、每次開網頁只問一次）
+function offerResume() {
+  if (screen !== 'map' || resumeOffered === saveKey || !LEVELS || document.querySelector('.modal.open')) return;
+  resumeOffered = saveKey;
+  const rec = readInProgress();
+  if (!rec) return;
+  pendingResume = rec;
+  const txt = $('#mr-text');
+  txt.textContent = '剛剛的';
+  const n = el('span', 'nw');
+  n.textContent = `第${rec.idx + 1}關還沒玩完，`;     // 375 寬時不讓「還沒／玩完」拆開
+  txt.append(n, document.createElement('br'), '要接著玩嗎？');
+  $('#mr-sub').textContent = `還有 ${rec.movesLeft} 步・${fmt(rec.score | 0)} 分`;
+  openModal('m-resume');
+}
+// 上一次是不是玩到一半就被關掉／重新載入：記下來（只存在這台裝置，設定最下面 ?debug=1 才看得到）
+function noteInterrupt() {
+  try {
+    const raw = localStorage.getItem(LIVE_KEY);
+    if (!raw) return;
+    localStorage.removeItem(LIVE_KEY);
+    localStorage.setItem(INT_KEY, JSON.stringify({ ...JSON.parse(raw), at: Date.now() }));
+  } catch (e) { /* ignore */ }
+}
+function noteLive(extra) {
+  if (!liveRec) return;
+  Object.assign(liveRec, extra);
+  try { localStorage.setItem(LIVE_KEY, JSON.stringify(liveRec)); } catch (e) { /* ignore */ }
+}
+// hid：切到背景的時間（回到前景清掉）；gone：網頁正常關掉／重新整理。兩個都沒有 = 畫面開著的時候被收掉
+document.addEventListener('visibilitychange', () => noteLive({ hid: document.hidden ? Date.now() : 0 }));
+window.addEventListener('pagehide', () => noteLive({ gone: Date.now() }));
+window.addEventListener('pageshow', e => { if (e.persisted && liveRec) noteLive({ gone: 0, hid: 0 }); });
+
+async function startLevel(idx, resume = null) {
   sugarBonus = 0;
   boosterMode = null; boosterFirst = null; renderBoosters();
   closeAllModals();
@@ -1342,19 +1462,11 @@ async function startLevel(idx) {
 
   levelIdx = idx;
   level = LEVELS[idx];
-  attempts[idx] = (attempts[idx] == null ? 0 : attempts[idx] + 1);
-  const baseSeed = Number.isFinite(level.seed) ? level.seed : 1 + idx;
-  const seed = attempts[idx] === 0 ? baseSeed : ((baseSeed * 2654435761) ^ (attempts[idx] * 40503)) >>> 0;
-  const kinds = (level.kinds || PIECES.slice(0, 5).map(p => p.id)).map(kindOf).filter(k => k >= 0);
-  const dims = boardDims(level);
-  const opts = { rows: dims.rows, cols: dims.cols, kinds, mask: level.mask || null, jelly: level.jelly || null, seed };
-  if (level.antiCascade != null) opts.antiCascade = level.antiCascade;
-  if (level.goal && level.goal.type === 'collect') {      // 飛天玩偶優先飛去目標還要收集的毛絨
-    opts.collect = {};
-    for (const [id, n] of Object.entries(level.goal.items || {})) { const k = kindOf(id); if (k >= 0) opts.collect[k] = n; }
-  }
-  if (levMod.mechOpts) Object.assign(opts, levMod.mechOpts(level));     // 盤面機關
-  engine = createEngine(opts);
+  if (!resume) clearInProgress();
+  attempts[idx] = resume ? resume.attempt | 0 : (attempts[idx] == null ? 0 : attempts[idx] + 1);
+  const seed = resume ? resume.seed : seedOf(level, idx, attempts[idx]);
+  curSeed = seed;
+  engine = createEngine(levelOpts(level, seed));
 
   movesLeft = dispMoves = level.moves;
   dispScore = shownScore = 0;
@@ -1365,7 +1477,8 @@ async function startLevel(idx) {
   sugarMode = false;
   debugWin = false;
   lowWarned = false;
-  const snap = engine.snapshot();
+  stepNo = 0;
+  let snap = engine.snapshot();
   const layers = sumJelly(snap.jelly, true), cells = sumJelly(snap.jelly, false);
   const statJ = engine.stats ? engine.stats.jellyLeft : layers;
   jellyCountsLayers = statJ === layers || layers === cells;
@@ -1373,6 +1486,27 @@ async function startLevel(idx) {
   const st0 = engine.stats || {};
   mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0, shell: st0.shellLeft | 0 };
   liveCnt = cntOf(st0);
+  // 接著玩：盤面、分數、目標進度、機關、亂數都放回剛剛那一步
+  let resumed = false;
+  if (resume) {
+    try { resumed = engine.restore(resume.eng); } catch (e) { console.warn('[resume]', e); }
+    if (resumed) {
+      const st = engine.stats || {};
+      liveCleared = { ...(st.cleared || {}) };
+      if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
+      mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0, shell: st.shellLeft | 0 };
+      liveCnt = cntOf(st);
+      dispScore = shownScore = engine.score;
+      movesLeft = dispMoves = resume.movesLeft;
+      lowWarned = !!resume.lowWarned;
+      stepNo = resume.step | 0;
+      snap = engine.snapshot();
+    } else {
+      clearInProgress();
+      engine = createEngine(levelOpts(level, seed));
+      snap = engine.snapshot();
+    }
+  }
 
   setNum($('#hud-level'), idx + 1);
   buildGoal();
@@ -1391,16 +1525,23 @@ async function startLevel(idx) {
   state = 'intro';
   await sleep(380);
   if (token !== session) return;
-  await showIntros(level, token);
-  if (token !== session) return;
-  await R.banner(`第 ${idx + 1} 關`, { sub: goalText(level), duration: 1500 });
+  if (resumed) {
+    await R.banner('接著玩！', { sub: goalText(level), duration: 1300 });   // 教學小卡剛剛看過了，不再跳
+  } else {
+    if (resume) toast('剛剛的進度讀不到了，這關重新開始', 2000);
+    await showIntros(level, token);
+    if (token !== session) return;
+    await R.banner(`第 ${idx + 1} 關`, { sub: goalText(level), duration: 1500 });
+  }
   if (token !== session) return;
   state = 'play';
+  if (resumed) saveInProgress();          // 接著玩之後的「這次開網頁正在玩」記號
   scheduleHint();
   try { cellSize(); } catch (e) { /* 第一次拖曳時再量 */ }   // 先量好格子大小，第一次拖曳不用等
 }
 
 function leaveToMap(opts) {
+  clearInProgress();                      // 自己離開這關：不留中途進度
   session++;
   resetFlights();
   state = 'idle';
@@ -1919,6 +2060,7 @@ async function useBooster(k, fn) {
   syncFromEngine();
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
+  saveInProgress();
   scheduleHint();
 }
 // 棒棒糖槌敲下去的動畫（畫在格子上方）
@@ -1969,6 +2111,7 @@ async function doSwap(a, b) {
   }
   movesLeft--;
   dispMoves = movesLeft;
+  stepNo++;
   // 鬧鐘數到 0 爆開：一個扣 3 步（不夠扣就變 0，照平常步數用完的流程走）。畫面上的步數等爆開那一刻才扣
   if (res.alarms) movesLeft = Math.max(0, movesLeft - 3 * res.alarms);
   renderMoves();
@@ -1989,6 +2132,7 @@ function afterMove() {
   if (goalMet()) { winFlow(); return; }
   if (movesLeft <= 0) { loseFlow(); return; }
   if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); }
+  saveInProgress();
   scheduleHint();
 }
 
@@ -2125,6 +2269,7 @@ function recordWin(score) {
 
 async function winFlow() {
   const token = session;
+  clearInProgress();
   state = 'ending';
   closeModal('m-settings');
   clearHint();
@@ -2273,6 +2418,7 @@ function confetti(gold = false) {
 
 async function loseFlow() {
   const token = session;
+  clearInProgress();                      // 失敗了就不留（按「＋5 步」繼續玩時再存）
   state = 'lost';
   closeModal('m-settings');
   clearHint();
@@ -2455,7 +2601,25 @@ function openSettings() {
   $('#set-close').textContent = inGame ? '繼續' : '好了';
   syncToggles();
   renderAccount();
+  renderVersion();
   openModal('m-settings');
+}
+// 設定最下面的小字：版本（大家都看得到）；?debug=1 時多顯示最後一次的錯誤和中斷紀錄
+function renderVersion() {
+  const box = $('#set-ver');
+  if (!box) return;
+  box.textContent = '版本 ' + MOD_V.slice(1);
+  if (!DEBUG) return;
+  const get = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const when = t => (t ? new Date(t).toLocaleString('zh-TW', { hour12: false }) : '');
+  const er = get(ERR_KEY), it = get(INT_KEY);
+  const lines = [];
+  if (er) lines.push(`最後的錯誤：${er.msg}｜${er.src}:${er.line}:${er.col}｜${er.screen || ''} 第${er.level || '-'}關 第${er.step | 0}步｜${er.v || ''}｜${when(er.t)}`);
+  if (it) lines.push(`上次中斷：第${it.n}關 第${it.step | 0}步（還有${it.movesLeft}步）｜最後一步 ${when(it.t)}｜${it.gone ? '正常關掉／重新整理 ' + when(it.gone) : it.hid ? '在背景被收掉（切到背景 ' + when(it.hid) + '）' : '畫面開著時被收掉'}｜發現 ${when(it.at)}`);
+  if (!lines.length) lines.push('沒有錯誤紀錄');
+  const d = el('span', 'dbg');
+  d.textContent = lines.join('\n');
+  box.appendChild(d);
 }
 
 // ---------- 綁定按鈕 ----------
@@ -2468,6 +2632,8 @@ function bindUI() {
   const canPause = () => (state === 'play' && !moving && !(R && R.busy)) || state === 'intro';
   $('#btn-pause').addEventListener('click', () => { if (canPause()) openSettings(); });
   $('#ms-play').addEventListener('click', () => { if (cardLevel >= 0) startLevel(cardLevel); });
+  $('#mr-go').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); if (r) startLevel(r.idx, r); });
+  $('#mr-new').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); clearInProgress(); if (r) startLevel(r.idx); });
   for (const b of $$('[data-close]')) b.addEventListener('click', () => closeModal(b.closest('.modal').id));
   // 點背景關閉（只限開始卡、設定、好友排行榜）
   for (const id of ['m-start', 'm-settings', 'm-friends']) {
@@ -2519,6 +2685,7 @@ function bindUI() {
     $('#cheer').classList.remove('sad');
     movesLeft += 5; dispMoves = movesLeft; renderMoves();
     state = 'play'; lowWarned = false;
+    saveInProgress();
     toast('再給你 5 步，加油！');
     scheduleHint();
   });
@@ -2595,6 +2762,12 @@ function installDebug() {
     get syncState() { return syncState; },
     get saveKey() { return saveKey; },
     pushCloud,
+    // 玩到一半的存檔（測試用）
+    get stepNo() { return stepNo; },
+    readInProgress,
+    offerResume,
+    ipKey: () => ipKey(),
+    resetResumeOffer() { resumeOffered = ''; },
   };
 }
 
@@ -2616,6 +2789,7 @@ async function boot() {
     return;
   }
   if (save.unlocked > LEVELS.length + 1) save.unlocked = LEVELS.length + 1;
+  noteInterrupt();
   try {
     R = createRenderer(canvas, { pieces: PIECES, images });
   } catch (e) {
