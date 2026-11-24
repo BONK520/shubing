@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zf';
-import { SLOGANS } from './slogans.js?v=20261124zf';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zf';
-import { blockerCanvas } from './blockers.js?v=20261124zf';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zf';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zf';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zf';
-import { STORY } from './story.js?v=20261124zf';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zg';
+import { SLOGANS } from './slogans.js?v=20261124zg';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zg';
+import { blockerCanvas } from './blockers.js?v=20261124zg';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zg';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zg';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zg';
+import { STORY } from './story.js?v=20261124zg';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zf';
+const MOD_V = '?v=20261124zg';
 
 window.__plushBooted = true;
 
@@ -193,7 +193,9 @@ async function switchAccountNow(u) {
   try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* ignore */ }
   if (remote) lastPushed = JSON.stringify(progressOf(remote));
   // 雲端衣櫃：雲端那份合進這台裝置的（兩邊兌換的都留著），下面 pushCloud 再把合好的寫回去
-  if (CLOSET_CLOUD && online) { closet.load(closetKey()); if (remoteCloset) closet.mergeCloud(remoteCloset); closetFresh = uid; }
+  // 這台裝置第一次登入這個帳號：雲端衣櫃合進來之後馬上整理「看過」，不然 refreshAfterSwitch 重讀時會以為是舊版衣櫃，
+  // 雲端帶來的品項整排亮「新」（工作單6）
+  if (CLOSET_CLOUD && online) { closet.load(closetKey()); if (remoteCloset) closet.mergeCloud(remoteCloset); if (closet.initSeen(save.stars)) closetExtra = true; closetFresh = uid; }
   refreshAfterSwitch();
   if (online) { pushCloud(); initFriends(uid); } else setSync('offline');
   if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
@@ -1234,7 +1236,8 @@ function introDemo(kind, host) {
 async function openIntroCard(k, alive) {
   const it = INTRO[k];
   if (!it) return;
-  $('#mi-ribbon').textContent = it.ribbon || '新機關！';
+  // 「新機關！／新朋友！／新目標！」只寫在這個機關第一次出現的那一關；後面的關卡（換裝置、跳關、seen 被清掉）寫「小提醒」
+  $('#mi-ribbon').textContent = isFirstOf(k) ? it.ribbon || '新機關！' : '小提醒';
   const ic = $('#mi-icon');
   ic.innerHTML = '';
   ic.classList.remove('demo');
@@ -1261,7 +1264,29 @@ function reopenIntro(k) {
   const token = session;
   openIntroCard(k, () => token === session);
 }
+// 每種機關第一次出現在第幾關（LEVELS 的 index）。LEVELS 讀好後算一次
+let mechFirst = null;
+function firstLevelOf(k) {
+  if (!mechFirst && LEVELS) {
+    mechFirst = {};
+    LEVELS.forEach((l, i) => { for (const m of levelMechs(l)) if (!(m in mechFirst)) mechFirst[m] = i; });
+  }
+  return mechFirst ? mechFirst[k] : undefined;
+}
+const isFirstOf = k => { const f = firstLevelOf(k); return f === undefined || !level || LEVELS[f] === level; };
+// 從進度推回看過的機關：過關（有星星）的關卡裡出現過的機關都算看過，不跳卡。
+// seen 只存在這台裝置；換裝置登入、清過瀏覽器資料時，不會把早就玩過的機關又當成新的（工作單6）
+function seenFromProgress() {
+  if (!LEVELS) return;
+  let add = false;
+  for (const l of LEVELS) {
+    if (!(Number(save.stars[l.id]) > 0)) continue;
+    for (const k of levelMechs(l)) if (!save.seen.includes(k)) { save.seen.push(k); add = true; }
+  }
+  if (add) writeSave();
+}
 async function showIntros(lvl, token) {
+  seenFromProgress();
   for (const k of levelMechs(lvl)) {
     if (save.seen.includes(k)) continue;
     await openIntroCard(k, () => token === session);
@@ -2158,7 +2183,8 @@ const STORY_DONE = from => 'story:' + from;           // 看過了記在 save.se
 let storyBusy = false;
 function openLevel(i) {
   const st = STORY.find(x => x.from === i + 1);
-  if (!st || save.seen.includes(STORY_DONE(st.from)) || storyBusy) { if (!storyBusy) openStartCard(i); return; }
+  // 這一站第一關已經過關（換裝置、清過資料，seen 是空的）也算看過，不重播（工作單6）
+  if (!st || save.seen.includes(STORY_DONE(st.from)) || Number(save.stars[LEVELS[i].id]) > 0 || storyBusy) { if (!storyBusy) openStartCard(i); return; }
   storyBusy = true;
   showStory(st).then(() => {
     storyBusy = false;
