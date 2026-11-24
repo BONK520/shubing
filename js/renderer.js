@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124zg';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124zg';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124zh';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124zh';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124zg';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124zh';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -105,7 +105,7 @@ export const BOARD_THEMES = {
     cellA: 'rgba(255,255,255,0.96)', cellB: 'rgba(255,240,240,0.96)',
     wallDark: 'rgba(160,90,60,0.26)', wallLit: 'rgba(255,255,255,0.95)', rimShadow: 'rgba(120,70,30,0.14)',
     shadow: [120, 60, 40],
-    pattern: 'gingham',
+    pattern: 'gingham', jelly: 'light',
     frame: { glow: 'rgba(255,238,205,0.85)', base: '#efd2a0', drop: 'rgba(110,60,20,0.3)', dropBase: '#b07a3c',
       side: ['#c99456', '#b07a3c', '#8a5a26'], ring: ['#fbe6c0', '#eac68a', '#d6a560'], ringShade: [140, 90, 40], innerEdge: 'rgba(150,90,40,0.45)' },
     deco: 'berries',
@@ -174,37 +174,60 @@ function lightTheme({ cellA, cellB, glass, ring, side, shadow, deco, sky }) {
     cellA: rgbaOf(hexRgb(cellA), 0.96), cellB: rgbaOf(hexRgb(cellB), 0.96),
     grid: rgbaOf(shadow, 0.08),
     wallDark: rgbaOf(shadow, 0.26), wallLit: 'rgba(255,255,255,0.95)', rimShadow: rgbaOf(shadow, 0.14),
-    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky, jelly: 'light',
   };
 }
 // 深色盤面：半透明的深色玻璃，淺色、深色的玩偶都跳得出來
-function darkTheme({ glassA, glassB, glow, ring, side, shadow, deco, sky }) {
+function darkTheme({ glassA, glassB, glow, ring, side, shadow, deco, sky, jelly = 'dark' }) {
   return {
     glass: [[0, rgbaOf(glassA, 0.92)], [1, rgbaOf(glassB, 0.95)]],
     glow: [rgbaOf(glow, 0.16), rgbaOf(glow, 0)],
     cellA: rgbaOf(mixc(glassA, glassB, 0.5), 0.72), cellB: rgbaOf(mixc(glassA, WHITE, 0.05), 0.72),
     grid: rgbaOf(glow, 0.13),
     wallDark: rgbaOf(shadow, 0.55), wallLit: rgbaOf(glow, 0.14), rimShadow: rgbaOf(shadow, 0.24),
-    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky, jelly,
   };
 }
 Object.assign(BOARD_THEMES, {
   dock: lightTheme({ cellA: '#ffffff', cellB: '#e3f4fb', ring: ['#d8f2fb', '#8fd3ef', '#5aaed8'], side: ['#4a9cc8', '#3f86b0', '#2c6a90'], shadow: [40, 90, 130], deco: 'eggs' }),
   park: lightTheme({ cellA: '#fff4f8', cellB: '#e3f4d8', ring: ['#ffd6e6', '#ff9cc4', '#e86aa0'], side: ['#d9558c', '#c04478', '#9a2e5c'], shadow: [130, 40, 80], deco: 'bulbs' }),
   snow: lightTheme({ cellA: '#ffffff', cellB: '#e8f1fa', glass: ['rgba(247,251,255,0.94)', 'rgba(228,238,247,0.95)'], ring: ['#ffffff', '#d8e8f6', '#a9c6e2'], side: ['#8fb0d0', '#7d9cc0', '#5f80a6'], shadow: [50, 80, 120], deco: 'flakes' }),
-  sea: darkTheme({ glassA: [40, 100, 160], glassB: [20, 60, 120], glow: [140, 220, 255], ring: ['#bfe8f7', '#86cbe9', '#5a98d2'], side: ['#4a86c0', '#3a70a8', '#2a5888'], shadow: [10, 30, 70], sky: 'bubbles' }),
+  sea: darkTheme({ glassA: [40, 100, 160], glassB: [20, 60, 120], glow: [140, 220, 255], ring: ['#bfe8f7', '#86cbe9', '#5a98d2'], side: ['#4a86c0', '#3a70a8', '#2a5888'], shadow: [10, 30, 70], sky: 'bubbles', jelly: 'blue' }),
   choco: darkTheme({ glassA: [92, 58, 40], glassB: [64, 38, 24], glow: [255, 210, 170], ring: ['#ffe3ee', '#ecd0ba', '#c99677'], side: ['#93644f', '#7a4e3a', '#5e3a28'], shadow: [40, 20, 10], deco: 'sprinkles' }),
   dream: lightTheme({ cellA: '#fff1f6', cellB: '#efe7ff', ring: ['#f3edff', '#d6c8fa', '#b8a3ef'], side: ['#9a85dc', '#8a6fd0', '#6c52b4'], shadow: [90, 60, 150], deco: 'hearts' }),
   bamboo: lightTheme({ cellA: '#eef8e8', cellB: '#d8edcc', ring: ['#d8efd0', '#9fd09a', '#6fae6a'], side: ['#4c8a48', '#3f763c', '#2f5e2c'], shadow: [30, 70, 30], deco: 'leaves' }),
   lantern: darkTheme({ glassA: [78, 66, 120], glassB: [52, 42, 90], glow: [255, 200, 140], ring: ['#ffb0a0', '#e0584a', '#b83a30'], side: ['#9a2a22', '#82221c', '#641814'], shadow: [20, 10, 40], deco: 'lanterns' }),
   icecream: lightTheme({ cellA: '#fff8f0', cellB: '#e6f6f0', ring: ['#ffe2b8', '#f0c48a', '#d9a060'], side: ['#c08848', '#a8702e', '#8a5a20'], shadow: [130, 80, 50], deco: 'scoops' }),
-  moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars' }),
+  moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars', jelly: 'blue' }),
   castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
 });
 // 半透明盤面（工作單17）：白色 30% 的毛玻璃底板、白色 12% / 26% 交錯的格子，外圈一條白邊和柔柔的落影。
 // 模糊和白邊、落影由盤面下面的 DOM（.board-under）負責；玩偶的影子用這一關那一站的深色（R.setScene）
-BOARD_THEMES.glass = { ...BOARD_THEMES.macaron, glassy: true, shadow: [60, 40, 110],
+BOARD_THEMES.glass = { ...BOARD_THEMES.macaron, glassy: true, shadow: [60, 40, 110], jelly: 'light',
   flat: { base: '#fff', baseAlpha: 0.3, cellA: 'rgba(255,255,255,0.12)', cellB: 'rgba(255,255,255,0.26)' } };
+// 果凍配色（工作單18）：每個盤面主題有 jelly 欄位，'light' 淺色格子、'dark' 深色玻璃、'blue' 藍色系深色盤面（海底、月亮島）。
+//   沒寫的當 'dark'。淺色盤面的果凍填色比較深、比較不透明，外面一圈深藍邊（最後才畫，白色反光蓋不到）；
+//   藍色系盤面填色照深色，但邊框改成白亮的，才不會和藍色格子混在一起
+const JELLY_TONES = {
+  dark: {
+    one: { top: 'rgba(170,238,255,0.62)', bot: 'rgba(70,190,240,0.58)', shine: 0.26, edge: 'rgba(225,250,255,0.9)', ew: 0.035 },
+    two: { top: 'rgba(110,200,255,0.9)', bot: 'rgba(24,104,210,0.92)', shine: 0.32, edge: 'rgba(200,240,255,0.95)', ew: 0.05, ring: 'rgba(190,235,255,0.75)' },
+    rim1: [120, 225, 255], rim2: [40, 150, 255], rimLine: 'rgba(255,255,255,0.85)',
+    ice: ['rgba(235,252,255,0.98)', 'rgba(90,200,255,0.9)', 'rgba(40,140,220,0.9)'],
+  },
+  light: {
+    one: { top: 'rgba(118,196,250,0.8)', bot: 'rgba(58,148,232,0.82)', shine: 0.24, edge: '#2f7fd0', ew: 0.05 },
+    two: { top: 'rgba(54,142,234,0.9)', bot: 'rgba(22,88,190,0.93)', shine: 0.26, edge: '#164f9e', ew: 0.065, ring: 'rgba(205,236,255,0.85)' },
+    rim1: [47, 127, 208], rim2: [18, 74, 160], rimLine: 'rgba(255,255,255,0.9)', rimIn: true,
+    ice: ['rgba(205,236,255,0.98)', 'rgba(47,127,208,0.95)', 'rgba(20,80,160,0.95)'],
+  },
+  blue: {
+    one: { top: 'rgba(170,238,255,0.66)', bot: 'rgba(70,190,240,0.62)', shine: 0.26, edge: 'rgba(255,255,255,0.97)', ew: 0.045 },
+    two: { top: 'rgba(120,206,255,0.92)', bot: 'rgba(24,104,210,0.94)', shine: 0.32, edge: 'rgba(255,255,255,0.98)', ew: 0.06, ring: 'rgba(225,246,255,0.85)' },
+    rim1: [200, 246, 255], rim2: [40, 140, 255], rimLine: 'rgba(255,255,255,0.95)', rimWhite: true,
+    ice: ['rgba(245,254,255,0.98)', 'rgba(120,215,255,0.92)', 'rgba(255,255,255,0.95)'],
+  },
+};
 function saturate(c, amt) {
   const g = (c[0] + c[1] + c[2]) / 3;
   return c.map(v => clamp(Math.round(g + (v - g) * (1 + amt)), 0, 255));
@@ -1623,14 +1646,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (jellyCache[level]) return jellyCache[level];
     const S = Math.max(4, Math.round(cs * dpr)), c = makeCanvas(S, S), g = c.getContext('2d');
     const two = level >= 2, i = S * 0.03, w = S - 2 * i, rad = S * 0.16;
+    const tone = JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark, P = two ? tone.two : tone.one;
     const gr = g.createLinearGradient(0, i, 0, i + w);
-    if (two) { gr.addColorStop(0, 'rgba(110,200,255,0.9)'); gr.addColorStop(1, 'rgba(24,104,210,0.92)'); }
-    else { gr.addColorStop(0, 'rgba(170,238,255,0.62)'); gr.addColorStop(1, 'rgba(70,190,240,0.58)'); }
+    gr.addColorStop(0, P.top); gr.addColorStop(1, P.bot);
     rr(g, i, i, w, w, rad); g.fillStyle = gr; g.fill();
     // 斜斜的結晶反光（兩道），只在格子裡面
     g.save();
     rr(g, i, i, w, w, rad); g.clip();
-    g.fillStyle = two ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.26)';
+    g.fillStyle = `rgba(255,255,255,${P.shine})`;
     for (const [x0, wd] of two ? [[0.08, 0.14], [0.34, 0.07], [0.62, 0.05]] : [[0.12, 0.12], [0.44, 0.06]]) {
       g.beginPath(); g.moveTo(i + w * x0, i + w); g.lineTo(i + w * (x0 + wd), i + w); g.lineTo(i + w * (x0 + wd + 0.5), i); g.lineTo(i + w * (x0 + 0.5), i); g.closePath(); g.fill();
     }
@@ -1639,9 +1662,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     rr(g, i + w * 0.08, i + w * 0.05, w * 0.84, w * 0.12, w * 0.06); g.fill();
     if (two) { g.fillStyle = 'rgba(255,255,255,0.28)'; rr(g, i + w * 0.12, i + w * 0.22, w * 0.76, w * 0.07, w * 0.035); g.fill(); }
     g.restore();
+    // 雙層的內圈先畫，外圈的邊最後畫：反光和內圈都不會蓋到外邊
+    if (two) { rr(g, i + S * 0.07, i + S * 0.07, w - S * 0.14, w - S * 0.14, rad * 0.7); g.lineWidth = S * 0.022; g.strokeStyle = P.ring; g.stroke(); }
     rr(g, i, i, w, w, rad);
-    g.lineWidth = S * (two ? 0.05 : 0.035); g.strokeStyle = two ? 'rgba(200,240,255,0.95)' : 'rgba(225,250,255,0.9)'; g.stroke();
-    if (two) { rr(g, i + S * 0.07, i + S * 0.07, w - S * 0.14, w - S * 0.14, rad * 0.7); g.lineWidth = S * 0.022; g.strokeStyle = 'rgba(190,235,255,0.75)'; g.stroke(); }
+    g.lineWidth = S * P.ew; g.strokeStyle = P.edge; g.stroke();
     jellyCache[level] = c;
     return c;
   }
@@ -1650,14 +1674,24 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (rimCache[level]) return rimCache[level];
     const S = Math.max(4, Math.round(cs * dpr)), c = makeCanvas(S, S), g = c.getContext('2d');
     const two = level >= 2, inset = S * 0.05, w = S - 2 * inset, rad = S * 0.2;
-    const col = two ? [40, 150, 255] : [120, 225, 255];
+    const tone = JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark;
+    const col = two ? tone.rim2 : tone.rim1, lw = S * (two ? 0.07 : 0.05);
     g.save();
-    g.shadowColor = css(col, 0.9); g.shadowBlur = S * 0.06;
+    g.shadowColor = css(col, tone.rimIn ? 0.55 : 0.9); g.shadowBlur = S * (tone.rimIn ? 0.035 : 0.06);
     rr(g, inset, inset, w, w, rad);
-    g.lineWidth = S * (two ? 0.07 : 0.05); g.strokeStyle = css(col, 0.95); g.stroke();
+    g.lineWidth = lw; g.strokeStyle = css(col, 0.95); g.stroke();
     g.restore();
-    rr(g, inset, inset, w, w, rad);
-    g.lineWidth = S * 0.018; g.strokeStyle = 'rgba(255,255,255,0.85)'; g.stroke();
+    if (tone.rimIn) {
+      // 淺色盤面：白色細線放在深藍邊的內側，不壓在邊上
+      const d = lw / 2 + S * 0.009;
+      rr(g, inset + d, inset + d, w - 2 * d, w - 2 * d, rad - d);
+    } else rr(g, inset, inset, w, w, rad);
+    g.lineWidth = S * 0.018; g.strokeStyle = tone.rimLine; g.stroke();
+    if (tone.rimWhite) {
+      // 藍色系盤面：外面再一圈白，和藍色格子分得開
+      rr(g, inset - lw / 2, inset - lw / 2, w + lw, w + lw, rad + lw / 2);
+      g.lineWidth = S * 0.014; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.stroke();
+    }
     if (two) {
       const i2 = S * 0.11;
       rr(g, i2, i2, S - 2 * i2, S - 2 * i2, rad * 0.75);
@@ -1675,9 +1709,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (iceImg) return iceImg;
     const n = 32, c = makeCanvas(n, n), g = c.getContext('2d');
     g.beginPath(); g.moveTo(n * 0.5, n * 0.05); g.lineTo(n * 0.9, n * 0.45); g.lineTo(n * 0.55, n * 0.95); g.lineTo(n * 0.12, n * 0.6); g.closePath();
-    const gr = g.createLinearGradient(0, 0, n, n);
-    gr.addColorStop(0, 'rgba(235,252,255,0.98)'); gr.addColorStop(1, 'rgba(90,200,255,0.9)');
-    g.fillStyle = gr; g.fill(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(40,140,220,0.9)'; g.stroke();
+    const gr = g.createLinearGradient(0, 0, n, n), ice = (JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark).ice;
+    gr.addColorStop(0, ice[0]); gr.addColorStop(1, ice[1]);
+    g.fillStyle = gr; g.fill(); g.lineWidth = 1.5; g.strokeStyle = ice[2]; g.stroke();
     g.beginPath(); g.moveTo(n * 0.5, n * 0.05); g.lineTo(n * 0.55, n * 0.95); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1; g.stroke();
     iceImg = c;
     return c;
@@ -5140,7 +5174,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     themeGeom();
     if (look.hat && look.hat !== 'none') accImg(look.hat);
     if (tiles) { tileCache.clear(); accCache.clear(); toyCache.clear(); fitCache.clear(); }
-    if (theme) geom();
+    // 果凍、果凍外框、碎冰的顏色跟著盤面主題（工作單18）：換主題就重畫
+    if (theme) { jellyCache = []; rimCache = []; iceImg = null; geom(); }
     if (tiles && rows) prewarm();
     requestDraw();
   }

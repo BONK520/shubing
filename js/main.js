@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zg';
-import { SLOGANS } from './slogans.js?v=20261124zg';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zg';
-import { blockerCanvas } from './blockers.js?v=20261124zg';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zg';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zg';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zg';
-import { STORY } from './story.js?v=20261124zg';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zh';
+import { SLOGANS } from './slogans.js?v=20261124zh';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zh';
+import { blockerCanvas } from './blockers.js?v=20261124zh';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zh';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zh';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zh';
+import { STORY } from './story.js?v=20261124zh';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zg';
+const MOD_V = '?v=20261124zh';
 
 window.__plushBooted = true;
 
@@ -1900,7 +1900,64 @@ function buildMap(popIndex = -1) {
   const total = LEVELS.reduce((s, l) => s + (Number(save.stars[l.id]) || 0), 0);
   setNum($('#map-stars'), total);
   $('#map-stars-max').textContent = '/ ' + n * 3;
+  watchMapAnim(inner);
   return pts;
+}
+// 地圖很長（225 站），畫面外的插圖動畫也在跑時，手機每一幀都要把整張地圖重新分層，捲動會卡。
+// 只讓畫面上下各半個畫面內的在動，其他的停掉（style.css 的 #map-inner.io）；離得遠才停，捲回來之前就已經在動了
+let mapIO = null;
+function watchMapAnim(inner) {
+  if (mapIO) { mapIO.disconnect(); mapIO = null; }
+  if (typeof IntersectionObserver !== 'function') return;   // 舊瀏覽器：照舊全部在動
+  mapIO = new IntersectionObserver(es => { for (const e of es) e.target.classList.toggle('vis', e.isIntersecting); }, { root: $('#map-scroll'), rootMargin: '50% 0px' });
+  for (const t of inner.querySelectorAll('.map-spot, .node.current')) mapIO.observe(t);
+  inner.classList.add('io');
+  driftVis();
+}
+// 飄雲會橫著飄出 .map-art（overflow: hidden）的左右兩邊，IntersectionObserver 會把它當成看不見而停掉、放回畫面裡又重新開始，
+// 所以飄雲只看上下：停手時（thawMapAnim）和畫好地圖時各算一次
+function driftVis() {
+  const sc = $('#map-scroll'), inner = $('#map-inner');
+  if (!sc || !inner || !inner.classList.contains('io')) return;
+  const r = sc.getBoundingClientRect();
+  for (const e of inner.querySelectorAll('.ma-drift')) {
+    const b = e.getBoundingClientRect();
+    e.classList.toggle('vis', !r.height || (b.bottom > r.top - r.height / 2 && b.top < r.bottom + r.height / 2));
+  }
+}
+// 手指在捲地圖時：插圖動畫（貼紙晃、探頭、飄雲、目前這關的光圈）先定在當下的姿勢，停手 250ms 後從原本的進度接著動。
+// 實測（Chrome 模擬 iPhone、CPU 降速4倍）：捲動容器裡只要還有一個在跑，每一幀都要把整張地圖重新分層（約 120ms），
+// 只暫停（paused）沒有用、要拿掉動畫才有用；所以先把當下姿勢寫成 inline style 再拿掉，回來時把進度接回去，看起來不會跳
+let mapFrozen = null, mapThawT = 0;
+function freezeMapAnim() {
+  clearTimeout(mapThawT); mapThawT = setTimeout(thawMapAnim, 250);
+  if (mapFrozen) return;
+  const inner = $('#map-inner');
+  if (!inner || typeof inner.getAnimations !== 'function') return;
+  const list = [];
+  for (const a of inner.getAnimations({ subtree: true })) {
+    const el = a.effect && a.effect.target;
+    if (!el || !a.animationName) continue;
+    list.push({ el, name: a.animationName, t: a.currentTime, st: el.getAttribute('style') });
+    try { a.commitStyles(); } catch (e) {}
+  }
+  mapFrozen = { at: performance.now(), list };
+  inner.classList.add('frozen');
+  document.documentElement.classList.add('map-scrolling');
+}
+function thawMapAnim() {
+  const f = mapFrozen; mapFrozen = null;
+  document.documentElement.classList.remove('map-scrolling');
+  const inner = $('#map-inner');
+  if (!f || !inner) return;
+  for (const x of f.list) { if (x.st == null) x.el.removeAttribute('style'); else x.el.setAttribute('style', x.st); }
+  inner.classList.remove('frozen');
+  driftVis();
+  const dt = performance.now() - f.at;
+  for (const x of f.list) {
+    if (x.t == null) continue;
+    for (const a of x.el.getAnimations()) if (a.animationName === x.name) { try { a.currentTime = x.t + dt; } catch (e) {} }
+  }
 }
 // 地圖背景：只跟地圖寬度和關卡數有關，同一個寬度畫一次就好
 function mapArt(inner, n, H) {
@@ -2009,7 +2066,7 @@ function wakeScrub() {
   clearTimeout(scrub.fade);
   if (!scrub.drag) scrub.fade = setTimeout(() => box.classList.remove('live'), 1500);
 }
-function onMapScroll() { updateMapHere(); updateScrubber(); wakeScrub(); mavSchedule(); mavPopClose(); }
+function onMapScroll() { freezeMapAnim(); updateMapHere(); updateScrubber(); wakeScrub(); mavSchedule(); mavPopClose(); }
 // 手指在條上的位置 → scrollTop（同一幀只寫一次，不用平滑捲動）
 function scrubTo(clientY) {
   const sc = $('#map-scroll'), tr = $('#scb-track').getBoundingClientRect();
