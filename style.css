@@ -2402,6 +2402,29 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 .mav-more.edge { position: sticky; top: var(--mav-t, 70px); bottom: 12px; display: block; }
 .mav-more:focus-visible { outline: 3px solid #2f8cf0; outline-offset: 3px; }
 .mav-instant .mav, .mav-instant .mav-nm, .mav-instant .mav-tip, .mav-instant .mav-arr { transition: none; }
+/* 沒打扮過的朋友：左下角名字的第一個字（外圈顏色由程式依名字決定） */
+.mav-ini {
+  position: absolute; left: -14%; bottom: -14%; z-index: 1; min-width: 22px; height: 22px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 999px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 900; line-height: 22px; text-align: center;
+  box-shadow: 0 0 0 2px rgba(111, 40, 64, .18), 0 2px 3px rgba(111, 40, 64, .3); pointer-events: none;
+}
+/* 停在邊上時右下角是箭頭，字章移到左上角，免得跟左邊那顆的箭頭黏在一起 */
+.mav.docked .mav-ini { bottom: auto; top: -14%; }
+/* 「+N」點開的小清單 */
+.mav-pop {
+  position: fixed; z-index: 60; width: max-content; min-width: 168px; max-width: calc(100vw - 32px); max-height: 50vh; overflow-y: auto;
+  padding: 6px; box-sizing: border-box; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(111, 40, 64, .28), 0 0 0 2px #ffd0e6;
+  overscroll-behavior: contain;
+}
+.mav-pop-t { padding: 4px 8px 6px; color: #a0637c; font-size: 12px; font-weight: 800; }
+.mav-pop-i {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 40px; padding: 8px 10px; box-sizing: border-box;
+  border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.mav-pop-i b { font-size: 15px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12em; }
+.mav-pop-i span { flex: none; color: #8a5a6e; font-size: 13px; font-weight: 700; }
+.mav-pop-i:hover, .mav-pop-i:focus-visible { background: #fff0f7; }
+.mav-pop-i:focus-visible { outline: 3px solid #2f8cf0; outline-offset: -3px; }
 @media (prefers-reduced-motion: reduce) {
   .mav, .mav-nm, .mav-tip, .mav-arr { transition: none; }
   .mav.hop .mav-in { animation: none; }

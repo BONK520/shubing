@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124z';
-import { SLOGANS } from './slogans.js?v=20261124z';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124z';
-import { blockerCanvas } from './blockers.js?v=20261124z';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124z';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124z';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124z';
-import { STORY } from './story.js?v=20261124z';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124za';
+import { SLOGANS } from './slogans.js?v=20261124za';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124za';
+import { blockerCanvas } from './blockers.js?v=20261124za';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124za';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124za';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124za';
+import { STORY } from './story.js?v=20261124za';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124z';
+const MOD_V = '?v=20261124za';
 
 window.__plushBooted = true;
 
@@ -360,9 +360,21 @@ function levelOfBest(best) {
 // 每個頭像放在一個跟地圖一樣高、點不到的透明欄（.mav-col）裡，sticky 才能一路黏到地圖最上面、最下面
 const MAV = { me: 54, fr: 48, dock: 42, slot: 50, perNode: 2, perEdge: 4, bottom: 12, more: 34 };
 let mavs = [], mavAt = [], mavEdge = {}, mavRaf = 0, mavT = -1;
+const MAV_RINGS = ['#ff7fbf', '#4fb3ff', '#5fcf5a', '#ffb02e', '#9a84f5', '#ff7563', '#2fc4b8', '#e98ae0'];
+const PLAIN_LOOK = JSON.stringify(cleanLook({}));
 function mavFace(p) {
   const a = el('span', 'av');
   renderAvatar(a, p.look);   // 朋友打扮好的薯餅；沒有頭像資料（舊版、規則還沒更新）就是原本的薯餅
+  if (!p.me && JSON.stringify(cleanLook(p.look)) === PLAIN_LOOK) {
+    // 沒打扮過的朋友：外圈用名字算出固定顏色，左下角一顆小圓章寫名字第一個字（右下角留給停靠時的箭頭），大家才不會長一樣
+    let h = 0;
+    for (const ch of p.name) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    const ring = $('.av-ring', a);
+    if (ring) ring.style.background = MAV_RINGS[h % MAV_RINGS.length];
+    const ini = el('span', 'mav-ini');
+    ini.textContent = Array.from(p.name)[0] || '?';
+    a.appendChild(ini);
+  }
   return a;
 }
 // 點頭像：捲到那一關（減少動態效果時直接跳過去），到了再讓頭像跳一下
@@ -373,20 +385,65 @@ function mavGo(m) {
   const p = m.p, rm = reduceMotion();
   toast(`${p.me ? '我' : p.name}・第${p.level}關・★${fmt(p.stars)}`, 1800);
   const top = mapTarget(m.y);
-  if (Math.abs(sc.scrollTop - top) < 2) { if (!rm) restartAnim(m.b, 'hop'); return; }
+  if (Math.abs(sc.scrollTop - top) < 2) { if (!rm && m.b) restartAnim(m.b, 'hop'); return; }
   sc.scrollTo({ top, behavior: rm ? 'auto' : 'smooth' });
-  if (rm) return;
+  if (rm || !m.b) return;
   let done = false;
   const hop = () => { if (done) return; done = true; sc.removeEventListener('scrollend', hop); restartAnim(m.b, 'hop'); };
   sc.addEventListener('scrollend', hop);
   setTimeout(hop, 1100);   // 沒有 scrollend 的瀏覽器
 }
-function mavListToast(list, where) {
-  toast(list.map(m => `${m.p.me ? '我' : m.p.name}・第${m.p.level}關`).join('、') + (where ? `（${where}）` : ''), 2600);
+// 「+N」：跳出小清單（名字・第幾關・星星），點名字就捲到那個人的關卡
+let mavPopEl = null;
+function mavPopClose() {
+  if (!mavPopEl) return;
+  const p = mavPopEl;
+  mavPopEl = null;
+  p.remove();
+  document.removeEventListener('pointerdown', mavPopOut, true);
+  document.removeEventListener('keydown', mavPopKey, true);
+  window.removeEventListener('resize', mavPopClose);
+  if (p._from && p._from.isConnected && p.contains(document.activeElement)) p._from.focus();
+}
+function mavPopOut(e) { if (mavPopEl && !mavPopEl.contains(e.target) && e.target !== mavPopEl._from) mavPopClose(); }
+function mavPopKey(e) { if (e.key === 'Escape') { e.preventDefault(); mavPopClose(); } }
+function mavPop(from, list, title) {
+  const again = mavPopEl && mavPopEl._from === from;
+  mavPopClose();
+  if (again || !list.length) return;   // 再點一次同一顆「+N」就收起來
+  const box = el('div', 'mav-pop');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', title);
+  box._from = from;
+  const h = el('div', 'mav-pop-t');
+  h.textContent = title;
+  box.appendChild(h);
+  for (const m of list) {
+    const b = el('button', 'mav-pop-i');
+    b.type = 'button';
+    const nm = el('b');
+    nm.textContent = m.p.me ? '我' : m.p.name;   // 名字一律當純文字
+    const sub = el('span');
+    sub.textContent = `第${m.p.level}關・★${fmt(m.p.stars)}`;
+    b.append(nm, sub);
+    b.addEventListener('click', e => { e.stopPropagation(); mavPopClose(); mavGo(m); });
+    box.appendChild(b);
+  }
+  document.body.appendChild(box);
+  const r = from.getBoundingClientRect(), bw = box.offsetWidth, bh = box.offsetHeight;
+  const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+  box.style.left = Math.round(clamp(r.left + r.width / 2 - bw / 2, 12, vw - bw - 12)) + 'px';
+  box.style.top = Math.round(r.top + r.height / 2 > vh / 2 ? Math.max(12, r.top - bh - 8) : Math.min(vh - bh - 12, r.bottom + 8)) + 'px';
+  mavPopEl = box;
+  document.addEventListener('pointerdown', mavPopOut, true);
+  document.addEventListener('keydown', mavPopKey, true);
+  window.addEventListener('resize', mavPopClose);
+  if (usingKeyboard) $('.mav-pop-i', box).focus();
 }
 function renderMapAvatars() {
   const inner = $('#map-inner');
   if (!inner) return;
+  mavPopClose();
   for (const x of $$('.mav-col, .mav-more', inner)) x.parentNode.removeChild(x);
   mavs = []; mavAt = []; mavEdge = {}; mavT = -1;
   if (!mapNodes.length || !LEVELS) return;
@@ -440,9 +497,10 @@ function renderMapAvatars() {
       mb.style.top = y + 'px';
       const cx = off + MAV.more / 2;
       mb.style.left = `calc(${xp}% ${left ? '-' : '+'} ${cx}px)`;
-      mb.addEventListener('click', e => { e.stopPropagation(); audio.play('tap'); mavListToast(rest.map(p => ({ p })), ''); });
+      const restM = rest.map(p => ({ p, y }));
+      mb.addEventListener('click', e => { e.stopPropagation(); audio.play('tap'); mavPop(mb, restM, `第${i + 1}關還有 ${rest.length} 位`); });
       frag.appendChild(mb);
-      mavAt.push({ y, rest });   // 這顆「+N」捲出畫面時，這些人算進上緣／下緣的「+N」
+      mavAt.push({ y, rest: restM });   // 這顆「+N」捲出畫面時，這些人算進上緣／下緣的「+N」
     }
   }
   // 上緣、下緣停不下的人：最後一格放「+N」（自己一欄，sticky 黏在邊上）
@@ -452,7 +510,7 @@ function renderMapAvatars() {
     const mb = el('button', 'mav-more edge ' + e);
     mb.type = 'button';
     mb.hidden = true;
-    mb.addEventListener('click', ev => { ev.stopPropagation(); audio.play('tap'); mavListToast(mavEdge[e].rest || [], e === 'top' ? '在上面' : '在下面'); });
+    mb.addEventListener('click', ev => { ev.stopPropagation(); audio.play('tap'); const r = mavEdge[e].rest || []; mavPop(mb, r, `${e === 'top' ? '上面' : '下面'}還有 ${r.length} 位`); });
     const sp = mavSpacer(0);
     col.append(sp, mb);
     frag.appendChild(col);
@@ -486,7 +544,7 @@ function mavCheck() {
     const rest = more.slice();
     for (const a of mavAt) {
       const off = e === 'top' ? a.y + MAV.more / 2 < st + T : a.y - MAV.more / 2 > st + ch - MAV.bottom;
-      if (off) for (const p of a.rest) rest.push({ p });
+      if (off) rest.push(...a.rest);
     }
     const n = shown.length + (rest.length ? 1 : 0);
     const slotX = j => W / 2 + (j - (n - 1) / 2) * MAV.slot;
@@ -2005,7 +2063,7 @@ function wakeScrub() {
   clearTimeout(scrub.fade);
   if (!scrub.drag) scrub.fade = setTimeout(() => box.classList.remove('live'), 1500);
 }
-function onMapScroll() { updateMapHere(); updateScrubber(); wakeScrub(); mavSchedule(); }
+function onMapScroll() { updateMapHere(); updateScrubber(); wakeScrub(); mavSchedule(); mavPopClose(); }
 // 手指在條上的位置 → scrollTop（同一幀只寫一次，不用平滑捲動）
 function scrubTo(clientY) {
   const sc = $('#map-scroll'), tr = $('#scb-track').getBoundingClientRect();
