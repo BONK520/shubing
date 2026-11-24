@@ -1578,21 +1578,6 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .fr-nm { display: flex; flex-direction: column; gap: 1px; }
 .fr-nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fr-lv { font-size: 12px; font-weight: 800; line-height: 1.2; color: var(--ink-soft); }
-/* 地圖上朋友的小頭像（main.js renderFriendPins）：關卡按鈕旁邊一排，地圖偏右的關卡排在左邊，不會超出畫面 */
-.fr-pins { position: absolute; z-index: 3; display: flex; align-items: center; transform: translate(40px, -50%); }
-.fr-pins.big { transform: translate(51px, -50%); }
-.fr-pins.left { flex-direction: row-reverse; transform: translate(calc(-100% - 40px), -50%); }
-.fr-pins.left.big { transform: translate(calc(-100% - 51px), -50%); }
-.fr-pin { position: relative; width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; flex: none; }
-.fr-pin::before { content: ''; position: absolute; inset: -7px -3px; }   /* 點得到的範圍大一點 */
-.fr-pins:not(.left) .fr-pin + .fr-pin { margin-left: -4px; }
-.fr-pins.left .fr-pin + .fr-pin { margin-right: -4px; }
-.fr-face {
-  position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
-  border: 1.5px solid #fff; box-sizing: border-box; background: linear-gradient(180deg, #8fe6ff, #38aef8);
-  color: #fff; font-weight: 900; font-size: 11px; line-height: 1; box-shadow: 0 2px 4px rgba(111, 40, 64, .3);
-}
-.fr-pin.more .fr-face { background: #fff; color: var(--ink); font: 900 10px/1 var(--font-num); letter-spacing: -.02em; }
 .fr-st { display: flex; align-items: center; gap: 3px; }
 .fr-st svg { width: 22px; height: 22px; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.4; paint-order: stroke; filter: drop-shadow(0 1.5px 0 #c46d00); }
 .fr-st b { font: 900 18px/1 var(--font-num); color: var(--ink); min-width: 1.6em; text-align: right; }
@@ -1676,11 +1661,10 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 /* 帽子：位置在 main.js avatarHat() 算好（跟遊戲盤面上戴的位置一樣），這裡只取消上面的 inset */
 .av-toy > .av-hat { inset: auto; object-fit: fill; }
 /* 小地方的頭像（帳號、排行榜、地圖上的朋友）：外框換成打扮好的薯餅，帽子可以超出圓框 */
-.acct-av.has-av, .fr-face.has-av { background: none !important; box-shadow: none; overflow: visible; border: 0; }
+.acct-av.has-av { background: none !important; box-shadow: none; overflow: visible; border: 0; }
 .acct-av.has-av > .av { --s: 25px; }
 .acct-row .acct-av.has-av > .av { --s: 37px; }
 .fr-av.has-av > .av { --s: 30px; }
-.fr-face.has-av > .av { --s: 18px; }
 .av-deco { position: absolute; inset: calc(var(--s) * -.1923); width: calc(var(--s) * 1.3846); height: calc(var(--s) * 1.3846); }
 .dk-stats { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .dk-stat {
@@ -2361,3 +2345,64 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 @media (max-height: 700px) { .cl-preview { height: 140px; } .cl-ava .av { --s: 92px; } }
 /* 橫向：整個對話框一起捲（.modal:not(.sheet) overflow-y: auto），黏住的話會蓋掉一半畫面，照舊跟著捲 */
 @media (orientation: landscape) and (max-height: 520px) { .cl-stick { position: relative; } }
+
+/* ---------- 地圖上的大頭像（工作單15，main.js renderMapAvatars） ---------- */
+.mav-col { position: absolute; left: 0; top: 0; width: 100%; z-index: 3; pointer-events: none; }
+.mav-col.me { z-index: 4; }
+.mav-sp { display: block; width: 0; }
+.mav {
+  position: sticky; top: var(--mav-t, 70px); bottom: 12px;
+  display: block; width: var(--s); height: var(--s); padding: 0; border: 0; border-radius: 50%; background: none;
+  cursor: pointer; pointer-events: auto; -webkit-tap-highlight-color: transparent;
+  transform: translateX(var(--dx, 0px)) scale(var(--k, 1)); transform-origin: 50% 0;
+  transition: transform .3s cubic-bezier(.3, 1.25, .5, 1), opacity .2s;
+}
+.mav.bottom { transform-origin: 50% 100%; }
+.mav.hid { opacity: 0; pointer-events: none; }
+.mav:focus-visible { outline: 3px solid #2f8cf0; outline-offset: 6px; }
+.mav-in { position: absolute; inset: 0; display: block; }
+.mav.hop .mav-in { animation: mavHop .7s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes mavHop { 0% { transform: none; } 30% { transform: translateY(-16px) scale(1.12); } 60% { transform: translateY(0) scale(.96, 1.04); } 100% { transform: none; } }
+.mav .av { --s: inherit; }
+.mav.me .mav-in::before { content: ''; position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .95) 45%, rgba(255, 246, 170, .6) 62%, rgba(255, 255, 255, 0) 72%); }
+/* 名字：頭像下面一個小白牌（自己的是粉紅） */
+.mav-nm {
+  position: absolute; left: 50%; top: calc(100% + var(--s) * .075 + 6px); transform: translateX(-50%);
+  max-width: 76px; padding: 1px 7px; border-radius: 999px; box-sizing: border-box;
+  background: #fff; color: var(--ink); font-size: 12px; font-weight: 900; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 0 rgba(111, 40, 64, .2);
+  transition: opacity .2s;
+}
+.mav.me .mav-nm { background: linear-gradient(180deg, #ff9fd0, #ff5fa8); color: #fff; box-shadow: 0 2px 0 #c42a74; }
+/* 指向關卡的小三角 */
+.mav-tip { position: absolute; top: 50%; width: 0; height: 0; margin-top: -8px; border: 8px solid transparent; transition: opacity .2s; }
+.mav.r .mav-tip { right: calc(100% + var(--s) * .075 - 3px); border-right-color: #fff; }
+.mav.l .mav-tip { left: calc(100% + var(--s) * .075 - 3px); border-left-color: #fff; }
+.mav.docked .mav-nm, .mav.docked .mav-tip { opacity: 0; }
+/* 自己的頭像多一圈金邊：停在邊上名字收起來時，也認得出哪個是我 */
+.mav.me .mav-in::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 3px solid #ffc53a; box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(160, 100, 0, .35); pointer-events: none; }
+.mav .mav-arr { z-index: 1; }
+/* 停在邊上時：右下角一個小箭頭，告訴你那一關在上面還是下面（整顆縮小了，所以畫大一點） */
+.mav-arr {
+  position: absolute; right: -16%; bottom: -16%; width: 25px; height: 25px; border-radius: 50%;
+  background: linear-gradient(180deg, #ff9fd0, #ff4f9e); box-shadow: 0 0 0 3px #fff, 0 2px 4px rgba(111, 40, 64, .35);
+  opacity: 0; transform: scale(.3); transition: opacity .2s, transform .25s;
+}
+.mav-arr::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -4px 0 0 -6px; border: 6px solid transparent; border-top: 0; border-bottom: 8px solid #fff; }
+.mav.bottom .mav-arr::after { border-bottom: 0; border-top: 8px solid #fff; margin-top: -3px; }
+.mav.docked .mav-arr { opacity: 1; transform: none; }
+/* 「+N」：關卡旁邊的（第 3 位以後）、上緣下緣停不下的 */
+.mav-more {
+  width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; pointer-events: auto;
+  background: #fff; color: var(--ink); font: 900 13px/1 var(--font-num, inherit); letter-spacing: -.02em;
+  box-shadow: 0 0 0 2.5px #ffb3d6, 0 3px 6px rgba(111, 40, 64, .3); -webkit-tap-highlight-color: transparent;
+}
+.mav-more[hidden] { display: none; }
+.mav-more.at { position: absolute; z-index: 3; transform: translate(-50%, -50%); }
+.mav-more.edge { position: sticky; top: var(--mav-t, 70px); bottom: 12px; display: block; }
+.mav-more:focus-visible { outline: 3px solid #2f8cf0; outline-offset: 3px; }
+.mav-instant .mav, .mav-instant .mav-nm, .mav-instant .mav-tip, .mav-instant .mav-arr { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mav, .mav-nm, .mav-tip, .mav-arr { transition: none; }
+  .mav.hop .mav-in { animation: none; }
+}
