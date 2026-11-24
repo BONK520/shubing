@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zj';
-import { SLOGANS } from './slogans.js?v=20261124zj';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zj';
-import { blockerCanvas } from './blockers.js?v=20261124zj';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zj';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zj';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zj';
-import { STORY } from './story.js?v=20261124zj';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zk';
+import { SLOGANS } from './slogans.js?v=20261124zk';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zk';
+import { blockerCanvas } from './blockers.js?v=20261124zk';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zk';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zk';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zk';
+import { STORY } from './story.js?v=20261124zk';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zj';
+const MOD_V = '?v=20261124zk';
 
 window.__plushBooted = true;
 
@@ -1363,6 +1363,8 @@ const closet = createCloset();
 closet.onChange = () => { if (account && CLOSET_CLOUD) schedulePush(); };   // 兌換、開寶箱、換裝、換頭像 → 1.5 秒後跟進度一起存雲端
 const closetKey = () => saveKey + '.closet';
 let clR = null, clCat = 'outfit', tryOn = {};
+// 打開分頁就算看過這一類（工作單24）：這一次畫面上的「新」照樣顯示，記在 clNewNow；切到別的分頁或關掉衣櫃才清掉
+let clNewNow = null;   // { key, cat, ids: Set }
 // 頭像用哪一隻（工作單22）：存在衣櫃的 avatar.who（'shubing'／'egg'），畫圖時用 'sloth'／'egg'。沒有或看不懂就是薯餅
 const lookWho = l => (l && l.who === 'egg' ? 'egg' : 'sloth');
 const meWho = () => lookWho(closet.avatar());
@@ -1529,6 +1531,7 @@ function renderClosetBtn() {
 function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
 function openCloset() {
   tryOn = {};
+  clNewNow = null;
   const sc = $('#m-closet .cl-scroll');
   if (sc) sc.scrollTop = 0;
   clStick(false);
@@ -1566,6 +1569,7 @@ function scrollToChests(smooth = true) {
 }
 function closetClosed() {
   tryOn = {};
+  clNewNow = null;
   $('#cl-pop').hidden = true;
   if (clR) { clR.setBoard(null); clR.pause(); }
   applyLook();
@@ -1595,11 +1599,17 @@ function renderCloset() {
   setNum($('#cl-coins'), coins);
   setNum($('#cl-stars'), totalStars(stars));
   $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
+  // 打開的這個分頁：這一類的新東西這次照樣標「新」，但已經記成看過，切走再回來就沒有（讀取中打開也照記）
+  if (!clNewNow || clNewNow.cat !== clCat || clNewNow.key !== closetKey()) clNewNow = { key: closetKey(), cat: clCat, ids: new Set() };
+  const fresh = ITEMS.filter(x => x.cat === clCat && closet.isNew(x, stars)).map(x => x.id);
+  for (const id of fresh) clNewNow.ids.add(id);
+  if (fresh.length) closet.markSeen(fresh);
   // 分類頁籤
   const tabs = $('#cl-tabs');
   tabs.innerHTML = '';
   for (const c of CATEGORIES) {
-    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : '') + (closet.hasNew(stars, c.id) ? ' new' : ''));
+    const dot = c.id === clCat ? clNewNow.ids.size > 0 : closet.hasNew(stars, c.id);
+    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : '') + (dot ? ' new' : ''));
     b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === clCat ? 'true' : 'false');
     b.append(el('span', 'ct-l', c.name), el('span', 'ct-s', c.short || c.name));
     b.setAttribute('aria-label', c.name);
@@ -1619,7 +1629,7 @@ function renderCloset() {
     const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
     if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none', meWho()));   // 造型：直接看薯餅（或蛋黃哥）穿起來的樣子
     else { const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false; pic.appendChild(img); }
-    if (closet.isNew(it, stars)) b.appendChild(el('span', 'ci-new', '新'));
+    if (clNewNow.ids.has(it.id)) b.appendChild(el('span', 'ci-new', '新'));
     if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
     b.appendChild(pic);
     b.appendChild(el('span', 'ci-name', it.name));
@@ -1653,9 +1663,11 @@ function renderCloset() {
   });
 }
 function onClosetItem(it) {
+  // 看過是這台裝置自己的，讀取中點的也要記（工作單24）；點過的那一格「新」馬上拿掉
+  closet.markSeen(it.id);
+  if (clNewNow && clNewNow.ids.delete(it.id) && closetBusy) renderCloset();
   if (closetBusy) { toast('衣櫃讀取中，等一下下再換', 1400); return; }
   const stars = save.stars;
-  closet.markSeen(it.id);
   if (closet.isUnlocked(it, stars)) {
     closet.equip(it, stars);
     delete tryOn[it.cat];
@@ -4077,6 +4089,12 @@ function bindUI() {
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-map').addEventListener('click', backToMap);
   $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
+  // 另一個分頁（或主畫面圖示開的那份）記了「看過」：合進來，地圖紅點和開著的衣櫃跟著更新（工作單24）
+  window.addEventListener('storage', e => {
+    if (e.key !== closetKey() || !closet.syncSeen()) return;
+    renderClosetBtn();
+    if (isOpen('m-closet')) renderCloset();
+  });
   $('#dk-me').addEventListener('click', () => { audio.play('tap'); scrollMapToCurrent(); });
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#cl-demo').addEventListener('click', closetDemo);
@@ -4193,6 +4211,9 @@ function installDebug() {
     reopenIntro,   // 教學小卡（截圖用）
     // 衣櫃（測試用）
     get closet() { return closet; },
+    get closetBusy() { return closetBusy; },
+    set closetBusy(v) { closetBusy = !!v; if (isOpen('m-closet')) renderCloset(); },
+    renderClosetBtn,
     closetKey: () => closetKey(),
     openCloset,
     onClosetItem: id => onClosetItem(ITEMS.find(it => it.id === id)),

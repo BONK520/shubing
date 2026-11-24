@@ -573,8 +573,23 @@ export function createCloset() {
     return s;
   }
   // sync=false：只改了這台裝置自己的東西（看過的品項）或剛從雲端合併進來，不用再叫 main.js 排雲端存檔
+  // 這台裝置上存著的那份「看過」（另一個分頁或主畫面圖示開的那份可能剛記了新的）
+  function storedSeen() {
+    try { const o = JSON.parse(localStorage.getItem(key) || 'null'); return o && Array.isArray(o.seen) ? o.seen.filter(id => typeof id === 'string' && itemById(id)) : null; } catch (e) { return null; }
+  }
+  // 存著的 seen 合進 st.seen（只增不減）。st.seen 還是 null（還沒整理過）就不動。回傳 true＝多了東西
+  function unionStoredSeen() {
+    if (!key || !st.seen) return false;
+    const other = storedSeen();
+    if (!other) return false;
+    const add = other.filter(id => !st.seen.includes(id));
+    if (add.length) st.seen = [...st.seen, ...add];
+    return add.length > 0;
+  }
   function persist(sync = true) {
     if (!key) return;
+    // 整份寫回去之前，先把存著的「看過」合進來，舊的那份才不會把另一邊剛記的蓋掉（工作單24）
+    unionStoredSeen();
     try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { /* 無痕模式：照玩 */ }
     if (sync && typeof api.onChange === 'function') { try { api.onChange(); } catch (e) { /* ignore */ } }
   }
@@ -603,10 +618,15 @@ export function createCloset() {
       return !!(item && st.seen && !st.seen.includes(item.id) && api.isUnlocked(item, stars));
     },
     hasNew(stars, cat) { return ITEMS.some(it => (!cat || it.cat === cat) && api.isNew(it, stars)); },
+    // id 可以是一個或一串（打開分頁時整類一起記）
     markSeen(id) {
-      if (!st.seen || !itemById(id) || st.seen.includes(id)) return;
-      st.seen.push(id); persist(false);
+      if (!st.seen) return;
+      const add = [...new Set([].concat(id))].filter(x => itemById(x) && !st.seen.includes(x));
+      if (!add.length) return;
+      st.seen.push(...add); persist(false);
     },
+    // 另一個分頁改了這份衣櫃（storage 事件）：把那邊記的「看過」合進來。回傳 true＝多了東西
+    syncSeen() { return unionStoredSeen(); },
     get state() { return st; },
     coinsEarned(stars) {
       let n = threeStarCount(stars);
