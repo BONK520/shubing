@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124u';
-import { SLOGANS } from './slogans.js?v=20261124u';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124u';
-import { blockerCanvas } from './blockers.js?v=20261124u';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124u';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124u';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124u';
-import { STORY } from './story.js?v=20261124u';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124v';
+import { SLOGANS } from './slogans.js?v=20261124v';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg } from './cosmetics.js?v=20261124v';
+import { blockerCanvas } from './blockers.js?v=20261124v';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124v';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124v';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124v';
+import { STORY } from './story.js?v=20261124v';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124u';
+const MOD_V = '?v=20261124v';
 
 window.__plushBooted = true;
 
@@ -188,7 +188,7 @@ async function pushCloud() {
 function setSync(s) { syncState = s; renderAccount(); }
 function refreshAfterSwitch() {
   if (LEVELS && save.unlocked > LEVELS.length + 1) save.unlocked = LEVELS.length + 1;
-  closet.load(closetKey());
+  loadCloset();
   applyLook();
   renderClosetBtn();
   renderAccount();
@@ -1002,13 +1002,58 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && mo
 // 衣櫃存在這台裝置的 localStorage，每個帳號一份（key 跟著存檔走）；造型幣、星星照存檔裡的關卡星星算
 const closet = createCloset();
 const closetKey = () => saveKey + '.closet';
-let clR = null, clCat = 'hat', tryOn = {};
+let clR = null, clCat = 'outfit', tryOn = {};
+let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
+function loadCloset() {
+  closet.load(closetKey());
+  if (closet.initSeen(save.stars)) closetExtra = true;
+}
+const AVA_CATS = ['outfit', 'ring'];   // 這兩類穿在薯餅頭像上，預覽改成放大的頭像
 // 預覽用的小盤面：3 × 4，七種玩偶都有，再放一顆條紋和一隻飛天玩偶
 const CL_GRID = [[[1], [0], [2], [3]], [[6], [5, 'h'], [4], [1, 'fish']], [[2], [6], [0], [5]]];
 function applyLook() {
   const l = closet.look(save.stars);
   if (R && R.setLook) R.setLook(l);
   if (clR) clR.setLook(previewLook());
+  renderMeAvatar();
+  renderClosetAva();
+}
+// 薯餅頭像：外圈 → 白底圓盤 → 薯餅（披風在後、帽子衣服在前）→ 稍微超出圓圈的外圈裝飾
+// 大小跟著 host 的 --s 變（左下角 52px、衣櫃預覽放大版）
+function svgImg(svg, cls) {
+  const img = new Image(); img.alt = ''; img.draggable = false; img.className = cls; img.src = svgUrl(svg);
+  return img;
+}
+function avatarToy(outfit) {
+  const toy = el('span', 'av-toy');
+  const back = outfitSvg(outfit, 'back'), front = outfitSvg(outfit, 'front');
+  if (back) toy.appendChild(svgImg(back, 'av-out'));
+  const t = toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22);
+  t.classList.add('av-sloth');
+  toy.appendChild(t);
+  if (front) toy.appendChild(svgImg(front, 'av-out'));
+  return toy;
+}
+function renderAvatar(host, look) {
+  if (!host) return;
+  const r = ringData(look.ring);
+  const ring = el('span', 'av-ring');
+  ring.style.background = r.ring;
+  ring.style.setProperty('--ring-sh', r.sh);
+  const parts = [ring, el('span', 'av-disc'), avatarToy(look.outfit)];
+  const deco = ringDecoSvg(look.ring);
+  if (deco) parts.push(svgImg(deco, 'av-deco'));
+  host.replaceChildren(...parts);
+}
+function renderMeAvatar() { renderAvatar($('#dk-me'), closet.look(save.stars)); }
+function renderClosetAva() {
+  const box = $('#cl-ava');
+  if (!box || !isOpen('m-closet')) return;
+  const ava = AVA_CATS.includes(clCat);
+  box.hidden = !ava;
+  $('#cl-board').hidden = ava;
+  $('#cl-demo').hidden = ava;
+  if (ava) renderAvatar($('#cl-ava-me'), previewLook());
 }
 function previewLook() {
   const l = closet.look(save.stars);
@@ -1018,7 +1063,7 @@ function previewLook() {
 function renderClosetBtn() {
   const coins = closet.coins(save.stars), ready = closet.readyChests(save.stars).length > 0;
   setNum($('#cf-coins'), coins);
-  $('#cf-dot').hidden = !ready;
+  $('#cf-dot').hidden = !(ready || closet.hasNew(save.stars));   // 寶箱可以開，或拿到還沒點過的新東西
   $('#btn-closet').classList.toggle('ready', ready);
 }
 function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
@@ -1026,6 +1071,8 @@ function openCloset() {
   tryOn = {};
   renderCloset();
   openModal('m-closet');
+  renderClosetAva();
+  if (closetExtra) { closetExtra = false; setTimeout(() => toast('寶箱裡多了新東西！', 1800), 380); }
   if (!clR) {
     try { clR = createRenderer($('#cl-board'), { pieces: PIECES, images }); } catch (e) { console.error(e); clR = null; }
   }
@@ -1071,6 +1118,8 @@ function unlockText(it) {
   if (u.coins) return `${u.coins} 枚兌換`;
   if (u.stars) return `★ ${u.stars} 解鎖`;
   if (u.chest != null) return `寶箱 ★${CHESTS[u.chest].stars}`;
+  if (u.station) return `走到第 ${u.station} 關`;
+  if (u.allClear) return '全部關卡過關';
   return '';
 }
 function renderCloset() {
@@ -1082,10 +1131,10 @@ function renderCloset() {
   const tabs = $('#cl-tabs');
   tabs.innerHTML = '';
   for (const c of CATEGORIES) {
-    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : ''));
+    const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : '') + (closet.hasNew(stars, c.id) ? ' new' : ''));
     b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === clCat ? 'true' : 'false');
     b.textContent = c.name;
-    b.addEventListener('click', () => { if (clCat === c.id) return; clCat = c.id; audio.play('tap'); renderCloset(); });
+    b.addEventListener('click', () => { if (clCat === c.id) return; clCat = c.id; audio.play('tap'); renderCloset(); renderClosetAva(); });
     tabs.appendChild(b);
   }
   // 這一類的外觀
@@ -1099,15 +1148,16 @@ function renderCloset() {
     const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
     b.type = 'button';
     const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
-    const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false;
-    pic.appendChild(img);
+    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id));   // 薯餅造型：直接看薯餅穿起來的樣子
+    else { const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false; pic.appendChild(img); }
+    if (closet.isNew(it, stars)) b.appendChild(el('span', 'ci-new', '新'));
     if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
     b.appendChild(pic);
     b.appendChild(el('span', 'ci-name', it.name));
     const stt = el('span', 'ci-state');
     if (on) stt.textContent = '穿著中';
     else if (unlocked) stt.textContent = trying ? '試穿中' : '點一下穿上';
-    else if (it.unlock.coins) { stt.appendChild(coinEl()); stt.appendChild(document.createTextNode(trying && can ? `${it.unlock.coins} 再點一下兌換` : unlockText(it))); }
+    else if (it.unlock.coins) { stt.appendChild(coinEl()); stt.appendChild(document.createTextNode(trying && can ? `再點兌換` : unlockText(it))); }
     else stt.textContent = unlockText(it);
     b.appendChild(stt);
     b.addEventListener('click', () => onClosetItem(it));
@@ -1135,6 +1185,7 @@ function renderCloset() {
 }
 function onClosetItem(it) {
   const stars = save.stars;
+  closet.markSeen(it.id);
   if (closet.isUnlocked(it, stars)) {
     closet.equip(it, stars);
     delete tryOn[it.cat];
@@ -1163,7 +1214,10 @@ function onClosetItem(it) {
   if (u.coins) toast(need > 0 ? `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！` : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
   else if (u.stars) toast(`試穿中～星星總數到 ${u.stars} 顆就會解鎖（現在 ${totalStars(stars)} 顆）`, 2000);
   else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
+  else if (u.station) toast(`試穿中～走到第 ${u.station} 關就送`, 2000);
+  else if (u.allClear) toast(`試穿中～全部 ${LEVELS ? LEVELS.length : ''} 關都過關就送`, 2000);
   renderCloset();
+  renderClosetAva();
 }
 // 開寶箱：寶箱抖一抖 → 蓋子彈開 → 獎勵一個一個跳出來；開到的外觀直接穿上
 function openChest(i) {
@@ -1177,6 +1231,7 @@ function openChest(i) {
     d.appendChild(img); d.appendChild(el('small', '', it.name));
     items.appendChild(d);
     closet.equip(it, save.stars);
+    closet.markSeen(it.id);   // 開箱時已經看到、也直接穿上了
   }
   if (res.coins) {
     const d = el('span', 'cp-item coins');
@@ -1448,8 +1503,7 @@ function buildMap(popIndex = -1) {
   });
 
   // 頭像放在底部固定列（以前站在目前關卡旁邊，第 1 關時會跟衣櫃擠在一起）；目前關卡改用放大＋光暈標出來
-  const ava = $('#dk-ava');
-  if (ava) ava.replaceChildren(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22));   // 中間那隻（薯餅）當頭像
+  renderMeAvatar();   // 中間那隻（薯餅）當頭像，穿著衣櫃裡選的造型和外圈
 
   // 最後一站後面的「待續」路牌：跟著目前最後一關走，之後加站不用改這裡
   const end = el('span', 'map-end');
@@ -3556,7 +3610,8 @@ async function boot() {
     return;
   }
   try { audio.setMuted(save.muted); audio.setMusic(save.music); } catch (e) {}
-  closet.load(closetKey());
+  setLevels(LEVELS.map(l => String(l.id)));   // 衣櫃的「走到第 n 關」「全部過關」照實際關卡判斷
+  loadCloset();
   applyLook();
   renderClosetBtn();
   buildTitle();

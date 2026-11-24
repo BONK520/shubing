@@ -6,22 +6,41 @@ export const DEBUG_UNLOCK_ALL_COSMETICS = false;
 // 怎麼拿到外觀：
 //   * 三星造型幣：每一關「第一次」拿到三星送 1 枚（照存檔裡每關的星星算，所以以前拿過的三星也算數、換手機登入也還在）。
 //     用造型幣在衣櫃裡兌換有標價的外觀。
-//   * 三星豪華寶箱：星星總數到達里程碑（3、9、15、24、36…一直到 300）就能開一個寶箱，直接解鎖稀有主題、限定全套裝扮，或多送造型幣。
+//   * 三星豪華寶箱：星星總數到達里程碑（3、9、15、24、36…一直到 675）就能開一個寶箱，直接解鎖稀有主題、限定全套裝扮，或多送造型幣。
 //   * 累積星星：有些外觀是星星總數到了就自動解鎖。
+//   * 走到那一站就送：那一關的前一關有星星就解鎖；金色外圈要全部關卡都過關。
 // 衣櫃的狀態（兌換過的、開過的寶箱、正在穿的）存在這台裝置的 localStorage（每個帳號一份，main.js 給 key）；
 // 造型幣和星星是照關卡星星算的，所以就算換了裝置，造型幣也不會不見（只是要重新兌換、重新開寶箱）。
 
 // ---------- 分類 ----------
 export const CATEGORIES = [
+  { id: 'outfit', name: '薯餅造型', short: '造型' },   // 只穿在地圖左下角的薯餅頭像和衣櫃預覽，盤面上的娃娃不穿
   { id: 'hat', name: '頭飾配件', short: '配件' },
   { id: 'fx', name: '消除特效', short: '特效' },
   { id: 'frame', name: '方塊底座', short: '底座' },
   { id: 'theme', name: '棋盤主題', short: '主題' },
+  { id: 'ring', name: '頭像外圈', short: '外圈' },     // 地圖左下角頭像外面那一圈
 ];
 
 // ---------- 外觀清單 ----------
-// unlock：null = 一開始就有；{ coins: n } = 用 n 枚造型幣兌換；{ stars: n } = 星星總數到 n 自動解鎖；{ chest: i } = 第 i 個寶箱開出來
+// unlock：null = 一開始就有；{ coins: n } = 用 n 枚造型幣兌換；{ stars: n } = 星星總數到 n 自動解鎖；{ chest: i } = 第 i 個寶箱開出來；
+//         { station: n } = 走到第 n 關就送（第 n−1 關有星星就算走到）；{ allClear: true } = 全部關卡都過關
 export const ITEMS = [
+  // 分類 0：薯餅造型（地圖左下角的頭像）
+  { id: 'outfit.none',      cat: 'outfit', name: '原本的薯餅', unlock: null },
+  { id: 'outfit.sailor',    cat: 'outfit', name: '碼頭水手',   unlock: null },
+  { id: 'outfit.night',     cat: 'outfit', name: '晚安睡帽',   unlock: { coins: 3 } },
+  { id: 'outfit.party',     cat: 'outfit', name: '生日派對',   unlock: { coins: 8 } },
+  { id: 'outfit.berry',     cat: 'outfit', name: '草莓帽',     unlock: { coins: 10 } },
+  { id: 'outfit.snow',      cat: 'outfit', name: '雪地毛帽',   unlock: { station: 61 } },
+  { id: 'outfit.space',     cat: 'outfit', name: '太空頭盔',   unlock: { station: 86 } },
+  { id: 'outfit.detective', cat: 'outfit', name: '小偵探',     unlock: { station: 106 } },
+  { id: 'outfit.chef',      cat: 'outfit', name: '甜點師傅',   unlock: { station: 116 } },
+  { id: 'outfit.pumpkin',   cat: 'outfit', name: '南瓜帽',     unlock: { station: 146 } },
+  { id: 'outfit.wizard',    cat: 'outfit', name: '小魔法師',   unlock: { chest: 5 } },
+  { id: 'outfit.king',      cat: 'outfit', name: '國王披風',   unlock: { chest: 14 } },
+  { id: 'outfit.dino',      cat: 'outfit', name: '小恐龍',     unlock: { chest: 15 } },
+  { id: 'outfit.painter',   cat: 'outfit', name: '小畫家',     unlock: { chest: 17 } },
   // 分類 1：玩偶頭飾與配件（疊在實拍照片上面的透明圖層，照片本身不動）
   { id: 'hat.none',   cat: 'hat', name: '不戴',         unlock: null },
   { id: 'hat.bow',    cat: 'hat', name: '粉紅蝴蝶結',   unlock: { coins: 2 } },
@@ -30,24 +49,79 @@ export const ITEMS = [
   { id: 'hat.shades', cat: 'hat', name: '酷炫黑墨鏡',   unlock: { coins: 3 } },
   { id: 'hat.chef',   cat: 'hat', name: '小廚師帽',     unlock: { stars: 60 } },
   { id: 'hat.halo',   cat: 'hat', name: '發光天使光環', unlock: { chest: 2 } },
+  { id: 'hat.clip',         cat: 'hat', name: '星星髮夾', unlock: { coins: 2 } },
+  { id: 'hat.bunny',        cat: 'hat', name: '兔耳朵',   unlock: { coins: 3 } },
+  { id: 'hat.beret',        cat: 'hat', name: '貝雷帽',   unlock: { coins: 3 } },
+  { id: 'hat.heartglasses', cat: 'hat', name: '愛心眼鏡', unlock: { coins: 3 } },
+  { id: 'hat.tophat',       cat: 'hat', name: '小禮帽',   unlock: { coins: 4 } },
+  { id: 'hat.flowers',      cat: 'hat', name: '小花圈',   unlock: { station: 46 } },
+  { id: 'hat.eggshell',     cat: 'hat', name: '蛋殼帽',   unlock: { chest: 6 } },
+  { id: 'hat.santa',        cat: 'hat', name: '聖誕帽',   unlock: { chest: 7 } },
   // 分類 2：消除粒子特效
   { id: 'fx.default', cat: 'fx', name: '星光棉花',     unlock: null },
   { id: 'fx.sakura',  cat: 'fx', name: '櫻花花瓣雨',   unlock: { coins: 3 } },
   { id: 'fx.bubbles', cat: 'fx', name: '彩虹愛心泡泡', unlock: { chest: 1 } },
   { id: 'fx.gold',    cat: 'fx', name: '奢華金粉亮片', unlock: { chest: 4 } },
+  { id: 'fx.confetti',  cat: 'fx', name: '糖果彩紙',   unlock: { coins: 4 } },
+  { id: 'fx.snow',      cat: 'fx', name: '雪花',       unlock: { station: 61 } },
+  { id: 'fx.notes',     cat: 'fx', name: '音符',       unlock: { station: 76 } },
+  { id: 'fx.fish',      cat: 'fx', name: '小魚',       unlock: { station: 81 } },
+  { id: 'fx.fireworks', cat: 'fx', name: '煙火',       unlock: { station: 96 } },
+  { id: 'fx.choco',     cat: 'fx', name: '巧克力碎片', unlock: { station: 116 } },
+  { id: 'fx.rainbow',   cat: 'fx', name: '彩虹',       unlock: { chest: 12 } },
+  { id: 'fx.rain',      cat: 'fx', name: '雨滴',       unlock: { station: 176 } },
   // 分類 3：方塊底座
   { id: 'frame.jelly',   cat: 'frame', name: '果凍底座',   unlock: null },
   { id: 'frame.cookie',  cat: 'frame', name: '酥脆餅乾底', unlock: { coins: 3 } },
   { id: 'frame.capsule', cat: 'frame', name: '透明扭蛋球', unlock: { coins: 5 } },
   { id: 'frame.petal',   cat: 'frame', name: '花瓣底座',   unlock: { chest: 3 } },
-  // 分類 4：棋盤背景主題
+  { id: 'frame.macaron', cat: 'frame', name: '馬卡龍底座', unlock: { coins: 3 } },
+  { id: 'frame.donut',   cat: 'frame', name: '甜甜圈底座', unlock: { station: 36 } },
+  { id: 'frame.cloud',   cat: 'frame', name: '立體雲朵',   unlock: { station: 41 } },
+  { id: 'frame.gear',    cat: 'frame', name: '齒輪底座',   unlock: { station: 101 } },
+  { id: 'frame.gift',    cat: 'frame', name: '禮物盒',     unlock: { station: 121 } },
+  { id: 'frame.gold',    cat: 'frame', name: '金色底座',   unlock: { chest: 13 } },
+  // 分類 4：棋盤背景主題（配色取自地圖上那一站）
   { id: 'theme.macaron', cat: 'theme', name: '夢幻馬卡龍',     unlock: null },
   { id: 'theme.claw',    cat: 'theme', name: '粉紅夾娃娃機台', unlock: { chest: 0 } },
   { id: 'theme.picnic',  cat: 'theme', name: '野餐草莓格紋',   unlock: { coins: 4 } },
   { id: 'theme.galaxy',  cat: 'theme', name: '深邃夢幻星空',   unlock: { chest: 4 } },
+  { id: 'theme.dock',     cat: 'theme', name: '蛋蛋碼頭',   unlock: { station: 16 } },
+  { id: 'theme.park',     cat: 'theme', name: '遊樂園',     unlock: { station: 66 } },
+  { id: 'theme.snow',     cat: 'theme', name: '雪地',       unlock: { chest: 8 } },
+  { id: 'theme.sea',      cat: 'theme', name: '海底',       unlock: { chest: 9 } },
+  { id: 'theme.choco',    cat: 'theme', name: '巧克力工坊', unlock: { chest: 10 } },
+  { id: 'theme.dream',    cat: 'theme', name: '夢幻工廠',   unlock: { chest: 11 } },
+  { id: 'theme.bamboo',   cat: 'theme', name: '竹林',       unlock: { station: 156 } },
+  { id: 'theme.lantern',  cat: 'theme', name: '燈籠夜市',   unlock: { station: 161 } },
+  { id: 'theme.icecream', cat: 'theme', name: '冰淇淋店',   unlock: { chest: 16 } },
+  { id: 'theme.moon',     cat: 'theme', name: '月亮島',     unlock: { chest: 18 } },
+  { id: 'theme.castle',   cat: 'theme', name: '雲上城堡',   unlock: { chest: 20 } },
+  // 分類 5：頭像外圈
+  { id: 'ring.pink',    cat: 'ring', name: '粉紅',   unlock: null },
+  { id: 'ring.cloud',   cat: 'ring', name: '雲朵',   unlock: { coins: 2 } },
+  { id: 'ring.star',    cat: 'ring', name: '星星',   unlock: { station: 86 } },
+  { id: 'ring.rainbow', cat: 'ring', name: '彩虹',   unlock: { coins: 6 } },
+  { id: 'ring.gold',    cat: 'ring', name: '金色',   unlock: { allClear: true } },
+  { id: 'ring.balloon', cat: 'ring', name: '熱氣球', unlock: { station: 136 } },
+  { id: 'ring.moon',    cat: 'ring', name: '新月',   unlock: { chest: 19 } },
 ];
-export const DEFAULT_LOOK = { hat: 'hat.none', fx: 'fx.default', frame: 'frame.jelly', theme: 'theme.macaron' };
+export const DEFAULT_LOOK = { outfit: 'outfit.none', hat: 'hat.none', fx: 'fx.default', frame: 'frame.jelly', theme: 'theme.macaron', ring: 'ring.pink' };
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
+// 上一版就有的 19 件（「新」標記用：舊衣櫃讀進來時，這些不標「新」）
+const OLD_IDS = new Set(['hat.none', 'hat.bow', 'hat.blush', 'hat.crown', 'hat.shades', 'hat.chef', 'hat.halo', 'fx.default', 'fx.sakura', 'fx.bubbles', 'fx.gold',
+  'frame.jelly', 'frame.cookie', 'frame.capsule', 'frame.petal', 'theme.macaron', 'theme.claw', 'theme.picnic', 'theme.galaxy']);
+// 關卡順序（main.js 開機時給 LEVELS 的 id）：「走到第 n 關」和「全部過關」照這個判斷，不寫死關卡數
+let LEVEL_IDS = [];
+export function setLevels(ids) { LEVEL_IDS = Array.isArray(ids) ? ids.slice() : []; }
+export const levelCount = () => LEVEL_IDS.length;
+const hasStar = (stars, id) => (Number(stars && stars[id]) || 0) > 0;
+export function reachedStation(n, stars) {
+  if (n <= 1) return true;
+  const id = LEVEL_IDS.length ? LEVEL_IDS[n - 2] : n - 1;
+  return id != null && hasStar(stars, id);
+}
+export const allCleared = stars => LEVEL_IDS.length > 0 && LEVEL_IDS.every(id => hasStar(stars, id));
 
 // ---------- 三星豪華寶箱（星星總數里程碑）----------
 // items：直接解鎖的外觀（ITEMS 裡 unlock: { chest: i } 的那些）；coins：多送的造型幣；set：限定全套的名字
@@ -57,16 +131,77 @@ export const CHESTS = [
   { stars: 15,  coins: 1, name: '發光天使光環' },
   { stars: 24,  coins: 2, name: '花瓣底座' },
   { stars: 36,  coins: 2, name: '星空貴族全套', set: true },   // 深邃夢幻星空 + 奢華金粉亮片
-  { stars: 54,  coins: 3, name: '造型幣大禮包' },
-  { stars: 80,  coins: 3, name: '造型幣大禮包' },
-  { stars: 110, coins: 4, name: '造型幣大禮包' },
-  { stars: 145, coins: 4, name: '造型幣大禮包' },
-  { stars: 180, coins: 4, name: '造型幣大禮包' },
-  { stars: 220, coins: 5, name: '造型幣大禮包' },
-  { stars: 260, coins: 5, name: '造型幣大禮包' },
-  { stars: 300, coins: 8, name: '三星紀念大禮包' },   // 300 顆星（大約 100 關全部三星）
+  { stars: 54,  coins: 3, name: '小魔法師' },
+  { stars: 80,  coins: 3, name: '蛋殼帽' },
+  { stars: 110, coins: 4, name: '聖誕帽' },
+  { stars: 145, coins: 4, name: '雪地棋盤' },
+  { stars: 180, coins: 4, name: '海底棋盤' },
+  { stars: 220, coins: 5, name: '巧克力工坊棋盤' },
+  { stars: 260, coins: 5, name: '夢幻工廠棋盤' },
+  { stars: 300, coins: 8, name: '彩虹特效' },
+  { stars: 345, coins: 6, name: '金色底座' },
+  { stars: 390, coins: 8, name: '國王披風' },
+  { stars: 435, coins: 5, name: '小恐龍' },
+  { stars: 480, coins: 5, name: '冰淇淋店棋盤' },
+  { stars: 525, coins: 6, name: '小畫家' },
+  { stars: 570, coins: 6, name: '月亮島棋盤' },
+  { stars: 620, coins: 7, name: '新月外圈' },
+  { stars: 675, coins: 10, name: '雲上城堡棋盤' },   // 225 關全部三星
 ];
 export const chestItems = i => ITEMS.filter(it => it.unlock && it.unlock.chest === i);
+
+// ---------- 畫 SVG 的小工具（新配件、薯餅造型、外圈、圖示共用）----------
+const S = (d, f, s, w) => `<path d="${d}" fill="${f}" stroke="${s}" stroke-width="${w || 1.6}" stroke-linejoin="round" stroke-linecap="round"/>`;
+const L = (d, s, w, o) => `<path d="${d}" fill="none" stroke="${s}" stroke-width="${w}" stroke-linecap="round" opacity="${o == null ? 1 : o}"/>`;
+const C = (cx, cy, r, f, s, w) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}"${s ? ` stroke="${s}" stroke-width="${w || 1.4}"` : ''}/>`;
+function star(cx, cy, r, f, s, w) {
+  let p = '';
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; p += (i ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(2) + ' ' + (cy + rr * Math.sin(a)).toFixed(2) + ' '; }
+  return S(p + 'Z', f, s || 'none', w || 0);
+}
+// 五瓣小花
+function flower(cx, cy, r, petal, mid, edge) {
+  let o = '';
+  for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; o += C((cx + r * 0.62 * Math.cos(a)).toFixed(2), (cy + r * 0.62 * Math.sin(a)).toFixed(2), (r * 0.5).toFixed(2), petal, edge, r * 0.16); }
+  return o + C(cx, cy, (r * 0.38).toFixed(2), mid);
+}
+// 六角雪花
+function flake(cx, cy, r, col, w) {
+  let d = '';
+  for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3, dx = r * Math.cos(a), dy = r * Math.sin(a); d += `M${(cx - dx).toFixed(2)} ${(cy - dy).toFixed(2)} L${(cx + dx).toFixed(2)} ${(cy + dy).toFixed(2)} `; }
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3, bx = cx + r * 0.6 * Math.cos(a), by = cy + r * 0.6 * Math.sin(a);
+    for (const s of [-1, 1]) { const b = a + s * 0.7; d += `M${bx.toFixed(2)} ${by.toFixed(2)} L${(bx + r * 0.32 * Math.cos(b)).toFixed(2)} ${(by + r * 0.32 * Math.sin(b)).toFixed(2)} `; }
+  }
+  return L(d, col, w);
+}
+// 齒輪外形
+function gearPath(cx, cy, R, r, n) {
+  let p = '';
+  for (let i = 0; i < n * 4; i++) {
+    const a = (i / (n * 4)) * Math.PI * 2 - Math.PI / 2, rr = (i % 4 === 1 || i % 4 === 2) ? R : r;
+    p += (i ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(2) + ' ' + (cy + rr * Math.sin(a)).toFixed(2) + ' ';
+  }
+  return p + 'Z';
+}
+const lg = (id, stops, x2 = 0, y2 = 1) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}">${stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')}</linearGradient>`;
+// 造型、外圈共用的漸層（每張 SVG 自己帶一份，畫成圖片時不會互相影響）
+const GRAD = '<defs>' + [
+  lg('gW', [[0, '#ffffff'], [0.55, '#f3f0fa'], [1, '#cfc8e2']]),
+  lg('gB', [[0, '#d6e8ff'], [0.45, '#5b8ef0'], [1, '#2c55b8']]),
+  lg('gR', [[0, '#ffd2cf'], [0.45, '#ff5a5a'], [1, '#c42a2a']]),
+  lg('gP', [[0, '#ead8ff'], [0.45, '#9a5cf0'], [1, '#5b2bb0']]),
+  lg('gY', [[0, '#fff8c4'], [0.45, '#ffd23c'], [1, '#e48a00']]),
+  lg('gK', [[0, '#ffd0e6'], [0.45, '#ff86bd'], [1, '#f0468f']]),
+  lg('gN', [[0, '#f3d9b5'], [0.45, '#b9814a'], [1, '#7a4a1f']]),
+  lg('gG', [[0, '#d9ffc8'], [0.45, '#63c94f'], [1, '#2f8a2a']]),
+  lg('gO', [[0, '#ffe0b0'], [0.45, '#ff9a2e'], [1, '#c85a00']]),
+  lg('gD', [[0, '#6a5e9a'], [0.5, '#2c2648'], [1, '#141024']]),
+  lg('gC', [[0, '#fffdf5'], [0.6, '#fbf0d6'], [1, '#e6d2a6']]),
+  '<radialGradient id="gGlass" cx=".42" cy=".38" r=".62"><stop offset="0" stop-color="#e8f6ff" stop-opacity=".08"/><stop offset=".75" stop-color="#bfe0ff" stop-opacity=".22"/><stop offset="1" stop-color="#8ec4ff" stop-opacity=".5"/></radialGradient>',
+  lg('gRain', [[0, '#ff6f9f'], [0.25, '#ffc21a'], [0.5, '#63c94f'], [0.75, '#5b8ef0'], [1, '#9a5cf0']], 1, 1),
+].join('') + '</defs>';
+const WS = '#8b86a6';
 
 // ---------- 配件戴在哪裡 ----------
 // 每隻玩偶的臉在照片裡的位置（0–1，照「照片裡玩偶不透明部分的外框」量）：
@@ -89,6 +224,14 @@ export const ACCESSORY_PLACE = {
   bow:    { anchor: 'top',    size: 0.66, ay: 0.4,  dx: 0.36 },
   shades: { anchor: 'eyes',   size: 1.05, ay: 0.45, dx: 0 },
   blush:  { anchor: 'cheeks', size: 1.08, ay: 0.5,  dx: 0 },
+  clip:         { anchor: 'top',  size: 0.5,  ay: 0.45, dx: 0.34 },
+  bunny:        { anchor: 'top',  size: 0.95, ay: 0.88, dx: 0 },
+  beret:        { anchor: 'top',  size: 0.95, ay: 0.7,  dx: 0.05 },
+  heartglasses: { anchor: 'eyes', size: 1.05, ay: 0.45, dx: 0 },
+  tophat:       { anchor: 'top',  size: 0.72, ay: 0.86, dx: 0 },
+  flowers:      { anchor: 'top',  size: 1.05, ay: 0.62, dx: 0 },
+  eggshell:     { anchor: 'top',  size: 0.95, ay: 0.78, dx: 0 },
+  santa:        { anchor: 'top',  size: 1.0,  ay: 0.8,  dx: 0 },
 };
 // ★ 微調設定檔：某隻玩偶戴某個配件時，位置 / 大小不對就改這裡 ★
 //   offsetX / offsetY：往右 / 往下挪多少（玩偶寬 / 高的比例，例如 0.05 = 挪 5%；負數 = 往左 / 往上）
@@ -109,6 +252,12 @@ export const ACCESSORY_TUNING = {
   snoopy:  { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
              bow: { offsetX: 0.04, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
 };
+// 新配件沒有自己的微調時，照戴法最像的舊配件微調（例如貝雷帽跟皇冠一樣戴在頭頂）
+const TUNE_LIKE = { clip: 'bow', heartglasses: 'shades', bunny: 'crown', beret: 'crown', tophat: 'crown', flowers: 'crown', eggshell: 'chef', santa: 'chef' };
+export function accTune(toy, name) {
+  const t = ACCESSORY_TUNING[toy] || {};
+  return Object.assign({ offsetX: 0, offsetY: 0, scale: 1 }, t[name] || t[TUNE_LIKE[name]]);
+}
 
 // ---------- 配件的圖（SVG，透明背景；renderer 先畫成小圖再疊到玩偶上）----------
 export const ACCESSORY_SVG = {
@@ -118,6 +267,15 @@ export const ACCESSORY_SVG = {
   halo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 50"><defs><radialGradient id="h"><stop offset=".5" stop-color="#fff6a8" stop-opacity="0"/><stop offset=".74" stop-color="#fff3a8" stop-opacity=".9"/><stop offset="1" stop-color="#ffe066" stop-opacity="0"/></radialGradient></defs><ellipse cx="60" cy="25" rx="52" ry="18" fill="url(#h)" opacity=".5"/><ellipse cx="60" cy="25" rx="44" ry="13" fill="none" stroke="#f5b800" stroke-width="10"/><ellipse cx="60" cy="25" rx="44" ry="13" fill="none" stroke="#ffe36e" stroke-width="6"/><ellipse cx="60" cy="25" rx="44" ry="13" fill="none" stroke="#fffbe6" stroke-width="2.4"/><circle cx="30" cy="16" r="2.6" fill="#fff"/></svg>`,
   blush: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 42"><defs><radialGradient id="b"><stop offset="0" stop-color="#ff5f92" stop-opacity=".9"/><stop offset=".65" stop-color="#ff86ad" stop-opacity=".6"/><stop offset="1" stop-color="#ff9fbf" stop-opacity="0"/></radialGradient></defs><ellipse cx="22" cy="21" rx="21" ry="15" fill="url(#b)"/><ellipse cx="118" cy="21" rx="21" ry="15" fill="url(#b)"/><g stroke="#ff3f7a" stroke-width="2.8" stroke-linecap="round" opacity=".85"><path d="M12 26 L17 16 M20 27 L25 17 M28 26 L33 16"/><path d="M108 26 L113 16 M116 27 L121 17 M124 26 L129 16"/></g></svg>`,
   chef: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 98"><path d="M23 62 C3 60 1 30 23 28 C25 7 51 1 59 18 C69 1 101 5 96 30 C114 33 110 62 89 62 Z" fill="#fff" stroke="#a9a2bf" stroke-width="4.5" stroke-linejoin="round"/><path d="M33 44 C35 33 45 29 52 35 M70 30 C77 24 87 27 88 36" stroke="#ebe6f6" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="23" y="58" width="66" height="32" rx="7" fill="#fff" stroke="#a9a2bf" stroke-width="4.5"/><path d="M41 63 V86 M56 63 V86 M71 63 V86" stroke="#e3dff0" stroke-width="3.5" stroke-linecap="round"/><rect x="23" y="58" width="66" height="8" rx="4" fill="#ffd8ea" opacity=".9"/></svg>`,
+  // 新配件（畫法跟上面一樣：粗描邊、上亮下深的漸層、一兩道白色反光）
+  clip: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 74">${GRAD}${S('M14 58 L66 58 Q70 58 70 63 Q70 68 66 68 L14 68 Q10 68 10 63 Q10 58 14 58 Z', 'url(#gK)', '#b8155a', 3.5)}${star(40, 33, 30, 'url(#gY)', '#9a5200', 4)}${L('M27 24 Q30 17 36 15', '#fff', 4, 0.85)}${C(48, 36, 3, '#ff86bd')}${C(32, 36, 3, '#ff86bd')}</svg>`,
+  bunny: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">${GRAD}${S('M36 86 C20 62 16 16 31 6 C46 -2 54 40 53 86 Z', 'url(#gW)', '#a9a2bf', 4)}${S('M38 78 C29 60 26 24 33 15 C42 10 46 44 46 78 Z', '#ffc1d9', 'none', 0)}${S('M84 86 C100 62 104 16 89 6 C74 -2 66 40 67 86 Z', 'url(#gW)', '#a9a2bf', 4)}${S('M82 78 C91 60 94 24 87 15 C78 10 74 44 74 78 Z', '#ffc1d9', 'none', 0)}${L('M8 94 Q60 72 112 94', '#b8155a', 11)}${L('M8 94 Q60 72 112 94', '#ff86bd', 7)}${L('M24 30 Q24 18 30 12', '#fff', 3.5, 0.9)}</svg>`,
+  beret: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 72">${GRAD}${L('M62 14 L64 3', '#8f1d1d', 6)}${S('M8 48 C2 24 40 8 70 11 C102 14 120 28 113 46 C104 60 22 64 8 48 Z', 'url(#gR)', '#8f1d1d', 4.5)}${S('M18 50 Q60 64 104 50 L104 57 Q60 70 18 57 Z', '#c42a2a', '#8f1d1d', 3.5)}${L('M26 30 Q40 18 58 17', '#fff', 4.5, 0.8)}</svg>`,
+  heartglasses: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 56"><defs><linearGradient id="k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb3d6"/><stop offset="1" stop-color="#ff3f8e"/></linearGradient></defs>${L('M12 16 L2 10 M128 16 L138 10', '#b8155a', 5)}${S('M34 52 C12 40 4 27 8 16 C12 5 28 4 34 15 C40 4 56 5 60 16 C64 27 56 40 34 52 Z', 'url(#k)', '#b8155a', 4.5)}${S('M106 52 C84 40 76 27 80 16 C84 5 100 4 106 15 C112 4 128 5 132 16 C136 27 128 40 106 52 Z', 'url(#k)', '#b8155a', 4.5)}${L('M59 19 Q70 11 81 19', '#b8155a', 5)}${L('M16 18 Q20 11 27 12', '#fff', 4, 0.9)}${L('M88 18 Q92 11 99 12', '#fff', 4, 0.9)}</svg>`,
+  tophat: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 92">${GRAD}${S('M24 74 L27 12 Q50 4 73 12 L76 74 Z', 'url(#gD)', '#000', 4)}${S('M25.5 52 L74.5 52 L75.3 66 L24.7 66 Z', 'url(#gK)', '#b8155a', 3)}<ellipse cx="50" cy="76" rx="46" ry="10" fill="url(#gD)" stroke="#000" stroke-width="4"/>${L('M34 18 L33 46', '#fff', 4, 0.5)}${star(64, 59, 5, '#fff6a8')}</svg>`,
+  flowers: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 62">${GRAD}<ellipse cx="65" cy="32" rx="57" ry="15" fill="none" stroke="#2f8a2a" stroke-width="7"/><ellipse cx="65" cy="32" rx="57" ry="15" fill="none" stroke="#63c94f" stroke-width="4"/>${[[18, 26], [40, 19], [90, 19], [112, 26]].map(([x, y]) => S(`M${x - 6} ${y} Q${x} ${y - 7} ${x + 6} ${y} Q${x} ${y + 4} ${x - 6} ${y} Z`, '#63c94f', '#2f8a2a', 1.6)).join('')}${flower(12, 36, 9, '#ffd0e6', '#ffd23c', '#f0468f')}${flower(34, 44, 10, '#fff', '#ffd23c', '#a9a2bf')}${flower(57, 48, 10.5, '#ffe36e', '#ff86bd', '#e48a00')}${flower(80, 47, 10.5, '#ffd0e6', '#ffd23c', '#f0468f')}${flower(101, 43, 10, '#fff', '#ff86bd', '#a9a2bf')}${flower(119, 35, 9, '#cfe2ff', '#ffd23c', '#5b8ef0')}</svg>`,
+  eggshell: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 70">${GRAD}${S('M8 62 C8 22 32 4 55 4 C78 4 102 22 102 62 L92 51 L82 62 L72 51 L62 62 L55 53 L48 62 L38 51 L28 62 L18 51 Z', 'url(#gC)', '#b39a6a', 4)}${C(70, 22, 4, '#f1dfb6')}${C(82, 36, 3, '#f1dfb6')}${C(40, 18, 2.6, '#f1dfb6')}${L('M22 34 Q26 18 40 11', '#fff', 5, 0.9)}</svg>`,
+  santa: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 100">${GRAD}${S('M14 72 C20 42 46 12 76 10 C92 9 101 20 98 34 C88 30 82 42 80 72 Z', 'url(#gR)', '#8f1d1d', 4.5)}${L('M36 34 Q50 18 68 14', '#fff', 4, 0.55)}<rect x="6" y="64" width="98" height="22" rx="11" fill="url(#gW)" stroke="${WS}" stroke-width="4"/>${C(98, 37, 10, 'url(#gW)', WS, 4)}${L('M18 70 Q30 67 40 69', '#fff', 3, 0.9)}</svg>`,
 };
 
 // ---------- 衣櫃裡每一格的小圖示（配件就是配件的圖；其他分類是示意圖）----------
@@ -137,10 +295,101 @@ const ICON = {
   'theme.galaxy': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2c84"/><stop offset="1" stop-color="#16103e"/></linearGradient></defs><rect x="4" y="4" width="56" height="56" rx="12" fill="#5440a8" stroke="#2c1f6e" stroke-width="3"/><rect x="10" y="10" width="44" height="44" rx="6" fill="url(#s)"/><g fill="#fff"><circle cx="18" cy="18" r="1.6"/><circle cx="44" cy="16" r="1.2"/><circle cx="30" cy="40" r="1.4"/><circle cx="48" cy="44" r="1.8"/><circle cx="20" cy="46" r="1"/></g><path d="M36 22 Q36 30 44 30 Q36 30 36 38 Q36 30 28 30 Q36 30 36 22 Z" fill="#ffe9a0"/></svg>`,
 };
 export const svgUrl = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+// 新品項的小圖示（產生出來的；viewBox 64）
+const svg64 = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${GRAD}${body}</svg>`;
+const drop = (x, y, r, f, s, w) => S(`M${x} ${y - r * 1.7} C${x + r * 0.4} ${y - r * 0.9} ${x + r} ${y - r * 0.2} ${x + r} ${y + r * 0.35} A${r} ${r} 0 0 1 ${x - r} ${y + r * 0.35} C${x - r} ${y - r * 0.2} ${x - r * 0.4} ${y - r * 0.9} ${x} ${y - r * 1.7} Z`, f, s, w);
+function themeIcon(frame, edge, a, b, extra) {
+  let cells = '';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) cells += `<rect x="${(11 + c * 14).toFixed(1)}" y="${(11 + r * 14).toFixed(1)}" width="14" height="14" rx="3" fill="${(r + c) % 2 ? b : a}"/>`;
+  return svg64(`<rect x="4" y="4" width="56" height="56" rx="12" fill="${frame}" stroke="${edge}" stroke-width="3"/><rect x="10" y="10" width="44" height="44" rx="6" fill="${a}"/>${cells}${extra}`);
+}
+const NEW_ICON = {
+  'fx.confetti': svg64([[10, 12, 18, '#ff6f9f'], [36, 8, -24, '#ffc21a'], [48, 26, 30, '#5b8ef0'], [18, 34, -12, '#63c94f'], [40, 44, 16, '#9a5cf0'], [12, 50, 36, '#ff9a2e'], [28, 22, 60, '#ff86bd']]
+    .map(([x, y, a, f]) => `<rect x="${x}" y="${y}" width="12" height="7" rx="2" fill="${f}" stroke="#fff" stroke-width="1.5" transform="rotate(${a} ${x + 6} ${y + 3.5})"/>`).join('')),
+  'fx.snow': svg64(flake(30, 34, 22, '#7fb4e6', 4.5) + flake(30, 34, 22, '#e8f4ff', 1.6) + flake(53, 12, 8, '#a9cdf0', 2.4)),
+  'fx.notes': svg64(`<ellipse cx="16" cy="48" rx="8" ry="6" fill="#ff86bd" stroke="#b8155a" stroke-width="2.5" transform="rotate(-20 16 48)"/><ellipse cx="44" cy="42" rx="8" ry="6" fill="#5b8ef0" stroke="#1d3c80" stroke-width="2.5" transform="rotate(-20 44 42)"/>${L('M23 45 L23 14 M51 39 L51 8', '#3a2440', 3.5)}${S('M23 14 L51 8 L51 15 L23 21 Z', '#3a2440', '#3a2440', 2)}${star(10, 14, 5, '#ffd23c', '#e48a00', 1.2)}`),
+  'fx.fish': svg64(`${S('M8 32 Q22 12 40 24 L54 14 Q50 32 54 50 L40 40 Q22 52 8 32 Z', 'url(#gO)', '#c85a00', 2.5)}${C(18, 29, 3, '#fff')}${C(18.5, 29, 1.6, '#3a2440')}${L('M28 24 Q32 32 28 40', '#c85a00', 2, 0.6)}${C(52, 8, 3.5, 'none', '#7fb4e6', 2)}${C(58, 18, 2.2, 'none', '#7fb4e6', 1.6)}`),
+  'fx.fireworks': svg64(Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, c = ['#ff6f9f', '#ffc21a', '#5b8ef0', '#63c94f'][i % 4]; return L(`M${(32 + 9 * Math.cos(a)).toFixed(1)} ${(30 + 9 * Math.sin(a)).toFixed(1)} L${(32 + 24 * Math.cos(a)).toFixed(1)} ${(30 + 24 * Math.sin(a)).toFixed(1)}`, c, 4) + C((32 + 28 * Math.cos(a)).toFixed(1), (30 + 28 * Math.sin(a)).toFixed(1), 2, c); }).join('') + star(32, 30, 6, '#fff6a8', '#e48a00', 1.2)),
+  'fx.choco': svg64(`${S('M10 20 L24 12 L30 24 L18 32 Z', '#7a4a1f', '#4a2a10', 2)}${S('M36 30 L50 26 L54 40 L40 44 Z', '#93644f', '#4a2a10', 2)}${S('M14 42 L26 40 L28 52 L16 54 Z', '#5e3a28', '#3a1f0c', 2)}${[[40, 12, 30, '#ff86bd'], [48, 50, -30, '#fff'], [30, 40, 70, '#ffd23c'], [54, 18, -60, '#5b8ef0']].map(([x, y, a, f]) => `<rect x="${x - 5}" y="${y - 1.8}" width="10" height="3.6" rx="1.8" fill="${f}" stroke="#b8155a" stroke-width=".8" transform="rotate(${a} ${x} ${y})"/>`).join('')}`),
+  'fx.rainbow': svg64(['#ff6f9f', '#ffc21a', '#63c94f', '#5b8ef0', '#9a5cf0'].map((c, i) => L(`M${8 + i * 4} 48 A${24 - i * 4} ${24 - i * 4} 0 0 1 ${56 - i * 4} 48`, c, 4.2)).join('') + C(12, 50, 6, '#fff', '#d6cdef', 1.5) + C(52, 50, 6, '#fff', '#d6cdef', 1.5)),
+  'fx.rain': svg64(drop(20, 26, 8, '#8ec4ff', '#2c55b8', 2.5) + drop(44, 20, 6, '#bfe0ff', '#2c55b8', 2.2) + drop(40, 46, 7, '#8ec4ff', '#2c55b8', 2.5) + L('M17 24 Q17 20 20 18', '#fff', 2, 0.9) + C(14, 52, 3, 'none', '#7fb4e6', 1.6)),
+  'frame.macaron': svg64(`<ellipse cx="32" cy="44" rx="24" ry="11" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/><rect x="9" y="30" width="46" height="9" rx="4.5" fill="#fff8e6" stroke="#e6c99a" stroke-width="2"/><ellipse cx="32" cy="22" rx="24" ry="12" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/>${L('M17 17 Q22 12 30 12', '#fff', 3.5, 0.9)}`),
+  'frame.donut': svg64(`${C(32, 33, 24, '#e8b878', '#a8682a', 2.5)}${S('M32 11 Q40 10 46 15 Q52 18 53 26 Q56 34 51 41 Q47 50 38 52 Q30 55 22 50 Q13 46 12 37 Q9 28 15 20 Q22 11 32 11 Z', 'url(#gK)', '#b8155a', 2)}${C(32, 32, 8, '#fff', '#a8682a', 2.5)}${[[22, 20, 30, '#fff'], [44, 20, -40, '#ffd23c'], [46, 40, 20, '#5b8ef0'], [20, 42, -20, '#63c94f'], [32, 46, 80, '#fff']].map(([x, y, a, f]) => `<rect x="${x - 3.5}" y="${y - 1.3}" width="7" height="2.6" rx="1.3" fill="${f}" transform="rotate(${a} ${x} ${y})"/>`).join('')}`),
+  'frame.cloud': svg64(`<g fill="url(#gW)" stroke="#b9aedb" stroke-width="2.5">${C(18, 38, 13)}${C(33, 27, 17)}${C(48, 36, 13)}<rect x="12" y="34" width="42" height="17" rx="8.5"/></g><g fill="url(#gW)">${C(18, 38, 11.8)}${C(33, 27, 15.8)}${C(48, 36, 11.8)}<rect x="13.2" y="35" width="39.6" height="14.8" rx="7.4"/></g>${L('M24 22 Q28 15 36 14', '#fff', 3.5, 0.9)}`),
+  'frame.gear': svg64(`<defs>${lg('gS', [[0, '#f4f6fa'], [0.5, '#b9c2d0'], [1, '#7d889c']])}</defs>${S(gearPath(32, 32, 28, 22, 10), 'url(#gS)', '#5c667a', 2.5)}${C(32, 32, 13, '#ff86bd', '#b8155a', 2.5)}${C(32, 32, 4, '#fff')}`),
+  'frame.gift': svg64(`<rect x="10" y="26" width="44" height="30" rx="5" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/><rect x="7" y="18" width="50" height="11" rx="4" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/><rect x="28" y="18" width="8" height="38" fill="url(#gY)" stroke="#9a5200" stroke-width="2"/>${S('M32 18 C22 6 12 10 18 17 Q24 21 32 18 Z', 'url(#gY)', '#9a5200', 2)}${S('M32 18 C42 6 52 10 46 17 Q40 21 32 18 Z', 'url(#gY)', '#9a5200', 2)}`),
+  'frame.gold': svg64(`${C(32, 32, 23, '#ff86bd', '#9a5200', 2)}<circle cx="32" cy="32" r="23" fill="none" stroke="url(#gY)" stroke-width="9"/>${C(32, 32, 27.5, 'none', '#9a5200', 2)}${C(32, 32, 18.5, 'none', '#9a5200', 1.6)}${star(32, 32, 9, '#fff6a8', '#e48a00', 1.2)}${L('M14 22 Q18 14 26 11', '#fff', 3, 0.85)}`),
+  'theme.dock': themeIcon('#8fd3ef', '#3f8fb8', '#fff8e6', '#dff3fb', `<ellipse cx="32" cy="30" rx="8" ry="10" fill="#fff" stroke="#d4a24a" stroke-width="2.5"/>${L('M12 48 Q17 44 22 48 T32 48 T42 48 T52 48', '#3f8fb8', 3)}`),
+  'theme.park': themeIcon('#ffb3cf', '#d9558c', '#fff4f8', '#e3f4d8', `${C(32, 30, 12, 'none', '#ff6fa8', 3)}${L('M32 18 L32 42 M20 30 L44 30 M23.5 21.5 L40.5 38.5 M40.5 21.5 L23.5 38.5', '#ff6fa8', 1.6)}${[[32, 18], [44, 30], [32, 42], [20, 30]].map(([x, y]) => C(x, y, 3, '#ffd23c', '#e48a00', 1)).join('')}${L('M26 50 L32 30 L38 50', '#d9558c', 2.5)}`),
+  'theme.snow': themeIcon('#cfe0f0', '#7d9cc0', '#ffffff', '#e8f1fa', flake(32, 32, 13, '#7fb4e6', 3)),
+  'theme.sea': themeIcon('#5a98d2', '#2c5a94', '#bfe8f7', '#a5dcf2', `${S('M18 32 Q26 22 36 29 L44 23 L44 41 L36 35 Q26 42 18 32 Z', 'url(#gO)', '#c85a00', 2)}${C(23, 30, 1.6, '#3a2440')}${C(44, 16, 2.6, 'none', '#fff', 1.6)}${C(48, 48, 2, 'none', '#fff', 1.4)}`),
+  'theme.choco': themeIcon('#93644f', '#5e3a28', '#ecd0ba', '#ffe3ee', `<rect x="19" y="20" width="26" height="24" rx="3" fill="#7a4a1f" stroke="#4a2a10" stroke-width="2"/>${L('M32 20 L32 44 M19 28 L45 28 M19 36 L45 36', '#4a2a10', 1.6)}${S('M37 20 L45 20 L45 30 Q40 26 37 20 Z', '#fff', '#a9a2bf', 1)}`),
+  'theme.dream': themeIcon('#c9b5f5', '#8a6fd0', '#fff1f6', '#e2f1ff', `${star(26, 26, 9, '#ffd23c', '#e48a00', 1.4)}${S('M40 44 C30 37 30 30 34 28 C37 26 40 29 40 31 C40 29 43 26 46 28 C50 30 50 37 40 44 Z', '#ff86bd', '#b8155a', 1.6)}`),
+  'theme.bamboo': themeIcon('#8fc48a', '#4c8a48', '#eef8e8', '#d8edcc', `<rect x="24" y="12" width="8" height="40" rx="3" fill="#63c94f" stroke="#2f8a2a" stroke-width="2"/>${L('M24 24 L32 24 M24 38 L32 38', '#2f8a2a', 2)}${S('M32 22 Q44 14 50 20 Q42 26 32 22 Z', '#63c94f', '#2f8a2a', 1.6)}${S('M32 36 Q42 32 46 38 Q40 42 32 36 Z', '#63c94f', '#2f8a2a', 1.6)}`),
+  'theme.lantern': themeIcon('#5e4f80', '#2f2550', '#43386a', '#4e4278', `${L('M32 12 L32 18', '#ffd23c', 2)}<ellipse cx="32" cy="32" rx="12" ry="14" fill="url(#gR)" stroke="#8f1d1d" stroke-width="2"/>${L('M26 20 Q22 32 26 44 M38 20 Q42 32 38 44 M32 18 L32 46', '#8f1d1d', 1.2, 0.6)}<rect x="27" y="16" width="10" height="4" rx="1.5" fill="#ffd23c"/><rect x="27" y="44" width="10" height="4" rx="1.5" fill="#ffd23c"/>${L('M32 48 L32 54', '#ffd23c', 2)}`),
+  'theme.icecream': themeIcon('#ffc6d8', '#e0779c', '#fff8f0', '#e6f6f0', `${S('M23 30 L32 54 L41 30 Z', '#e8b878', '#a8682a', 2)}${L('M26 36 L36 46 M38 36 L29 46', '#a8682a', 1.2, 0.7)}${C(28, 26, 7, '#ffd0e6', '#f0468f', 2)}${C(36, 26, 7, '#d9ffc8', '#2f8a2a', 2)}${C(32, 19, 6.5, '#fff8c4', '#e48a00', 2)}`),
+  'theme.moon': themeIcon('#4a5596', '#262b66', '#33397a', '#3d4488', `${S('M36 14 A15 15 0 1 0 46 40 A12 12 0 1 1 36 14 Z', 'url(#gY)', '#9a5200', 1.8)}${star(46, 20, 3.5, '#fff6a8')}${star(20, 46, 2.6, '#fff6a8')}`),
+  'theme.castle': themeIcon('#d9cff5', '#8f7fc8', '#f5f0ff', '#fff4e6', `<g fill="#fff" stroke="#8f7fc8" stroke-width="2"><rect x="18" y="28" width="28" height="20"/><rect x="15" y="20" width="9" height="28"/><rect x="40" y="20" width="9" height="28"/></g>${S('M14 21 L19.5 12 L25 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M39 21 L44.5 12 L50 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M28 48 L28 40 Q32 35 36 40 L36 48 Z', '#9a5cf0', '#5b2bb0', 1.4)}${C(12, 52, 5, '#fff', '#d6cdef', 1.2)}${C(52, 52, 5, '#fff', '#d6cdef', 1.2)}`),
+};
+
+// ---------- 薯餅造型（只畫在地圖左下角頭像、衣櫃預覽）----------
+// 座標：0–100 對齊薯餅照片的方框；back 畫在薯餅後面（披風），front 畫在前面。SVG 的 viewBox 是 -6 -6 112 112，比方框大一點，裝飾可以稍微超出去
+export const OUTFITS = {
+  none: { back: '', front: '' },
+  sailor: { back: '', front: S('M33 21 Q33 7 50 7 Q67 7 67 21 Z', 'url(#gW)', WS) + L('M34 18 Q50 12 66 18', '#2c55b8', 2.6) + S('M27 22 Q50 14 73 22 Q74 27.5 50 24.5 Q26 27.5 27 22 Z', 'url(#gW)', WS) + L('M39 11 Q43 9 47 9', '#fff', 1.6, 0.9) + S('M34 50.5 Q50 56 66 50.5 L52 69 Q50 71 48 69 Z', 'url(#gB)', '#1d3c80') + L('M38.5 53.5 Q50 58.5 61.5 53.5', '#fff', 1.3, 0.9) + C(50, 56.5, 3.3, 'url(#gR)', '#8f1d1d', 1.2) },
+  snow: { back: '', front: S('M30 24 Q30 6 50 6 Q70 6 70 24 Z', 'url(#gR)', '#8f1d1d') + L('M40 9 L39 20 M50 7 L50 20 M60 9 L61 20', '#fff', 1.2, 0.45) + S('M28.5 19 L71.5 19 Q73 22.7 71.5 26.5 L28.5 26.5 Q27 22.7 28.5 19 Z', 'url(#gW)', WS, 1.5) + C(50, 5.2, 5, 'url(#gW)', WS, 1.5) + S('M29 49 Q50 58 71 49 L72 56 Q50 66 28 56 Z', 'url(#gR)', '#8f1d1d') + L('M36 53 L37 59.5 M46 55.5 L46.5 62 M56 55.3 L56 61.7 M64 52.5 L64.5 58.7', '#fff', 2, 0.85) + S('M59 57 L67 74 L60 76 L54 59 Z', 'url(#gR)', '#8f1d1d') + L('M60.5 76 L60 79 M63.3 75.2 L63.3 78.2 M66 74.2 L66.6 77', '#8f1d1d', 1.2) },
+  night: { back: '', front: S('M31 23 Q32 5 55 6 Q75 7 85 24 Q76 17 68 15 Q70 19 69 23 Z', 'url(#gB)', '#1d3c80') + star(45, 13, 2.6, '#fff6a8') + star(58, 10, 2, '#fff6a8') + star(73, 15, 1.8, '#fff6a8') + star(62, 19, 1.5, '#fff6a8') + S('M29 21 Q50 15 71 21 L71 27 Q50 21 29 27 Z', 'url(#gW)', WS, 1.5) + C(86, 26, 4.5, 'url(#gY)', '#9a5200', 1.4) + '<text x="17" y="17" font-size="9" font-weight="900" fill="#5b8ef0" stroke="#fff" stroke-width="2" paint-order="stroke" font-family="system-ui,sans-serif">z</text><text x="10" y="9" font-size="6.5" font-weight="900" fill="#5b8ef0" stroke="#fff" stroke-width="1.6" paint-order="stroke" font-family="system-ui,sans-serif">z</text>' },
+  party: { back: '', front: S('M39 21 L50 2 L61 21 Q50 24 39 21 Z', 'url(#gK)', '#b8155a') + L('M45.5 12 L53.5 9.5 M42 18.5 L57.5 14', '#fff', 2, 0.8) + C(47, 16.5, 1.3, '#ffd23c') + C(54, 18.6, 1.3, '#5b8ef0') + C(51, 11.5, 1.1, '#63c94f') + C(50, 3, 3.5, 'url(#gY)', '#9a5200', 1.3) + S('M50 54 L38.5 48.5 Q36.5 54 38.5 59.5 Z', 'url(#gB)', '#1d3c80') + S('M50 54 L61.5 48.5 Q63.5 54 61.5 59.5 Z', 'url(#gB)', '#1d3c80') + C(50, 54, 3, 'url(#gB)', '#1d3c80', 1.4) + C(42, 52, 1.1, '#fff') + C(58.5, 56, 1.1, '#fff') + C(41.5, 56.5, 1, '#fff') + C(58, 51.5, 1, '#fff') },
+  berry: { back: '', front: S('M29 24 Q28 5 50 5 Q72 5 71 24 Q50 19 29 24 Z', 'url(#gR)', '#8f1d1d') + [[38, 13], [46, 10], [55, 10.5], [63, 14], [42, 18.5], [51, 16], [59, 19], [34, 19.5], [66, 20]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1.1" ry="1.6" fill="#ffe27a"/>`).join('') + S('M37 8.5 L42.5 2.5 L46.5 7 L50 0.8 L53.5 7 L57.5 2.5 L63 8.5 Q50 12.5 37 8.5 Z', 'url(#gG)', '#1f6a1f', 1.4) + L('M35 12 Q38 9 41 9', '#fff', 1.5, 0.7) },
+  space: { back: '', front: C(50, 35, 29, 'url(#gGlass)', '#c8d3e6', 3) + C(50, 35, 29, 'none', '#8b86a6', 1).replace('/>', ' opacity=".6"/>') + L('M29 22 Q35 12 45 9.5', '#fff', 3, 0.85) + L('M27 30 L26.5 33', '#fff', 2.4, 0.7) + S('M23 55 Q50 69 77 55 L78 61 Q50 75 22 61 Z', 'url(#gW)', WS) + L('M64.5 9.5 L70 2.5', '#8b86a6', 1.6) + C(70.5, 2.6, 2.3, 'url(#gR)', '#8f1d1d', 1) },
+  detective: { back: '', front: S('M31 22 Q31 7 50 7 Q69 7 69 22 Z', 'url(#gN)', '#5a3412') + L('M40 9 L40 21 M50 7 L50 21 M60 9 L60 21 M32 14 L68 14', '#5a3412', 1, 0.35) + S('M29 21 Q50 16.5 71 21 Q67 27.5 50 26 Q33 27.5 29 21 Z', 'url(#gN)', '#5a3412') + C(50, 7.2, 1.8, '#7a4a1f') + L('M13 65 L20 75', '#7a4a1f', 3.2) + C(9.5, 58.5, 7, 'url(#gGlass)', '#e4a400', 2.6) + L('M6 55 Q8 53 10.5 53', '#fff', 1.4, 0.9) },
+  chef: { back: '', front: S('M37 58.5 Q50 55.5 63 58.5 L66 85 Q50 90.5 34 85 Z', 'url(#gW)', '#a9a2bf') + L('M38.5 58.8 L36.5 51.5 M61.5 58.8 L63.5 51.5', '#a9a2bf', 1.6) + S('M50 76 Q44 71 46 68 Q48 66 50 68.5 Q52 66 54 68 Q56 71 50 76 Z', 'url(#gK)', '#b8155a', 1.2) + S('M35.5 22 L36.5 15 Q50 13 63.5 15 L64.5 22 Q50 24 35.5 22 Z', 'url(#gW)', '#a9a2bf') + S('M36.5 16 Q28 10.5 34 4.5 Q38.5 -0.5 45 2.3 Q50 -1.8 55.5 2.3 Q62 -0.5 66 4.5 Q72 10.5 63.5 16 Z', 'url(#gW)', '#a9a2bf') + L('M40 8 Q42 5 45 5', '#fff', 1.6, 0.9) },
+  wizard: { back: '', front: '<ellipse cx="50" cy="21" rx="26" ry="5.5" fill="url(#gP)" stroke="#3e1a80" stroke-width="1.6"/>' + S('M36 20 Q42 10 47 3 Q53 -1.5 58.5 4 Q55 5.5 55.5 9 Q60 15 64 20 Q50 23 36 20 Z', 'url(#gP)', '#3e1a80') + L('M37.5 17.5 Q50 21 62.5 17.5', '#ffd23c', 2.6) + star(51, 11, 3.4, '#ffe36e', '#9a5200', 0.8) + L('M86 72 L94 51', '#7a4a1f', 2.6) + star(94.5, 47, 5.5, 'url(#gY)', '#9a5200', 1.3) + C(86, 44, 1, '#fff') + C(98, 57, 0.9, '#fff') },
+  king: {
+    back: S('M24 46 Q50 38 76 46 L92 90 Q50 99 8 90 Z', 'url(#gR)', '#8f1d1d', 1.8) + L('M30 52 L18 86', '#fff', 1.6, 0.35),
+    front: S('M28 48 Q50 58 72 48 Q74 56 50 64 Q26 56 28 48 Z', 'url(#gW)', '#a9a2bf') + [[36, 54], [44, 58], [56, 58], [64, 54], [50, 60.5]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1" ry="1.6" fill="#3a2440"/>`).join('') + S('M35 21 L33 8 L42 14 L50 3 L58 14 L67 8 L65 21 Z', 'url(#gY)', '#9a5200') + C(50, 16, 2.3, 'url(#gR)', '#8f1d1d', 0.9) + C(41, 17.5, 1.5, '#5b8ef0') + C(59, 17.5, 1.5, '#63c94f') + L('M37 18 L36 11', '#fff', 1.6, 0.75),
+  },
+  pumpkin: { back: '', front: S('M30 23 Q28 6 50 6 Q72 6 70 23 Q50 18 30 23 Z', 'url(#gO)', '#8a3a00') + L('M40 8 Q36.5 15 38.5 21 M50 6.5 L50 19 M60 8 Q63.5 15 61.5 21', '#c85a00', 1.3, 0.75) + S('M48 7 Q47 1 52 -1 L54 1 Q51 3 52 7 Z', 'url(#gN)', '#5a3412', 1.2) + S('M53 3 Q60 -3.5 66 1.5 Q60 7 53 3 Z', 'url(#gG)', '#1f6a1f', 1.2) + L('M35 14 Q38 9 43 8', '#fff', 1.5, 0.7) + S('M39 52 Q50 57 61 52 L57 60 Q50 63 43 60 Z', 'url(#gO)', '#8a3a00', 1.3) + star(50, 57.5, 2.2, '#fff6a8') },
+  dino: { back: '', front: S('M35 10 L37 0.5 L43 6 Z', 'url(#gY)', '#9a5200', 1.2) + S('M45 5 L50 -4 L55 5 Z', 'url(#gY)', '#9a5200', 1.2) + S('M57 6 L63 0.5 L65 10 Z', 'url(#gY)', '#9a5200', 1.2) + S('M27 26 Q26 4 50 4 Q74 4 73 26 Q50 20 27 26 Z', 'url(#gG)', '#1f6a1f') + C(41, 11, 1.6, '#1f6a1f') + C(59, 11, 1.6, '#1f6a1f') + L('M33 14 Q36 8 42 7', '#fff', 1.5, 0.7) + [33, 39, 45, 55, 61, 67].map(x => S(`M${x - 2.4} ${x < 50 ? 23.6 + (50 - x) * 0.04 : 23.6 + (x - 50) * 0.04} L${x} 28 L${x + 2.4} ${x < 50 ? 23.2 + (50 - x) * 0.04 : 23.2 + (x - 50) * 0.04} Z`, '#fff', '#1f6a1f', 0.9)).join('') },
+  painter: { back: '', front: L('M50 6 L51 1.5', '#8f1d1d', 2.6) + S('M28 20 Q24 8 46 6 Q70 5 74 15 Q74 22 62 22 Q45 25 28 20 Z', 'url(#gR)', '#8f1d1d') + L('M33 13 Q38 8 46 8', '#fff', 1.5, 0.75) + S('M4 64 Q3 55 13.5 55 Q24 55 24 63 Q24 68 19 67 Q15 66 15 70 Q15 74 10 73 Q4 71 4 64 Z', '#f3d9b5', '#7a4a1f', 1.4) + C(8.5, 61, 1.9, '#ff5a5a') + C(13.5, 58.5, 1.9, '#ffd23c') + C(19, 60, 1.9, '#5b8ef0') + C(9.5, 67, 1.9, '#63c94f') + L('M22 76 L31.5 61', '#7a4a1f', 2.2) + S('M30.6 62.4 L33.8 56.5 L34.6 60.6 Z', '#ff86bd', '#b8155a', 0.9) },
+};
+export function outfitSvg(id, layer) {
+  const o = OUTFITS[String(id || '').replace(/^outfit\./, '')];
+  const body = o && o[layer];
+  return body ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${body}</svg>` : '';
+}
+
+// ---------- 頭像外圈（地圖左下角頭像外面那一圈）----------
+// ring：外圈的 CSS 底色；sh：外圈下面的厚度；deco：稍微超出圓圈的裝飾（viewBox 0 0 72 72，對齊頭像外面多 10px 的方框）
+export const RINGS = {
+  pink: { ring: '#ff6fb0', sh: '#c42a74', deco: '' },
+  cloud: { ring: 'linear-gradient(#ffffff,#d9d1f0)', sh: '#b9aedb', deco: [[8, 52, 7], [16, 62, 7], [64, 52, 7], [56, 62, 7], [36, 66, 6]].map(([x, y, r]) => C(x, y, r, '#fff', '#d6cdef', 1.2)).join('') },
+  star: { ring: 'radial-gradient(#fff3a6,#ffc21a)', sh: '#b86e00', deco: star(10, 12, 6, 'url(#gY)', '#9a5200', 1.2) + star(63, 58, 5, 'url(#gY)', '#9a5200', 1.2) + star(64, 14, 3.5, '#fff3a6', '#9a5200', 0.9) },
+  rainbow: { ring: 'conic-gradient(#ff6f9f,#ffc21a,#63c94f,#5b8ef0,#9a5cf0,#ff6f9f)', sh: '#7d4fb8', deco: '' },
+  gold: { ring: 'linear-gradient(#fff8c4,#ffd23c 45%,#e48a00)', sh: '#9a5200', deco: S('M27 9 L25 0.5 L31 4.5 L36 -1 L41 4.5 L47 0.5 L45 9 Z', 'url(#gY)', '#9a5200', 1.2) },
+  balloon: { ring: 'linear-gradient(#cdeefa,#8fd3ef 55%,#5aaed8)', sh: '#3f86b0', deco: L('M56.5 20.5 L58 25 M63.5 20.5 L62 25', '#7a4a1f', 0.9) + S('M60 1 C67 1 70 6 70 10.5 C70 16 65 20 60 22 C55 20 50 16 50 10.5 C50 6 53 1 60 1 Z', 'url(#gR)', '#8f1d1d', 1.2) + S('M60 1 C63.5 6 63.5 16 60 22 C56.5 16 56.5 6 60 1 Z', '#fff8c4', 'none', 0) + L('M53.5 6 Q55 3.5 57.5 3', '#fff', 1.2, 0.9) + S('M57 25 L63 25 L62.4 29.5 L57.6 29.5 Z', 'url(#gN)', '#5a3412', 0.9) + L('M10.5 63 Q12 66 10 70', '#8b86a6', 0.8) + `<ellipse cx="10.5" cy="58" rx="4.2" ry="5" fill="url(#gY)" stroke="#9a5200" stroke-width="1"/>` },
+  moon: { ring: 'radial-gradient(#6b77c0,#3b4290)', sh: '#262b66', deco: S('M14 2.5 A10 10 0 1 0 21 19 A8 8 0 1 1 14 2.5 Z', 'url(#gY)', '#9a5200', 1.2) + star(62, 60, 4.2, '#fff6a8', '#9a5200', 0.8) + star(64.5, 13, 3, '#fff6a8', '#9a5200', 0.7) + star(21, 63, 2.4, '#fff6a8') },
+};
+const ringKey = id => String(id || '').replace(/^ring\./, '');
+export const ringData = id => RINGS[ringKey(id)] || RINGS.pink;
+export function ringDecoSvg(id) {
+  const r = RINGS[ringKey(id)];
+  return r && r.deco ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">${GRAD}${r.deco}</svg>` : '';
+}
+// 外圈的小圖示：SVG 畫不出 CSS 的 conic 漸層，用相近的顏色代替
+const RING_STROKE = { pink: '#ff6fb0', cloud: '#e3dcf5', star: '#ffc21a', rainbow: 'url(#gRain)', gold: 'url(#gY)', balloon: '#8fd3ef', moon: '#4a5596' };
+function ringIcon(k) {
+  const r = RINGS[k];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">${GRAD}<circle cx="36" cy="36" r="23" fill="#fff5fb" stroke="${RING_STROKE[k]}" stroke-width="8"/><circle cx="36" cy="36" r="27.5" fill="none" stroke="${r.sh}" stroke-width="1.6" opacity=".7"/>${r.deco}</svg>`;
+}
 export function iconSvg(id) {
   if (ICON[id]) return ICON[id];
-  const k = id.split('.')[1];
-  return ACCESSORY_SVG[k] || ICON['hat.none'];
+  if (NEW_ICON[id]) return NEW_ICON[id];
+  const [cat, k] = String(id).split('.');
+  if (cat === 'hat' && ACCESSORY_SVG[k]) return ACCESSORY_SVG[k];
+  if (cat === 'ring' && RINGS[k]) return ringIcon(k);
+  if (cat === 'outfit' && OUTFITS[k]) return outfitSvg(id, 'front') || ICON['hat.none'];
+  return ICON['hat.none'];
 }
 
 // ---------- 衣櫃狀態 ----------
@@ -151,7 +400,9 @@ export const threeStarCount = stars => Object.values(stars || {}).filter(v => Nu
 export function createCloset() {
   let key = null;
   let st = blank();
-  function blank() { return { owned: [], chests: [], equip: { ...DEFAULT_LOOK } }; }
+  let hadData = false;
+  // seen：這台裝置上點過（看過）的品項，只用來決定「新」標記；null＝還沒整理過
+  function blank() { return { owned: [], chests: [], equip: { ...DEFAULT_LOOK }, seen: null }; }
   function norm(o) {
     const s = blank();
     if (!o || typeof o !== 'object') return s;
@@ -161,6 +412,7 @@ export function createCloset() {
       const it = itemById(o.equip[c.id]);
       if (it && it.cat === c.id) s.equip[c.id] = it.id;
     }
+    if (Array.isArray(o.seen)) s.seen = o.seen.filter(id => typeof id === 'string' && itemById(id));
     return s;
   }
   function persist() { if (!key) return; try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { /* 無痕模式：照玩 */ } }
@@ -170,7 +422,28 @@ export function createCloset() {
       key = k;
       let raw = null;
       try { raw = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { raw = null; }
+      hadData = !!(raw && typeof raw === 'object');
       st = norm(raw);
+    },
+    // 每次 load 之後叫一次。第一次整理「看過」：
+    // 舊衣櫃（這次更新前就有）→ 原本就有的 19 件裡已經解鎖的算看過，新加的品項會亮「新」；
+    // 這台裝置第一次開（換裝置、新玩家）→ 已經解鎖的全部算看過，不會整排都是「新」。
+    // 回傳 true＝以前開過的寶箱這次多了東西，要跳一次提示
+    initSeen(stars) {
+      if (st.seen) return false;
+      const fromOld = hadData;
+      st.seen = ITEMS.filter(it => api.isUnlocked(it, stars) && (!fromOld || OLD_IDS.has(it.id) || Object.values(DEFAULT_LOOK).includes(it.id))).map(it => it.id);
+      persist();
+      return fromOld && st.chests.some(i => i >= 5 && i <= 12);
+    },
+    isNew(item, stars) {
+      if (typeof item === 'string') item = itemById(item);
+      return !!(item && st.seen && !st.seen.includes(item.id) && api.isUnlocked(item, stars));
+    },
+    hasNew(stars, cat) { return ITEMS.some(it => (!cat || it.cat === cat) && api.isNew(it, stars)); },
+    markSeen(id) {
+      if (!st.seen || !itemById(id) || st.seen.includes(id)) return;
+      st.seen.push(id); persist();
     },
     get state() { return st; },
     coinsEarned(stars) {
@@ -188,6 +461,8 @@ export function createCloset() {
       if (u.coins) return st.owned.includes(item.id);
       if (u.stars) return totalStars(stars) >= u.stars;
       if (u.chest != null) return st.chests.includes(u.chest);
+      if (u.station) return reachedStation(u.station, stars);
+      if (u.allClear) return allCleared(stars);
       return false;
     },
     canBuy(item, stars) { return !!(item && item.unlock && item.unlock.coins && !api.isUnlocked(item, stars) && api.coins(stars) >= item.unlock.coins); },
@@ -213,7 +488,7 @@ export function createCloset() {
       st.chests.push(i); persist();
       return { items: chestItems(i), coins: CHESTS[i].coins };
     },
-    // 目前穿的（沒解鎖的不算：例如換了裝置、或 DEBUG 開關關掉）→ 給 renderer 用的 { hat, fx, frame, theme }（去掉分類前綴）
+    // 目前穿的（沒解鎖的不算：例如換了裝置、或 DEBUG 開關關掉）→ { outfit, hat, fx, frame, theme, ring }（去掉分類前綴）；renderer 只看 hat、fx、frame、theme
     look(stars) {
       const out = {};
       for (const c of CATEGORIES) {

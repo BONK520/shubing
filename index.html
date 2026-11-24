@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124u">
+<link rel="stylesheet" href="style.css?v=20261124v">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -141,7 +141,7 @@
     </div>
     <!-- 底部固定列（76px）：頭像（點了捲回目前關卡）、造型幣、星星、玩偶衣櫃。是地圖下面的一列，不疊在地圖上，第 1 關不會被蓋住 -->
     <div class="map-dock">
-      <button class="dk-me" id="dk-me" type="button" aria-label="回到目前的關卡"><span class="dk-ava" id="dk-ava"></span></button>
+      <button class="dk-me av" id="dk-me" type="button" aria-label="回到目前的關卡"></button>
       <div class="dk-stats">
         <span class="dk-stat dk-coins" aria-label="造型幣"><i class="coin"></i><b id="cf-coins" data-t="0">0</b></span>
         <span class="dk-stat star-pill" aria-label="星星總數"><svg class="pill-star"><use href="#i-star"/></svg><b id="map-stars" data-t="0">0</b><span id="map-stars-max">/ 0</span></span>
@@ -309,6 +309,7 @@
     </div>
     <div class="cl-preview">
       <canvas id="cl-board" aria-label="外觀預覽"></canvas>
+      <div class="cl-ava" id="cl-ava" hidden><span class="av" id="cl-ava-me"></span></div>
       <span class="cl-try" id="cl-try" hidden>試穿中</span>
       <button class="cl-demo" id="cl-demo" type="button">試試消除特效</button>
     </div>
@@ -452,7 +453,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124u"></script>
-<script type="module" src="js/main.js?v=20261124u"></script>
+<script type="module" src="js/opening.js?v=20261124v"></script>
+<script type="module" src="js/main.js?v=20261124v"></script>
 </body>
 </html>

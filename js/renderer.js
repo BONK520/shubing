@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124u';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124u';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124v';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124v';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124u';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124v';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -159,6 +159,48 @@ function parseColor(hex) {
 }
 const mixc = (a, b, t) => [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * t));
 const css = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+// 衣櫃新棋盤主題（2026-11-24）：配色取自地圖上那一站。用小工具把外框、內壁、影子一次算好
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const rgbaOf = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function themeFrame(ring, side, shadow) {
+  return { glow: rgbaOf(hexRgb(ring[0]), 0.9), base: ring[1], drop: rgbaOf(shadow, 0.3), dropBase: side[1],
+    side, ring, ringShade: shadow, innerEdge: rgbaOf(shadow, 0.45) };
+}
+// 淺色盤面：白白的格子，糖果落影用主題色
+function lightTheme({ cellA, cellB, glass, ring, side, shadow, deco, sky }) {
+  return {
+    glass: glass ? [[0, glass[0]], [1, glass[1]]] : [[0, rgbaOf(hexRgb(cellA), 0.92)], [1, rgbaOf(hexRgb(cellB), 0.94)]],
+    glow: ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0)'],
+    cellA: rgbaOf(hexRgb(cellA), 0.96), cellB: rgbaOf(hexRgb(cellB), 0.96),
+    grid: rgbaOf(shadow, 0.08),
+    wallDark: rgbaOf(shadow, 0.26), wallLit: 'rgba(255,255,255,0.95)', rimShadow: rgbaOf(shadow, 0.14),
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+  };
+}
+// 深色盤面：半透明的深色玻璃，淺色、深色的玩偶都跳得出來
+function darkTheme({ glassA, glassB, glow, ring, side, shadow, deco, sky }) {
+  return {
+    glass: [[0, rgbaOf(glassA, 0.92)], [1, rgbaOf(glassB, 0.95)]],
+    glow: [rgbaOf(glow, 0.16), rgbaOf(glow, 0)],
+    cellA: rgbaOf(mixc(glassA, glassB, 0.5), 0.72), cellB: rgbaOf(mixc(glassA, WHITE, 0.05), 0.72),
+    grid: rgbaOf(glow, 0.13),
+    wallDark: rgbaOf(shadow, 0.55), wallLit: rgbaOf(glow, 0.14), rimShadow: rgbaOf(shadow, 0.24),
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+  };
+}
+Object.assign(BOARD_THEMES, {
+  dock: lightTheme({ cellA: '#ffffff', cellB: '#e3f4fb', ring: ['#d8f2fb', '#8fd3ef', '#5aaed8'], side: ['#4a9cc8', '#3f86b0', '#2c6a90'], shadow: [40, 90, 130], deco: 'eggs' }),
+  park: lightTheme({ cellA: '#fff4f8', cellB: '#e3f4d8', ring: ['#ffd6e6', '#ff9cc4', '#e86aa0'], side: ['#d9558c', '#c04478', '#9a2e5c'], shadow: [130, 40, 80], deco: 'bulbs' }),
+  snow: lightTheme({ cellA: '#ffffff', cellB: '#e8f1fa', glass: ['rgba(247,251,255,0.94)', 'rgba(228,238,247,0.95)'], ring: ['#ffffff', '#d8e8f6', '#a9c6e2'], side: ['#8fb0d0', '#7d9cc0', '#5f80a6'], shadow: [50, 80, 120], deco: 'flakes' }),
+  sea: darkTheme({ glassA: [40, 100, 160], glassB: [20, 60, 120], glow: [140, 220, 255], ring: ['#bfe8f7', '#86cbe9', '#5a98d2'], side: ['#4a86c0', '#3a70a8', '#2a5888'], shadow: [10, 30, 70], sky: 'bubbles' }),
+  choco: darkTheme({ glassA: [92, 58, 40], glassB: [64, 38, 24], glow: [255, 210, 170], ring: ['#ffe3ee', '#ecd0ba', '#c99677'], side: ['#93644f', '#7a4e3a', '#5e3a28'], shadow: [40, 20, 10], deco: 'sprinkles' }),
+  dream: lightTheme({ cellA: '#fff1f6', cellB: '#efe7ff', ring: ['#f3edff', '#d6c8fa', '#b8a3ef'], side: ['#9a85dc', '#8a6fd0', '#6c52b4'], shadow: [90, 60, 150], deco: 'hearts' }),
+  bamboo: lightTheme({ cellA: '#eef8e8', cellB: '#d8edcc', ring: ['#d8efd0', '#9fd09a', '#6fae6a'], side: ['#4c8a48', '#3f763c', '#2f5e2c'], shadow: [30, 70, 30], deco: 'leaves' }),
+  lantern: darkTheme({ glassA: [78, 66, 120], glassB: [52, 42, 90], glow: [255, 200, 140], ring: ['#ffb0a0', '#e0584a', '#b83a30'], side: ['#9a2a22', '#82221c', '#641814'], shadow: [20, 10, 40], deco: 'lanterns' }),
+  icecream: lightTheme({ cellA: '#fff8f0', cellB: '#e6f6f0', ring: ['#ffe2b8', '#f0c48a', '#d9a060'], side: ['#c08848', '#a8702e', '#8a5a20'], shadow: [130, 80, 50], deco: 'scoops' }),
+  moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars' }),
+  castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
+});
 function saturate(c, amt) {
   const g = (c[0] + c[1] + c[2]) / 3;
   return c.map(v => clamp(Math.round(g + (v - g) * (1 + amt)), 0, 255));
@@ -555,7 +597,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (!img || !toy) return null;
     const id = pieceInfo(kind).id, face = TOY_FACE[id] || { x: 0.5, top: 0.05, eyes: 0.4, cheeks: 0.55, w: 0.7 };
     const place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 };
-    const tune = Object.assign({ offsetX: 0, offsetY: 0, scale: 1 }, (ACCESSORY_TUNING[id] || {})[name]);
+    const tune = accTune(id, name);
     const b = toyBounds(toy), n = box * 2, c = makeCanvas(n, n), g = c.getContext('2d');
     const bx0 = n / 2 - box / 2 + b.x0 * box, by0 = n / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
     const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * natH(img) / Math.max(1, natW(img));
@@ -993,12 +1035,138 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     g.fillStyle = gr; g.fillRect(-T, -T * 0.32, T * 2, T * 0.24);
     g.restore();
   }
-  // ---- 方塊底座（衣櫃）：果凍（預設，paintCandy）/ 透明扭蛋球 / 酥脆餅乾 / 花瓣 ----
+  // 衣櫃新底座：馬卡龍 / 甜甜圈 / 立體雲 / 齒輪 / 禮物盒 / 金色底座。每一種都保留糖果的顏色（玩家靠顏色分辨）
+  const CLOUD_BUMPS = [[0, -0.5, 0.5], [0.5, -0.22, 0.46], [0.5, 0.34, 0.44], [0, 0.52, 0.46], [-0.5, 0.34, 0.44], [-0.5, -0.22, 0.46], [0, 0, 0.62]];
+  function gearPathR(g, cx, cy, R) {
+    const n = 10, ro = R, ri = R * 0.84;
+    for (let i = 0; i < n * 4; i++) {
+      const a = (i / (n * 4)) * Math.PI * 2 - Math.PI / 2, r0 = (i % 4 === 1 || i % 4 === 2) ? ro : ri;
+      if (i) g.lineTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); else g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+    }
+    g.closePath();
+  }
+  const NEW_FRAME_PATH = {
+    macaron(g, cx, cy, R) { g.ellipse(cx, cy, R, R * 0.9, 0, 0, Math.PI * 2); },
+    donut(g, cx, cy, R) { g.arc(cx, cy, R, 0, Math.PI * 2); },
+    cloud(g, cx, cy, R) { for (const [x, y, r0] of CLOUD_BUMPS) { g.moveTo(cx + x * R + r0 * R, cy + y * R); g.arc(cx + x * R, cy + y * R, r0 * R, 0, Math.PI * 2); } },
+    gear(g, cx, cy, R) { gearPathR(g, cx, cy, R); },
+    gift(g, cx, cy, R) { rrSub(g, cx - R * 0.9, cy - R * 0.84, R * 1.8, R * 1.74, R * 0.24); },
+    gold(g, cx, cy, R) { g.arc(cx, cy, R, 0, Math.PI * 2); },
+  };
+  function stripesIn(g, kind, cx, cy, R, special, a = 0.8) {
+    if (special !== 'h' && special !== 'v') return;
+    g.save(); bodyPath(g, kind, cx, cy, R); g.clip();
+    g.fillStyle = `rgba(255,255,255,${a})`; paintStripes(g, cx - R, cy - R, R * 2, special); g.restore();
+  }
+  const NEW_FRAME_PAINT = {
+    macaron(g, kind, cx, cy, R, sat, dark, special) {
+      const shell = (y, ry, light) => {
+        const gr = g.createLinearGradient(0, y - ry, 0, y + ry);
+        gr.addColorStop(0, css(mixc(sat, WHITE, light))); gr.addColorStop(1, css(mixc(sat, WHITE, light * 0.3)));
+        g.beginPath(); g.ellipse(cx, y, R * 0.98, ry, 0, 0, Math.PI * 2); g.fillStyle = gr; g.fill();
+        g.lineWidth = R * 0.05; g.strokeStyle = css(mixc(dark, BLACK, 0.3), 0.75); g.stroke();
+      };
+      shell(cy + R * 0.42, R * 0.46, 0.25);
+      g.beginPath(); rrSub(g, cx - R * 0.94, cy - R * 0.1, R * 1.88, R * 0.3, R * 0.15); g.fillStyle = '#fff8e6'; g.fill();
+      g.lineWidth = R * 0.04; g.strokeStyle = '#e6c99a'; g.stroke();
+      shell(cy - R * 0.36, R * 0.52, 0.42);
+      // 馬卡龍的「裙邊」：上殼下緣一排小凸點
+      g.fillStyle = css(mixc(sat, WHITE, 0.2));
+      for (let i = 0; i < 9; i++) { const x = cx - R * 0.8 + i * R * 0.2; g.beginPath(); g.arc(x, cy + R * 0.1, R * 0.07, 0, Math.PI * 2); g.fill(); }
+      stripesIn(g, kind, cx, cy, R, special);
+    },
+    donut(g, kind, cx, cy, R, sat, dark, special) {
+      const dg = g.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.1, cx, cy, R);
+      dg.addColorStop(0, '#f6d29c'); dg.addColorStop(1, '#c88440');
+      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = dg; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = '#9a5a1c'; g.stroke();
+      // 糖霜：波浪邊，糖果的顏色
+      g.beginPath();
+      const N = 60;
+      for (let i = 0; i <= N; i++) { const a = (i / N) * Math.PI * 2, r0 = R * (0.84 + 0.06 * Math.sin(a * 7) + 0.03 * Math.cos(a * 13)); if (i) g.lineTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); else g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); }
+      g.closePath();
+      const ig = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      ig.addColorStop(0, css(mixc(sat, WHITE, 0.45))); ig.addColorStop(1, css(sat));
+      g.fillStyle = ig; g.fill(); g.lineWidth = R * 0.04; g.strokeStyle = css(mixc(dark, BLACK, 0.3), 0.7); g.stroke();
+      stripesIn(g, kind, cx, cy, R * 0.86, special);
+      // 中間的洞
+      g.beginPath(); g.arc(cx, cy, R * 0.26, 0, Math.PI * 2); g.fillStyle = '#e0a868'; g.fill(); g.lineWidth = R * 0.04; g.strokeStyle = '#9a5a1c'; g.stroke();
+      // 彩色糖針（固定的亂數）
+      const rnd = mulberry(31 + kind), cols = ['#ffffff', '#ffd23c', '#5b8ef0', '#63c94f', '#ff6fa8'];
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2 + rnd() * 0.4, rr0 = R * (0.5 + rnd() * 0.24), x = cx + Math.cos(a) * rr0, y = cy + Math.sin(a) * rr0;
+        g.save(); g.translate(x, y); g.rotate(rnd() * 6.28);
+        g.fillStyle = cols[i % 5]; rr(g, -R * 0.08, -R * 0.025, R * 0.16, R * 0.05, R * 0.025); g.fill(); g.restore();
+      }
+    },
+    cloud(g, kind, cx, cy, R, sat, dark, special) {
+      g.save(); g.translate(0, R * 0.08); bodyPath(g, kind, cx, cy, R); g.fillStyle = css(mixc(dark, BLACK, 0.2), 0.55); g.fill(); g.restore();
+      const cg = g.createLinearGradient(0, cy - R, 0, cy + R);
+      cg.addColorStop(0, css(mixc(sat, WHITE, 0.7))); cg.addColorStop(0.55, css(mixc(sat, WHITE, 0.35))); cg.addColorStop(1, css(sat));
+      bodyPath(g, kind, cx, cy, R); g.fillStyle = cg; g.fill();
+      g.save(); g.lineWidth = R * 0.05; g.strokeStyle = css(mixc(dark, BLACK, 0.25), 0.6);
+      for (const [x, y, r0] of CLOUD_BUMPS.slice(0, 6)) { g.beginPath(); g.arc(cx + x * R, cy + y * R, r0 * R, 0, Math.PI * 2); g.stroke(); }
+      g.restore();
+      // 重畫一次內部，把相交處的線蓋掉，只留外緣
+      g.save(); g.beginPath();
+      for (const [x, y, r0] of CLOUD_BUMPS) { g.moveTo(cx + x * R + r0 * R * 0.95, cy + y * R); g.arc(cx + x * R, cy + y * R, r0 * R * 0.95, 0, Math.PI * 2); }
+      g.fillStyle = cg; g.fill(); g.restore();
+      stripesIn(g, kind, cx, cy, R, special, 0.75);
+    },
+    gear(g, kind, cx, cy, R, sat, dark, special) {
+      const mg = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      mg.addColorStop(0, css(mixc(sat, WHITE, 0.55))); mg.addColorStop(0.5, css(sat)); mg.addColorStop(1, css(mixc(dark, BLACK, 0.2)));
+      g.beginPath(); gearPathR(g, cx, cy, R); g.fillStyle = mg; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = css(mixc(dark, BLACK, 0.4), 0.85); g.stroke();
+      g.beginPath(); g.arc(cx, cy, R * 0.62, 0, Math.PI * 2);
+      const ig = g.createLinearGradient(0, cy - R * 0.6, 0, cy + R * 0.6);
+      ig.addColorStop(0, '#f4f6fa'); ig.addColorStop(1, '#b9c2d0');
+      g.fillStyle = ig; g.fill(); g.strokeStyle = 'rgba(92,102,122,0.8)'; g.stroke();
+      g.beginPath(); g.arc(cx, cy, R * 0.52, 0, Math.PI * 2); g.fillStyle = css(mixc(sat, WHITE, 0.6)); g.fill();
+      g.fillStyle = 'rgba(92,102,122,0.7)';
+      for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; g.beginPath(); g.arc(cx + Math.cos(a) * R * 0.74, cy + Math.sin(a) * R * 0.74, R * 0.045, 0, Math.PI * 2); g.fill(); }
+      stripesIn(g, kind, cx, cy, R, special, 0.75);
+    },
+    gift(g, kind, cx, cy, R, sat, dark, special) {
+      const bg = g.createLinearGradient(0, cy - R, 0, cy + R);
+      bg.addColorStop(0, css(mixc(sat, WHITE, 0.4))); bg.addColorStop(1, css(mixc(sat, BLACK, 0.05)));
+      bodyPath(g, kind, cx, cy, R); g.fillStyle = bg; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = css(mixc(dark, BLACK, 0.35), 0.8); g.stroke();
+      stripesIn(g, kind, cx, cy, R, special, 0.7);
+      // 白色緞帶十字 + 上面的蝴蝶結
+      g.save(); bodyPath(g, kind, cx, cy, R); g.clip();
+      g.fillStyle = 'rgba(255,255,255,0.92)'; g.fillRect(cx - R * 0.13, cy - R, R * 0.26, R * 2); g.fillRect(cx - R, cy + R * 0.18, R * 2, R * 0.24);
+      g.restore();
+      g.fillStyle = '#fff'; g.strokeStyle = css(mixc(dark, BLACK, 0.3), 0.6); g.lineWidth = R * 0.04;
+      for (const s of [-1, 1]) {
+        g.beginPath(); g.moveTo(cx, cy - R * 0.84);
+        g.bezierCurveTo(cx + s * R * 0.2, cy - R * 1.18, cx + s * R * 0.5, cy - R * 1.08, cx + s * R * 0.36, cy - R * 0.86);
+        g.quadraticCurveTo(cx + s * R * 0.2, cy - R * 0.76, cx, cy - R * 0.84); g.fill(); g.stroke();
+      }
+      g.beginPath(); g.arc(cx, cy - R * 0.86, R * 0.08, 0, Math.PI * 2); g.fill(); g.stroke();
+    },
+    gold(g, kind, cx, cy, R, sat, dark, special) {
+      const og = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      og.addColorStop(0, '#fff8c4'); og.addColorStop(0.4, '#ffd23c'); og.addColorStop(0.75, '#e4a400'); og.addColorStop(1, '#b07000');
+      g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = og; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = '#8a5200'; g.stroke();
+      // 金框上一圈小圓點
+      g.fillStyle = 'rgba(255,255,230,0.9)';
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.beginPath(); g.arc(cx + Math.cos(a) * R * 0.88, cy + Math.sin(a) * R * 0.88, R * 0.04, 0, Math.PI * 2); g.fill(); }
+      const ig = g.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.05, cx, cy, R * 0.76);
+      ig.addColorStop(0, css(mixc(sat, WHITE, 0.5))); ig.addColorStop(1, css(sat));
+      g.beginPath(); g.arc(cx, cy, R * 0.76, 0, Math.PI * 2); g.fillStyle = ig; g.fill();
+      g.lineWidth = R * 0.05; g.strokeStyle = '#8a5200'; g.stroke();
+      stripesIn(g, kind, cx, cy, R * 0.76, special);
+    },
+  };
+  // ---- 方塊底座（衣櫃）：果凍（預設，paintCandy）/ 透明扭蛋球 / 酥脆餅乾 / 花瓣 / 上面那六種 ----
   // 底座的外形（條紋的亮帶、包裝的白點圈要沿著它走）
   function bodyPath(g, kind, cx, cy, R) {
     const f = look.frame;
     if (!f || f === 'jelly') { candyPath(g, shapeOf(kind), cx, cy, R); return; }
     g.beginPath();
+    if (NEW_FRAME_PATH[f]) { NEW_FRAME_PATH[f](g, cx, cy, R); return; }
     if (f === 'cookie') {
       const N = 72;
       for (let i = 0; i <= N; i++) {
@@ -1058,6 +1226,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         g.save(); g.beginPath(); g.arc(cx, cy, R * 0.72, 0, Math.PI * 2); g.clip();
         g.fillStyle = 'rgba(255,255,255,0.85)'; paintStripes(g, cx - R, cy - R, R * 2, special); g.restore();
       }
+    } else if (NEW_FRAME_PAINT[f]) {
+      NEW_FRAME_PAINT[f](g, kind, cx, cy, R, sat, dark, special);
     } else {
       // 花瓣：六片圓圓的花瓣（糖果色的淡色版）+ 白白的花心
       g.lineWidth = R * 0.05;
@@ -1096,6 +1266,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       g.lineWidth = R * 0.045; g.strokeStyle = 'rgba(255,255,255,0.5)'; g.stroke();
       g.lineCap = 'butt';
       g.beginPath(); g.arc(cx - R * 0.52, cy - R * 0.55, R * 0.07, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    } else if (f === 'gold' || f === 'gear') {
+      g.beginPath(); g.arc(cx, cy, R * 0.9, Math.PI * 1.1, Math.PI * 1.55);
+      g.lineWidth = R * 0.07; g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.stroke(); g.lineCap = 'butt';
+      g.beginPath(); g.arc(cx + R * 0.62, cy + R * 0.58, R * 0.05, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+    } else if (f === 'macaron' || f === 'gift' || f === 'cloud' || f === 'donut') {
+      g.beginPath(); g.ellipse(cx - R * 0.5, cy - R * 0.62, R * 0.18, R * 0.08, -0.5, 0, Math.PI * 2);
+      g.fillStyle = 'rgba(255,255,255,0.75)'; g.fill();
     } else if (f === 'cookie') {
       g.fillStyle = 'rgba(255,255,255,0.85)';
       for (const [x, y, r0] of [[-0.6, -0.55, 0.05], [-0.42, -0.74, 0.03], [0.62, 0.5, 0.03]]) { g.beginPath(); g.arc(cx + x * R, cy + y * R, r0 * R, 0, Math.PI * 2); g.fill(); }
@@ -1540,7 +1717,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const cg = gq.createRadialGradient(gx, gy, 0, gx, gy, gR);
     cg.addColorStop(0, th.glow[0]); cg.addColorStop(1, th.glow[1]);
     gq.fillStyle = cg; gq.fillRect(0, 0, Wd, Hd);
-    if (th.deco === 'stars') {
+    if (th.sky === 'bubbles') {
+      // 海底：一顆顆往上飄的小泡泡（固定的亂數）
+      const rnd = mulberry(rows * 71 + cols * 29), n = rows * cols;
+      gq.lineWidth = Math.max(1, S * 0.014);
+      for (let i = 0; i < n; i++) {
+        const x = X0 + rnd() * cols * S, y = Y0 + rnd() * rows * S, r0 = S * (0.03 + rnd() * 0.06);
+        gq.beginPath(); gq.arc(x, y, r0, 0, Math.PI * 2); gq.strokeStyle = 'rgba(200,240,255,0.45)'; gq.stroke();
+        gq.beginPath(); gq.arc(x - r0 * 0.35, y - r0 * 0.35, r0 * 0.22, 0, Math.PI * 2); gq.fillStyle = 'rgba(255,255,255,0.55)'; gq.fill();
+      }
+    }
+    if (th.deco === 'stars' || th.sky === 'stars') {
       // 星空：滿滿的小星點 + 幾顆四角星（固定的亂數，每次一樣）
       const rnd = mulberry(rows * 131 + cols * 17), n = rows * cols * 3;
       for (let i = 0; i < n; i++) {
@@ -1596,7 +1783,75 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     q.drawImage(inner, 0, 0);
     q.globalCompositeOperation = 'source-over';
     g.drawImage(cells, 0, 0);
-    if (th.deco === 'bulbs' || th.deco === 'berries') {
+  // 外框上的小裝飾（新主題）：每一種一個小函式，在 (x, y) 畫一顆，k 是第幾顆
+  const FRAME_DECO = {
+    eggs(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.085; g.save(); g.translate(x, y); g.rotate((k % 4 ? -0.2 : 0.2));
+      g.beginPath(); g.ellipse(0, 0, z * 0.78, z, 0, 0, Math.PI * 2);
+      g.fillStyle = k % 4 ? '#fff8e8' : '#ffe08a'; g.fill(); g.lineWidth = Math.max(1, S * 0.012); g.strokeStyle = '#3f86b0'; g.stroke();
+      g.beginPath(); g.arc(-z * 0.25, -z * 0.35, z * 0.16, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.9)'; g.fill(); g.restore();
+    },
+    flakes(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.08; g.save(); g.translate(x, y); g.rotate(k * 0.4);
+      g.strokeStyle = '#ffffff'; g.lineWidth = Math.max(1.2, S * 0.022); g.lineCap = 'round';
+      g.shadowColor = 'rgba(70,110,160,0.6)'; g.shadowBlur = S * 0.04;
+      for (let i = 0; i < 3; i++) { g.rotate(Math.PI / 3); g.beginPath(); g.moveTo(-z, 0); g.lineTo(z, 0); g.stroke(); }
+      g.restore();
+    },
+    sprinkles(g, x, y, S, k) {
+      const cols = ['#ff6fa8', '#ffd23c', '#7ee0ff', '#ffffff', '#9be36b'], z = S * 0.05;
+      g.save(); g.translate(x, y); g.rotate(k * 1.3);
+      g.fillStyle = cols[k % 5]; rr(g, -z, -z * 0.3, z * 2, z * 0.6, z * 0.3); g.fill(); g.restore();
+    },
+    hearts(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.075; g.save(); g.translate(x, y);
+      g.beginPath(); g.moveTo(0, z * 0.9); g.bezierCurveTo(-z * 1.3, 0, -z * 0.6, -z * 1.1, 0, -z * 0.35); g.bezierCurveTo(z * 0.6, -z * 1.1, z * 1.3, 0, 0, z * 0.9);
+      g.fillStyle = k % 4 ? '#ffffff' : '#ff9cc4'; g.fill(); g.lineWidth = Math.max(1, S * 0.012); g.strokeStyle = '#8a6fd0'; g.stroke(); g.restore();
+    },
+    leaves(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.09; g.save(); g.translate(x, y); g.rotate(k % 4 ? 0.7 : -0.7);
+      g.beginPath(); g.moveTo(-z, 0); g.quadraticCurveTo(0, -z * 0.6, z, 0); g.quadraticCurveTo(0, z * 0.6, -z, 0);
+      g.fillStyle = '#5fb85a'; g.fill(); g.strokeStyle = '#2f5e2c'; g.lineWidth = Math.max(1, S * 0.012); g.stroke();
+      g.beginPath(); g.moveTo(-z * 0.8, 0); g.lineTo(z * 0.8, 0); g.strokeStyle = 'rgba(255,255,255,0.6)'; g.stroke(); g.restore();
+    },
+    lanterns(g, x, y, S, k) {
+      if (k % 3) return;
+      const z = S * 0.085; g.save(); g.translate(x, y);
+      g.shadowColor = 'rgba(255,190,120,0.9)'; g.shadowBlur = S * 0.12;
+      g.beginPath(); g.ellipse(0, 0, z, z * 0.8, 0, 0, Math.PI * 2); g.fillStyle = '#ff5a48'; g.fill(); g.shadowBlur = 0;
+      g.fillStyle = '#ffd23c'; g.fillRect(-z * 0.5, -z * 0.95, z, z * 0.22); g.fillRect(-z * 0.5, z * 0.73, z, z * 0.22);
+      g.strokeStyle = 'rgba(255,220,180,0.7)'; g.lineWidth = Math.max(1, S * 0.01);
+      g.beginPath(); g.ellipse(0, 0, z * 0.45, z * 0.8, 0, 0, Math.PI * 2); g.stroke(); g.restore();
+    },
+    scoops(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.075, cols = ['#ffd0dc', '#fff3d6', '#c9f0dc', '#8a5a3c'];
+      g.save(); g.translate(x, y);
+      g.beginPath(); g.arc(0, 0, z, Math.PI, 0); g.lineTo(z, z * 0.2);
+      for (let i = 0; i < 4; i++) g.quadraticCurveTo(z * (0.75 - i * 0.5), z * 0.5, z * (0.5 - i * 0.5), z * 0.2);
+      g.closePath(); g.fillStyle = cols[(k >> 1) % 4]; g.fill(); g.lineWidth = Math.max(1, S * 0.012); g.strokeStyle = '#a8702e'; g.stroke();
+      g.beginPath(); g.arc(-z * 0.35, -z * 0.4, z * 0.15, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.85)'; g.fill(); g.restore();
+    },
+    goldstars(g, x, y, S, k) {
+      if (k % 2) return;
+      const z = S * 0.085; g.save(); g.translate(x, y);
+      g.shadowColor = 'rgba(255,220,120,0.9)'; g.shadowBlur = S * 0.08;
+      g.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r0 = i % 2 ? z * 0.45 : z; g.lineTo(Math.cos(a) * r0, Math.sin(a) * r0); }
+      g.closePath(); g.fillStyle = '#ffd23c'; g.fill(); g.restore();
+    },
+    clouds(g, x, y, S, k) {
+      if (k % 3) return;
+      const z = S * 0.06; g.save(); g.translate(x, y);
+      g.shadowColor = 'rgba(114,98,174,0.45)'; g.shadowBlur = S * 0.04; g.fillStyle = '#ffffff';
+      g.beginPath(); g.arc(-z, z * 0.2, z * 0.7, 0, Math.PI * 2); g.arc(0, -z * 0.2, z, 0, Math.PI * 2); g.arc(z, z * 0.2, z * 0.7, 0, Math.PI * 2); g.fill(); g.restore();
+    },
+  };
+    if (th.deco === 'bulbs' || th.deco === 'berries' || FRAME_DECO[th.deco]) {
       // 外框上的裝飾：沿著盤面外緣，每一格的外側邊中間放一顆（任何形狀的盤面都貼著框走）
       const mid = S * (FO + FI) / 2;
       let k = 0;
@@ -1606,7 +1861,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           if (on(r + dr, c2 + dc)) continue;
           const x = cx2 + dc * (S / 2 + mid), y = cy2 + dr * (S / 2 + mid);
-          if (th.deco === 'bulbs') {
+          if (FRAME_DECO[th.deco]) {
+            FRAME_DECO[th.deco](g, x, y, S, k++);
+          } else if (th.deco === 'bulbs') {
             const warm = (k++ % 2) === 0, rad = S * 0.075;
             g.save();
             g.shadowColor = warm ? 'rgba(255,230,120,0.95)' : 'rgba(255,255,255,0.95)'; g.shadowBlur = S * 0.12;
@@ -1988,6 +2245,92 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     sequinImg = c;
     return c;
   }
+  // 衣櫃新特效用的小圖（畫一次就存起來）
+  const fxSpriteCache = new Map();
+  function sprite(key, n, draw) {
+    let c = fxSpriteCache.get(key);
+    if (c) return c;
+    c = makeCanvas(n, n);
+    const g = c.getContext('2d');
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    draw(g, n, n / 2);
+    fxSpriteCache.set(key, c);
+    return c;
+  }
+  const FX_COLS = ['#ff6f9f', '#ffc21a', '#5b8ef0', '#63c94f', '#9a5cf0', '#ff9a2e'];
+  const confettiImg = i => sprite('cf' + i, 32, (g, n) => {
+    g.fillStyle = FX_COLS[i]; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 2;
+    rr(g, 4, n * 0.32, n - 8, n * 0.36, 3); g.fill(); g.stroke();
+  });
+  const snowImg = () => sprite('snow', 40, (g, n, h) => {
+    g.translate(h, h);
+    for (const [col, w] of [['rgba(110,160,220,0.95)', 5], ['#ffffff', 2.4]]) {
+      g.strokeStyle = col; g.lineWidth = w;
+      for (let k = 0; k < 6; k++) {
+        g.save(); g.rotate(k * Math.PI / 3);
+        g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -h * 0.8);
+        g.moveTo(0, -h * 0.5); g.lineTo(-h * 0.2, -h * 0.66); g.moveTo(0, -h * 0.5); g.lineTo(h * 0.2, -h * 0.66);
+        g.stroke(); g.restore();
+      }
+    }
+  });
+  const noteImg = i => sprite('note' + i, 40, (g, n) => {
+    const col = ['#ff6fa8', '#5b8ef0', '#9a5cf0'][i];
+    g.strokeStyle = '#fff'; g.lineWidth = 6;
+    const path = () => { g.beginPath(); g.ellipse(13, 30, 7, 5.5, -0.4, 0, Math.PI * 2); };
+    path(); g.stroke(); g.beginPath(); g.moveTo(19, 29); g.lineTo(19, 6); g.lineTo(31, 11); g.stroke();
+    path(); g.fillStyle = col; g.fill();
+    g.strokeStyle = col; g.lineWidth = 3.4; g.beginPath(); g.moveTo(19, 29); g.lineTo(19, 6); g.lineTo(31, 11); g.stroke();
+  });
+  const fishImg = i => sprite('fish' + i, 40, (g, n) => {
+    const [a, b] = [['#ffd0a0', '#ff8a2e'], ['#cfe6ff', '#5b8ef0'], ['#ffd6ea', '#ff6fa8']][i];
+    g.beginPath(); g.moveTo(4, 20); g.quadraticCurveTo(14, 7, 26, 15); g.lineTo(36, 9); g.quadraticCurveTo(33, 20, 36, 31); g.lineTo(26, 25); g.quadraticCurveTo(14, 33, 4, 20); g.closePath();
+    const gr = g.createLinearGradient(0, 8, 0, 32); gr.addColorStop(0, a); gr.addColorStop(1, b);
+    g.fillStyle = gr; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
+    g.beginPath(); g.arc(11, 18, 2.4, 0, Math.PI * 2); g.fillStyle = '#3a2440'; g.fill();
+  });
+  const ringBubbleImg = () => sprite('rb', 32, (g, n, h) => {
+    g.beginPath(); g.arc(h, h, h * 0.8, 0, Math.PI * 2); g.fillStyle = 'rgba(200,235,255,0.25)'; g.fill();
+    g.lineWidth = 2.4; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
+    g.beginPath(); g.arc(h - 4, h - 4, 3, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+  });
+  const sparkImg = col => sprite('sp' + col, 24, (g, n, h) => {
+    const gr = g.createRadialGradient(h, h, 0, h, h, h);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.35, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, n, n);
+  });
+  const chocoImg = i => sprite('ch' + i, 32, (g, n) => {
+    const pts = [[[5, 9], [24, 4], [28, 22], [9, 27]], [[6, 6], [26, 10], [22, 27], [4, 22]], [[8, 4], [28, 8], [26, 26], [6, 24]]][i];
+    g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath();
+    g.fillStyle = ['#7a4a1f', '#93644f', '#5e3a28'][i]; g.fill();
+    g.lineWidth = 2; g.strokeStyle = '#3a1f0c'; g.stroke();
+    g.beginPath(); g.moveTo(pts[0][0] + 3, pts[0][1] + 3); g.lineTo(pts[1][0] - 4, pts[1][1] + 2); g.lineWidth = 2; g.strokeStyle = 'rgba(255,230,200,0.55)'; g.stroke();
+  });
+  const sprinkleImg = i => sprite('spr' + i, 24, g => {
+    g.fillStyle = ['#ff86bd', '#ffffff', '#ffd23c', '#5b8ef0'][i]; g.strokeStyle = 'rgba(120,60,30,0.5)'; g.lineWidth = 1;
+    rr(g, 3, 9, 18, 6, 3); g.fill(); g.stroke();
+  });
+  const rainbowImg = () => sprite('rbw', 48, (g, n, h) => {
+    ['#ff6f9f', '#ffc21a', '#63c94f', '#5b8ef0', '#9a5cf0'].forEach((c, k) => {
+      g.beginPath(); g.arc(h, n * 0.72, h * 0.9 - k * 4.2, Math.PI, 0); g.lineWidth = 4.4; g.strokeStyle = c; g.stroke();
+    });
+    for (const x of [h - h * 0.72, h + h * 0.72]) { g.beginPath(); g.arc(x, n * 0.74, 6, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); }
+  });
+  const dropImg = i => sprite('drop' + i, 32, (g, n, h) => {
+    g.beginPath(); g.moveTo(h, 3); g.bezierCurveTo(h + 4, 11, h + 9, 15, h + 9, 20); g.arc(h, 20, 9, 0, Math.PI); g.bezierCurveTo(h - 9, 15, h - 4, 11, h, 3); g.closePath();
+    const gr = g.createLinearGradient(0, 3, 0, 29); gr.addColorStop(0, i ? '#e6f3ff' : '#cfe6ff'); gr.addColorStop(1, i ? '#7fb4e6' : '#4a86d8');
+    g.fillStyle = gr; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,0.95)'; g.stroke();
+    g.beginPath(); g.ellipse(h - 3, 18, 2, 3.5, 0.3, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.85)'; g.fill();
+  });
+  // 共用的噴法：n 顆從 (x,y) 往四周散開
+  function spray(x, y, t, cnt, o) {
+    for (let i = 0; i < cnt; i++) {
+      const a = o.angle ? o.angle(i, cnt) : Math.random() * Math.PI * 2, v = o.speed * (o.vmin + Math.random() * o.vvar);
+      emit({ type: o.type == null ? 1 : o.type, img: o.img(i), x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (o.up || 0), g: o.g, drag: o.drag,
+        t0: t + (o.delay ? Math.random() * o.delay : 0), life: o.life + Math.random() * o.lifeVar, size: o.size + Math.random() * o.sizeVar,
+        rot: o.spin ? Math.random() * 6.28 : undefined, vr: o.spin ? (Math.random() - 0.5) * o.spin : undefined, add: o.add });
+    }
+  }
   const PARTICLE_SKINS = {
     // 櫻花花瓣雨：粉紅花瓣往外散開、慢慢旋轉飄落 + 一點粉色棉花
     sakura(x, y, col, n, t, speed) {
@@ -2032,6 +2375,50 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.6);
         emit({ type: 1, img: st, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5, g: 2.5, drag: 2.8, t0: t, life: 420 + Math.random() * 280, size: 0.3 + Math.random() * 0.2 });
       }
+    },
+    // 糖果彩紙：彩色紙片翻轉著噴出、慢慢飄落
+    confetti(x, y, col, n, t, speed, stars) {
+      spray(x, y, t, n + 4, { img: () => confettiImg(Math.floor(Math.random() * 6)), speed, vmin: 0.5, vvar: 0.8, up: 1.6, g: 4, drag: 2.6, life: 650, lifeVar: 350, size: 0.2, sizeVar: 0.1, spin: 14 });
+      spray(x, y, t, stars, { img: () => getStarCol(col), speed, vmin: 0.35, vvar: 0.6, up: 0.5, g: 2.5, drag: 2.8, life: 420, lifeVar: 280, size: 0.3, sizeVar: 0.2 });
+    },
+    // 雪花：白色雪花輕輕散開、慢慢往下飄
+    snow(x, y, col, n, t, speed) {
+      spray(x, y, t, n + 2, { img: snowImg, speed, vmin: 0.3, vvar: 0.6, up: 0.6, g: 1.2, drag: 3, life: 800, lifeVar: 400, size: 0.22, sizeVar: 0.16, spin: 3 });
+      spray(x, y, t, Math.ceil(n / 3), { type: 0, img: () => getFluff([245, 250, 255]), speed, vmin: 0.4, vvar: 0.6, up: 0.4, g: 4, drag: 2.4, life: 380, lifeVar: 200, size: 0.12, sizeVar: 0.1 });
+    },
+    // 音符：彩色音符往上飄
+    notes(x, y, col, n, t, speed) {
+      spray(x, y, t, Math.max(3, Math.ceil(n * 0.7)), { img: () => noteImg(Math.floor(Math.random() * 3)), speed, vmin: 0.3, vvar: 0.5, up: 1.4, g: -1.4, drag: 2.4, life: 750, lifeVar: 350, size: 0.26, sizeVar: 0.12, spin: 2, angle: () => -Math.PI / 2 + (Math.random() - 0.5) * 2.6 });
+      spray(x, y, t, Math.ceil(n / 3), { type: 0, img: () => getFluff(col), speed, vmin: 0.4, vvar: 0.6, up: 0.6, g: 6, drag: 2.4, life: 360, lifeVar: 200, size: 0.12, sizeVar: 0.1 });
+    },
+    // 小魚：小魚游開，留下一串泡泡往上冒
+    fish(x, y, col, n, t, speed) {
+      spray(x, y, t, Math.max(3, Math.ceil(n * 0.6)), { img: () => fishImg(Math.floor(Math.random() * 3)), speed, vmin: 0.5, vvar: 0.6, up: 0.3, g: 0.6, drag: 2.6, life: 650, lifeVar: 300, size: 0.26, sizeVar: 0.1 });
+      spray(x, y, t, n, { img: ringBubbleImg, speed, vmin: 0.2, vvar: 0.4, up: 0.8, g: -2.2, drag: 2.4, life: 700, lifeVar: 300, size: 0.12, sizeVar: 0.12, delay: 120 });
+    },
+    // 煙火：一圈光點整齊地往外炸開
+    fireworks(x, y, col, n, t, speed) {
+      const k = Math.max(10, n + 6), c = FX_COLS[Math.floor(Math.random() * 4)], off = Math.random() * 6.28;
+      spray(x, y, t, k, { img: () => sparkImg(c), speed: speed * 1.25, vmin: 0.85, vvar: 0.2, up: 0, g: 1.2, drag: 3.2, life: 560, lifeVar: 160, size: 0.3, sizeVar: 0.12, add: true, angle: (i, m) => off + i * Math.PI * 2 / m });
+      spray(x, y, t + 90, Math.ceil(k / 2), { img: () => sparkImg('#fff3a6'), speed: speed * 0.7, vmin: 0.7, vvar: 0.2, up: 0, g: 1.2, drag: 3, life: 480, lifeVar: 140, size: 0.22, sizeVar: 0.1, add: true, angle: (i, m) => off + (i + 0.5) * Math.PI * 2 / m });
+      spray(x, y, t, 4, { img: getGlitter, speed, vmin: 0.6, vvar: 0.9, up: 0.5, g: 5, drag: 3, life: 380, lifeVar: 240, size: 0.12, sizeVar: 0.1, delay: 80 });
+    },
+    // 巧克力碎片：巧克力塊和彩色糖針一起掉下來
+    choco(x, y, col, n, t, speed) {
+      spray(x, y, t, n + 1, { img: () => chocoImg(Math.floor(Math.random() * 3)), speed, vmin: 0.5, vvar: 0.8, up: 1.4, g: 9, drag: 2, life: 520, lifeVar: 300, size: 0.18, sizeVar: 0.1, spin: 10 });
+      spray(x, y, t, Math.ceil(n * 0.7), { img: () => sprinkleImg(Math.floor(Math.random() * 4)), speed, vmin: 0.6, vvar: 0.8, up: 1, g: 6, drag: 2.4, life: 480, lifeVar: 260, size: 0.14, sizeVar: 0.06, spin: 12 });
+    },
+    // 彩虹：一道小彩虹往上浮，旁邊散開七彩的棉花
+    rainbow(x, y, col, n, t, speed, stars) {
+      spray(x, y, t, n >= 6 ? 2 : 1, { img: rainbowImg, speed, vmin: 0.2, vvar: 0.2, up: 1.2, g: -0.8, drag: 2.6, life: 700, lifeVar: 200, size: 0.42, sizeVar: 0.12, angle: () => -Math.PI / 2 + (Math.random() - 0.5) * 1.4 });
+      const hues = [[255, 111, 159], [255, 194, 26], [99, 201, 79], [91, 142, 240], [154, 92, 240]];
+      spray(x, y, t, n + 2, { type: 0, img: i => getFluff(hues[i % 5]), speed, vmin: 0.45, vvar: 0.75, up: 0.8, g: 6, drag: 2.4, life: 380, lifeVar: 240, size: 0.13, sizeVar: 0.12 });
+      spray(x, y, t, stars, { img: () => getStarCol(SPARK_GOLD), speed, vmin: 0.35, vvar: 0.6, up: 0.5, g: 2.5, drag: 2.8, life: 420, lifeVar: 280, size: 0.3, sizeVar: 0.2 });
+    },
+    // 雨滴：水滴往下落，落地前濺出小水花
+    rain(x, y, col, n, t, speed) {
+      spray(x, y, t, n + 2, { img: () => dropImg(Math.random() < 0.5 ? 0 : 1), speed, vmin: 0.3, vvar: 0.7, up: 1.2, g: 10, drag: 2, life: 520, lifeVar: 260, size: 0.18, sizeVar: 0.1 });
+      spray(x, y, t, Math.ceil(n / 2), { img: ringBubbleImg, speed, vmin: 0.6, vvar: 0.6, up: 0.4, g: 3, drag: 3, life: 360, lifeVar: 200, size: 0.1, sizeVar: 0.08, delay: 60 });
     },
     default(x, y, col, n, t, speed, stars, up) {
       const fl = getFluff(col), cotton = getFluff([255, 248, 252]), sc = getStarCol(col);
