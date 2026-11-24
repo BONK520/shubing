@@ -63,7 +63,7 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
 (async () => {
   await fetch(`${FS}/emulator/v1/projects/${P}/databases/(default)/documents`, { method: 'DELETE' });
   await fetch(`${AU}/emulator/v1/projects/${P}/accounts`, { method: 'DELETE' });
-  check('old rules = new rules without the players block', !/players/.test(OLD_RULES) && /match \/saves\/\{uid\}/.test(OLD_RULES) && /document=\*\*/.test(OLD_RULES));
+  check('old rules = new rules without the players block', !/players/.test(OLD_RULES.replace(/\/\/.*$/gm, '')) && /match \/saves\/\{uid\}/.test(OLD_RULES) && /document=\*\*/.test(OLD_RULES));
   check('emulator is using the new firestore.rules', await setRules(RULES));
 
   // ---------- 1. 規則 ----------
@@ -139,7 +139,7 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
     await pg.waitForSelector('#m-friends.open', { timeout: 5000 });
     await pg.waitForTimeout(1500);
   };
-  const rows = pg => G(pg, () => [...document.querySelectorAll('#fr-list .fr-row')].map(li => ({ rank: +li.dataset.rank, name: li.querySelector('.fr-nm').firstChild.textContent, me: li.classList.contains('me'), stars: +li.querySelector('.fr-st b').textContent.replace(/\D/g, '') })));
+  const rows = pg => G(pg, () => [...document.querySelectorAll('#fr-list .fr-row')].map(li => ({ rank: +li.dataset.rank, name: li.querySelector('.fr-nt').firstChild.textContent, lv: (li.querySelector('.fr-lv') || {}).textContent, me: li.classList.contains('me'), stars: +li.querySelector('.fr-st b').textContent.replace(/\D/g, '') })));
   const addFriend = async (pg, code) => {
     await pg.fill('#fr-input', code);
     await G(pg, () => document.querySelector('#fr-submit').click());
@@ -238,6 +238,18 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
   await openBoard(pb);
   r = await rows(pb);
   check('board (Bob): sees Alice\'s new stars', r.some(x => x.name === 'alice' && x.stars === aliceStars), JSON.stringify(r));
+  // 排行榜每個名字下面寫第幾關（過了第 1、2 關 → 在第 3 關），自己那一行也有
+  check('board: level shown under each name (cleared 1–2 → 第3關)', r.length === 2 && r.every(x => x.lv === '第3關'), JSON.stringify(r));
+  // 地圖上第 3 關旁邊站著朋友的小頭像，點了跳出「名字・第N關・★數量」
+  await closeAll(pb);
+  await G(pb, () => window.__game.showMap());
+  await pb.waitForTimeout(1500);
+  const pins = await G(pb, () => [...document.querySelectorAll('#map-inner .fr-pins')].map(x => ({ n: x.querySelectorAll('.fr-pin').length, top: x.style.top })));
+  const node3 = await G(pb, () => document.querySelectorAll('#map-inner .node')[2]?.style.top);
+  check('map: Alice\'s pin stands next to level 3', pins.length === 1 && pins[0].n === 1 && pins[0].top === node3, JSON.stringify({ pins, node3 }));
+  await G(pb, () => document.querySelector('#map-inner .fr-pin').click());
+  await pb.waitForTimeout(300);
+  check('map: tapping the pin says name, level and stars', (await pb.innerText('#toast')).includes(`alice・第3關・★${aliceStars}`), await pb.innerText('#toast'));
 
   // 關卡開始卡：好友最高分
   await closeAll(pa);

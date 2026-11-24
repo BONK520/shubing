@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124v") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124v") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124w") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124w") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -1575,6 +1575,24 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .fr-row.me .fr-av { background: linear-gradient(180deg, #ffa8d6, #ff52a6); }
 .fr-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-weight: 900; font-size: 17px; color: var(--ink); }
 .fr-nm small { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.fr-nm { display: flex; flex-direction: column; gap: 1px; }
+.fr-nt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fr-lv { font-size: 12px; font-weight: 800; line-height: 1.2; color: var(--ink-soft); }
+/* 地圖上朋友的小頭像（main.js renderFriendPins）：關卡按鈕旁邊一排，地圖偏右的關卡排在左邊，不會超出畫面 */
+.fr-pins { position: absolute; z-index: 3; display: flex; align-items: center; transform: translate(40px, -50%); }
+.fr-pins.big { transform: translate(51px, -50%); }
+.fr-pins.left { flex-direction: row-reverse; transform: translate(calc(-100% - 40px), -50%); }
+.fr-pins.left.big { transform: translate(calc(-100% - 51px), -50%); }
+.fr-pin { position: relative; width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; flex: none; }
+.fr-pin::before { content: ''; position: absolute; inset: -7px -3px; }   /* 點得到的範圍大一點 */
+.fr-pins:not(.left) .fr-pin + .fr-pin { margin-left: -4px; }
+.fr-pins.left .fr-pin + .fr-pin { margin-right: -4px; }
+.fr-face {
+  position: relative; display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  border: 1.5px solid #fff; box-sizing: border-box; background: linear-gradient(180deg, #8fe6ff, #38aef8);
+  color: #fff; font-weight: 900; font-size: 11px; line-height: 1; box-shadow: 0 2px 4px rgba(111, 40, 64, .3);
+}
+.fr-pin.more .fr-face { background: #fff; color: var(--ink); font: 900 10px/1 var(--font-num); letter-spacing: -.02em; }
 .fr-st { display: flex; align-items: center; gap: 3px; }
 .fr-st svg { width: 22px; height: 22px; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.4; paint-order: stroke; filter: drop-shadow(0 1.5px 0 #c46d00); }
 .fr-st b { font: 900 18px/1 var(--font-num); color: var(--ink); min-width: 1.6em; text-align: right; }
@@ -1777,6 +1795,9 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .cl-star { width: 20px; height: 20px; fill: url(#g-gold); }
 .cl-preview { position: relative; width: 100%; height: 168px; flex: none; border-radius: 20px; background: linear-gradient(180deg, #a9c4e6, #c6aed6); box-shadow: inset 0 2px 8px rgba(60, 30, 90, .25); overflow: hidden; }
 #cl-board { display: block; width: 100%; height: 100%; }
+/* 換帳號、等雲端存檔時（main.js closetBusy）：衣櫃看得到、不能按 */
+.cl-busy { margin: 6px auto 0; width: fit-content; padding: 4px 12px; border-radius: 999px; background: #fff3f8; color: var(--ink-soft); font-size: 13px; font-weight: 800; }
+#m-closet.busy .cl-grid, #m-closet.busy .cl-chests, #m-closet.busy .cl-ready { opacity: .55; pointer-events: none; }
 .cl-try { position: absolute; top: 8px; left: 8px; padding: 3px 10px; border-radius: 999px; background: #ff5f9e; color: #fff; font-size: 13px; font-weight: 900; box-shadow: 0 2px 0 #c42a74; animation: dotPing 1.4s ease-in-out infinite; }
 .cl-demo { position: absolute; right: 8px; bottom: 8px; padding: 5px 12px; border: 2px solid #fff; border-radius: 999px; background: linear-gradient(180deg, #ffd86b, #ffae2e); color: #7a3e00; font-size: 13px; font-weight: 900; box-shadow: 0 3px 0 #c97800; cursor: pointer; }
 .cl-ava { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 55%, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 62%); }

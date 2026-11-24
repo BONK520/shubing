@@ -15,11 +15,11 @@ export const DEBUG_UNLOCK_ALL_COSMETICS = false;
 // ---------- 分類 ----------
 export const CATEGORIES = [
   { id: 'outfit', name: '薯餅造型', short: '造型' },   // 只穿在地圖左下角的薯餅頭像和衣櫃預覽，盤面上的娃娃不穿
+  { id: 'ring', name: '頭像外圈', short: '外圈' },     // 地圖左下角頭像外面那一圈（跟造型都是打扮頭像，放隔壁）
   { id: 'hat', name: '頭飾配件', short: '配件' },
   { id: 'fx', name: '消除特效', short: '特效' },
   { id: 'frame', name: '方塊底座', short: '底座' },
   { id: 'theme', name: '棋盤主題', short: '主題' },
-  { id: 'ring', name: '頭像外圈', short: '外圈' },     // 地圖左下角頭像外面那一圈
 ];
 
 // ---------- 外觀清單 ----------

@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124v';
-import { SLOGANS } from './slogans.js?v=20261124v';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg } from './cosmetics.js?v=20261124v';
-import { blockerCanvas } from './blockers.js?v=20261124v';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124v';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124v';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124v';
-import { STORY } from './story.js?v=20261124v';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124w';
+import { SLOGANS } from './slogans.js?v=20261124w';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg } from './cosmetics.js?v=20261124w';
+import { blockerCanvas } from './blockers.js?v=20261124w';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124w';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124w';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124w';
+import { STORY } from './story.js?v=20261124w';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124v';
+const MOD_V = '?v=20261124w';
 
 window.__plushBooted = true;
 
@@ -48,8 +48,17 @@ const TITLE_TOYS = (SCANNED.length >= 3 ? SCANNED : PIECES).slice(0, 3);
 // 有變動就（等一下下）寫到雲端；換手機登入同一個帳號就接著玩。音效 / 音樂開關跟著裝置走，換帳號不會變。
 const SAVE_KEY = 'plushcrush.v1';
 const BST0 = { hammer: 3, swap: 3, ufo: 2, moves5: 1 };      // 第一次玩送的道具
-let saveKey = SAVE_KEY;
-const save = loadSave(SAVE_KEY) || normSave(null);
+// 上次登入的帳號：重新整理時直接讀這個帳號在這台裝置上的存檔和衣櫃，不用等雲端回來（網路慢時衣櫃才不會先變成空的）。登出就清掉
+const LAST_UID_KEY = SAVE_KEY + '.last';
+function readLastUid() {
+  try { const v = localStorage.getItem(LAST_UID_KEY); return v && /^[A-Za-z0-9_-]{1,128}$/.test(v) ? v : null; } catch (e) { return null; }
+}
+function writeLastUid(uid) {
+  try { if (uid) localStorage.setItem(LAST_UID_KEY, uid); else localStorage.removeItem(LAST_UID_KEY); } catch (e) { /* ignore */ }
+}
+const lastUid = readLastUid();
+let saveKey = lastUid ? SAVE_KEY + '.u.' + lastUid : SAVE_KEY;
+const save = loadSave(saveKey) || normSave(null);
 // 進度的欄位（同步到雲端的就是這些）：unlocked 開到第幾關、stars / best 每關的星星和最高分、boosters 道具、t 最後一次進度改變的時間
 function normSave(s) {
   s = s && typeof s === 'object' ? s : {};
@@ -63,7 +72,7 @@ function normSave(s) {
     music: s.music !== false,
     boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
     t: Number.isFinite(s.t) ? s.t : 0,
-    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 120) : [],   // 看過教學小卡的機關（這台裝置）。小卡有21種，留空間給之後新增的
+    seen: Array.isArray(s.seen) ? [...new Set(s.seen.filter(x => typeof x === 'string'))].slice(-200) : [],   // 看過的教學小卡和劇情（這台裝置，不上雲端）。超過 200 個留最新的
   };
 }
 function loadSave(key) {
@@ -96,6 +105,8 @@ function mergeSave(a, b) {
   return out;
 }
 // 換成另一份存檔（save 是 const 物件，很多地方直接拿去用，所以就地換內容）；音效 / 音樂開關保留這台裝置的
+// 看過的教學小卡 / 劇情：兩份合在一起（重新整理時，開機先讀訪客存檔、登入恢復後才換成帳號的；只用其中一份就會重跑教學）
+const unionSeen = (...lists) => normSave({ seen: [].concat(...lists.map(l => (Array.isArray(l) ? l : []))) }).seen;
 function applySave(s) {
   const keep = { muted: save.muted, music: save.music, seen: save.seen };
   for (const k of Object.keys(save)) delete save[k];
@@ -122,21 +133,36 @@ async function initCloud() {
   window.addEventListener('online', () => { if (account) { pushCloud(); if (!friendsOn) initFriends(account.uid); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden && account && pushTimer) pushCloud(); });
 }
+// 換帳號的這段時間（等雲端存檔）衣櫃顯示「讀取中」、不能兌換或換裝，讀完才放開
+let closetBusy = false;
 async function switchAccount(u) {
+  try { return await switchAccountNow(u); } finally {
+    if (closetBusy) { closetBusy = false; if (isOpen('m-closet')) renderCloset(); }
+  }
+}
+async function switchAccountNow(u) {
   const uid = u ? u.uid : null;
-  if ((account ? account.uid : null) === uid) { account = u; renderAccount(); return; }
+  // 重新整理後開機先讀了上次那個帳號的存檔；結果沒登入（登入過期）時，不能直接 return，要換回訪客存檔
+  if ((account ? account.uid : null) === uid && (uid || saveKey === SAVE_KEY)) { account = u; renderAccount(); return; }
   clearTimeout(pushTimer); pushTimer = 0;
   const prevKey = saveKey, wasUser = !!account;
   if (!u) {                                  // 登出 → 回到這台裝置的訪客存檔
-    clearInProgress(prevKey);                // 換帳號：上一個帳號玩到一半的關不留
+    if (wasUser) clearInProgress(prevKey);   // 換帳號：上一個帳號玩到一半的關不留（登入過期就留著，下次登入還在）
+    writeLastUid(null);
     account = null; saveKey = SAVE_KEY; lastPushed = '';
     initFriends(null);
-    applySave(loadSave(SAVE_KEY));
+    const guest = loadSave(SAVE_KEY), seen = unionSeen(save.seen, guest && guest.seen);
+    applySave(guest);
+    save.seen = seen;
     setSync('guest');
     refreshAfterSwitch();
     return;
   }
   account = u; saveKey = SAVE_KEY + '.u.' + uid; lastPushed = '';
+  writeLastUid(uid);
+  closetBusy = true;
+  closet.load(closetKey());                // 衣櫃馬上換成這個帳號的那份，不等雲端（等雲端回來 refreshAfterSwitch 再完整讀一次）
+  if (isOpen('m-closet')) { tryOn = {}; renderCloset(); applyLook(); }
   initFriends(null);                       // 上一個人的好友排行榜先收起來，讀完存檔再換這個人的
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
   if (explicit || wasUser) clearInProgress(prevKey);   // 自己換帳號才清；重新整理後自動恢復登入時，訪客那份不動
@@ -156,7 +182,9 @@ async function switchAccount(u) {
     }
   }
   askGuestMerge = false;
+  const local = loadSave(saveKey), seen = unionSeen(save.seen, local && local.seen);
   applySave(merged);
+  save.seen = seen;
   try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* ignore */ }
   if (remote) lastPushed = JSON.stringify(progressOf(remote));
   refreshAfterSwitch();
@@ -208,6 +236,7 @@ function setFriendsOn(on) {
   if (!on) { board = []; boardAt = 0; if (isOpen('m-friends')) closeModal('m-friends'); }
   const ms = $('#ms-friends');
   if (ms && !on) ms.hidden = true;
+  if (!on) renderFriendPins();
 }
 const friendsQuiet = (what, e) => console.info(`[friends] ${what}（好友排行榜先藏起來，遊戲照玩）`, (e && e.code) || e);
 async function initFriends(uid) {
@@ -220,7 +249,7 @@ async function initFriends(uid) {
     if (tryId !== friendsTry || !account || account.uid !== uid) return;
     setFriendsOn(true);
     await publishProfile();
-    loadBoard(true);
+    loadBoard(true).then(() => { if (screen === 'map') renderFriendPins(); });
   } catch (e) {
     if (tryId === friendsTry) friendsQuiet('讀不到排行榜', e);
   }
@@ -255,7 +284,67 @@ function cleanPlayer(p) {
   if (p.best && typeof p.best === 'object') {
     for (const [k, v] of Object.entries(p.best)) { const n = Math.round(Number(v)); if (Number.isFinite(n) && n > 0) best[k] = n; }
   }
-  return { uid: p.uid, name, stars: Math.max(0, Math.min(3000, Math.round(Number(p.stars) || 0))), best };
+  return { uid: p.uid, name, stars: Math.max(0, Math.min(3000, Math.round(Number(p.stars) || 0))), best, level: levelOfBest(best) };
+}
+// 朋友玩到第幾關：有最高分的關卡裡最後面那一關的下一關（最多到最後一關）；沒有分數就是第 1 關。對不到現在關卡的編號不算
+let idIdx = null;
+function levelIndexOf(id) {
+  if (!LEVELS) return -1;
+  if (!idIdx || idIdx.size !== LEVELS.length) idIdx = new Map(LEVELS.map((l, i) => [String(l.id), i]));
+  const i = idIdx.get(String(id));
+  return i === undefined ? -1 : i;
+}
+function levelOfBest(best) {
+  if (!LEVELS) return 1;
+  let hi = -1;
+  for (const id of Object.keys(best)) hi = Math.max(hi, levelIndexOf(id));
+  return Math.max(1, Math.min(LEVELS.length, hi + 2));
+}
+// 地圖上朋友的小頭像：站在朋友目前那一關旁邊，一關最多 3 個，多的用「+N」。點一下看是誰、第幾關、幾顆星
+function friendFace(p) {
+  const f = el('span', 'fr-face');
+  f.textContent = Array.from(p.name)[0] || '?';
+  return f;
+}
+function renderFriendPins() {
+  const inner = $('#map-inner');
+  if (!inner) return;
+  for (const x of $$('.fr-pins', inner)) x.parentNode.removeChild(x);
+  if (!friendsOn || !account || !board.length || !mapNodes.length) return;
+  const at = new Map();
+  for (const p of board) {
+    const i = (p.level || 1) - 1;
+    if (!mapNodes[i]) continue;
+    if (!at.has(i)) at.set(i, []);
+    at.get(i).push(p);
+  }
+  for (const [i, ps] of at) {
+    const node = mapNodes[i], x = parseFloat(node.style.left) || 50;
+    const box = el('div', 'fr-pins' + (x > 50 ? ' left' : '') + (node.classList.contains('current') ? ' big' : ''));
+    box.style.left = node.style.left;
+    box.style.top = node.style.top;
+    ps.sort((a, b) => b.stars - a.stars || a.name.localeCompare(b.name));
+    for (const p of ps.slice(0, 3)) {
+      const b = el('button', 'fr-pin');
+      b.type = 'button';
+      b.setAttribute('aria-label', `${p.name}，第${p.level}關`);
+      b.appendChild(friendFace(p));
+      b.addEventListener('click', e => { e.stopPropagation(); toast(`${p.name}・第${p.level}關・★${fmt(p.stars)}`, 1800); });
+      box.appendChild(b);
+    }
+    if (ps.length > 3) {
+      const rest = ps.slice(3);
+      const b = el('button', 'fr-pin more');
+      b.type = 'button';
+      b.setAttribute('aria-label', `還有 ${rest.length} 位朋友在第${i + 1}關`);
+      const f = el('span', 'fr-face');
+      f.textContent = '+' + rest.length;
+      b.appendChild(f);
+      b.addEventListener('click', e => { e.stopPropagation(); toast(rest.map(p => `${p.name}・★${fmt(p.stars)}`).join('、') + `（第${i + 1}關）`, 2400); });
+      box.appendChild(b);
+    }
+    inner.appendChild(box);
+  }
 }
 // 讀排行榜（一分鐘內讀過就用上次的；force 一定重讀）
 function loadBoard(force = false) {
@@ -275,6 +364,7 @@ function loadBoard(force = false) {
     for (const p of [...mine, ...them]) { const c = cleanPlayer(p); if (c && c.uid !== uid && !byId.has(c.uid)) byId.set(c.uid, c); }
     board = [...byId.values()];
     boardAt = Date.now();
+    if (screen === 'map') renderFriendPins();   // 地圖上的朋友小頭像跟著排行榜一起更新
     return board;
   })().catch(e => {
     friendsQuiet('排行榜讀取失敗', e);
@@ -287,7 +377,7 @@ function loadBoard(force = false) {
 function renderBoard() {
   const list = $('#fr-list');
   if (!list || !account) return;
-  const me = { uid: account.uid, name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: sumStars(), me: true };
+  const me = { uid: account.uid, name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: sumStars(), level: currentIndex() + 1, me: true };
   const rows = [me, ...board].sort((a, b) => b.stars - a.stars || (a.me ? -1 : b.me ? 1 : a.name.localeCompare(b.name)));
   list.replaceChildren();
   let rank = 0, prev = -1;
@@ -297,8 +387,11 @@ function renderBoard() {
     li.dataset.rank = rank;
     const rk = el('span', 'fr-rank'); rk.textContent = rank;
     const av = el('span', 'acct-av fr-av'); av.textContent = Array.from(p.name)[0] || '?';
-    const nm = el('span', 'fr-nm'); nm.textContent = p.name;
-    if (p.me) nm.appendChild(el('small', '', '（我）'));
+    const nm = el('span', 'fr-nm');
+    const nt = el('span', 'fr-nt'); nt.textContent = p.name;
+    if (p.me) nt.appendChild(el('small', '', '（我）'));
+    const lv = el('span', 'fr-lv'); lv.textContent = `第${p.level || 1}關`;
+    nm.append(nt, lv);
     const st = el('span', 'fr-st'); st.appendChild(starSvg('on')); st.appendChild(numEl('b', fmt(p.stars)));
     li.append(rk, av, nm, st);
     list.appendChild(li);
@@ -1124,6 +1217,8 @@ function unlockText(it) {
 }
 function renderCloset() {
   const stars = save.stars, coins = closet.coins(stars);
+  $('#m-closet').classList.toggle('busy', closetBusy);
+  $('#cl-busy').hidden = !closetBusy;
   setNum($('#cl-coins'), coins);
   setNum($('#cl-stars'), totalStars(stars));
   $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
@@ -1184,6 +1279,7 @@ function renderCloset() {
   });
 }
 function onClosetItem(it) {
+  if (closetBusy) { toast('衣櫃讀取中，等一下下再換', 1400); return; }
   const stars = save.stars;
   closet.markSeen(it.id);
   if (closet.isUnlocked(it, stars)) {
@@ -1221,6 +1317,7 @@ function onClosetItem(it) {
 }
 // 開寶箱：寶箱抖一抖 → 蓋子彈開 → 獎勵一個一個跳出來；開到的外觀直接穿上
 function openChest(i) {
+  if (closetBusy) { toast('衣櫃讀取中，等一下下再開', 1400); return; }
   const res = closet.openChest(i, save.stars);
   if (!res) return;
   const pop = $('#cl-pop'), items = $('#cp-items'), chest = $('#cp-chest');
@@ -1502,6 +1599,7 @@ function buildMap(popIndex = -1) {
     mapNodes.push(b);
   });
 
+  renderFriendPins();   // 朋友的小頭像（排行榜讀過才有；showMap 會在背景重讀）
   // 頭像放在底部固定列（以前站在目前關卡旁邊，第 1 關時會跟衣櫃擠在一起）；目前關卡改用放大＋光暈標出來
   renderMeAvatar();   // 中間那隻（薯餅）當頭像，穿著衣櫃裡選的造型和外圈
 
@@ -1706,7 +1804,8 @@ function scrollMapToCurrentNow() {
   if (node) $('#map-scroll').scrollTop = mapTarget(parseFloat(node.style.top) || 0);
 }
 
-function showMap({ pop = -1, thenOpen = -1 } = {}) {
+// focus：從關卡回地圖時停在剛剛玩的那一關（沒給就停在最新一關：頭像按鈕、重新整理、標題畫面）
+function showMap({ pop = -1, thenOpen = -1, focus = -1 } = {}) {
   const pts = buildMap(pop);
   renderClosetBtn();
   show('map');
@@ -1717,10 +1816,11 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
     sc.scrollTop = target(pop - 1);
     requestAnimationFrame(() => sc.scrollTo({ top: target(pop), behavior: 'smooth' }));
   } else {
-    sc.scrollTop = target(cur);
+    sc.scrollTop = target(focus >= 0 && focus < pts.length ? focus : cur);
   }
   updateMapHere();
   buildScrubber();
+  if (friendsOn) loadBoard().then(() => { if (screen === 'map') renderFriendPins(); });   // 一分鐘內讀過就用上次的
   if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openLevel(thenOpen); }, 750);
   else setTimeout(offerResume, 450);       // 剛剛有玩到一半的關（網頁被重新載入）：問要不要接著玩
 }
@@ -3470,7 +3570,12 @@ function bindUI() {
   $('#map-friends').addEventListener('click', () => { audio.play('tap'); openFriends(); });
   $('#fr-form').addEventListener('submit', submitFriend);
   $('#fr-copy').addEventListener('click', copyCode);
-  $('#set-map').addEventListener('click', () => leaveToMap());
+  // 回地圖：停在剛剛玩的那一關；剛第一次過最新一關時照舊播新關卡跳出來的動畫
+  const backToMap = () => {
+    const first = state === 'won' && $('#mw-next').dataset.first === '1' && levelIdx + 1 < LEVELS.length;
+    leaveToMap(first ? { pop: levelIdx + 1 } : { focus: levelIdx });
+  };
+  $('#set-map').addEventListener('click', backToMap);
   $('#set-restart').addEventListener('click', () => startLevel(levelIdx));
   $('#mw-next').addEventListener('click', () => {
     const next = levelIdx + 1;
@@ -3479,7 +3584,7 @@ function bindUI() {
     waitIdle(4000).then(() => showMap({ pop: first ? next : -1, thenOpen: next }));
   });
   $('#mw-retry').addEventListener('click', () => startLevel(levelIdx));
-  $('#mw-map').addEventListener('click', () => leaveToMap());
+  $('#mw-map').addEventListener('click', backToMap);
   $('#btn-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#dk-me').addEventListener('click', () => { audio.play('tap'); scrollMapToCurrent(); });
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
@@ -3499,7 +3604,7 @@ function bindUI() {
     scheduleHint();
   });
   for (const b of $$('.bst')) b.addEventListener('click', () => onBoosterClick(b.dataset.b));
-  $('#ml-map').addEventListener('click', () => leaveToMap());
+  $('#ml-map').addEventListener('click', backToMap);
 
   // 每個按鈕都有小小的點擊聲
   document.addEventListener('click', e => {
@@ -3580,6 +3685,11 @@ function installDebug() {
     ipKey: () => ipKey(),
     resetResumeOffer() { resumeOffered = ''; },
     reopenIntro,   // 教學小卡（截圖用）
+    // 衣櫃（測試用）
+    get closet() { return closet; },
+    closetKey: () => closetKey(),
+    openCloset,
+    onClosetItem: id => onClosetItem(ITEMS.find(it => it.id === id)),
   };
 }
 
