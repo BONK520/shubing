@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124t';
-import { SLOGANS } from './slogans.js?v=20261124t';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124t';
-import { blockerCanvas } from './blockers.js?v=20261124t';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124t';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124t';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124t';
-import { STORY } from './story.js?v=20261124t';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124u';
+import { SLOGANS } from './slogans.js?v=20261124u';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124u';
+import { blockerCanvas } from './blockers.js?v=20261124u';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124u';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124u';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124u';
+import { STORY } from './story.js?v=20261124u';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124t';
+const MOD_V = '?v=20261124u';
 
 window.__plushBooted = true;
 
@@ -2968,6 +2968,7 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   }
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
+  $('#mw-title').parentElement.classList.remove('two');
   // 「三寶都愛你！」語音（2026-11：玩家覺得太多）：只在第一次拿到這關三星時講，而且至少隔兩次過關才講一次；字照樣顯示
   winsSinceCheer++;
   if (newThree && winsSinceCheer >= 3 && SLOGANS.win3.voice) { audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 }); winsSinceCheer = 0; }
@@ -2991,9 +2992,13 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   $('#mw-body').scrollTop = 0;
   // 最後一關（看 LEVELS.length，不寫死關數）：不說「結局」，只說目前的關卡過完了、新關卡還在做（工作單9）
   if (last) {
-    $('#mw-title').textContent = '目前的關卡都過完了';
+    // 九個字放一行會被右上角的玩偶照片蓋住，拆成兩行
+    $('#mw-title').replaceChildren('目前的關卡', document.createElement('br'), '都過完了');
+    $('#mw-title').parentElement.classList.add('two');
     const bl = $('#mw-best-line');
-    bl.textContent = [bl.textContent, '新關卡製作中'].filter(Boolean).join('　');
+    // 分數說明太長時「新關卡製作中」會被從中間斷開：有其他說明就自己放一行
+    if (bl.textContent) bl.replaceChildren(bl.textContent, document.createElement('br'), '新關卡製作中');
+    else bl.textContent = '新關卡製作中';
   }
   openModal('m-win');
   confetti();
