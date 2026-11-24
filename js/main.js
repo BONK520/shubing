@@ -1,13 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123x';
-import { SLOGANS } from './slogans.js?v=20261123x';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123x';
-import { blockerCanvas } from './blockers.js?v=20261123x';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123x';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123x';
-import { DEMO, demoEngine } from './demos.js?v=20261123x';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123y';
+import { SLOGANS } from './slogans.js?v=20261123y';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123y';
+import { blockerCanvas } from './blockers.js?v=20261123y';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123y';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261123y';
+import { DEMO, demoEngine } from './demos.js?v=20261123y';
+import { STORY } from './story.js?v=20261123y';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123x';
+const MOD_V = '?v=20261123y';
 
 window.__plushBooted = true;
 
@@ -1356,7 +1357,7 @@ function buildMap(popIndex = -1) {
       for (let k = 0; k < 3; k++) st.appendChild(starSvg(k < stars ? 'on' : ''));
       b.appendChild(st);
       b.appendChild(goalBadge(lvl));
-      b.addEventListener('click', () => openStartCard(i));
+      b.addEventListener('click', () => openLevel(i));
     }
     inner.appendChild(b);
     mapNodes.push(b);
@@ -1419,7 +1420,7 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
     sc.scrollTop = target(cur);
   }
   updateMapHere();
-  if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openStartCard(thenOpen); }, 750);
+  if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openLevel(thenOpen); }, 750);
   else setTimeout(offerResume, 450);       // 剛剛有玩到一半的關（網頁被重新載入）：問要不要接著玩
 }
 
@@ -1483,6 +1484,47 @@ function softWrap(text) {
 
 // ---------- 關卡開始卡 ----------
 let cardLevel = -1;
+// ---------- 劇情（js/story.js）：在地圖上點一站的第一關，第一次先跳這一站的小故事，看完再開關卡卡片 ----------
+const STORY_DONE = from => 'story:' + from;           // 看過了記在 save.seen（跟教學小卡一樣，只存在這台裝置）
+let storyBusy = false;
+function openLevel(i) {
+  const st = STORY.find(x => x.from === i + 1);
+  if (!st || save.seen.includes(STORY_DONE(st.from)) || storyBusy) { if (!storyBusy) openStartCard(i); return; }
+  storyBusy = true;
+  showStory(st).then(() => {
+    storyBusy = false;
+    save.seen.push(STORY_DONE(st.from));
+    writeSave();
+    if (screen === 'map') openStartCard(i);
+  });
+}
+async function showStory(st) {
+  const station = LEVELS ? mapStations(LEVELS.length, 0).find(x => x.from === st.from) : null;
+  $('#st-ribbon').textContent = station ? `第 ${station.k} 站` : '新的一站';
+  $('#st-place').textContent = station ? station.name : '';
+  const box = $('#st-lines');
+  box.replaceChildren();
+  st.lines.forEach(([who, text], k) => {
+    const p = pieceById(who), line = el('div', 'st-line' + (k % 2 ? ' r' : ''));
+    line.style.setProperty('--k', k);
+    const av = el('span', 'st-av');
+    if (p) { av.appendChild(toyEl(p, 20)); av.appendChild(el('b', '', '')).textContent = p.name; }
+    const say = el('p', 'st-say');
+    say.textContent = softWrap(text);
+    line.append(av, say);
+    box.appendChild(line);
+  });
+  openModal('m-story');
+  audio.play('chime', { level: 3 });
+  await new Promise(res => {
+    const m = $('#m-story');
+    const done = () => { m.removeEventListener('click', done); clearInterval(chk); res(); };
+    const chk = setInterval(() => { if (!isOpen('m-story')) done(); }, 200);
+    setTimeout(() => m.addEventListener('click', done), 450);     // 剛跳出來的那一下不算（避免連點直接跳過）
+  });
+  closeModal('m-story');
+}
+
 function openStartCard(i) {
   const lvl = LEVELS[i];
   cardLevel = i;
@@ -1574,7 +1616,7 @@ function countBlocks(board, lock) {
 }
 let selected = null;
 let moving = false;
-let sugarMode = false;
+let sugarMode = false, sugarStepN = 0;
 let debugWin = false;
 let hintTimer = 0;
 let goalRefs = [];
@@ -1706,6 +1748,7 @@ window.addEventListener('pageshow', e => { if (e.persisted && liveRec) noteLive(
 
 async function startLevel(idx, resume = null) {
   sugarBonus = 0;
+  stopFireworks();
   boosterMode = null; boosterFirst = null; renderBoosters();
   closeAllModals();
   session++;
@@ -1968,6 +2011,12 @@ function renderGoal(init = false) {
       r.last = txt;
     }
     r.gi.classList.toggle('done', done);
+    // 一個目標剛完成（打勾）：「叮叮！」＋圖示炸一圈星星（分數目標不算，星星條自己有音效）
+    if (!init && done && r.done === false && r.kind !== 'score' && (state === 'play' || state === 'ending')) {
+      audio.play('goaldone');
+      starBurst(r.gi.querySelector('.ic'));
+    }
+    r.done = done;
   }
 }
 function renderMoves() {
@@ -2079,7 +2128,7 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 // ---------- 畫面時間點 → 音效 / 震動（renderer 告訴我們「幾毫秒後」爆、掃、炸，音效照那個時間排好）----------
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
-  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino',
+  cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino', hatch: 'hatch',
   tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift', belt: 'belt' };
 function onCue(name, data, token) {
   if (token !== session) return;
@@ -2095,6 +2144,7 @@ function onCue(name, data, token) {
     case 'cage': case 'frost': case 'choco': case 'gift': buzzLater(d, 12, 60); break;
     case 'shell': buzzLater(d, 16, 60); break;
     case 'dino': buzzLater(d, [12, 30, 12], 80); break;
+    case 'hatch': buzzLater(d + ((data && data.crack) || 0), 18, 60); break;     // 破殼那一下
     case 'alarm': buzzLater(d, [30, 40, 30, 40, 30], 80); break;
     case 'alarmoff': buzzLater(d, 12, 60); break;
   }
@@ -2155,6 +2205,7 @@ function launchFlight(name, data, token) {
   setTimeout(() => {
     if (token !== session) return;
     const from = R && R.cellRect ? R.cellRect(data.r, data.c) : null;
+    if (from && data.dy) from.y += data.dy * from.size;       // 龍龍破殼後先往上飛了幾格，從那裡接著飛
     if (!ref || !from || flyLive >= FLY_MAX || document.hidden) { arrive(); return; }
     flyLive++;
     flyToGoal(dino ? 'dino' : jelly ? null : PIECES[kind], from, ref.gi.querySelector('.ic'), () => { flyLive = Math.max(0, flyLive - 1); arrive(); });
@@ -2209,7 +2260,7 @@ function onEvent(ev, token) {
     case 'transform':
       if (ev.gained) { dispScore += ev.gained; renderScore(); }
       if (sugarMode) {
-        audio.play('sugar');
+        audio.play('sugarstep', { n: sugarStepN++ });     // 每一步一個小「叮」，一步比一步高（整段小號只在開頭吹一次）
         dispMoves = Math.max(0, dispMoves - ((ev.cells && ev.cells.length) || 1));
         renderMoves();
       } else {
@@ -2396,7 +2447,7 @@ function afterMove() {
   if (state !== 'play') return;
   if (goalMet()) { winFlow(); return; }
   if (movesLeft <= 0) { loseFlow(); return; }
-  if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); }
+  if (movesLeft <= 5 && movesLeft > 0 && !lowWarned) { lowWarned = true; toast('只剩 ' + movesLeft + ' 步了！', 1300); audio.play('lowmoves'); }
   saveInProgress();
   scheduleHint();
 }
@@ -2553,6 +2604,7 @@ async function winFlow() {
   recordWin(engine.score);
   renderMoves();
   audio.play('win');
+  fireworks(3600);                          // 過關煙花（橫幅跳出來的同時從下面發射）
   $('#cheer').classList.add('party');
   const left = movesLeft;
   sugarBonus = left * 3000;
@@ -2561,10 +2613,13 @@ async function winFlow() {
     left > 0 ? { sub: `剩下 ${left} 步 × 3,000 分！`, duration: 1700 } : { duration: 1300 });
   if (token !== session) return;
   if (left > 0) {
-    sugarMode = true;
+    sugarMode = true; sugarStepN = 0;
+    audio.play('sugar');                    // 小號只在開頭吹一次
     try {
       const res = engine.sugarCrush(left);
-      await R.play((res && res.events) || [], { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
+      // 剩下的步數一步一步慢慢變成特效（sugarStep：每步至少停 420ms；以前 220ms，一下子就全變完看不清楚）；
+      // 之後的連爆照原本的快節奏（landHold 80、掉落 slowFall 0.82 ≈ 改版前的速度），整段才不會拖太久
+      await R.play((res && res.events) || [], { sugarStep: 420, landHold: 80, slowFall: 0.82, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
     } catch (e) { console.error(e); }
     sugarMode = false;
     if (token !== session) return;
@@ -2585,6 +2640,7 @@ async function winFlow() {
 
 let winTimers = [];
 let sugarBonus = 0;
+let winsSinceCheer = 99;                    // 上次講「三寶都愛你！」之後過了幾關（showWin）
 const WIN_PHOTOS = ['assets/deco/sloth_orange.webp', 'assets/deco/snoopy_sloth.webp', 'assets/deco/sloth_pig.webp', 'assets/deco/group.webp'];
 function setPhoto(id, src) {
   const im = document.getElementById(id);
@@ -2630,7 +2686,9 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   }
   const last = levelIdx >= LEVELS.length - 1;
   $('#mw-title').textContent = stars === 3 ? SLOGANS.win3.text : SLOGANS.win.text;
-  if (stars === 3 && SLOGANS.win3.voice) audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 });
+  // 「三寶都愛你！」語音（2026-11：玩家覺得太多）：只在第一次拿到這關三星時講，而且至少隔兩次過關才講一次；字照樣顯示
+  winsSinceCheer++;
+  if (newThree && winsSinceCheer >= 3 && SLOGANS.win3.voice) { audio.play('voice', { id: SLOGANS.win3.voice, delay: 1500 }); winsSinceCheer = 0; }
   setPhoto('mw-photo', WIN_PHOTOS[Math.floor(Math.random() * WIN_PHOTOS.length)]);
   const bs = $$('#mw-stars .bs');
   bs.forEach(s => s.classList.remove('on'));
@@ -2679,6 +2737,114 @@ function confetti(gold = false) {
     if (i % 3 === 0) { c.style.width = '8px'; c.style.height = '8px'; c.style.borderRadius = '50%'; }
     box.appendChild(c);
   }
+}
+
+// ---------- 過關煙花（2026-11）：全螢幕透明畫布（#fireworks），在遊戲畫面上面、彈窗下面 ----------
+// 從下面發射幾顆，飛到上半部「碰」地開花（一圈彩色火花 + 往下掉的金色細火），約 3~4 秒；系統設定「減少動態」時不放
+const FW_COLS = [['#ff5fa8', '#ffc4e1'], ['#ffd23f', '#fff3b0'], ['#4fdc8a', '#c9ffdc'], ['#55bfff', '#d0eeff'], ['#b48aff', '#e7d9ff'], ['#ff9a3c', '#ffdcb5']];
+let fwCanvas = null, fwCtx = null, fwRaf = 0, fwEnd = 0, fwNext = 0, fwLast = 0, fwW = 0, fwH = 0;
+let fwRockets = [], fwParts = [], fwFlash = [];
+function fireworks(ms = 3200) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  fwCanvas = fwCanvas || $('#fireworks');
+  if (!fwCanvas || !fwCanvas.getContext) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  fwW = window.innerWidth; fwH = window.innerHeight;
+  fwCanvas.width = Math.round(fwW * dpr); fwCanvas.height = Math.round(fwH * dpr);
+  fwCtx = fwCanvas.getContext('2d');
+  fwCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const t = performance.now();
+  fwEnd = t + ms; fwNext = t + 80;
+  fwCanvas.hidden = false;
+  if (!fwRaf) { fwLast = t; fwRaf = requestAnimationFrame(fwFrame); }
+}
+function stopFireworks() {
+  fwEnd = 0; fwRockets = []; fwParts = []; fwFlash = [];
+  if (fwRaf) cancelAnimationFrame(fwRaf);
+  fwRaf = 0;
+  if (fwCtx) fwCtx.clearRect(0, 0, fwW, fwH);
+  if (fwCanvas) fwCanvas.hidden = true;
+}
+function fwLaunch(t) {
+  const x = fwW * (0.15 + Math.random() * 0.7), y = fwH * (0.14 + Math.random() * 0.32);
+  const dur = 700 + Math.random() * 250;
+  fwRockets.push({ x0: x + (Math.random() - 0.5) * fwW * 0.12, y0: fwH + 12, x1: x, y1: y, t0: t, dur, col: FW_COLS[Math.floor(Math.random() * FW_COLS.length)] });
+  audio.play('firework', { boom: dur, pan: (x / fwW - 0.5) * 1.2 });
+}
+function fwBurst(r, t) {
+  // 大小跟著螢幕走（手機直的約半徑 130px）；一圈彩色火花 + 中間一圈白色亮點 + 慢慢飄下來的金色細火
+  const U = Math.min(fwW, fwH), n = 56 + Math.floor(Math.random() * 16), sp = U * (0.00068 + Math.random() * 0.00012);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.1, v = sp * (0.85 + Math.random() * 0.2);
+    fwParts.push({ x: r.x1, y: r.y1, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: t, life: 1050 + Math.random() * 350, col: r.col[i % 3 ? 0 : 1], w: 3.4, g: 0.00014, glow: true });
+  }
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2, v = sp * 0.45;
+    fwParts.push({ x: r.x1, y: r.y1, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: t, life: 700, col: '#ffffff', w: 2.6, g: 0.0001 });
+  }
+  for (let i = 0; i < 18; i++) {          // 金色細火：慢慢往下飄、會閃
+    const a = Math.random() * Math.PI * 2, v = Math.random() * sp * 0.35;
+    fwParts.push({ x: r.x1, y: r.y1, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t0: t + 150, life: 1400 + Math.random() * 500, col: '#ffe27a', w: 2.2, g: 0.00007, twinkle: true });
+  }
+  fwFlash.push({ x: r.x1, y: r.y1, t0: t, col: r.col[0], R: U * 0.2 });
+}
+function fwFrame(t) {
+  fwRaf = 0;
+  const dt = Math.min(40, t - fwLast);
+  fwLast = t;
+  if (fwEnd && t < fwEnd && t >= fwNext) { fwLaunch(t); fwNext = t + 360 + Math.random() * 300; }
+  const g = fwCtx;
+  g.clearRect(0, 0, fwW, fwH);
+  g.lineCap = 'round';
+  // 火箭：拖著一條漸漸淡掉的尾巴往上飛，速度越來越慢
+  fwRockets = fwRockets.filter(r => {
+    const p = Math.min(1, (t - r.t0) / r.dur);
+    if (p >= 1) { fwBurst(r, t); return false; }
+    const e = 1 - Math.pow(1 - p, 2.2), e0 = 1 - Math.pow(1 - Math.max(0, p - 0.08), 2.2);
+    const x = r.x0 + (r.x1 - r.x0) * e, y = r.y0 + (r.y1 - r.y0) * e;
+    const xb = r.x0 + (r.x1 - r.x0) * e0, yb = r.y0 + (r.y1 - r.y0) * e0;
+    const grd = g.createLinearGradient(xb, yb, x, y);
+    grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(1, r.col[1]);
+    g.strokeStyle = grd; g.lineWidth = 4; g.globalAlpha = 1;
+    g.beginPath(); g.moveTo(xb, yb); g.lineTo(x, y); g.stroke();
+    g.fillStyle = r.col[1]; g.globalAlpha = 0.5; g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff'; g.globalAlpha = 1; g.beginPath(); g.arc(x, y, 3.2, 0, Math.PI * 2); g.fill();
+    return true;
+  });
+  // 開花那一下：一團很快散掉的光
+  fwFlash = fwFlash.filter(f => {
+    const p = (t - f.t0) / 260;
+    if (p >= 1) return false;
+    const rad = f.R * (0.35 + 0.65 * p), grd = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, rad);
+    grd.addColorStop(0, 'rgba(255,255,255,0.9)'); grd.addColorStop(0.35, f.col); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.globalAlpha = (1 - p) * 0.55; g.fillStyle = grd;
+    g.beginPath(); g.arc(f.x, f.y, rad, 0, Math.PI * 2); g.fill();
+    return true;
+  });
+  // 火花：每顆畫成一小段（目前位置往回拉一點），看起來在飛
+  fwParts = fwParts.filter(q => {
+    const age = t - q.t0;
+    if (age < 0) return true;
+    if (age > q.life) return false;
+    const k = Math.pow(0.9985, dt);          // 空氣阻力
+    q.vx *= k; q.vy = q.vy * k + q.g * dt;
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    const f = 1 - age / q.life;
+    let a = f < 0.35 ? f / 0.35 : 1;
+    if (q.twinkle) a *= 0.45 + 0.55 * Math.abs(Math.sin(age / 55 + q.x));
+    const x0 = q.x - q.vx * 34, y0 = q.y - q.vy * 34;
+    if (q.glow) {                            // 外面一圈淡淡的光暈，淺色背景上也看得清楚
+      g.globalAlpha = a * 0.3; g.strokeStyle = q.col; g.lineWidth = q.w * 2.6;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(q.x, q.y); g.stroke();
+    }
+    g.globalAlpha = a;
+    g.strokeStyle = q.col; g.lineWidth = q.w;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(q.x, q.y); g.stroke();
+    return true;
+  });
+  g.globalAlpha = 1;
+  if ((fwEnd && t < fwEnd) || fwRockets.length || fwParts.length || fwFlash.length) fwRaf = requestAnimationFrame(fwFrame);
+  else stopFireworks();
 }
 
 async function loseFlow() {
@@ -3009,6 +3175,7 @@ function installDebug() {
     save,
     startLevel,
     openStartCard,
+    openLevel,
     showMap,
     quickWin() {
       debugWin = true;
