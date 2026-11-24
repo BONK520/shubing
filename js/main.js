@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zb';
-import { SLOGANS } from './slogans.js?v=20261124zb';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zb';
-import { blockerCanvas } from './blockers.js?v=20261124zb';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124zb';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zb';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zb';
-import { STORY } from './story.js?v=20261124zb';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zc';
+import { SLOGANS } from './slogans.js?v=20261124zc';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zc';
+import { blockerCanvas } from './blockers.js?v=20261124zc';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124zc';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zc';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zc';
+import { STORY } from './story.js?v=20261124zc';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zb';
+const MOD_V = '?v=20261124zc';
 
 window.__plushBooted = true;
 
@@ -3979,6 +3979,8 @@ function bindUI() {
   // 一步還在結算（掉落、連鎖）時不能暫停，免得過關／失敗的流程跑在暫停選單後面
   const canPause = () => (state === 'play' && !moving && !(R && R.busy)) || state === 'intro';
   $('#btn-pause').addEventListener('click', () => { if (canPause()) openSettings(); });
+  // 暫停選單的「玩偶衣櫃」：先關暫停再開衣櫃（衣櫃關掉直接回到盤面，換好的底座馬上看得到）
+  $('#set-closet').addEventListener('click', () => { audio.play('tap'); closeModal('m-settings'); openCloset(); });
   $('#ms-play').addEventListener('click', () => { if (cardLevel >= 0) startLevel(cardLevel); });
   $('#mr-go').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); if (r) startLevel(r.idx, r); });
   $('#mr-new').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); clearInProgress(); if (r) startLevel(r.idx); });

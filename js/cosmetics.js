@@ -72,6 +72,8 @@ export const ITEMS = [
   { id: 'fx.rain',      cat: 'fx', name: '雨滴',       unlock: { station: 176 } },
   // 分類 3：方塊底座
   { id: 'frame.jelly',   cat: 'frame', name: '果凍底座',   unlock: null },
+  { id: 'frame.shape7',  cat: 'frame', name: '七種新形狀', unlock: null },
+  { id: 'frame.none',    cat: 'frame', name: '不要底座',   unlock: null },
   { id: 'frame.cookie',  cat: 'frame', name: '酥脆餅乾底', unlock: { coins: 3 } },
   { id: 'frame.capsule', cat: 'frame', name: '透明扭蛋球', unlock: { coins: 5 } },
   { id: 'frame.petal',   cat: 'frame', name: '花瓣底座',   unlock: { chest: 3 } },
@@ -347,6 +349,10 @@ const NEW_ICON = {
   'frame.cloud': svg64(`<g fill="url(#gW)" stroke="#b9aedb" stroke-width="2.5">${C(18, 38, 13)}${C(33, 27, 17)}${C(48, 36, 13)}<rect x="12" y="34" width="42" height="17" rx="8.5"/></g><g fill="url(#gW)">${C(18, 38, 11.8)}${C(33, 27, 15.8)}${C(48, 36, 11.8)}<rect x="13.2" y="35" width="39.6" height="14.8" rx="7.4"/></g>${L('M24 22 Q28 15 36 14', '#fff', 3.5, 0.9)}`),
   'frame.gear': svg64(`<defs>${lg('gS', [[0, '#f4f6fa'], [0.5, '#b9c2d0'], [1, '#7d889c']])}</defs>${S(gearPath(32, 32, 28, 22, 10), 'url(#gS)', '#5c667a', 2.5)}${C(32, 32, 13, '#ff86bd', '#b8155a', 2.5)}${C(32, 32, 4, '#fff')}`),
   'frame.gift': svg64(`<rect x="10" y="26" width="44" height="30" rx="5" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/><rect x="7" y="18" width="50" height="11" rx="4" fill="url(#gK)" stroke="#b8155a" stroke-width="2.5"/><rect x="28" y="18" width="8" height="38" fill="url(#gY)" stroke="#9a5200" stroke-width="2"/>${S('M32 18 C22 6 12 10 18 17 Q24 21 32 18 Z', 'url(#gY)', '#9a5200', 2)}${S('M32 18 C42 6 52 10 46 17 Q40 21 32 18 Z', 'url(#gY)', '#9a5200', 2)}`),
+  // 七種新形狀：星星、水滴、三角排在一起（果凍色＋反光）
+  'frame.shape7': svg64(`${star(21, 23, 15, 'url(#gY)', '#c87800', 2.4)}${drop(46, 24, 9.5, 'url(#gB)', '#2c55b8', 2.4)}${S('M32 33 Q34 30 36 33 L49 54 Q50 57 47 57 L17 57 Q14 57 15 54 Z', 'url(#gK)', '#b8155a', 2.4)}${L('M15 18 Q17 14 21 13', '#fff', 2.6, 0.9)}${L('M41 20 Q42 17 45 16', '#fff', 2.2, 0.9)}${L('M27 49 L31 42', '#fff', 2.4, 0.85)}`),
+  // 不要底座：虛線格子＋格子裡直接放一隻小玩偶（沒有底座）
+  'frame.none': svg64(`<rect x="6" y="6" width="52" height="52" rx="10" fill="none" stroke="#c9b7d8" stroke-width="3" stroke-dasharray="6 5" stroke-linecap="round"/><ellipse cx="34" cy="50" rx="13" ry="3.2" fill="#8b6fa8" opacity=".22"/>${C(21, 19, 6, '#f2c9a0', '#9a6a3c', 2)}${C(43, 19, 6, '#f2c9a0', '#9a6a3c', 2)}${C(32, 32, 15, '#f2c9a0', '#9a6a3c', 2.2)}${C(21, 19, 2.6, '#ff9ec4')}${C(43, 19, 2.6, '#ff9ec4')}<ellipse cx="32" cy="37" rx="6.5" ry="5" fill="#fff4e6"/>${C(26, 30, 2, '#3a2440')}${C(38, 30, 2, '#3a2440')}${C(32, 35, 1.8, '#3a2440')}${C(22, 36, 2.6, '#ff9ec4')}${C(42, 36, 2.6, '#ff9ec4')}`),
   'frame.gold': svg64(`${C(32, 32, 23, '#ff86bd', '#9a5200', 2)}<circle cx="32" cy="32" r="23" fill="none" stroke="url(#gY)" stroke-width="9"/>${C(32, 32, 27.5, 'none', '#9a5200', 2)}${C(32, 32, 18.5, 'none', '#9a5200', 1.6)}${star(32, 32, 9, '#fff6a8', '#e48a00', 1.2)}${L('M14 22 Q18 14 26 11', '#fff', 3, 0.85)}`),
   'theme.dock': themeIcon('#8fd3ef', '#3f8fb8', '#fff8e6', '#dff3fb', `<ellipse cx="32" cy="30" rx="8" ry="10" fill="#fff" stroke="#d4a24a" stroke-width="2.5"/>${L('M12 48 Q17 44 22 48 T32 48 T42 48 T52 48', '#3f8fb8', 3)}`),
   'theme.park': themeIcon('#ffb3cf', '#d9558c', '#fff4f8', '#e3f4d8', `${C(32, 30, 12, 'none', '#ff6fa8', 3)}${L('M32 18 L32 42 M20 30 L44 30 M23.5 21.5 L40.5 38.5 M40.5 21.5 L23.5 38.5', '#ff6fa8', 1.6)}${[[32, 18], [44, 30], [32, 42], [20, 30]].map(([x, y]) => C(x, y, 3, '#ffd23c', '#e48a00', 1)).join('')}${L('M26 50 L32 30 L38 50', '#d9558c', 2.5)}`),

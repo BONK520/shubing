@@ -1024,6 +1024,7 @@ svg.on .hi { opacity: .9; }
   box-shadow: 0 4px 0 #ecc9c0, 0 6px 12px rgba(112, 40, 64, .12);
 }
 .set-mechs[hidden], .sheet:not(.in-game) .set-mechs { display: none; }
+.sheet:not(.in-game) #set-closet { display: none; }
 .set-mechs .sm-t { font-weight: 800; font-size: 15px; text-align: left; }
 .sm-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .sm-it {
