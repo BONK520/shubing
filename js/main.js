@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zk';
-import { SLOGANS } from './slogans.js?v=20261124zk';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zk';
-import { blockerCanvas } from './blockers.js?v=20261124zk';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zk';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zk';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zk';
-import { STORY } from './story.js?v=20261124zk';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zl';
+import { SLOGANS } from './slogans.js?v=20261124zl';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zl';
+import { blockerCanvas } from './blockers.js?v=20261124zl';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zl';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zl';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zl';
+import { STORY } from './story.js?v=20261124zl';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zk';
+const MOD_V = '?v=20261124zl';
 
 window.__plushBooted = true;
 
@@ -1902,6 +1902,12 @@ function buildMap(popIndex = -1) {
       b.appendChild(st);
       b.appendChild(goalBadge(lvl));
       b.addEventListener('click', () => openLevel(i));
+      if (b.classList.contains('current')) {   // 往外擴散的白光圈（樣式說明在 style.css 的 .node-ring）
+        const ring = el('i', 'node-ring' + (b.classList.contains('unlock-pop') ? ' pop' : ''));
+        ring.setAttribute('aria-hidden', 'true');
+        ring.style.left = b.style.left; ring.style.top = b.style.top;
+        inner.appendChild(ring);
+      }
     }
     inner.appendChild(b);
     mapNodes.push(b);
@@ -1931,7 +1937,7 @@ function watchMapAnim(inner) {
   if (mapIO) { mapIO.disconnect(); mapIO = null; }
   if (typeof IntersectionObserver !== 'function') return;   // 舊瀏覽器：照舊全部在動
   mapIO = new IntersectionObserver(es => { for (const e of es) e.target.classList.toggle('vis', e.isIntersecting); }, { root: $('#map-scroll'), rootMargin: '50% 0px' });
-  for (const t of inner.querySelectorAll('.map-spot, .node.current')) mapIO.observe(t);
+  for (const t of inner.querySelectorAll('.map-spot, .node-ring')) mapIO.observe(t);
   inner.classList.add('io');
   driftVis();
 }
