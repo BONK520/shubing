@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124x">
+<link rel="stylesheet" href="style.css?v=20261124y">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -165,6 +165,18 @@
         <div class="pill level-pill"><span class="lv">第 <b id="hud-level" data-t="1">1</b> 關</span></div>
       </div>
       <button class="icon-btn dbg" id="btn-dbg-win" aria-label="測試：直接過關" hidden>⚡</button>
+      <!-- 工作單12：右上角陪玩角色，坐在立體雲上（奇數關薯餅、偶數關蛋黃哥）。main.js 的 buddy 區塊控制狀態 -->
+      <div class="buddy" id="buddy" hidden>
+        <span class="bd-cloud" aria-hidden="true"></span>
+        <span class="bd-rain" aria-hidden="true"></span>
+        <span class="bd-sway">
+          <span class="bd-pose"><button class="bd-char" id="bd-char" type="button" aria-label="陪玩的薯餅"><span class="av" id="bd-av"></span></button></span>
+          <span class="bd-sweat" aria-hidden="true"></span>
+          <span class="bd-lines" aria-hidden="true"></span>
+        </span>
+        <span class="bd-bubble" id="bd-bubble" aria-hidden="true"></span>
+        <span class="bd-fx" id="bd-fx" aria-hidden="true"></span>
+      </div>
     </div>
     <div class="hud">
       <div class="hud-moves" id="hud-moves-box">
@@ -308,14 +320,18 @@
       <span class="cl-chip"><svg class="cl-star"><use href="#i-star"/></svg><b id="cl-stars">0</b><small id="cl-stars-max">/ 0</small></span>
     </div>
     <p class="cl-busy" id="cl-busy" role="status" hidden>讀取中⋯帳號的衣櫃讀完就能換裝</p>
+    <div class="cl-me" id="cl-me"><span class="av" id="cl-me-av" aria-hidden="true"></span><span class="cl-me-t"><b>我的頭像</b><small>薯餅・穿著現在的衣服</small></span><div class="cl-bgs" id="cl-bgs" role="radiogroup" aria-label="頭像底色"></div></div>
+    <!-- 預覽＋分頁：往下捲時黏在上面、縮小，邊挑邊看得到（工作單12） -->
+    <div class="cl-stick" id="cl-stick">
     <div class="cl-preview">
       <canvas id="cl-board" aria-label="外觀預覽"></canvas>
       <div class="cl-ava" id="cl-ava" hidden><span class="av" id="cl-ava-me"></span></div>
       <span class="cl-try" id="cl-try" hidden>試穿中</span>
       <button class="cl-demo" id="cl-demo" type="button">試試消除特效</button>
+      <div class="cl-who" id="cl-who" role="group" aria-label="預覽穿在誰身上" hidden><button type="button" data-who="sloth" aria-pressed="true">薯餅</button><button type="button" data-who="egg" aria-pressed="false">蛋黃哥</button></div>
     </div>
-    <div class="cl-me" id="cl-me"><span class="av" id="cl-me-av" aria-hidden="true"></span><span class="cl-me-t"><b>我的頭像</b><small>薯餅・穿著現在的衣服</small></span><div class="cl-bgs" id="cl-bgs" role="radiogroup" aria-label="頭像底色"></div></div>
     <div class="cl-tabs" id="cl-tabs" role="tablist" aria-label="分類"></div>
+    </div>
     <div class="cl-grid" id="cl-grid" role="tabpanel"></div>
     <div class="cl-sub" id="cl-chest-sec">三星豪華寶箱<small>星星總數到了就能開</small></div>
     <div class="cl-chests" id="cl-chests"></div>
@@ -455,7 +471,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124x"></script>
-<script type="module" src="js/main.js?v=20261124x"></script>
+<script type="module" src="js/opening.js?v=20261124y"></script>
+<script type="module" src="js/main.js?v=20261124y"></script>
 </body>
 </html>

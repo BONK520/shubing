@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124x';
-import { SLOGANS } from './slogans.js?v=20261124x';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124x';
-import { blockerCanvas } from './blockers.js?v=20261124x';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124x';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124x';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124x';
-import { STORY } from './story.js?v=20261124x';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124y';
+import { SLOGANS } from './slogans.js?v=20261124y';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124y';
+import { blockerCanvas } from './blockers.js?v=20261124y';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124y';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124y';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124y';
+import { STORY } from './story.js?v=20261124y';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124x';
+const MOD_V = '?v=20261124y';
 
 window.__plushBooted = true;
 
@@ -1109,6 +1109,7 @@ function show(name) {
   // 離開遊戲畫面：清掉盤面的選取、提示和方塊。選取框、包裝糖、彩色炸彈的待機動畫會讓 renderer 一直重畫，
   // 畫布看不到了也照跑（耗電）。startLevel 每次都會重新 setBoard，所以清掉是安全的。
   clearTimeout(parkTimer);
+  if (name !== 'game') buddyStop();
   if (name !== 'game' && R) {
     R.select(null);
     R.hint(null);
@@ -1150,6 +1151,7 @@ const closet = createCloset();
 closet.onChange = () => { if (account && CLOSET_CLOUD) schedulePush(); };   // 兌換、開寶箱、換裝、換頭像 → 1.5 秒後跟進度一起存雲端
 const closetKey = () => saveKey + '.closet';
 let clR = null, clCat = 'outfit', tryOn = {};
+let clWho = 'sloth';   // 造型、外圈分頁的預覽穿在誰身上（薯餅／蛋黃哥），只是看看，不存檔
 let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
 function loadCloset() {
   closet.load(closetKey());
@@ -1164,6 +1166,7 @@ function applyLook() {
   if (clR) clR.setLook(previewLook());
   renderMeAvatar();
   renderClosetAva();
+  buddyDraw();
 }
 // 薯餅頭像：外圈 → 白底圓盤 → 薯餅（披風在後、帽子衣服在前）→ 稍微超出圓圈的外圈裝飾
 // 大小跟著 host 的 --s 變（左下角 52px、衣櫃預覽放大版）
@@ -1173,14 +1176,18 @@ function svgImg(svg, cls) {
 }
 // 頭像上的薯餅（角色目前只有薯餅）
 const shubingToy = () => PIECES.find(p => p.id === 'sloth') || TITLE_TOYS[1] || TITLE_TOYS[0];
+// 頭像裡的玩偶：'sloth' 薯餅（預設）、'egg' 蛋黃哥（右上角陪玩的偶數關、衣櫃預覽切換）
+const avatarPiece = who => (who !== 'sloth' && PIECES.find(p => p.id === who)) || shubingToy();
 // sloth_n.png 不透明部分的外框（0–1）：帽子照遊戲盤面上戴的位置放，跟 renderer.js accOverlay 同一套算法
 const SLOTH_BOX = { x0: 0.051, y0: 0.148, x1: 0.949, y1: 0.852 };
-function avatarHat(name) {
+const TOY_BOX = { sloth: SLOTH_BOX, egg: { x0: 0.125, y0: 0.043, x1: 0.875, y1: 0.961 } };   // egg_n.png 的不透明外框
+function avatarHat(name, who = 'sloth') {
   const svg = name && name !== 'none' ? ACCESSORY_SVG[name] : '';
   if (!svg) return null;
   const vb = /viewBox="([^"]+)"/.exec(svg), d = vb ? vb[1].trim().split(/[\s,]+/).map(Number) : [0, 0, 1, 1];
-  const face = TOY_FACE.sloth, place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 }, tune = accTune('sloth', name);
-  const b = SLOTH_BOX, bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  if (!TOY_BOX[who]) who = 'sloth';
+  const face = TOY_FACE[who], place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 }, tune = accTune(who, name);
+  const b = TOY_BOX[who], bw = b.x1 - b.x0, bh = b.y1 - b.y0;
   const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * (d[3] || 1) / (d[2] || 1);
   const ax = b.x0 + face.x * bw + place.dx * fw + tune.offsetX * bw;
   const ay = b.y0 + (face[place.anchor] != null ? face[place.anchor] : face.top) * bh - place.ay * ah + tune.offsetY * bh;
@@ -1189,20 +1196,22 @@ function avatarHat(name) {
   img.style.left = pc(ax - aw / 2); img.style.top = pc(ay); img.style.width = pc(aw); img.style.height = pc(ah);
   return img;
 }
-function avatarToy(outfit, hat) {
+function avatarToy(outfit, hat, who = 'sloth') {
+  if (!TOY_BOX[who]) who = 'sloth';
   const toy = el('span', 'av-toy');
-  const back = outfitSvg(outfit, 'back'), front = outfitSvg(outfit, 'front');
+  const back = outfitSvg(outfit, 'back', who), front = outfitSvg(outfit, 'front', who);
   if (back) toy.appendChild(svgImg(back, 'av-out'));
-  const t = toyEl(shubingToy(), 22);
+  const t = toyEl(avatarPiece(who), 22);
   t.classList.add('av-sloth');
   toy.appendChild(t);
   if (front) toy.appendChild(svgImg(front, 'av-out'));
-  const h = avatarHat(hat);
+  const h = avatarHat(hat, who);
   if (h) toy.appendChild(h);
   return toy;
 }
 // look：{ who, bg, hat, outfit, ring, fx }（自己的 meLook()、朋友的 p.look）
-function renderAvatar(host, look) {
+// who：頭像裡放哪隻玩偶（'sloth'、'egg'），外圈、白底圓盤、裝飾照舊
+function renderAvatar(host, look, who = 'sloth') {
   if (!host) return;
   const l = cleanLook(look), r = ringData(l.ring), bg = avatarBg(l.bg);
   const ring = el('span', 'av-ring');
@@ -1211,7 +1220,7 @@ function renderAvatar(host, look) {
   const disc = el('span', 'av-disc');
   disc.style.background = bg.bg;
   disc.style.setProperty('--disc-sh', bg.sh);
-  const parts = [ring, disc, avatarToy(l.outfit, l.hat)];
+  const parts = [ring, disc, avatarToy(l.outfit, l.hat, who)];
   const deco = ringDecoSvg(l.ring);
   if (deco) parts.push(svgImg(deco, 'av-deco'));
   host.replaceChildren(...parts);
@@ -1261,7 +1270,27 @@ function renderClosetAva() {
   box.hidden = !ava;
   $('#cl-board').hidden = ava;
   $('#cl-demo').hidden = ava;
-  if (ava) renderAvatar($('#cl-ava-me'), previewLook());
+  $('#cl-who').hidden = !ava;
+  for (const b of $$('#cl-who button')) b.setAttribute('aria-pressed', b.dataset.who === clWho ? 'true' : 'false');
+  if (ava) renderAvatar($('#cl-ava-me'), previewLook(), clWho);
+}
+// 往下捲時預覽＋分頁黏在上面變小。縮掉的高度用 margin-bottom 補回去，下面的格子不會跳
+function clStick(on) {
+  const st = $('#cl-stick');
+  if (!st || st.classList.contains('stuck') === on) return;
+  if (on && getComputedStyle(st).position !== 'sticky') return;   // 橫向：整個對話框一起捲，不黏
+  if (!on) { st.classList.remove('stuck'); st.style.marginBottom = ''; return; }
+  const h0 = st.offsetHeight;
+  st.classList.add('stuck');
+  st.style.marginBottom = Math.max(0, h0 - st.offsetHeight) + 'px';
+}
+function clStickCheck() {
+  const sc = $('#m-closet .cl-scroll'), st = $('#cl-stick');
+  if (!sc || !st) return;
+  // 黏住之前的位置：自己的 offsetTop（.cl-scroll 是 position: relative）；黏住後 offsetTop 會跟著捲，改用前一個兄弟的底
+  const prev = st.previousElementSibling;
+  const top = prev ? prev.offsetTop + prev.offsetHeight + 10 : 0;   // 10 = .cl-scroll 的 gap
+  clStick(sc.scrollTop > top + 2);
 }
 function previewLook() {
   const l = meLook();
@@ -1277,6 +1306,10 @@ function renderClosetBtn() {
 function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
 function openCloset() {
   tryOn = {};
+  clWho = 'sloth';
+  const sc = $('#m-closet .cl-scroll');
+  if (sc) sc.scrollTop = 0;
+  clStick(false);
   renderCloset();
   openModal('m-closet');
   renderClosetAva();
@@ -1304,7 +1337,9 @@ function scrollToChests(smooth = true) {
     sc = sc.parentElement;
   }
   if (!sc || sc === document.body) return;
-  const top = sec.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 6;
+  clStick(true);
+  const cover = sc.contains($('#cl-stick')) ? $('#cl-stick').offsetHeight + 8 : 0;
+  const top = sec.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 6 - cover;
   try { sc.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' }); } catch (e) { sc.scrollTop = top; }
 }
 function closetClosed() {
@@ -1344,7 +1379,8 @@ function renderCloset() {
   for (const c of CATEGORIES) {
     const b = el('button', 'cl-tab' + (c.id === clCat ? ' on' : '') + (closet.hasNew(stars, c.id) ? ' new' : ''));
     b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', c.id === clCat ? 'true' : 'false');
-    b.textContent = c.name;
+    b.append(el('span', 'ct-l', c.name), el('span', 'ct-s', c.short || c.name));
+    b.setAttribute('aria-label', c.name);
     b.addEventListener('click', () => { if (clCat === c.id) return; clCat = c.id; audio.play('tap'); renderCloset(); renderClosetAva(); });
     tabs.appendChild(b);
   }
@@ -1359,7 +1395,7 @@ function renderCloset() {
     const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
     b.type = 'button';
     const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
-    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none'));   // 薯餅造型：直接看薯餅穿起來的樣子
+    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none', clWho));   // 造型：直接看薯餅（或蛋黃哥）穿起來的樣子
     else { const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false; pic.appendChild(img); }
     if (closet.isNew(it, stars)) b.appendChild(el('span', 'ci-new', '新'));
     if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
@@ -2340,6 +2376,7 @@ async function startLevel(idx, resume = null) {
 
   setNum($('#hud-level'), idx + 1);
   buildGoal();
+  buddyReset(!!resumed);
   renderMoves();
   renderScore(true);
   resetCheer();
@@ -2563,6 +2600,7 @@ function renderGoal(init = false) {
 function renderMoves() {
   setNum($('#hud-moves'), Math.max(0, dispMoves));
   $('#hud-moves-box').classList.toggle('low', state !== 'ending' && dispMoves <= 5 && dispMoves > 0);
+  buddyMoves();
 }
 // 分數往上跑：每幀只改一個數字（文字有變才寫），星星條的寬度只在目標分數改變時設一次，由 CSS transition 補間
 let scoreRaf = 0;
@@ -2635,6 +2673,99 @@ function cheer() {
   const box = $('#cheer');
   if (box.classList.contains('party') || box.classList.contains('sad')) return;
   for (const d of box.children) restartAnim(d, 'jump');
+}
+
+// ---------- 右上角陪玩角色（工作單12） ----------
+// 單數關薯餅、雙數關蛋黃哥，坐在雲上，穿衣櫃裡的造型（帽子、衣服、外圈都跟 meLook 一樣）。
+// 平常：呼吸＋輕輕晃；剩5步以下（跟步數框的 .low 同一個判斷）：發抖、冒汗、雲變灰下小雨；
+// 過關：跳、扭、雲發金光、每1.45秒噴一次彩紙。輸了回到平常（不再加重難過，失敗卡片已經夠清楚）。
+// 點角色只會彈一下，不在畫布上，不影響盤面、不扣步數
+const BUDDIES = [{ toy: 'sloth', name: '薯餅' }, { toy: 'egg', name: '蛋黃哥' }];
+const buddy = { toy: 'sloth', said: new Set(), calmAt: 6, timers: [], confetti: 0, bubbleT: 0 };
+const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function buddyStop() {
+  const b = $('#buddy');
+  if (!b) return;
+  clearInterval(buddy.confetti); buddy.confetti = 0;
+  buddy.timers.forEach(clearTimeout); buddy.timers = [];
+  clearTimeout(buddy.bubbleT);
+  $('#bd-bubble').classList.remove('show');
+  $('#bd-fx').textContent = '';
+  b.classList.remove('party');
+}
+function buddyDraw() {
+  if (!$('#bd-av')) return;
+  renderAvatar($('#bd-av'), meLook(), buddy.toy);
+}
+function buddyReset(resume = false) {
+  const b = $('#buddy');
+  if (!b) return;
+  buddyStop();
+  b.classList.remove('worry');
+  const who = BUDDIES[Math.abs(levelIdx | 0) % BUDDIES.length];
+  buddy.toy = who.toy;
+  $('#bd-char').setAttribute('aria-label', '陪玩的' + who.name + '（點一下）');
+  buddy.said = new Set();
+  // 接著玩的時候已經過了的數字不再講一次
+  if (resume) for (let n = 5; n >= dispMoves; n--) buddy.said.add(n);
+  buddy.calmAt = 6;
+  buddyDraw();
+  b.hidden = false;
+  $('.game-top').classList.add('has-buddy');
+}
+function buddySay(txt, ms = 1600) {
+  const bub = $('#bd-bubble');
+  if (!bub) return;
+  bub.textContent = txt;
+  bub.classList.add('show');
+  clearTimeout(buddy.bubbleT);
+  buddy.bubbleT = setTimeout(() => bub.classList.remove('show'), ms);
+}
+// renderMoves 每次都會叫：決定擔不擔心，剩3步、1步各講一次（5步有「只剩5步了」的提示，不重複）
+function buddyMoves() {
+  const b = $('#buddy');
+  if (!b || b.hidden) return;
+  const worry = state !== 'ending' && state !== 'won' && dispMoves <= 5 && dispMoves > 0 && dispMoves < buddy.calmAt;
+  b.classList.toggle('worry', worry && !b.classList.contains('party'));
+  if (worry && (dispMoves === 3 || dispMoves === 1) && !buddy.said.has(dispMoves)) {
+    buddy.said.add(dispMoves);
+    buddySay(`剩${dispMoves}步…`);
+  }
+}
+function buddyConfetti() {
+  if (screen !== 'game' || document.hidden || reduceMotion()) return;
+  const fx = $('#bd-fx');
+  if (!fx || !$('#buddy').offsetWidth) return;   // 角色沒顯示（小螢幕橫向）就不放彩帶
+  const burst = el('span', 'bd-burst');
+  const cols = ['#ff6fa8', '#ffd23c', '#5cc6f0', '#a77de0', '#8eea64', '#ff9a3c'];
+  for (let i = 0; i < 41; i++) {
+    const star = i >= 34;
+    const p = el('i', star ? 'st' : '');
+    const a = Math.random() * Math.PI * 2, d = 34 + Math.random() * 46;
+    p.style.background = star ? '#ffd23c' : cols[i % cols.length];
+    p.style.setProperty('--x', (Math.cos(a) * d).toFixed(1) + 'px');
+    p.style.setProperty('--up', (-26 - Math.random() * 34).toFixed(1) + 'px');
+    p.style.setProperty('--y', (Math.sin(a) * d * .5 + 34 + Math.random() * 26).toFixed(1) + 'px');
+    p.style.setProperty('--r', ((Math.random() - .5) * 720).toFixed(0) + 'deg');
+    p.style.setProperty('--d', (Math.random() * .12).toFixed(2) + 's');
+    burst.appendChild(p);
+  }
+  fx.appendChild(burst);
+  const t = setTimeout(() => { burst.remove(); buddy.timers = buddy.timers.filter(x => x !== t); }, 1600);   // 停在過關畫面很久，計時器清單也不會一直變長
+  buddy.timers.push(t);
+}
+function buddyParty() {
+  const b = $('#buddy');
+  if (!b || b.hidden) return;
+  b.classList.remove('worry');
+  b.classList.add('party');
+  buddySay('耶！', 2200);
+  buddyConfetti();
+  clearInterval(buddy.confetti);
+  buddy.confetti = setInterval(() => {
+    if (screen !== 'game') { buddyStop(); return; }
+    buddyConfetti();
+  }, 1450);
 }
 
 // ---------- 提示 ----------
@@ -3158,6 +3289,7 @@ async function winFlow() {
   audio.play('win');
   fireworks(3600);                          // 過關煙花（橫幅跳出來的同時從下面發射）
   $('#cheer').classList.add('party');
+  buddyParty();
   const left = movesLeft;
   sugarBonus = left * 3000;
   if (left > 0 && SLOGANS.sugar.voice) audio.play('voice', { id: SLOGANS.sugar.voice, delay: 150 });
@@ -3418,6 +3550,7 @@ async function loseFlow() {
   selected = null;
   R.select(null);
   $('#cheer').classList.add('sad');
+  { const b = $('#buddy'); if (b) b.classList.remove('worry'); }   // 輸了陪玩角色回到平常的樣子
   audio.play('lose');
   $('#ml-title').textContent = '步數用完了';
   const more = $('#ml-more');
@@ -3707,6 +3840,13 @@ function bindUI() {
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#cl-demo').addEventListener('click', closetDemo);
   $('#cl-ready').addEventListener('click', () => { audio.play('tap'); scrollToChests(); });
+  for (const b of $$('#cl-who button')) b.addEventListener('click', () => {
+    if (clWho === b.dataset.who) return;
+    clWho = b.dataset.who;
+    audio.play('tap');
+    renderCloset(); renderClosetAva();
+  });
+  $('#m-closet .cl-scroll').addEventListener('scroll', clStickCheck, { passive: true });
   $('#cp-ok').addEventListener('click', () => { $('#cl-pop').hidden = true; renderCloset(); });
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
   $('#ml-more').addEventListener('click', () => {
@@ -3714,7 +3854,9 @@ function bindUI() {
     save.boosters.moves5--; writeSave(); renderBoosters();
     closeModal('m-lose');
     $('#cheer').classList.remove('sad');
-    movesLeft += 5; dispMoves = movesLeft; renderMoves();
+    movesLeft += 5; dispMoves = movesLeft;
+    buddy.calmAt = movesLeft; buddy.said = new Set();   // 剛拿到5步先不擔心，走下一步再照步數判斷
+    renderMoves();
     state = 'play'; lowWarned = false;
     saveInProgress();
     toast('再給你 5 步，加油！');
@@ -3722,6 +3864,8 @@ function bindUI() {
   });
   for (const b of $$('.bst')) b.addEventListener('click', () => onBoosterClick(b.dataset.b));
   $('#ml-map').addEventListener('click', backToMap);
+  $('#bd-char').addEventListener('click', () => { audio.play('tap'); if (!reduceMotion()) restartAnim($('#bd-char'), 'poke'); });
+  $('#bd-char').addEventListener('animationend', e => { if (e.animationName === 'bdPoke') $('#bd-char').classList.toggle('poke', false); });
 
   // 每個按鈕都有小小的點擊聲
   document.addEventListener('click', e => {
@@ -3774,6 +3918,8 @@ function installDebug() {
     get idle() { return state === 'play' && !moving && !!R && !R.busy && !ptr && !$('.modal.open'); },
     levels: LEVELS,
     save,
+    renderAvatar,
+    buddy,
     startLevel,
     openStartCard,
     openLevel,

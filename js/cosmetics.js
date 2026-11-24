@@ -14,7 +14,7 @@ export const DEBUG_UNLOCK_ALL_COSMETICS = false;
 
 // ---------- 分類 ----------
 export const CATEGORIES = [
-  { id: 'outfit', name: '薯餅造型', short: '造型' },   // 只穿在地圖左下角的薯餅頭像和衣櫃預覽，盤面上的娃娃不穿
+  { id: 'outfit', name: '薯餅造型', short: '造型' },   // 只穿在地圖左下角的薯餅頭像和衣櫃預覽，盤面上的娃娃不穿；右上角陪玩的薯餅（和蛋黃哥）有穿
   { id: 'ring', name: '頭像外圈', short: '外圈' },     // 地圖左下角頭像外面那一圈（跟造型都是打扮頭像，放隔壁）
   { id: 'hat', name: '頭飾配件', short: '配件' },
   { id: 'fx', name: '消除特效', short: '特效' },
@@ -382,10 +382,41 @@ export const OUTFITS = {
   dino: { back: '', front: S('M35 10 L37 0.5 L43 6 Z', 'url(#gY)', '#9a5200', 1.2) + S('M45 5 L50 -4 L55 5 Z', 'url(#gY)', '#9a5200', 1.2) + S('M57 6 L63 0.5 L65 10 Z', 'url(#gY)', '#9a5200', 1.2) + S('M27 26 Q26 4 50 4 Q74 4 73 26 Q50 20 27 26 Z', 'url(#gG)', '#1f6a1f') + C(41, 11, 1.6, '#1f6a1f') + C(59, 11, 1.6, '#1f6a1f') + L('M33 14 Q36 8 42 7', '#fff', 1.5, 0.7) + [33, 39, 45, 55, 61, 67].map(x => S(`M${x - 2.4} ${x < 50 ? 23.6 + (50 - x) * 0.04 : 23.6 + (x - 50) * 0.04} L${x} 28 L${x + 2.4} ${x < 50 ? 23.2 + (50 - x) * 0.04 : 23.2 + (x - 50) * 0.04} Z`, '#fff', '#1f6a1f', 0.9)).join('') },
   painter: { back: '', front: L('M50 6 L51 1.5', '#8f1d1d', 2.6) + S('M28 20 Q24 8 46 6 Q70 5 74 15 Q74 22 62 22 Q45 25 28 20 Z', 'url(#gR)', '#8f1d1d') + L('M33 13 Q38 8 46 8', '#fff', 1.5, 0.75) + S('M4 64 Q3 55 13.5 55 Q24 55 24 63 Q24 68 19 67 Q15 66 15 70 Q15 74 10 73 Q4 71 4 64 Z', '#f3d9b5', '#7a4a1f', 1.4) + C(8.5, 61, 1.9, '#ff5a5a') + C(13.5, 58.5, 1.9, '#ffd23c') + C(19, 60, 1.9, '#5b8ef0') + C(9.5, 67, 1.9, '#63c94f') + L('M22 76 L31.5 61', '#7a4a1f', 2.2) + S('M30.6 62.4 L33.8 56.5 L34.6 60.6 Z', '#ff86bd', '#b8155a', 0.9) },
 };
-export function outfitSvg(id, layer) {
-  const o = OUTFITS[String(id || '').replace(/^outfit\./, '')];
+// ---------- 角色對位表：別隻玩偶穿薯餅的造型 ----------
+// 造型是照薯餅畫的。換成別隻時，y < split 的部分（帽子）和下面的部分（領子、披風、道具）各自位移縮放，
+// 對到那隻玩偶的頭頂和身體。整體對位不好看的造型，在 per 裡個別調：all = 整套用同一個 transform（不切上下）。
+// 量法（egg_n.png 的不透明範圍，0–100）：蛋黃哥頭頂約 y9、y20 那排頭寬 x23–77；薯餅帽沿那排（y24）頭寬 x27–68。
+// skip：怎麼調都怪、先不穿的造型（衣櫃預覽會出「蛋黃哥這套還在做」）
+export const OUTFIT_FIT = {
+  sloth: null,
+  egg: {
+    split: 36,
+    head: 'translate(50 21) scale(1.12) translate(-50 -24)',
+    body: 'translate(0 -2)',
+    per: {
+      space: { all: 'translate(50 28) scale(1.14) translate(-50 -35)' },   // 頭盔包住整顆蛋黃，衣領落在蛋殼口
+      dino: { head: 'translate(50 18) scale(1.12) translate(-50 -24)' },     // 牙齒那排會蓋到眼睛，再往上提一點
+    },
+    skip: [],
+  },
+};
+const outfitKey = id => String(id || '').replace(/^outfit\./, '');
+export const outfitSkipped = (id, who) => { const f = OUTFIT_FIT[who]; return !!(f && f.skip.includes(outfitKey(id))); };
+function fitBody(body, k, who) {
+  const f = OUTFIT_FIT[who];
+  if (!f) return body;
+  const p = Object.assign({ head: f.head, body: f.body }, f.per[k]);
+  if (p.all) return `<g transform="${p.all}">${body}</g>`;
+  const sp = p.split || f.split;
+  return `<clipPath id="fu"><rect x="-60" y="-60" width="220" height="${sp + 60}"/></clipPath><clipPath id="fd"><rect x="-60" y="${sp}" width="220" height="${160 - sp}"/></clipPath>`
+    + `<g transform="${p.head}"><g clip-path="url(#fu)">${body}</g></g><g transform="${p.body}"><g clip-path="url(#fd)">${body}</g></g>`;
+}
+// who：'sloth'（預設）或 'egg'；SVG 各自是一張圖，clipPath 的 id 不會跟別張撞
+export function outfitSvg(id, layer, who = 'sloth') {
+  const k = outfitKey(id), o = OUTFITS[k];
   const body = o && o[layer];
-  return body ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${body}</svg>` : '';
+  if (!body || outfitSkipped(k, who)) return '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${fitBody(body, k, who)}</svg>`;
 }
 
 // ---------- 頭像外圈（地圖左下角頭像外面那一圈）----------
