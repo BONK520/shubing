@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124za';
-import { SLOGANS } from './slogans.js?v=20261124za';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124za';
-import { blockerCanvas } from './blockers.js?v=20261124za';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124za';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124za';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124za';
-import { STORY } from './story.js?v=20261124za';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zb';
+import { SLOGANS } from './slogans.js?v=20261124zb';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zb';
+import { blockerCanvas } from './blockers.js?v=20261124zb';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124zb';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zb';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zb';
+import { STORY } from './story.js?v=20261124zb';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124za';
+const MOD_V = '?v=20261124zb';
 
 window.__plushBooted = true;
 
@@ -42,7 +42,7 @@ const SVGNS = 'http://www.w3.org/2000/svg';
 const SCANNED = PIECES.filter(p => p.scan);
 // 頭像（players.look）、衣櫃（saves.closet）上雲端：Firebase 規則發布之前一定要是 false（舊規則會擋掉整份存檔 / 排行榜）。
 // 使用者在 Firebase 主控台發布 2026-11-24 的規則後改成 true。測試：模擬器加 ?closetcloud=1 才打開
-const RULES_2026_11_24 = false;
+const RULES_2026_11_24 = true;   // 11/24 使用者發布了新規則
 const CLOSET_CLOUD = RULES_2026_11_24 || (DEBUG && params.has('emu') && params.has('closetcloud'));
 const TITLE_TOYS = (SCANNED.length >= 3 ? SCANNED : PIECES).slice(0, 3);
 

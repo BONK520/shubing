@@ -244,10 +244,11 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
   await closeAll(pb);
   await G(pb, () => window.__game.showMap());
   await pb.waitForTimeout(1500);
-  const pins = await G(pb, () => [...document.querySelectorAll('#map-inner .fr-pins')].map(x => ({ n: x.querySelectorAll('.fr-pin').length, top: x.style.top })));
-  const node3 = await G(pb, () => document.querySelectorAll('#map-inner .node')[2]?.style.top);
-  check('map: Alice\'s pin stands next to level 3', pins.length === 1 && pins[0].n === 1 && pins[0].top === node3, JSON.stringify({ pins, node3 }));
-  await G(pb, () => document.querySelector('#map-inner .fr-pin').click());
+  // 工作單15：朋友的頭像（.mav，不是 .me）站在他目前那關旁邊
+  const pins = await G(pb, () => [...document.querySelectorAll('#map-inner .mav:not(.me)')].map(x => x.getAttribute('aria-label')));
+  check('map: Alice\'s avatar stands next to level 3', pins.length === 1 && pins[0].startsWith('alice，第3關'), JSON.stringify(pins));
+  await G(pb, () => document.querySelector('#map-inner .mav:not(.me)').click());
+  await pb.waitForTimeout(1500);
   await pb.waitForTimeout(300);
   check('map: tapping the pin says name, level and stars', (await pb.innerText('#toast')).includes(`alice・第3關・★${aliceStars}`), await pb.innerText('#toast'));
 
