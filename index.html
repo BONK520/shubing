@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124ze">
+<link rel="stylesheet" href="style.css?v=20261124zf">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播） -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -82,6 +82,8 @@
 
 <!-- 封面背景（蛋蛋泡泡，工作單13）：天空、海、沙灘、兩朵慢慢飄的雲，全部是 CSS；只在封面顯示 -->
 <div class="cover-bg" id="cover-bg" aria-hidden="true"><i class="cv-sea"></i><i class="cv-sand"></i><i class="cv-drift d1"></i><i class="cv-drift d2"></i></div>
+<!-- 關卡背景（工作單17）：玩某一關時換成那一關所在那一站的顏色和淡淡的小物，main.js paintLevelBg() 畫 -->
+<div class="lvl-bg" id="lvl-bg" aria-hidden="true"></div>
 
 <div id="app">
 
@@ -470,7 +472,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124ze"></script>
-<script type="module" src="js/main.js?v=20261124ze"></script>
+<script type="module" src="js/opening.js?v=20261124zf"></script>
+<script type="module" src="js/main.js?v=20261124zf"></script>
 </body>
 </html>

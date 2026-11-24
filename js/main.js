@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124ze';
-import { SLOGANS } from './slogans.js?v=20261124ze';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124ze';
-import { blockerCanvas } from './blockers.js?v=20261124ze';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt } from './mapart.js?v=20261124ze';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124ze';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124ze';
-import { STORY } from './story.js?v=20261124ze';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zf';
+import { SLOGANS } from './slogans.js?v=20261124zf';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zf';
+import { blockerCanvas } from './blockers.js?v=20261124zf';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zf';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zf';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zf';
+import { STORY } from './story.js?v=20261124zf';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124ze';
+const MOD_V = '?v=20261124zf';
 
 window.__plushBooted = true;
 
@@ -2497,7 +2497,8 @@ async function startLevel(idx, resume = null) {
   R.hint(null);
   R.setBoard(snap);
   sizeBoard();
-  requestAnimationFrame(() => { if (token === session) sizeBoard(); });
+  paintLevelBg();
+  requestAnimationFrame(() => { if (token === session) { sizeBoard(); paintLevelBg(); } });
 
   state = 'intro';
   await sleep(380);
@@ -2543,6 +2544,38 @@ function sizeBoard() {
   try { R.layout(); } catch (e) { console.error(e); }
   cellPx = 0;
   cellCenters = null;
+}
+// 關卡背景（工作單17）：換成這一關所在那一站的顏色，空白處畫幾個淡淡的站內小物。
+// 只有開關卡、換尺寸時重畫一次（靜態 SVG，不動、不模糊），遊戲中不耗電。
+let lvlBgKey = '';
+const hexRgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const lum = c => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+function paintLevelBg() {
+  const el = $('#lvl-bg');
+  if (!el || !level) return;
+  const st = stationOfLevel(levelIdx + 1);
+  const W = window.innerWidth, H = window.innerHeight;
+  const rects = [];
+  for (const q of ['#scr-game .game-top', '#scr-game .hud', '#board', '#cheer', '#boosters', '#booster-tip']) {
+    const n = $(q); if (!n) continue;
+    const b = n.getBoundingClientRect();
+    if (b.width > 0 && b.height > 0) rects.push({ x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) });
+  }
+  const key = st.from + '|' + W + 'x' + H + '|' + rects.map(r => r.x + ',' + r.y + ',' + r.w + ',' + r.h).join(';');
+  if (key === lvlBgKey) return;
+  lvlBgKey = key;
+  const stops = levelStops(st);
+  el.style.background = 'linear-gradient(to top, ' + stops.map(([o, c]) => c + ' ' + (o * 100).toFixed(1) + '%').join(', ') + ')';
+  try { el.innerHTML = levelSceneSVG(st, W, H, rects); } catch (e) { console.warn('[lvl-bg]', e); el.innerHTML = ''; }
+  // 深色站（宇宙、礦坑、夜市、月亮島、天文台）：HUD 外面的字改成淺色加陰影，不加色帶
+  const cols = stops.map(s => hexRgb(s[1]));
+  const avg = cols.reduce((a, c) => a + lum(c), 0) / cols.length;
+  const dark = avg < 0.5;   // 剛好是宇宙、糖果礦坑、燈籠夜市、月亮島、天文台五站
+  if (dark) document.documentElement.dataset.dark = '1'; else delete document.documentElement.dataset.dark;
+  // 半透明盤面的影子用這一站最深的顏色，再往深紫調一點
+  const deep = cols.reduce((a, c) => lum(c) < lum(a) ? c : a, cols[0]);
+  const shade = deep.map((v, i) => Math.round(v * 0.45 + [20, 10, 40][i] * 0.55));
+  if (R && R.setScene) R.setScene({ shade });
 }
 // 從 renderer.cellAt 量出格子大小（拖曳門檻要用）
 function measureCell() {
@@ -4008,7 +4041,7 @@ function bindUI() {
   document.addEventListener('dblclick', e => e.preventDefault());
 
   const onResize = () => {
-    if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); buildScrubber(); mavT = -1; mavSchedule(); }
+    if (screen === 'game') { sizeBoard(); paintLevelBg(); } else if (screen === 'map') { refreshMapArt(); updateMapHere(); buildScrubber(); mavT = -1; mavSchedule(); }
   };
   window.addEventListener('resize', onResize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onResize);

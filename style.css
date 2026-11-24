@@ -2395,3 +2395,14 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
   .mav, .mav-nm, .mav-tip, .mav-arr { transition: none; }
   .mav.hop .mav-in { animation: none; }
 }
+
+/* ---------- 關卡背景（工作單17）：遊戲畫面換成這一關所在那一站的顏色 ----------
+   靜態漸層＋一張 SVG（淡淡的站內小物，只畫在盤面、HUD、道具列外面），不模糊、不動，遊戲中不耗電。
+   地圖、封面、衣櫃還是原本的天空。換站沒有轉場。 */
+.lvl-bg { position: fixed; inset: 0; z-index: 0; display: none; pointer-events: none; overflow: hidden; }
+.lvl-bg svg { position: absolute; left: 0; top: 0; display: block; }
+:root[data-screen="game"] .lvl-bg { display: block; }
+:root[data-screen="game"] .sky { visibility: hidden; }
+/* 深色站（宇宙、糖果礦坑、燈籠夜市、月亮島、天文台）：直接寫在背景上的字加深色陰影，不加色帶 */
+:root[data-screen="game"][data-dark] #scr-game .bst .bn { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+:root[data-screen="game"][data-dark] .board-wrap::before { opacity: .35; }

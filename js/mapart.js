@@ -643,3 +643,34 @@ export function coverArtHTML(W, H, o = {}, p = 'cv-') {
   s += sea;
   return prefixIds(`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">${s}</svg>`, p);
 }
+
+/* ---------- 關卡背景（工作單17）：玩某一關時，背景換成那一關所在的站 ---------- */
+// 用關卡編號找站（from ≤ n ≤ to）；找不到的（超過最後一站）用最後一站
+export function stationOfLevel(n) { return R.find(r => n >= r.from && n <= r.to) || R[R.length - 1]; }
+// 地圖上每站漸層的最下面一段是「從上一站接過來」的顏色，關卡背景不要這段，從這一站自己的顏色開始
+export function levelStops(r) {
+  const s = r.stops;
+  return s.length >= 3 && s[1][0] >= .2 ? [[0, s[1][1]], ...s.slice(1)] : s;
+}
+// 站的道具畫在盤面和按鈕之外的空位（block＝擋住的方框 {x,y,w,h}，用畫面的 px），淡淡的；extra 整面淡淡畫
+// 比較高或比較寬的小物，實際畫到的範圍（寬的一半、往上高度，用 getBBox 量的）；其他用 32×70
+const EXT = { palm: [40, 84], tower: [23, 103], ferris: [36, 76], bigtree: [29, 75], peak: [47, 99], chimney: [33, 103], grandclock: [32, 72], hotair: [32, 88], windmill: [42, 86], fern: [45, 70], citygate: [35, 70], building: [32, 90] };
+export function levelSceneSVG(r, W, H, block) {
+  const rng = rngOf(r.from * 131 + 7);
+  const list = r.props || [...new Set(r.zones.flatMap(z => z[2]))];
+  const pad = 6, hit = (x0, y0, x1, y1) => block.some(b => x1 > b.x - pad && x0 < b.x + b.w + pad && y1 > b.y - pad && y0 < b.y + b.h + pad);
+  const placed = [];
+  let art = '';
+  for (let tries = 0; tries < 260 && placed.length < 8; tries++) {
+    const name = pick(rng, list), [hw, ht] = EXT[name] || [32, 70];   // 小物實際畫到的寬一半、往上高度
+    const sc = .7 + rng() * .45, x = W * (.04 + rng() * .92), y = ht * sc + rng() * (H - ht * sc);
+    const x0 = x - hw * sc, x1 = x + hw * sc, y0 = y - ht * sc, y1 = y + 6 * sc;
+    if (x0 < 0 || x1 > W || y0 < 0 || y1 > H || hit(x0, y0, x1, y1)) continue;
+    if (placed.some(p => Math.hypot(p[0] - x, p[1] - y) < 74)) continue;
+    placed.push([x, y]);
+    art += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${sc.toFixed(2)})">${PR[name](rng)}</g>`;
+  }
+  const ex = extra(r, W, H, rng).replace(/id="(seaf|rivf)"/g, 'id="lb-$1"').replace(/url\(#(seaf|rivf)\)/g, 'url(#lb-$1)');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true" focusable="false"><defs>${cloudDefs('lb-')}</defs>`
+    + (ex ? `<g opacity=".55">${ex}</g>` : '') + `<g opacity=".4">${prefixIds(art, 'lb-')}</g></svg>`;
+}

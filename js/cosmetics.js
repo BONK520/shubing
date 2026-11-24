@@ -85,6 +85,7 @@ export const ITEMS = [
   { id: 'frame.gold',    cat: 'frame', name: '金色底座',   unlock: { chest: 13 } },
   // 分類 4：棋盤背景主題（配色取自地圖上那一站）
   { id: 'theme.macaron', cat: 'theme', name: '夢幻馬卡龍',     unlock: null },
+  { id: 'theme.glass',    cat: 'theme', name: '半透明',     unlock: null },   // 工作單17：看得到後面這一站的背景
   { id: 'theme.claw',    cat: 'theme', name: '粉紅夾娃娃機台', unlock: { chest: 0 } },
   { id: 'theme.picnic',  cat: 'theme', name: '野餐草莓格紋',   unlock: { coins: 4 } },
   { id: 'theme.galaxy',  cat: 'theme', name: '深邃夢幻星空',   unlock: { chest: 4 } },
@@ -365,6 +366,8 @@ const NEW_ICON = {
   'theme.icecream': themeIcon('#ffc6d8', '#e0779c', '#fff8f0', '#e6f6f0', `${S('M23 30 L32 54 L41 30 Z', '#e8b878', '#a8682a', 2)}${L('M26 36 L36 46 M38 36 L29 46', '#a8682a', 1.2, 0.7)}${C(28, 26, 7, '#ffd0e6', '#f0468f', 2)}${C(36, 26, 7, '#d9ffc8', '#2f8a2a', 2)}${C(32, 19, 6.5, '#fff8c4', '#e48a00', 2)}`),
   'theme.moon': themeIcon('#4a5596', '#262b66', '#33397a', '#3d4488', `${S('M36 14 A15 15 0 1 0 46 40 A12 12 0 1 1 36 14 Z', 'url(#gY)', '#9a5200', 1.8)}${star(46, 20, 3.5, '#fff6a8')}${star(20, 46, 2.6, '#fff6a8')}`),
   'theme.castle': themeIcon('#d9cff5', '#8f7fc8', '#f5f0ff', '#fff4e6', `<g fill="#fff" stroke="#8f7fc8" stroke-width="2"><rect x="18" y="28" width="28" height="20"/><rect x="15" y="20" width="9" height="28"/><rect x="40" y="20" width="9" height="28"/></g>${S('M14 21 L19.5 12 L25 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M39 21 L44.5 12 L50 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M28 48 L28 40 Q32 35 36 40 L36 48 Z', '#9a5cf0', '#5b2bb0', 1.4)}${C(12, 52, 5, '#fff', '#d6cdef', 1.2)}${C(52, 52, 5, '#fff', '#d6cdef', 1.2)}`),
+  // 半透明：後面有彩色的色塊，上面蓋一層白色半透明的格子和白邊
+  'theme.glass': svg64(`<rect x="6" y="6" width="52" height="52" rx="12" fill="#b9a6e6"/>${C(18, 20, 13, '#ff86bd')}${C(46, 22, 11, '#ffd23c')}${C(40, 46, 13, '#5b8ef0')}${C(16, 48, 9, '#63c94f')}<rect x="6" y="6" width="52" height="52" rx="12" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.95)" stroke-width="4"/><rect x="11" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="11" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="25" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="39" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="11" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/>${L('M14 16 Q18 11 26 10', '#fff', 2.6, 0.9)}`),
 };
 
 // ---------- 薯餅造型（只畫在地圖左下角頭像、衣櫃預覽）----------

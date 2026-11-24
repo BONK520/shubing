@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124ze';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124ze';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124zf';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124zf';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124ze';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124zf';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -201,6 +201,10 @@ Object.assign(BOARD_THEMES, {
   moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars' }),
   castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
 });
+// 半透明盤面（工作單17）：白色 30% 的毛玻璃底板、白色 12% / 26% 交錯的格子，外圈一條白邊和柔柔的落影。
+// 模糊和白邊、落影由盤面下面的 DOM（.board-under）負責；玩偶的影子用這一關那一站的深色（R.setScene）
+BOARD_THEMES.glass = { ...BOARD_THEMES.macaron, glassy: true, shadow: [60, 40, 110],
+  flat: { base: '#fff', baseAlpha: 0.3, cellA: 'rgba(255,255,255,0.12)', cellB: 'rgba(255,255,255,0.26)' } };
 function saturate(c, amt) {
   const g = (c[0] + c[1] + c[2]) / 3;
   return c.map(v => clamp(Math.round(g + (v - g) * (1 + amt)), 0, 255));
@@ -391,6 +395,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   function themeGeom() { MARGIN = BOARD_THEME.flat ? MARGIN_FLAT : MARGIN_RIM; FRAME_B = BOARD_THEME.flat ? 0 : FRAME_B_RIM; }
   // 衣櫃的外觀（R.setLook）：hat 配件、frame 方塊底座、theme 盤面主題；消除特效在 particleSkin
   let look = { hat: 'none', fx: 'default', frame: 'jelly', theme: 'macaron' };
+  // 這一關的場景（R.setScene）：半透明盤面時，玩偶和底座的影子用這一站的深色
+  let sceneShade = null;
+  const themeShadow = () => (BOARD_THEME.glassy && sceneShade) || BOARD_THEME.shadow || [110, 60, 140];
+  // 半透明盤面下面的 DOM：模糊背景（backdrop-filter）＋白邊＋落影，只在盤面大小改變時重建，不會每一幀重算
+  let under = null, underKey = '';
+  const uid = 'bu' + Math.random().toString(36).slice(2, 7);
 
   // ================= 素材 =================
   function pieceInfo(kind) { return pieces[kind] || { id: '?', name: '?', color: '#cccccc' }; }
@@ -550,7 +560,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     // 落影：糖果色的深色版，往右下偏（光從左上來）。兩層：範圍大、很柔的影子（玩具像陷進糖果的凹槽裡）+ 貼著底部的接觸影
     // 柔邊用 shadowBlur（不用 ctx.filter，Safari 也一樣）：白邊圖畫在原位、影子往右下偏
     // 不要底座：玩偶直接放在盤面上，只留很淡、往右下的落影（看得出貼在盤面上，但不像有底座），顏色跟著盤面主題
-    const shc = mode === 'none' ? (BOARD_THEME.shadow || [110, 60, 140]) : mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
+    const shc = mode === 'none' ? themeShadow() : mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
     const shadows = mode === 'none' ? NONE_SHADOW
       : heart ? [[0.03, 0.085, 0.15, 0.62], [0.014, 0.04, 0.05, 0.4]] : [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]];
     const far = W * 3;   // 影子用「畫在畫面外、只讓影子落回來」的做法，玩偶本身不會被畫兩次
@@ -753,7 +763,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     //   1. 範圍大、很柔的落影，壓在格子的凹槽裡   2. 貼著底部的接觸陰影（糖果的重量）
     //   3. 四周一圈很窄的暗（環境光遮蔽）：糖果像重重地壓進格子裡，不是平平地懸空貼在上面
     // （淺色毛玻璃盤面：影子用主題的淡紫玫瑰色、淡一點，不會在白底上變成髒髒的黑圈）
-    const shc = BOARD_THEME.shadow || [110, 60, 140];
+    const shc = themeShadow();
     g.save();
     g.shadowColor = css(shc, 0.42); g.shadowBlur = S * 0.11; g.shadowOffsetX = S * 0.05; g.shadowOffsetY = S * 0.09;
     candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
@@ -1236,7 +1246,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
   }
   function paintAltBase(g, kind, cx, cy, S, col, special) {
-    const f = look.frame, R = S * CANDY_R * 1.02, shc = BOARD_THEME.shadow || [110, 60, 140];
+    const f = look.frame, R = S * CANDY_R * 1.02, shc = themeShadow();
     const sat = saturate(col, 0.25), dark = saturate(col, 0.4), deep = mixc(dark, BLACK, 0.5);
     // 落影（主題的顏色）
     g.save();
@@ -1714,7 +1724,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       bq.fill();
     }
     const c = makeCanvas(Wd, Hd), g = c.getContext('2d');
-    g.drawImage(base, 0, 0);
+    // 半透明的底板：先畫不透明的形狀再整張調淡，格子重疊的地方才不會變深
+    g.globalAlpha = fl.baseAlpha ?? 1; g.drawImage(base, 0, 0); g.globalAlpha = 1;
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
       rr4(g, m + c2 * S, m + r * S, S, S, ...corners(r, c2, crad));
@@ -1732,10 +1743,53 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
     clipPath = p;
   }
+  // 半透明盤面下面的 DOM：P＝每一格往外擴 m 的圓角方框（重疊的地方合起來就是盤面的外形，CSS px、畫布座標）
+  //   .bu-blur：clip-path 剪成盤面的形狀，backdrop-filter 模糊後面的關卡背景
+  //   svg：落影（往下偏、站的深色）＋白邊（stroke 10px，用遮罩只留外面那一半＝約 5px）；遮罩挖掉盤面裡面，影子不會透進半透明的盤子
+  function updateUnder() {
+    const on = !!(BOARD_THEME.glassy && rows && cols && W && canvas.parentNode);
+    if (!on) { if (under) under.hidden = true; return; }
+    if (!under) {
+      under = document.createElement('div');
+      under.className = 'board-under';
+      under.setAttribute('aria-hidden', 'true');
+      under.style.cssText = 'position:absolute;z-index:0;pointer-events:none;';
+      if (getComputedStyle(canvas).position === 'static') canvas.style.position = 'relative';
+    }
+    if (under.parentNode !== canvas.parentNode) canvas.parentNode.insertBefore(under, canvas);
+    under.hidden = false;
+    const L = canvas.offsetLeft + 'px', T = canvas.offsetTop + 'px';
+    if (under.style.left !== L) under.style.left = L;
+    if (under.style.top !== T) under.style.top = T;
+    const shc = sceneShade || BOARD_THEME.shadow;
+    const key = [W, H, cs, ox, oy, rows, cols, mask.map(r => r.map(v => (v ? 1 : 0)).join('')).join('/'), shc.join()].join('|');
+    if (key === underKey) return;
+    underKey = key;
+    const m = MARGIN * cs, rad = cs * 0.28, f = v => +v.toFixed(2);
+    const onc = (r, c) => r >= 0 && c >= 0 && r < rows && c < cols && mask[r][c];
+    let P = '';
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (!mask[r][c]) continue;
+      const u = onc(r - 1, c), d = onc(r + 1, c), l = onc(r, c - 1), ri = onc(r, c + 1);
+      const [tl, tr, br, bl] = [!u && !l ? rad : 0, !u && !ri ? rad : 0, !d && !ri ? rad : 0, !d && !l ? rad : 0];
+      const x = ox + c * cs - m, y = oy + r * cs - m, w = cs + 2 * m;
+      P += `M${f(x + tl)} ${f(y)}H${f(x + w - tr)}${tr ? `A${f(tr)} ${f(tr)} 0 0 1 ${f(x + w)} ${f(y + tr)}` : ''}V${f(y + w - br)}${br ? `A${f(br)} ${f(br)} 0 0 1 ${f(x + w - br)} ${f(y + w)}` : ''}`
+        + `H${f(x + bl)}${bl ? `A${f(bl)} ${f(bl)} 0 0 1 ${f(x)} ${f(y + w - bl)}` : ''}V${f(y + tl)}${tl ? `A${f(tl)} ${f(tl)} 0 0 1 ${f(x + tl)} ${f(y)}` : ''}Z`;
+    }
+    const big = `x="-60" y="-60" width="${W + 120}" height="${H + 120}"`;
+    under.style.width = W + 'px'; under.style.height = H + 'px';
+    under.innerHTML = `<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);-webkit-clip-path:path('${P}');clip-path:path('${P}')"></div>`
+      + `<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0;overflow:visible" aria-hidden="true" focusable="false"><defs>`
+      + `<mask id="${uid}m" maskUnits="userSpaceOnUse" ${big}><rect ${big} fill="#fff"/><path d="${P}" fill="#000"/></mask>`
+      + `<filter id="${uid}f" filterUnits="userSpaceOnUse" ${big}><feGaussianBlur stdDeviation="${f(Math.max(4, cs * 0.2))}"/></filter></defs>`
+      + `<g mask="url(#${uid}m)"><path d="${P}" fill="${css(shc, 0.34)}" filter="url(#${uid}f)" transform="translate(0 ${f(Math.max(3, cs * 0.16))})"/>`
+      + `<path d="${P}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="10" stroke-linejoin="round"/></g></svg>`;
+  }
   function buildBg() {
     bgCache = null; clipPath = null;
     if (!rows || !cols || !W) return;
-    if (BOARD_THEME.flat) { buildFlatBg(); return; }
+    if (BOARD_THEME.flat) { buildFlatBg(); updateUnder(); return; }
+    updateUnder();
     const S = cs * dpr, m = MARGIN * S;
     // 快取畫布比盤面大一點：左右留給投影、下面留給盤子的厚度和投影
     const sideX = Math.round(S * 0.14), below = Math.round(S * FRAME_B);
@@ -1980,7 +2034,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
 
   // ================= 版面 =================
   function geom() {
-    if (!rows || !cols || !W) return;
+    if (!rows || !cols || !W) { updateUnder(); return; }
     let size = Math.min(W / (cols + 2 * MARGIN), H / (rows + 2 * MARGIN + FRAME_B));
     cs = Math.max(4, Math.floor(size * dpr) / dpr);
     let r0 = rows, r1 = -1, c0 = cols, c1 = -1;
@@ -2010,6 +2064,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (canvas.height !== ph) canvas.height = ph;
     W = w; H = h; dpr = d;
     if (changed || !bgCache) { geom(); if (changed && rows) prewarm(); }
+    else updateUnder();                      // 畫布大小沒變、位置可能變了：白邊和模糊跟著畫布移
     draw(now());
     requestDraw();
   }
@@ -2181,7 +2236,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
     locks = []; exitCells = []; portalList = []; beltList = [];
-    if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
+    if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; updateUnder(); requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
     rows = R; cols = C;
     mask = readMask(snap.mask, R, C);
@@ -5056,6 +5111,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     for (const b of banners) { clearTimeout(b.timer); b.res(); }
     banners = []; ghosts = []; fx = []; parts = []; texts = []; sched = [];
     tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear(); blockCache.clear(); crumbCache.clear();
+    if (under) { under.remove(); under = null; }
+  }
+  // 這一關的場景：{ shade:[r,g,b] } 這一站的深色（半透明盤面的影子用）；null 回到主題預設
+  function setScene(sc) {
+    if (destroyed) return;
+    const next = sc && Array.isArray(sc.shade) ? sc.shade.slice(0, 3) : null;
+    if (String(next) === String(sceneShade)) return;
+    sceneShade = next;
+    if (!BOARD_THEME.glassy) return;
+    tileCache.clear(); toyCache.clear();
+    if (rows) prewarm();
+    updateUnder();
+    requestDraw();
   }
 
   // 衣櫃的外觀：{ hat, fx, frame, theme }（沒給的不變）。換了就把方塊圖、盤面重畫
@@ -5095,7 +5163,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     return { x: rect.left + (ox + (c + 0.5) * cs) * k, y: rect.top + (oy + (r + 0.5) * cs) * k, size: cs * k };
   }
   const R = {
-    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect, setLook, demoBurst,
+    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect, setLook, setScene, demoBurst,
     get busy() { return busyCount > 0; },
     get paused() { return paused; },
   };
