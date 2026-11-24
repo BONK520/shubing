@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zc';
-import { SLOGANS } from './slogans.js?v=20261124zc';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zc';
-import { blockerCanvas } from './blockers.js?v=20261124zc';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124zc';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zc';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zc';
-import { STORY } from './story.js?v=20261124zc';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zd';
+import { SLOGANS } from './slogans.js?v=20261124zd';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zd';
+import { blockerCanvas } from './blockers.js?v=20261124zd';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124zd';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zd';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zd';
+import { STORY } from './story.js?v=20261124zd';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zc';
+const MOD_V = '?v=20261124zd';
 
 window.__plushBooted = true;
 
@@ -2927,14 +2927,18 @@ function buddyConfetti() {
   if (!fx || !$('#buddy').offsetWidth) return;   // 角色沒顯示（小螢幕橫向）就不放彩帶
   const burst = el('span', 'bd-burst');
   const cols = ['#ff6fa8', '#ffd23c', '#5cc6f0', '#a77de0', '#8eea64', '#ff9a3c'];
+  // 往左最多噴到「第N關」右邊為止（手機橫放時角色縮小、左邊只剩一點空間）；換算回角色縮放前的 px
+  const pill = $('.game-top .level-pill'), fr = fx.getBoundingClientRect(), k = $('#buddy').getBoundingClientRect().width / 104 || 1;
+  const left = Math.max(20, Math.min(100, pill ? (fr.left - pill.getBoundingClientRect().right - 10) / k : 100));
   for (let i = 0; i < 41; i++) {
     const star = i >= 34;
     const p = el('i', star ? 'st' : '');
-    const a = Math.random() * Math.PI * 2, d = 34 + Math.random() * 46;
+    // 只往上、往左右噴，整段留在上方列裡（工作單19）：下面是 HUD、上面是畫面頂端；角色貼著右邊，往左噴得比較遠
+    const x = i % 5 < 3 ? -(left * (.22 + Math.random() * .78)) : 14 + Math.random() * 28;
     p.style.background = star ? '#ffd23c' : cols[i % cols.length];
-    p.style.setProperty('--x', (Math.cos(a) * d).toFixed(1) + 'px');
-    p.style.setProperty('--up', (-26 - Math.random() * 34).toFixed(1) + 'px');
-    p.style.setProperty('--y', (Math.sin(a) * d * .5 + 34 + Math.random() * 26).toFixed(1) + 'px');
+    p.style.setProperty('--x', x.toFixed(1) + 'px');
+    p.style.setProperty('--up', (-6 - Math.random() * 14).toFixed(1) + 'px');
+    p.style.setProperty('--y', (-16 + Math.random() * 30).toFixed(1) + 'px');
     p.style.setProperty('--r', ((Math.random() - .5) * 720).toFixed(0) + 'deg');
     p.style.setProperty('--d', (Math.random() * .12).toFixed(2) + 's');
     burst.appendChild(p);

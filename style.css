@@ -2033,7 +2033,7 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .lv-cap { display: inline-flex; align-items: center; gap: 8px; }   /* 手機橫放：暫停鈕和「第 N 關」照舊左右並排 */
 @media (orientation: portrait), (min-height: 521px) {
   #scr-game { gap: 8px; padding-left: calc(6px + var(--safe-l)); padding-right: calc(6px + var(--safe-r)); }
-  #scr-game .game-top { min-height: 40px; justify-content: flex-start; gap: 8px; padding-left: 2px; }
+  #scr-game .game-top { min-height: 56px; align-items: center; justify-content: flex-start; gap: 8px; padding-left: 2px; }   /* 56px：右上角陪玩角色整塊收在這一列（工作單19） */
 
   /* 左上：暫停鈕和「第 N 關」合成一顆白色膠囊 */
   #scr-game .lv-cap {
@@ -2236,31 +2236,33 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 }
 
 /* ---------- 右上角陪玩角色（工作單12）：薯餅／蛋黃哥坐在立體雲上，奇數關薯餅、偶數關蛋黃哥 ----------
-   整塊約104×74：雲104×46貼底，頭像（renderAvatar，外圈約60px）坐在雲上。絕對定位，不改上方列和 HUD 的高度；
+   整塊104×56，整個收在上方列裡面、底部對齊上方列底部（工作單19）：雲96×26，頭像 44px 坐在雲上。
+   角色、雨滴、說話泡泡、過關跳和彩紙都不往下掉進 HUD，也不蓋到左上的「暫停＋第N關」。
    只有角色本身吃點擊。動畫只動 transform、opacity、filter；不在遊戲畫面時全部停住（data-screen） */
-.game-top { position: relative; z-index: 5; }   /* 雲的下緣會壓到分數框右上角空白的地方，要疊在 HUD 上面 */
-.game-top.has-buddy { padding-right: 118px; }   /* DEBUG 的 ⚡ 排在角色左邊 */
-.buddy { position: absolute; right: -4px; top: -6px; width: 120px; height: 76px; pointer-events: none; z-index: 4; }
+.game-top { position: relative; z-index: 5; }   /* 泡泡和彩紙要疊在 HUD 前面那一層（不會碰到 HUD，只是比較保險） */
+.game-top.has-buddy { padding-right: 106px; }   /* DEBUG 的 ⚡ 排在角色左邊 */
+.buddy { position: absolute; right: 0; bottom: 0; width: 104px; height: 56px; pointer-events: none; z-index: 4; }
 .buddy[hidden] { display: none; }
-.bd-cloud { position: absolute; left: 0; right: 0; bottom: -2px; height: 54px; background: var(--cloud) center / 100% 100% no-repeat; transition: filter .45s ease; }
-.bd-rain { position: absolute; left: 26px; right: 22px; top: 72px; height: 13px; overflow: hidden; opacity: 0; transition: opacity .3s; }
+/* 雲的 SVG 沒有 preserveAspectRatio="none"，100% 100% 會照原比例縮成約50×26 躲在頭像後面；改成三朵並排成一條扁雲帶，左右兩朵從頭像兩側露出來 */
+.bd-cloud { position: absolute; left: 2px; right: 2px; bottom: 2px; height: 28px; background: var(--cloud) 0 100% / auto 100% no-repeat, var(--cloud) 100% 100% / auto 100% no-repeat, var(--cloud) 50% 100% / auto 100% no-repeat; transition: filter .45s ease; }
+.bd-rain { position: absolute; left: 24px; right: 24px; bottom: 0; height: 10px; overflow: hidden; opacity: 0; transition: opacity .3s; }
 .bd-rain::before { content: ""; position: absolute; left: 0; right: 0; top: -14px; bottom: 0; background: radial-gradient(circle, rgba(110, 140, 220, .75) 1.3px, rgba(110, 140, 220, 0) 1.9px) 0 0 / 14px 14px; }
-.bd-sway { position: absolute; left: 30px; top: -4px; width: 60px; height: 60px; transform-origin: 50% 95%; animation: bdSway 5.4s ease-in-out infinite; }
+.bd-sway { position: absolute; left: 26px; top: 0; width: 52px; height: 52px; transform-origin: 50% 95%; animation: bdSway 5.4s ease-in-out infinite; }
 .bd-pose { position: absolute; inset: 0; transform-origin: 50% 100%; animation: bdBreathe 3.2s ease-in-out infinite; }
 .bd-char { position: absolute; inset: 0; display: block; padding: 0; margin: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; pointer-events: auto; transform-origin: 50% 100%; -webkit-tap-highlight-color: transparent; }
 .bd-char:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.bd-char > .av { --s: 52px; position: absolute; left: 4px; top: 4px; }
+.bd-char > .av { --s: 44px; position: absolute; left: 4px; top: 7px; }
 .bd-char.poke { animation: bdPoke .5s cubic-bezier(.3, .7, .4, 1); }
 .bd-sweat, .bd-lines { position: absolute; opacity: 0; pointer-events: none; }
-.bd-sweat { left: 2px; top: 14px; width: 9px; height: 13px; border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%; background: linear-gradient(160deg, #e9f8ff, #7cc8f2 70%); box-shadow: 0 0 0 1.5px #3e8fc6; transform: rotate(-12deg); }
-.bd-lines { right: 4px; top: -6px; width: 16px; height: 14px; background:
+.bd-sweat { left: 0; top: 12px; width: 9px; height: 13px; border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%; background: linear-gradient(160deg, #e9f8ff, #7cc8f2 70%); box-shadow: 0 0 0 1.5px #3e8fc6; transform: rotate(-12deg); }
+.bd-lines { right: 0; top: -2px; width: 16px; height: 14px; background:
   linear-gradient(#5a6aa8, #5a6aa8) 0 100% / 2.5px 9px no-repeat,
   linear-gradient(#5a6aa8, #5a6aa8) 6.5px 0 / 2.5px 11px no-repeat,
   linear-gradient(#5a6aa8, #5a6aa8) 13px 100% / 2.5px 9px no-repeat; transform: rotate(14deg); }
-.bd-bubble { position: absolute; right: 96px; top: 6px; padding: 4px 9px 5px; border-radius: 999px; background: #fff; color: #b0306e; font-size: 14px; font-weight: 900; white-space: nowrap; box-shadow: 0 2px 0 rgba(176, 48, 110, .25), 0 3px 8px rgba(94, 33, 54, .18); opacity: 0; transform: translateX(6px) scale(.7); transform-origin: 100% 60%; transition: opacity .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); }
+.bd-bubble { position: absolute; right: 80px; top: 14px; padding: 3px 8px 4px; border-radius: 999px; background: #fff; color: #b0306e; font-size: 13px; line-height: 1.3; font-weight: 900; white-space: nowrap; box-shadow: 0 2px 0 rgba(176, 48, 110, .25), 0 3px 8px rgba(94, 33, 54, .18); opacity: 0; transform: translateX(6px) scale(.7); transform-origin: 100% 60%; transition: opacity .2s, transform .25s cubic-bezier(.3, 1.5, .5, 1); }
 .bd-bubble::after { content: ""; position: absolute; right: -5px; top: 50%; margin-top: -4px; border: 4px solid transparent; border-left: 7px solid #fff; border-right: 0; }
 .bd-bubble.show { opacity: 1; transform: none; }
-.bd-fx { position: absolute; left: 60px; top: 30px; width: 0; height: 0; }
+.bd-fx { position: absolute; left: 52px; top: 26px; width: 0; height: 0; }
 .bd-burst { position: absolute; left: 0; top: 0; }
 .bd-burst > i { position: absolute; left: -3px; top: -4px; width: 6px; height: 9px; border-radius: 1.5px; opacity: 0; animation: bdConf 1.35s cubic-bezier(.2, .6, .4, 1) var(--d, 0s) forwards; }
 .bd-burst > i.st { width: 11px; height: 11px; left: -5px; top: -5px; border-radius: 0; clip-path: polygon(50% 0, 62% 36%, 100% 38%, 70% 61%, 80% 100%, 50% 78%, 20% 100%, 30% 61%, 0 38%, 38% 36%); }
@@ -2276,19 +2278,19 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 /* 過關：跳、左右扭、雲發金光、噴彩紙 */
 .buddy.party .bd-sway { animation: bdWiggle 1.44s ease-in-out infinite; }
 .buddy.party .bd-pose { animation: bdHop .72s cubic-bezier(.3, .6, .4, 1) infinite; }
-.buddy.party .bd-cloud { filter: drop-shadow(0 0 10px rgba(255, 230, 120, .95)); }
+.buddy.party .bd-cloud { filter: drop-shadow(0 0 6px rgba(255, 230, 120, .95)); }
 .buddy.party .bd-char > .av { filter: drop-shadow(0 0 6px rgba(255, 226, 110, .9)); }
 
 @keyframes bdSway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 @keyframes bdBreathe { 0%, 100% { transform: none; } 50% { transform: translateY(-1px) scale(1.03, .97); } }
-@keyframes bdPoke { 0% { transform: none; } 25% { transform: scale(1.1, .88); } 55% { transform: translateY(-12px) scale(.96, 1.05); } 80% { transform: translateY(0) scale(1.04, .96); } 100% { transform: none; } }
+@keyframes bdPoke { 0% { transform: none; } 25% { transform: scale(1.1, .88); } 55% { transform: translateY(-4px) scale(.97, 1.03); } 80% { transform: translateY(0) scale(1.04, .96); } 100% { transform: none; } }
 @keyframes bdShiver { 0%, 100% { transform: translateX(-1.2px) scale(.94); } 50% { transform: translateX(1.2px) scale(.94); } }
 @keyframes bdFret { 0%, 100% { transform: rotate(-7deg); } 40% { transform: rotate(5deg); } 70% { transform: rotate(-4deg); } }
 @keyframes bdDrip { 0% { opacity: 0; transform: translateY(-3px) rotate(-12deg) scale(.6); } 25% { opacity: 1; transform: translateY(0) rotate(-12deg); } 80% { opacity: 1; transform: translateY(9px) rotate(-12deg); } 100% { opacity: 0; transform: translateY(13px) rotate(-12deg); } }
 @keyframes bdFlick { 0% { opacity: 1; } 100% { opacity: .15; } }
 @keyframes bdRain { from { transform: translateY(0); } to { transform: translateY(14px); } }
-@keyframes bdHop { 0%, 100% { transform: none; } 18% { transform: scale(1.14, .84); } 50% { transform: translateY(-13px) scale(.95, 1.07); } 78% { transform: translateY(0) scale(1.06, .94); } }
-@keyframes bdWiggle { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+@keyframes bdHop { 0%, 100% { transform: none; } 18% { transform: scale(1.12, .86); } 50% { transform: translateY(-4px) scale(.97, 1.03); } 78% { transform: translateY(0) scale(1.06, .94); } }
+@keyframes bdWiggle { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
 @keyframes bdConf {
   0% { opacity: 1; transform: translate(0, 0) rotate(0); }
   40% { opacity: 1; transform: translate(calc(var(--x) * .75), var(--up)) rotate(calc(var(--r) * .5)); }
@@ -2298,15 +2300,15 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 /* 不在遊戲畫面：動畫停住（省電） */
 :root:not([data-screen="game"]) .buddy, :root:not([data-screen="game"]) .buddy * { animation-play-state: paused !important; }
 
-/* 精簡 HUD（直式）：上方列比較矮，雲稍微往上收 */
-@media (orientation: portrait), (min-height: 521px) {
-  .buddy { top: 5px; }   /* 頭像上緣離螢幕頂端留幾 px，戴帽子也不會被切掉 */
-}
-/* 橫向：左欄放不下整塊時縮到約80% */
+/* 橫向：上方列約56高、右邊只剩「第N關」到左欄右緣這一段（812寬時約76px），整塊縮到74%、貼右下角；
+   泡泡改到頭頂上面（左邊是「第N關」，下面是 HUD），字放大一點抵掉縮小；DEBUG 的 ⚡ 放不下，移到暫停鈕左邊的空地 */
 @media (orientation: landscape) and (max-height: 520px) {
   .game-top.has-buddy { padding-right: 0; min-height: 56px; }
-  .buddy { top: -4px; right: -6px; transform: scale(.8); transform-origin: 100% 0; }
-  .buddy .bd-bubble { right: 100px; }
+  .buddy { transform: scale(.74); transform-origin: 100% 100%; }
+  .buddy .bd-bubble { right: 6px; top: -29px; font-size: 16px; transform-origin: 80% 100%; transform: translateY(6px) scale(.7); }
+  .buddy .bd-bubble.show { transform: none; }
+  .buddy .bd-bubble::after { right: 24px; top: auto; bottom: -7px; margin-top: 0; border: 5px solid transparent; border-top: 7px solid #fff; border-bottom: 0; }
+  .game-top.has-buddy > .dbg { position: absolute; left: -56px; top: 4px; }
 }
 /* 橫向的左欄寬 clamp(190px, 29vw, 250px)，寬度不到 807px 時放不下「暫停＋第N關＋角色」，會蓋到關卡字，乾脆不顯示 */
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 806px) {
@@ -2319,7 +2321,7 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
   .buddy.worry .bd-sway { transform: rotate(-7deg); }
   .buddy.worry .bd-sweat { opacity: 1; transform: translateY(4px) rotate(-12deg); }
   .buddy.worry .bd-rain { opacity: 0; }
-  .buddy.party .bd-pose { transform: translateY(-14px); }
+  .buddy.party .bd-pose { transform: translateY(-3px); }
   .bd-bubble { transition: none; }
 }
 
