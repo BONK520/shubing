@@ -12,15 +12,14 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124zd">
+<link rel="stylesheet" href="style.css?v=20261124ze">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
-     減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
+     減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播） -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
 <script>
 (function () {
   var h = document.documentElement, q = location.search, play = false;
   try {
-    if (/[?&]cover=b(&|$)/.test(q)) h.classList.add('cover-b');
     if (/[?&]intro=1(&|$)/.test(q)) play = true;
     else if (/[?&]intro=0(&|$)/.test(q)) play = false;
     else if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) play = false;
@@ -81,38 +80,36 @@
   <i class="mote m6"></i><i class="mote m7"></i><i class="mote m8"></i><i class="mote m9"></i><i class="mote m10"></i>
 </div>
 
-<!-- 封面背景：第 1 站蛋蛋碼頭（B 款是整座島），main.js buildCover() 畫；只在封面顯示 -->
-<div class="cover-bg" id="cover-bg" aria-hidden="true"></div>
+<!-- 封面背景（蛋蛋泡泡，工作單13）：天空、海、沙灘、兩朵慢慢飄的雲，全部是 CSS；只在封面顯示 -->
+<div class="cover-bg" id="cover-bg" aria-hidden="true"><i class="cv-sea"></i><i class="cv-sand"></i><i class="cv-drift d1"></i><i class="cv-drift d2"></i></div>
 
 <div id="app">
 
   <!-- 標題 -->
   <section id="scr-title" class="screen active" aria-label="標題畫面">
-    <div class="topbar">
-      <span class="spacer"></span>
-      <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
+    <!-- 左上 3D、右上設定：只有圖示的圓泡泡（點擊範圍 48×48） -->
+    <a class="cv-bub cv-ar" id="btn-ar" href="ar.html" aria-label="3D 看看" title="3D 看看"><span class="b"><svg><use href="#i-cube"/></svg></span></a>
+    <button class="cv-bub cv-gear" type="button" data-open-settings aria-label="設定" title="設定"><span class="b"><svg><use href="#i-gear"/></svg></span></button>
+    <div class="cv-col">
+      <!-- 五顆蛋標題：opening.js 第 3 段會複製這個 .logo，改這裡要一起看 -->
+      <h1 class="logo" aria-label="薯餅蛋蛋島"><span class="eggs" aria-hidden="true"><span class="egg br" style="--y:4px;--r:-6deg;--d:0s">薯</span><span class="egg yk" style="--y:-6px;--r:5deg;--d:-.4s">餅</span><span class="egg wt" style="--y:6px;--r:-4deg;--d:-.8s">蛋</span><span class="egg yk" style="--y:-4px;--r:6deg;--d:-1.2s">蛋</span><span class="egg br" style="--y:3px;--r:-5deg;--d:-1.6s">島</span></span></h1>
+      <!-- 名字順序 = 合照由左到右（皮蛋、薯餅在中間、蛋黃哥） -->
+      <p class="cv-names" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
+      <div class="cv-stage" aria-hidden="true">
+        <img class="cv-peek pl" src="assets/sprites/piggy.png" alt="" draggable="false">
+        <img class="cv-peek pr" src="assets/sprites/moodeng.png" alt="" draggable="false">
+        <i class="cv-cl sl"></i><i class="cv-cl sr"></i>
+        <div class="cv-group"><img src="assets/deco/group.webp" alt="" draggable="false"></div>
+        <i class="cv-cl big"></i>
+      </div>
     </div>
-    <div class="title-main">
-      <!-- 直式：兩個包裝都是 display:contents（一欄排下來）；橫式手機：左欄標題、右欄玩具＋按鈕 -->
-      <div class="title-head">
-        <h1 class="logo" aria-label="薯餅蛋蛋島"><span class="logo-row" aria-hidden="true"><span class="ch" data-ch="薯" style="--i:0"><b>薯</b></span><span class="ch" data-ch="餅" style="--i:1"><b>餅</b></span><span class="ch" data-ch="蛋" style="--i:2"><b>蛋</b></span><span class="ch" data-ch="蛋" style="--i:3"><b>蛋</b></span><span class="ch" data-ch="島" style="--i:4"><b>島</b></span></span></h1>
-        <!-- 名字順序 = 下面玩具由左到右的順序（皮蛋、薯餅在中間、蛋黃哥） -->
-        <p class="logo-sub" aria-label="主角：皮蛋、薯餅、蛋黃哥"><span>皮蛋</span><i>・</i><span>薯餅</span><i>・</i><span>蛋黃哥</span></p>
+    <div class="cv-act">
+      <!-- 還在載入時（html.is-loading）荷包蛋的位置先放載入條，載完才換成荷包蛋 -->
+      <div class="cv-load">
+        <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
+        <p class="load-text" id="load-text">毛絨玩具準備中…</p>
       </div>
-      <!-- 草地上的合照和雲後探頭的娃娃：填標題和展示台中間空出來的地方（main.js buildCover） -->
-      <div class="cv-deco" id="cv-deco" aria-hidden="true"></div>
-      <div class="title-play">
-        <div class="title-toys" id="title-toys"></div>
-        <!-- 還在載入時，按鈕的位置先放載入條（html.is-loading），載完才換成按鈕 -->
-        <div class="cv-load">
-          <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
-          <p class="load-text" id="load-text">毛絨玩具準備中…</p>
-        </div>
-        <div class="title-btns">
-          <button class="btn green xl" id="btn-start"><svg class="bi"><use href="#i-play"/></svg><span class="bt" data-t="開始遊戲">開始遊戲</span></button>
-          <a class="btn pink" id="btn-ar" href="ar.html"><svg class="bi"><use href="#i-cube"/></svg><span class="bt" data-t="3D 看看">3D 看看</span></a>
-        </div>
-      </div>
+      <button class="fried" id="btn-start" type="button" aria-label="開始遊戲" title="開始遊戲"><span class="yolk"><svg viewBox="0 0 24 24"><path d="M8 4.5 20 12 8 19.5Z"/></svg></span></button>
     </div>
   </section>
 
@@ -473,7 +470,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124zd"></script>
-<script type="module" src="js/main.js?v=20261124zd"></script>
+<script type="module" src="js/opening.js?v=20261124ze"></script>
+<script type="module" src="js/main.js?v=20261124ze"></script>
 </body>
 </html>

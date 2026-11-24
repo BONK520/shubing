@@ -210,190 +210,141 @@ svg use { pointer-events: none; }
 }
 .pill b { font-size: 22px; color: #e8287f; }
 
-/* ---------- 大字 Logo ---------- */
-.logo {
-  margin: 0; font-weight: 900; line-height: 1;
-  font-size: clamp(54px, 16.5vw, 86px);
-  text-align: center;
+/* ---------- 封面「蛋蛋泡泡」（工作單13）：天空、海、沙灘在 .cover-bg，標題、合照、荷包蛋開始鈕在 #scr-title ----------
+   兩邊共用 :root 的位置變數，沙灘和按鈕才會對齊；opening.js 第 3 段複製 .logo，蛋的大小也從這裡來。 */
+:root {
+  --cv-fb: clamp(14px, 6.6vh, 54px);                              /* 荷包蛋底邊離畫面底 */
+  --cv-sand: calc(var(--safe-b) + var(--cv-fb) + 198px);          /* 沙灘頂離畫面底 */
+  --eggT: calc(var(--safe-t) + clamp(60px, 14.8vh, 138px));       /* 五顆蛋的上緣 */
+  --ew: 64px; --eh: 76px; --ef: 36px; --eg: 4px;                  /* 蛋的寬、高、字、間距 */
 }
-.logo-row { display: inline-flex; gap: .015em; padding: .18em .12em .24em; }
-.ch {
-  --a: #fff7b0; --b: #ffcf3a; --c: #ff8a1f; --edge: #b4357b;
-  position: relative; display: inline-block;
-  transform: rotate(var(--rot, 0deg));
-  animation: logoBob 2.6s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -.32s);
+#scr-title { padding: 0; }
+.cv-col { position: absolute; inset: 0; pointer-events: none; }
+.logo { position: absolute; left: 0; right: 0; top: var(--eggT); margin: 0; font-weight: 900; line-height: 1; z-index: 2; }
+.eggs { display: flex; justify-content: center; gap: var(--eg); }
+.egg {
+  --bg: radial-gradient(circle at 40% 30%, #e0a466, #b8743a); --fg: #fff6e6; --edge: #8a5226; --ts: 0 2px 0 #7a4520;
+  position: relative; display: grid; place-items: center; flex: none;
+  width: var(--ew); height: var(--eh); padding-top: calc(var(--eh) * .06);
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background: var(--bg); color: var(--fg); font-size: var(--ef); font-weight: 900; text-shadow: var(--ts);
+  box-shadow: 0 6px 0 var(--edge), 0 12px 16px rgba(60, 40, 20, .2);
+  transform: translateY(var(--y, 0)) rotate(var(--r, 0deg));
+  animation: eggbob 2.6s ease-in-out infinite; animation-delay: var(--d, 0s);
 }
-.ch:nth-child(1) { --a: #ffe2f2; --b: #ff7cbf; --c: #e8358f; --rot: -7deg; --edge: #d42a80; --edge2: #9c1459; --glow: rgba(255, 92, 176, .75); }
-.ch:nth-child(2) { --a: #fff7b8; --b: #ffcf3a; --c: #ff8f1f; --rot: 4deg; --edge: #ec7a12; --edge2: #b14f05; --glow: rgba(255, 190, 60, .75); }
-.ch:nth-child(3) { --a: #e3fff0; --b: #6fe39a; --c: #22b268; --rot: -3deg; --edge: #1fa35c; --edge2: #0d6e3a; --glow: rgba(80, 230, 150, .7); }
-.ch:nth-child(4) { --a: #e3f6ff; --b: #6cc8ff; --c: #2d8ee8; --rot: 5deg; --edge: #2479d6; --edge2: #124c99; --glow: rgba(90, 190, 255, .75); }
-.ch:nth-child(5) { --a: #f1e6ff; --b: #b98cff; --c: #7a4ae6; --rot: -4deg; --edge: #6f3fd8; --edge2: #42209c; --glow: rgba(170, 120, 255, .75); }
-.ch::before, .ch::after {
-  content: attr(data-ch); position: absolute; left: 0; top: 0;
-  padding: inherit;
+.egg::before { /* 左上的白色亮點 */
+  content: ''; position: absolute; top: 12%; left: 20%; width: 28%; height: 14%;
+  border-radius: 50%; background: rgba(255, 255, 255, .75); transform: rotate(-24deg);
 }
-.ch::before { /* 外層：自己顏色的描邊 → 兩層深一點的厚度（膨脹的立體字）→ 一圈半透明的同色光 */
-  color: var(--edge);
-  -webkit-text-stroke: .21em var(--edge);
-  transform: translateY(.03em);
-  filter: drop-shadow(0 .035em 0 var(--edge2)) drop-shadow(0 .035em 0 var(--edge2)) drop-shadow(0 0 .14em var(--glow));
+.egg.yk { --bg: radial-gradient(circle at 40% 30%, #fff08f, #ffc72e); --fg: #7a4520; --edge: #d99a17; --ts: 0 1px 0 rgba(255, 255, 255, .6); }
+.egg.wt { --bg: radial-gradient(circle at 40% 30%, #fff, #f2e7d6); --fg: #8a5226; --edge: #d6c3a6; --ts: 0 1px 0 #fff; }
+@keyframes eggbob {
+  0%, 100% { transform: translateY(var(--y, 0)) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(calc(var(--y, 0px) - 7px)) rotate(calc(var(--r, 0deg) * -1)); }
 }
-.ch::after { /* 白色描邊 */
-  color: #fff;
-  -webkit-text-stroke: .13em #fff;
+.cv-names { /* 主角名字：白字藍邊，・是黃色；順序 = 合照由左到右 */
+  position: absolute; left: 0; right: 0; top: calc(var(--eggT) + var(--eh) + 30px); margin: 0;
+  display: flex; justify-content: center; align-items: center; gap: .1em;
+  font-weight: 900; font-size: 17px; letter-spacing: .08em; line-height: 1.2; color: #fff;
+  text-shadow: 0 2px 0 #2f8fc7, 2px 0 0 #2f8fc7, -2px 0 0 #2f8fc7, 0 -2px 0 #2f8fc7, 0 4px 6px rgba(20, 80, 140, .3);
 }
-.ch b {
-  position: relative; z-index: 1; display: block; font-weight: inherit;
-  color: transparent;
-  background: linear-gradient(180deg, #fff 0%, var(--a) 18%, var(--b) 52%, var(--c) 100%);
-  -webkit-background-clip: text; background-clip: text;
+.cv-names i { font-style: normal; color: #ffe066; }
+/* 合照站在大雲上；豬豬、moodeng 從兩邊的雲後面探頭 */
+.cv-stage { position: absolute; left: 0; right: 0; top: calc(var(--eggT) + var(--eh) + 60px); bottom: 0; }
+.cv-cl { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; }
+.cv-cl.sl { left: -30px; bottom: calc(var(--cv-sand) + 20px); width: 170px; height: 88px; z-index: 2; }
+.cv-cl.sr { right: -31px; bottom: calc(var(--cv-sand) + 16px); width: 170px; height: 86px; z-index: 2; }
+.cv-cl.big { left: 50%; margin-left: -130px; bottom: calc(var(--cv-sand) - 30px); width: 260px; height: 120px; z-index: 4; }
+.cv-peek {
+  position: absolute; width: 104px; height: auto; z-index: 1;
+  bottom: calc(var(--cv-sand) + 64px); transform-origin: 50% 100%;
+  filter: drop-shadow(0 6px 7px rgba(78, 28, 45, .28));
+  transform: rotate(var(--r)); animation: cvPeek 3s ease-in-out infinite; animation-delay: var(--d);
 }
-.ch b::after { /* 亮點 */
-  content: ''; position: absolute; left: 18%; top: 16%; width: 18%; height: 12%;
-  border-radius: 50%; background: rgba(255, 255, 255, .9); transform: rotate(-30deg);
-  filter: blur(.5px);
+.cv-peek.pl { left: 6px; --r: -4deg; --d: -.6s; }
+.cv-peek.pr { right: 7px; width: 100px; bottom: calc(var(--cv-sand) + 60px); --r: 4deg; --d: -1.4s; }
+@keyframes cvPeek {
+  0%, 100% { transform: translateY(0) rotate(var(--r)); }
+  50% { transform: translateY(-6px) rotate(calc(var(--r) * -1)); }
 }
-@keyframes logoBob {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -.07em; }
+.cv-group {
+  position: absolute; left: 0; right: 0; top: 0; bottom: calc(var(--cv-sand) + 80px); z-index: 3;
+  display: flex; justify-content: center; align-items: flex-end;
 }
-/* ---------- 載入條（還在載入時放在封面按鈕的位置，html.is-loading） ---------- */
-.cv-load { width: min(80vw, 300px); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cv-group img {
+  display: block; width: clamp(200px, 59vw, 260px); height: auto; max-height: 100%;
+  object-fit: contain; object-position: 50% 100%;
+  filter: drop-shadow(0 6px 7px rgba(78, 28, 45, .28));
+}
+/* 荷包蛋開始鈕（沒有字，aria-label「開始遊戲」）；載入時同一個位置放載入條 */
+.cv-act {
+  position: absolute; left: 50%; width: 168px; height: 150px; margin-left: -84px;
+  bottom: calc(var(--safe-b) + var(--cv-fb)); z-index: 5;
+}
+.fried {
+  position: relative; width: 100%; height: 100%; padding: 0; border: 0; cursor: pointer;
+  display: grid; place-items: center; font: inherit; -webkit-tap-highlight-color: transparent;
+  border-radius: 52% 48% 50% 50% / 55% 50% 50% 45%;
+  background: radial-gradient(circle at 45% 38%, #fff, #f6eee2);
+  box-shadow: 0 7px 0 #e2d2b8, 0 14px 22px rgba(120, 80, 30, .25);
+  animation: squish 2s ease-in-out infinite;
+}
+.fried .yolk {
+  width: 108px; height: 108px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 38% 32%, #fff3a0 0 12%, #ffcf3a 55%, #ffb21a 100%);
+  box-shadow: inset 0 -5px 0 rgba(210, 130, 10, .4), 0 3px 0 rgba(210, 140, 20, .35);
+}
+.fried svg {
+  width: 48px; height: 48px; margin-left: 6px; overflow: visible;
+  fill: #fff; stroke: #fff; stroke-width: 2.5; stroke-linejoin: round;
+  filter: drop-shadow(0 2px 0 rgba(200, 110, 0, .45));
+}
+.fried:active { animation: none; transform: scale(.94); }
+.fried:focus-visible, .cv-bub:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+@keyframes squish { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05, .96); } }
+/* 左上 3D、右上設定：圓泡泡，點擊範圍 48×48 */
+.cv-bub {
+  position: absolute; top: calc(var(--safe-t) + 6px); z-index: 6;
+  width: 48px; height: 48px; padding: 0; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center; text-decoration: none; -webkit-tap-highlight-color: transparent;
+}
+.cv-ar { left: calc(var(--safe-l) + 8px); }
+.cv-gear { right: calc(var(--safe-r) + 8px); }
+.cv-bub .b {
+  position: relative; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  transition: transform .08s ease;
+}
+.cv-bub .b::before { content: ''; position: absolute; top: 7px; left: 10px; width: 12px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .7); transform: rotate(-28deg); }
+.cv-bub svg { position: relative; width: 24px; height: 24px; fill: none; }
+.cv-gear svg { fill: currentColor; }
+.cv-gear .b { background: radial-gradient(circle at 35% 30%, #a5e4ff 0 18%, #3fb0ee 70%); box-shadow: 0 4px 0 #1f86c7, 0 8px 14px rgba(20, 80, 140, .25); }
+.cv-ar .b { background: radial-gradient(circle at 35% 30%, #ffd0df 0 16%, #ff7ea6 72%); box-shadow: 0 4px 0 #d24372, 0 8px 14px rgba(170, 50, 90, .25); }
+.cv-bub:active .b { transform: translateY(3px); }
+/* ---------- 載入條（還在載入時放在荷包蛋的位置，html.is-loading）：白色圓角條、蛋黃色進度 ---------- */
+.cv-load {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(80vw, 280px);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
 .loadbar {
-  width: 100%; height: 24px; border-radius: 999px; padding: 4px;
-  background: linear-gradient(180deg, #eef8ea, #fff); border: 3px solid #fff;
-  box-shadow: 0 0 0 2.5px #5cc98a, 0 4px 0 2.5px #2f9a5f, 0 8px 14px rgba(30, 80, 60, .22), inset 0 2px 4px rgba(30, 80, 50, .18);
+  width: 100%; height: 22px; border-radius: 999px; padding: 4px; background: #fff;
+  box-shadow: 0 4px 0 #e2d2b8, 0 8px 14px rgba(120, 80, 30, .2);
 }
 .loadbar-fill {
   height: 100%; width: 0%; border-radius: 999px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .55) 0 40%, rgba(255, 255, 255, 0) 41%),
     repeating-linear-gradient(-45deg, rgba(255, 255, 255, .35) 0 10px, rgba(255, 255, 255, 0) 10px 20px),
-    linear-gradient(180deg, #a6f0bf, #4cd37f 60%, #27a95e);
+    linear-gradient(180deg, #fff08f, #ffc72e 60%, #ffb21a);
   background-size: 100% 100%, 28px 28px, 100% 100%;
   animation: stripes .8s linear infinite;
   transition: width .25s ease;
-  box-shadow: inset 0 -2px 0 rgba(20, 110, 60, .25);
+  box-shadow: inset 0 -2px 0 rgba(210, 130, 10, .35);
 }
 @keyframes stripes { to { background-position: 0 0, 28px 0, 0 0; } }
-.load-text { margin: 0; font-weight: 800; font-size: 16px; color: var(--ink); text-align: center; text-shadow: 0 0 4px #fff, 0 0 2px #fff, 0 1px 0 #fff; line-height: 1.5; }
-.load-text small { font-size: 13px; font-weight: 700; }
-html.is-loading .title-btns, html.is-loading #scr-title .topbar { visibility: hidden; }
+.load-text { margin: 0; font-weight: 800; font-size: 16px; color: #8a5226; text-align: center; text-shadow: 0 0 4px #fff, 0 0 2px #fff, 0 1px 0 #fff; line-height: 1.5; white-space: nowrap; }
+.load-text small { font-size: 13px; font-weight: 700; white-space: normal; }
+html.is-loading .cv-bub, html.is-loading #btn-start { visibility: hidden; }
 html:not(.is-loading) .cv-load { display: none; }
-
-/* ---------- 封面：站在蛋蛋碼頭（背景是 .cover-bg，main.js 的 buildCover 照這裡量到的位置畫沙灘和海） ---------- */
-.title-main { flex: 1; display: flex; flex-direction: column; align-items: center; min-height: 0; width: 100%; }
-#scr-title .topbar { position: relative; z-index: 3; }
-.title-head { flex: none; display: flex; flex-direction: column; align-items: center; }
-.logo-sub { /* 主角名字：皮蛋・薯餅・蛋黃哥（跟雲台上的玩具由左到右同順序），字小一點、退在標題後面 */
-  margin: calc(-1 * clamp(8px, 2.6vw, 16px)) 0 0; position: relative; z-index: 1;
-  display: flex; align-items: center; gap: .1em;
-  font-weight: 900; font-size: clamp(14px, 4.2vw, 19px); letter-spacing: .08em; line-height: 1.2;
-  color: #fff; opacity: .92;
-  text-shadow:
-    1px 0 0 #b4357b, -1px 0 0 #b4357b, 0 1px 0 #b4357b, 0 -1px 0 #b4357b,
-    .8px .8px 0 #b4357b, -.8px .8px 0 #b4357b, .8px -.8px 0 #b4357b, -.8px -.8px 0 #b4357b,
-    0 2px 0 #b4357b, 0 3px 4px rgba(70, 10, 70, .2);
-}
-.logo-sub i { font-style: normal; color: #ffd23f; }
-/* 沙灘上主人的玩具合照、雲後探頭的娃娃（buildCover 放進來；太擠就不放，橫向手機藏起來） */
-.cv-deco { position: relative; flex: 1 1 0; min-height: 0; width: 100%; max-width: 440px; pointer-events: none; }
-.cv-deco .map-spot { transform: translate(-50%, -100%) scale(var(--s, 1)); transform-origin: 50% 100%; }
-.title-play {
-  flex: none; width: 100%; display: grid; justify-items: center; align-items: center;
-  grid-template-columns: minmax(0, 1fr); grid-template-areas: "toys" "act"; padding-bottom: clamp(6px, 2.4vh, 26px);
-}
-.cv-load, .title-btns { grid-area: act; }
-/* 皮蛋、薯餅、蛋黃哥站在沙灘上的一朵立體雲台上 */
-.title-toys {
-  grid-area: toys; position: relative; width: 100%; max-width: 420px;
-  height: clamp(100px, min(37vw, 23vh), 190px); padding-bottom: clamp(24px, 4.6vh, 44px); box-sizing: content-box;
-  display: flex; justify-content: center; align-items: flex-end; gap: 2%;
-}
-.title-toys::before {
-  content: ''; position: absolute; left: 1%; right: 1%; bottom: 0; height: clamp(54px, 10.5vh, 98px);
-  /* 三朵立體雲排成一座雲台：中間大的在前面，兩邊小一點 */
-  background:
-    var(--cloud) 50% 100% / auto 100% no-repeat,
-    var(--cloud) 0 100% / auto 84% no-repeat,
-    var(--cloud) 100% 100% / auto 84% no-repeat;
-  pointer-events: none;
-  filter: drop-shadow(0 8px 8px rgba(40, 80, 110, .22));
-}
-.ttoy .ped { display: none; }
-.title-toys .ttoy { animation: ttoyIn .55s cubic-bezier(.3, 1.6, .5, 1) backwards; animation-delay: calc(var(--k) * .09s + .05s); }
-@keyframes ttoyIn { from { transform: translateY(18%) scale(.4); opacity: 0; } }
-.ttoy {
-  --sz: clamp(84px, min(31vw, 19vh), 160px);
-  position: relative; width: var(--sz); height: var(--sz);
-  border: 0; padding: 0; background: none; cursor: pointer;
-}
-.ttoy:nth-child(2) { --sz: clamp(100px, min(37vw, 23vh), 190px); z-index: 1; margin: 0 -2%; }
-/* 3D 展示台：玩具代表色的圓盤，上面亮、側面一圈深色的厚度、底下壓在地上的影子 */
-.ttoy .ped {
-  position: absolute; left: 50%; bottom: 0; width: 94%; height: 28%;
-  transform: translate(-50%, 46%); border-radius: 50%; pointer-events: none;
-  background: radial-gradient(ellipse 72% 85% at 50% 30%, #fff 0%, var(--pc-ll) 28%, var(--pc-l) 62%, var(--pc) 100%);
-  box-shadow:
-    inset 0 3px 1px rgba(255, 255, 255, .95), inset 0 -5px 7px var(--pc-d),
-    0 6px 0 var(--pc-d), 0 10px 0 var(--pc-dd), 0 17px 16px rgba(60, 21, 34, .38);
-}
-.ttoy .ped::after { /* 側面正前方一道反光 */
-  content: ''; position: absolute; left: 22%; right: 22%; bottom: -7px; height: 3px; border-radius: 3px;
-  background: rgba(255, 255, 255, .55); filter: blur(.5px);
-}
-/* 腳下的接觸陰影：貼著玩具最暗、往外淡掉（玩具跳起來時變小變淡） */
-.ttoy .shadow {
-  position: absolute; left: 24%; right: 24%; bottom: -3%; height: 11%; border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 50%, rgba(40, 14, 23, .62) 0%, rgba(40, 14, 23, .32) 45%, rgba(40, 14, 23, 0) 72%);
-  animation: titleShadow 2.4s ease-in-out infinite; animation-delay: calc(var(--k) * -.8s);
-}
-.ttoy .lift {
-  position: absolute; inset: 0; transform-origin: 50% 100%;
-  translate: 0 calc(var(--foot, 0) * 100% + 7%);    /* 圖裡腳底下的空白扣掉、再往下一點：腳踩在展示台的台面上 */
-  animation: titleHop 2.4s ease-in-out infinite;
-  animation-delay: calc(var(--k) * -.8s);
-}
-/* 大部分時間站在展示台上，偶爾蹲一下、小跳一下、落地壓扁 */
-@keyframes titleHop {
-  0%, 52%, 100% { transform: translateY(0) scale(1, 1); }
-  60% { transform: translateY(0) scale(1.06, .93); }
-  72% { transform: translateY(-11%) scale(.97, 1.04); }
-  84% { transform: translateY(0) scale(1.05, .94); }
-  92% { transform: translateY(0) scale(.99, 1.01); }
-}
-@keyframes titleShadow {
-  0%, 52%, 100% { transform: scale(1); opacity: 1; }
-  60% { transform: scale(1.06); opacity: 1; }
-  72% { transform: scale(.72); opacity: .55; }
-  84% { transform: scale(1.06); opacity: 1; }
-}
-.ttoy .face { position: absolute; inset: 0; display: grid; place-items: center; }
-.ttoy .face img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 7px var(--pc-l)); }
-.ttoy .face .toy-fallback { width: 74%; height: 74%; margin-top: 18%; }
-.ttoy .spinner {
-  position: absolute; inset: 0; display: none;
-  background-repeat: no-repeat; background-size: 600% 400%;
-}
-.ttoy.spinning .spinner { display: block; animation: spinX .25s steps(6) 4, spinY 1s steps(4) 1; filter: drop-shadow(0 0 6px var(--pc-l)); }
-.ttoy.spinning .face { visibility: hidden; }
-.ttoy.wobble .face { animation: wobble .7s ease; }
-.ttoy.boing .lift { animation: boing .7s ease; }
-@keyframes spinX { from { background-position-x: 0%; } to { background-position-x: 120%; } }
-@keyframes spinY { from { background-position-y: 0%; } to { background-position-y: 133.333%; } }
-@keyframes hop {
-  0%, 100% { transform: translateY(0) scale(1.06, .92); }
-  12%      { transform: translateY(-4%) scale(.96, 1.05); }
-  45%      { transform: translateY(-20%) scale(1, 1); }
-  80%      { transform: translateY(-2%) scale(.98, 1.03); }
-}
-@keyframes wobble { 0%, 100% { rotate: 0deg; } 20% { rotate: -14deg; } 45% { rotate: 12deg; } 70% { rotate: -6deg; } }
-@keyframes boing { 0% { transform: scale(1); } 30% { transform: scale(1.18, .82); } 55% { transform: translateY(-26%) scale(.92, 1.1); } 100% { transform: none; } }
-
-.title-btns { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 4px; }
-.title-btns .btn.xl { min-width: 240px; }
-.title-btns .btn.pink { min-width: 170px; font-size: 16px; min-height: 44px; }
 
 /* 玩具沒有圖時的替代圓形 */
 .toy-fallback {
@@ -1074,12 +1025,19 @@ svg.on .hi { opacity: .9; }
 @media (max-height: 760px) {
   .cheer { display: none; }
 }
+/* 封面：窄螢幕五顆蛋縮一點；矮的直式螢幕蛋、合照縮小，荷包蛋往下移（不切到、不疊到合照） */
+@media (max-width: 370px) {
+  :root { --ew: 58px; --eh: 69px; --ef: 33px; --eg: 3px; }
+}
+@media (orientation: portrait) and (max-height: 700px) {
+  :root { --cv-fb: 20px; --eggT: calc(var(--safe-t) + 68px); --ew: 55px; --eh: 65px; --ef: 31px; --eg: 3px; }
+  .cv-names { top: calc(var(--eggT) + var(--eh) + 24px); }
+  .cv-stage { top: calc(var(--eggT) + var(--eh) + 52px); }
+}
 @media (max-height: 640px) {
   .hud-goal { min-height: 54px; }
   .gi .ic { width: 38px; height: 38px; }
   .hud-moves b { font-size: 36px; }
-  .title-toys { height: 96px; }
-  .ttoy { --sz: 88px; } .ttoy:nth-child(2) { --sz: 100px; }
   .card:not(.sheet-card) { gap: 10px; padding-top: 40px; }
   .goal-big .gb .ic { width: 58px; height: 58px; }
   .hint-avatar { width: 50px; height: 50px; }
@@ -1098,19 +1056,19 @@ svg.on .hi { opacity: .9; }
   #app { max-width: 1100px; }
   #app::before { display: none; }
 
-  /* 封面：左欄 logo＋名字、右欄雲台＋按鈕；沙灘上的合照藏起來 */
-  #scr-title .topbar { position: absolute; top: calc(6px + var(--safe-t)); right: calc(12px + var(--safe-r)); z-index: 3; min-height: 0; }
-  .title-main { flex-direction: row; justify-content: center; gap: clamp(12px, 4vw, 48px); }
-  .title-head, .title-play { flex: 1 1 0; min-width: 0; max-width: 430px; align-self: center; margin: 0; }
-  .title-play { padding-bottom: 0; row-gap: 6px; }
-  .cv-deco { display: none; }
-  .logo { font-size: clamp(40px, min(8vw, 15vh), 72px); }
-  .logo-sub { font-size: clamp(14px, 4.4vh, 19px); }
-  .title-toys { height: clamp(64px, 29vh, 150px); max-width: 360px; padding-bottom: clamp(16px, 6vh, 30px); }
-  .title-toys::before { height: clamp(36px, 14vh, 66px); }
-  .ttoy { --sz: clamp(56px, 24vh, 124px); }
-  .ttoy:nth-child(2) { --sz: clamp(64px, 29vh, 150px); }
-  .title-btns { gap: 10px; margin-top: 0; }
+  /* 封面：左欄五顆蛋＋名字＋合照、右欄荷包蛋；3D 左上、設定右上；海和沙灘照樣滿版（工作單13） */
+  :root { --cv-fb: 0px; --cv-sand: calc(var(--safe-b) + 40px); --eggT: calc(var(--safe-t) + 50px); --ew: 50px; --eh: 59px; --ef: 28px; --eg: 3px; }
+  .cv-col { right: 42%; }
+  .cv-names { top: calc(var(--eggT) + var(--eh) + 22px); font-size: 15px; }
+  .cv-stage { top: calc(var(--eggT) + var(--eh) + 50px); left: max(0px, calc(50% - 180px)); right: max(0px, calc(50% - 180px)); }   /* 側雲和探頭玩偶靠近合照 */
+  .cv-drift.d1 { display: none; }   /* 橫向這朵會躲在蛋字後面 */
+  .cv-group { bottom: calc(var(--cv-sand) + 40px); }
+  .cv-group img { width: 190px; }
+  .cv-cl.big { width: 200px; height: 92px; margin-left: -100px; }
+  .cv-cl.sl, .cv-cl.sr { width: 130px; height: 66px; }
+  .cv-cl.sl { left: -24px; } .cv-cl.sr { right: -24px; }
+  .cv-peek, .cv-peek.pr { width: 78px; bottom: calc(var(--cv-sand) + 46px); }
+  .cv-act { left: 77%; bottom: auto; top: calc(50% - 75px); }
 
   /* 地圖：維持手機欄寬，不拉成整個橫向螢幕 */
   #scr-map { left: max(0px, calc(50% - 280px)); right: max(0px, calc(50% - 280px)); }
@@ -1212,7 +1170,6 @@ svg.on .hi { opacity: .9; }
   0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); }
   50% { transform: rotate(calc(var(--r, 0deg) * -0.5)) translateY(-7px); }
 }
-.title-main { position: relative; z-index: 1; }
 @keyframes stk-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 
 .map-inner { z-index: 1; }
@@ -2182,23 +2139,29 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
   #scr-game .bst.on { box-shadow: 0 0 0 4px #ffe14d, 0 0 22px 6px rgba(255, 220, 80, .8), 0 4px 0 #e7b9cf; }
 }
 
-/* ---------- 封面背景（蛋蛋碼頭 A／整座島 B），在 #app 後面、天空前面；離開封面就淡掉 ---------- */
+/* ---------- 封面背景「蛋蛋泡泡」（工作單13）：天空、海（一排小白光點）、圓弧沙灘、兩朵慢慢飄的雲 ----------
+   在 #app 後面、天空前面；離開封面就淡掉。位置變數（--cv-sand）在封面那段的 :root。 */
 .cover-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: linear-gradient(180deg, #c6eaa9 0%, #d7f2c0 52%, #fdeccb 56%, #ffe3b6 78%, #8fd3ef 81%, #7fcbeb 100%);
+  background: linear-gradient(180deg, #7fcbff 0, #b9e6ff calc(100% - var(--cv-sand) - 138px), #d8f3ff calc(100% - var(--cv-sand) - 73px));
   transition: opacity .4s ease;
 }
 :root[data-screen]:not([data-screen="title"]) .cover-bg { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
 :root[data-screen]:not([data-screen="title"]) .cover-bg * { animation-play-state: paused !important; }
-.cover-bg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.cover-b .cover-bg { background: #8fd3ef; }
-.cover-b .cover-bg svg { filter: blur(3px); opacity: .55; transform: scale(1.04) translateZ(0); }
-.cv-wv { animation: cvWave 3.2s ease-in-out infinite; animation-delay: var(--k, 0s); }
-@keyframes cvWave { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
-.cv-boat { transform-box: fill-box; transform-origin: 50% 100%; animation: cvBoat 3.6s ease-in-out infinite; }
-@keyframes cvBoat { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-.cv-cloud { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; opacity: .92; animation: cvDrift 26s ease-in-out infinite alternate; }
-@keyframes cvDrift { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+.cv-sea { position: absolute; left: 0; right: 0; top: calc(100% - var(--cv-sand) - 82px); height: 120px; background: linear-gradient(180deg, #48c2ea, #7cdaf2); }
+.cv-sea::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 14px; height: 50px; opacity: .8;
+  background: radial-gradient(circle at 10px 6px, rgba(255, 255, 255, .8) 2px, transparent 3px) 0 0 / 46px 20px;
+}
+.cv-sand {
+  position: absolute; left: -60px; right: -60px; top: calc(100% - var(--cv-sand)); bottom: -40px;
+  border-radius: 50% 50% 0 0 / 70px; background: linear-gradient(180deg, #ffe9b0, #ffd98a);
+  box-shadow: inset 0 8px 0 rgba(255, 255, 255, .55);
+}
+.cv-drift { position: absolute; background: var(--cloud) center / 100% 100% no-repeat; opacity: .92; animation: cvDrift 18s ease-in-out infinite alternate; }
+.cv-drift.d1 { left: calc(50% - 207px); top: calc(100% - var(--cv-sand) - 298px); width: 140px; height: 72px; }
+.cv-drift.d2 { left: calc(50% + 75px); top: calc(100% - var(--cv-sand) - 278px); width: 130px; height: 68px; animation-delay: -7s; }
+@keyframes cvDrift { from { transform: translateX(0); } to { transform: translateX(26px); } }
 
 /* ---------- 開頭動畫（js/opening.js），蓋在最上面 ---------- */
 .op {
@@ -2232,7 +2195,7 @@ html.op-playing #app *, html.op-playing #app *::before, html.op-playing #app *::
 html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paused !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .cv-wv, .cv-boat, .cv-cloud, .title-toys .ttoy { animation: none !important; }
+  .cover-bg *, #scr-title *, #scr-title *::before { animation: none !important; }   /* 封面完全不動 */
 }
 
 /* ---------- 右上角陪玩角色（工作單12）：薯餅／蛋黃哥坐在立體雲上，奇數關薯餅、偶數關蛋黃哥 ----------

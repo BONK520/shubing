@@ -1,8 +1,9 @@
-// 開頭動畫（約 7.5 秒）：蛋蛋碼頭沿著路往上滑 → 拉遠成整座島 → 「薯餅蛋蛋島」一個字一個字彈進來、三隻娃娃跳一下
-// → 標題後面的立體雲脹大蓋滿畫面，再往四周散開，露出封面。
+// 開頭動畫（約 7 秒）：蛋蛋碼頭沿著路慢慢往上滑一小段 → 地圖淡掉、整座島淡入 → 五顆蛋一顆一顆冒出來、三隻娃娃跳一下
+// → 標題後面的立體雲慢慢脹大蓋滿畫面，再輕輕散開，露出封面。
+// 工作單13 減暈：捲動距離最多 0.8 個螢幕高、最快約 400px/秒，底色只換 2～3 次，縮放幅度和雲散開的距離都收小。
 // 要不要播是 index.html <head> 裡的小程式決定的（window.__opPlay）；這裡只負責畫和播，跟主程式的載入同時進行。
 // 不放聲音；點一下或按任何鍵就跳過。只用 transform / opacity 動畫，地圖只畫前 22 關（3 站）。
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124zd';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124ze';
 
 const KEY = 'shubing-op';
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
@@ -34,7 +35,7 @@ function colorAt(st, y) {
   return 'rgb(' + a.map((v, j) => Math.round(v + (b[j] - v) * t)).join(',') + ')';
 }
 
-const T1 = 3000, T2 = 1900, T3 = 1500, T4 = 1200;           // 四段的長度（毫秒）
+const T1 = 3000, T2 = 1400, T3 = 1200, T4 = 1700;           // 四段的長度（毫秒）；第 4 段＝雲脹大 700＋散開 900～980
 const S2 = T1, S3 = T1 + T2, S4 = S3 + T3, END = S4 + T4;    // 每段開始的時間
 const SEA = '#8fd3ef';
 const TRIO = ['dog', 'sloth', 'egg'];                         // 皮蛋、薯餅、蛋黃哥（跟封面同三隻）
@@ -95,19 +96,19 @@ function start() {
   html.classList.remove('op-pending');
 
   const strip = root.querySelector('.op-strip'), stage = root.querySelector('.op-stage'), island = root.querySelector('.op-island');
-  const ease1 = 'cubic-bezier(.42,0,.36,1)';
-  // 鏡頭往上滑（路在碼頭先停一下下，再慢慢加速、到果樹林慢下來）
-  anim(strip, [{ transform: `translate3d(0,${vh - H}px,0)` }, { transform: 'translate3d(0,0,0)' }], { duration: T1, easing: ease1 });
-  // 寬螢幕兩邊的底色跟著畫面中間那一站變
-  const bg = [];
-  for (let k = 0; k <= 12; k++) { const p = k / 12; bg.push({ offset: p, backgroundColor: colorAt(st, vh / 2 + (H - vh) * (1 - p)) }); }
+  // 鏡頭從碼頭往上滑一小段就好（最多 0.8 個螢幕高），一開始就在動、慢慢停下來，不會忽快忽慢
+  const D = Math.round(Math.min(vh * .8, H - vh));
+  const ease1 = 'cubic-bezier(.3,.3,.6,1)';   // 最快約 1.43 倍平均速度：375×812 約 310px/秒
+  anim(strip, [{ transform: `translate3d(0,${vh - H}px,0)` }, { transform: `translate3d(0,${vh - H + D}px,0)` }], { duration: T1, easing: ease1 });
+  // 寬螢幕兩邊的底色跟著畫面中間那一站變：只取頭、中、尾三個顏色，換兩次，每次 1.5 秒
+  const bg = [0, .5, 1].map(p => ({ offset: p, backgroundColor: colorAt(st, H - vh / 2 - D * p) }));
   // 同一個元素有兩段動畫時，後面那段只用 forwards（用 both 的話，等待的時候會蓋掉前一段）
-  bgAnims.push(anim(root, bg, { duration: T1, easing: ease1 }));
-  bgAnims.push(anim(root, [{ backgroundColor: bg[12].backgroundColor }, { backgroundColor: SEA }], { delay: S2, duration: 700, fill: 'forwards' }));
-  // 第 2 段：地圖縮小淡掉，整座島從近拉到遠
-  anim(stage, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.55)', opacity: 0 }], { delay: S2, duration: 650, easing: 'ease-in' });
-  anim(island, [{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(2.1)', opacity: 1, offset: .25 }, { transform: 'scale(1)', opacity: 1 }],
-    { delay: S2 + 150, duration: T2 - 150, easing: 'cubic-bezier(.3,.1,.25,1)' });
+  bgAnims.push(anim(root, bg, { duration: T1, easing: 'linear' }));
+  bgAnims.push(anim(root, [{ backgroundColor: bg[2].backgroundColor }, { backgroundColor: SEA }], { delay: S2, duration: 700, fill: 'forwards' }));
+  // 第 2 段：地圖在原地淡掉（不縮放），整座島淡入、只從 1.12 倍輕輕收回 1 倍
+  anim(stage, [{ opacity: 1 }, { opacity: 0 }], { delay: S2, duration: 500, easing: 'ease-in-out' });
+  anim(island, [{ transform: 'scale(1.12)', opacity: 0 }, { opacity: 1, offset: .42 }, { transform: 'scale(1)', opacity: 1 }],
+    { delay: S2 + 100, duration: 1200, easing: 'ease-out' });
 
   later(S3 - 120, () => titleSeg(vw, vh));
   later(END, () => finish(false));
@@ -121,9 +122,12 @@ function titleSeg(vw, vh) {
   const box = root.querySelector('.op-title'), white = root.querySelector('.op-white'), burst = root.querySelector('.op-burst');
   const src = document.querySelector('#scr-title .logo');
   const r = src ? src.getBoundingClientRect() : { left: vw * .1, top: vh * .14, width: vw * .8, height: vw * .25 };
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  // 雲照五顆蛋實際佔的範圍算，不是整個標題列（.eggs 是 flex，寬度等於整列）
+  const er = src ? [...src.querySelectorAll('.egg')].map(e => e.getBoundingClientRect()) : [];
+  const eb = er.length ? (() => { const L = Math.min(...er.map(q => q.left)), T = Math.min(...er.map(q => q.top)); return { left: L, top: T, width: Math.max(...er.map(q => q.right)) - L, height: Math.max(...er.map(q => q.bottom)) - T }; })() : r;
+  const cx = eb.left + eb.width / 2, cy = eb.top + eb.height / 2;
   // 標題後面的立體雲
-  const cw = Math.min(vw * .98, r.width * 1.3), ch = cw * .525;
+  const cw = Math.min(vw * .98, eb.width * 1.3), ch = cw * .525;
   const cloud = document.createElement('div');
   cloud.className = 'op-cloud';
   Object.assign(cloud.style, { width: cw + 'px', height: ch + 'px', left: (cx - cw / 2) + 'px', top: (cy - ch * .56) + 'px' });
@@ -134,9 +138,14 @@ function titleSeg(vw, vh) {
     logo = src.cloneNode(true);
     logo.removeAttribute('id');
     logo.classList.add('op-logo');
-    Object.assign(logo.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', fontSize: getComputedStyle(src).fontSize });
+    Object.assign(logo.style, { left: r.left + 'px', top: r.top + 'px', right: 'auto', width: r.width + 'px' });
     box.appendChild(logo);
   }
+  // 每顆蛋本來就有高低和歪斜（封面上的 eggbob 這時候是暫停的），彈完要停在封面那顆蛋現在的位置，雲散開時才接得起來
+  const srcEggs = src ? [...src.querySelectorAll('.egg')] : [];
+  const eggs = logo ? [...logo.querySelectorAll('.egg')] : [];
+  const eggM = srcEggs.map(e => { const t = getComputedStyle(e).transform; return t && t !== 'none' ? t : ''; });
+  eggs.forEach(e => { e.style.animation = 'none'; });
   // 三隻娃娃站在標題下面
   const sz = Math.round(Math.min(78, vw * .19));
   const trio = document.createElement('div');
@@ -146,48 +155,49 @@ function titleSeg(vw, vh) {
   box.appendChild(trio);
 
   const t0 = 120;
-  anim(cloud, [{ transform: 'scale(.2)', opacity: 0 }, { transform: 'scale(1.08)', opacity: 1, offset: .65 }, { transform: 'scale(1)', opacity: 1 }], { delay: t0, duration: 420, easing: 'ease-out' });
-  if (logo) logo.querySelectorAll('.ch').forEach((c, i) => {
-    const rot = `rotate(${getComputedStyle(c).getPropertyValue('--rot').trim() || '0deg'})`;   // 每個字本來就歪一點，彈的時候也要保留
-    anim(c, [{ transform: `${rot} translateY(-.5em) scale(.2)`, opacity: 0 }, { transform: `${rot} translateY(.05em) scale(1.22)`, opacity: 1, offset: .6 }, { transform: rot, opacity: 1 }],
-      { delay: t0 + 220 + i * 95, duration: 380, easing: 'ease-out' });
+  anim(cloud, [{ transform: 'scale(.85)', opacity: 0 }, { transform: 'scale(1.04)', opacity: 1, offset: .6 }, { transform: 'scale(1)', opacity: 1 }], { delay: t0, duration: 500, easing: 'ease-out' });
+  // 五顆蛋一顆接一顆冒出來，最大只到 1.12 倍
+  eggs.forEach((e, i) => {
+    const M = eggM[i] || 'translateY(0)';
+    anim(e, [{ transform: `${M} scale(.6)`, opacity: 0 }, { transform: `${M} scale(1.12)`, opacity: 1, offset: .6 }, { transform: `${M} scale(1)`, opacity: 1 }],
+      { delay: t0 + 200 + i * 110, duration: 420, easing: 'ease-out' });
   });
   trio.querySelectorAll('img').forEach((im, i) => {
-    anim(im, [{ transform: 'translateY(30%) scale(.6)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1, offset: .3 }, { transform: 'translateY(-34%) scale(1.04,.96)', offset: .62 }, { transform: 'translateY(0) scale(1)', opacity: 1 }],
-      { delay: t0 + 760 + i * 110, duration: 520, easing: 'ease-out' });
+    anim(im, [{ transform: 'translateY(20%) scale(.9)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1, offset: .3 }, { transform: 'translateY(-24%)', offset: .62 }, { transform: 'translateY(0) scale(1)', opacity: 1 }],
+      { delay: t0 + 760 + i * 110, duration: 560, easing: 'ease-out' });
   });
 
-  // 第 4 段：雲脹大蓋滿畫面
-  const d4 = S4 - S3 + 120;
+  // 第 4 段：雲慢慢脹大蓋滿畫面（700ms）
+  const d4 = S4 - S3 + 120, SWELL = 700;
   // 雲一邊脹大一邊往畫面中間移，才蓋得到下半部（只在原地放大的話，雲的平底會在畫面中間留一條直線）
   const dy = vh / 2 - cy;
   const big = 1.3 * Math.max((vh / 2) / (ch * .44), vw / cw);
-  anim(cloud, [{ transform: 'translate(0,0) scale(1)' }, { transform: `translate(0,${dy}px) scale(${big})` }], { delay: d4, duration: 460, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' });
+  anim(cloud, [{ transform: 'translate(0,0) scale(1)' }, { transform: `translate(0,${dy}px) scale(${big})` }], { delay: d4, duration: SWELL, easing: 'ease-in-out', fill: 'forwards' });
   // 雲底下再接一朵倒過來的雲，脹大時下緣是一球一球的圓弧，不會是一條直線
   const under = document.createElement('i');
   cloud.appendChild(under);
-  anim(under, [{ opacity: 0 }, { opacity: 1 }], { delay: d4, duration: 120 });
-  [logo, trio].forEach(n => n && anim(n, [{ opacity: 1 }, { opacity: 0 }], { delay: d4 + 180, duration: 200 }));
-  anim(white, [{ opacity: 0 }, { opacity: 1 }], { delay: d4 + 250, duration: 210, easing: 'ease-in' });
-  // 蓋滿之後：底下的地圖和島拿掉、露出封面，九朵雲往四周散開、白色慢慢退掉
-  const d5 = d4 + 460;
+  anim(under, [{ opacity: 0 }, { opacity: 1 }], { delay: d4, duration: 200 });
+  [logo, trio].forEach(n => n && anim(n, [{ opacity: 1 }, { opacity: 0 }], { delay: d4 + 250, duration: 300 }));
+  anim(white, [{ opacity: 0 }, { opacity: 1 }], { delay: d4 + 380, duration: SWELL - 380, easing: 'ease-in' });
+  // 蓋滿之後：底下的地圖和島拿掉、露出封面，九朵雲輕輕往外飄開（距離是以前的 1/3、只放大到 1.1 倍）、白色 500ms 退掉
+  const d5 = d4 + SWELL;
   later(d5, () => {                                           // titleSeg 本身在 S3-120 才開始，這裡只算從現在起的時間
     if (!root) return;
     root.classList.add('op-reveal');
     bgAnims.forEach(a => a.cancel()); bgAnims = [];
     [root.querySelector('.op-stage'), root.querySelector('.op-island'), cloud].forEach(n => n && (n.style.visibility = 'hidden'));
-    const pw = Math.max(vw * .8, 240), ph = pw * .525;
+    const pw = Math.max(vw * .8, 240) * 1.7, ph = pw * .525;   // 一開始就是蓋滿的大小，不再從 1.7 倍放大
     for (let i = 0; i < 9; i++) {
       const gx = i % 3 - 1, gy = Math.floor(i / 3) - 1;
       const x = vw / 2 + gx * vw * .36, y = vh / 2 + gy * vh * .34;
       const p = document.createElement('i');
       Object.assign(p.style, { width: pw + 'px', height: ph + 'px', left: (x - pw / 2) + 'px', top: (y - ph / 2) + 'px' });
       burst.appendChild(p);
-      const dx = (gx || (i % 2 ? .25 : -.25)) * vw * .75, dy = (gy || (i % 2 ? -.2 : .2)) * vh * .6;
-      anim(p, [{ transform: 'scale(1.7)', opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(2.3)`, opacity: 0 }],
-        { duration: 600 + (i % 3) * 40, easing: 'cubic-bezier(.2,.6,.35,1)' });
+      const dx = (gx || (i % 2 ? .25 : -.25)) * vw * .25, dy = (gy || (i % 2 ? -.2 : .2)) * vh * .2;
+      anim(p, [{ transform: 'scale(1)', opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(1.1)`, opacity: 0 }],
+        { duration: 900 + (i % 3) * 40, easing: 'cubic-bezier(.3,.4,.4,1)' });
     }
-    anim(white, [{ opacity: 1 }, { opacity: 0 }], { duration: 380, easing: 'ease-out' });
+    anim(white, [{ opacity: 1 }, { opacity: 0 }], { duration: 500, easing: 'ease-out' });
   });
 }
 
