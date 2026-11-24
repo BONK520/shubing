@@ -2307,14 +2307,15 @@ html.op-playing .cover-bg *, html.op-playing .sky * { animation-play-state: paus
 .cl-stick.stuck .cl-tab.new::after { top: -3px; right: -2px; width: 7px; height: 7px; }
 .cl-stick.stuck .cl-demo { padding: 3px 10px; font-size: 12px; right: 6px; bottom: 6px; }
 .cl-stick.stuck .cl-try { top: 6px; left: 6px; padding: 2px 8px; font-size: 12px; }
-/* 預覽穿在誰身上：右上角一對小按鈕 */
+/* 頭像用哪一隻（工作單22）：右上角兩顆小頭照圓鈕，點了就存 */
 .cl-who { position: absolute; top: 8px; right: 8px; z-index: 1; display: flex; padding: 3px; gap: 2px; border-radius: 999px; background: rgba(255, 255, 255, .78); box-shadow: 0 2px 0 rgba(111, 40, 64, .15); }
 .cl-who[hidden] { display: none; }
-.cl-who button { padding: 4px 10px; border: 0; border-radius: 999px; background: none; color: #9a5a7a; font: inherit; font-size: 12.5px; font-weight: 900; cursor: pointer; }
-.cl-who button[aria-pressed="true"] { background: linear-gradient(180deg, #ff9fd0, #ff5fa8); color: #fff; box-shadow: 0 2px 0 #c42a74; }
+.cl-who button { position: relative; width: 34px; height: 34px; padding: 3px; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.cl-who button > img, .cl-who button > .toy-fallback { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.cl-who button[aria-pressed="true"] { background: linear-gradient(180deg, #ffe0f0, #ffb6da); box-shadow: inset 0 0 0 2.5px #ff5fa8, 0 2px 0 #c42a74; }
 .cl-who button:focus-visible { outline: 3px solid #2f8cf0; outline-offset: 1px; }
 .cl-stick.stuck .cl-who { top: 6px; right: 6px; }
-.cl-stick.stuck .cl-who button { padding: 3px 8px; font-size: 12px; }
+.cl-stick.stuck .cl-who button { width: 28px; height: 28px; padding: 2px; }
 @media (max-height: 700px) { .cl-preview { height: 140px; } .cl-ava .av { --s: 92px; } }
 /* 橫向：整個對話框一起捲（.modal:not(.sheet) overflow-y: auto），黏住的話會蓋掉一半畫面，照舊跟著捲 */
 @media (orientation: landscape) and (max-height: 520px) { .cl-stick { position: relative; } }

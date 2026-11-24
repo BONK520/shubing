@@ -14,7 +14,7 @@ export const DEBUG_UNLOCK_ALL_COSMETICS = false;
 
 // ---------- 分類 ----------
 export const CATEGORIES = [
-  { id: 'outfit', name: '薯餅造型', short: '造型' },   // 只穿在地圖左下角的薯餅頭像和衣櫃預覽，盤面上的娃娃不穿；右上角陪玩的薯餅（和蛋黃哥）有穿
+  { id: 'outfit', name: '玩偶造型', short: '造型' },   // 只穿在地圖左下角的頭像和衣櫃預覽，盤面上的娃娃不穿；右上角陪玩的薯餅（和蛋黃哥）有穿
   { id: 'ring', name: '頭像外圈', short: '外圈' },     // 地圖左下角頭像外面那一圈（跟造型都是打扮頭像，放隔壁）
   { id: 'hat', name: '頭飾配件', short: '配件' },
   { id: 'fx', name: '消除特效', short: '特效' },
@@ -26,8 +26,8 @@ export const CATEGORIES = [
 // unlock：null = 一開始就有；{ coins: n } = 用 n 枚造型幣兌換；{ stars: n } = 星星總數到 n 自動解鎖；{ chest: i } = 第 i 個寶箱開出來；
 //         { station: n } = 走到第 n 關就送（第 n−1 關有星星就算走到）；{ allClear: true } = 全部關卡都過關
 export const ITEMS = [
-  // 分類 0：薯餅造型（地圖左下角的頭像）
-  { id: 'outfit.none',      cat: 'outfit', name: '原本的薯餅', unlock: null },
+  // 分類 0：玩偶造型（地圖左下角的頭像）
+  { id: 'outfit.none',      cat: 'outfit', name: '原本的樣子', unlock: null },
   { id: 'outfit.sailor',    cat: 'outfit', name: '碼頭水手',   unlock: null },
   { id: 'outfit.night',     cat: 'outfit', name: '晚安睡帽',   unlock: { coins: 3 } },
   { id: 'outfit.party',     cat: 'outfit', name: '生日派對',   unlock: { coins: 8 } },
@@ -113,8 +113,8 @@ export const DEFAULT_LOOK = { outfit: 'outfit.none', hat: 'hat.none', fx: 'fx.de
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
 
 // ---------- 我的頭像（衣櫃裡的「我的頭像」：角色 + 圓形底色）----------
-// 角色目前只有薯餅；底色只用程式畫的顏色和漸層。sakura 是原本的底色（舊玩家的頭像看起來不變）
-export const AVATAR_WHO = ['shubing'];
+// 角色：shubing 薯餅（預設）、egg 蛋黃哥（工作單22）；底色只用程式畫的顏色和漸層。sakura 是原本的底色（舊玩家的頭像看起來不變）
+export const AVATAR_WHO = ['shubing', 'egg'];
 export const AVATAR_BGS = [
   { id: 'sakura', name: '櫻花粉', bg: 'radial-gradient(circle at 50% 35%, #fff, #ffe3f2)', sh: 'rgba(255, 111, 176, .22)' },
   { id: 'sea',    name: '海邊藍', bg: 'radial-gradient(circle at 50% 35%, #f5fcff, #b4e0ff)', sh: 'rgba(40, 130, 220, .22)' },
@@ -182,7 +182,7 @@ export const CHESTS = [
 ];
 export const chestItems = i => ITEMS.filter(it => it.unlock && it.unlock.chest === i);
 
-// ---------- 畫 SVG 的小工具（新配件、薯餅造型、外圈、圖示共用）----------
+// ---------- 畫 SVG 的小工具（新配件、玩偶造型、外圈、圖示共用）----------
 const S = (d, f, s, w) => `<path d="${d}" fill="${f}" stroke="${s}" stroke-width="${w || 1.6}" stroke-linejoin="round" stroke-linecap="round"/>`;
 const L = (d, s, w, o) => `<path d="${d}" fill="none" stroke="${s}" stroke-width="${w}" stroke-linecap="round" opacity="${o == null ? 1 : o}"/>`;
 const C = (cx, cy, r, f, s, w) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}"${s ? ` stroke="${s}" stroke-width="${w || 1.4}"` : ''}/>`;
@@ -400,8 +400,16 @@ const NEW_ICON = {
   'theme.glass': svg64(`<rect x="6" y="6" width="52" height="52" rx="12" fill="#b9a6e6"/>${C(18, 20, 13, '#ff86bd')}${C(46, 22, 11, '#ffd23c')}${C(40, 46, 13, '#5b8ef0')}${C(16, 48, 9, '#63c94f')}<rect x="6" y="6" width="52" height="52" rx="12" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.95)" stroke-width="4"/><rect x="11" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="11" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="25" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="39" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="11" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/>${L('M14 16 Q18 11 26 10', '#fff', 2.6, 0.9)}`),
 };
 
-// ---------- 薯餅造型（只畫在地圖左下角頭像、衣櫃預覽）----------
+// ---------- 玩偶造型（畫在地圖左下角頭像、衣櫃預覽、陪玩）----------
 // 座標：0–100 對齊薯餅照片的方框；back 畫在薯餅後面（披風），front 畫在前面。SVG 的 viewBox 是 -6 -6 112 112，比方框大一點，裝飾可以稍微超出去
+// 太空頭盔（11/24 換新）：帽子（兜帽＋面罩＋耳罩＋天線）和胸前面板分開畫，對位時兩塊各自移動
+const HELM = {
+  hood: S('M23.5 41 Q20 3.5 50 3.5 Q80 3.5 76.5 41 L69.5 41 Q71 22.5 50 22 Q29 22.5 30.5 41 Z', 'url(#gW)', WS, 1.6) + L('M27 36 Q26 26 29 19', '#5b8ef0', 2.2, 0.85) + L('M73 36 Q74 26 71 19', '#5b8ef0', 2.2, 0.85),
+  visor: S('M29.5 21.5 Q30 9 50 8.5 Q70 9 70.5 21.5 Q50 15.5 29.5 21.5 Z', 'url(#gV)', '#3d7fc4', 1.3) + L('M35 15 Q40 11.6 47 11', '#fff', 1.6, 0.9) + C(61, 12.5, 1, '#fff').replace('/>', ' opacity=".8"/>'),
+  ears: [24.5, 75.5].map(x => C(x, 35, 5.6, 'url(#gB)', '#2c55b8', 1.3) + C(x, 35, 2.8, '#e6f1ff', '#2c55b8', 0.7)).join(''),
+  ant: L('M68 12 L74.5 4', '#8b86a6', 1.6) + C(75, 3.3, 2.4, 'url(#gR)', '#8f1d1d', 1) + C(74.3, 2.5, 0.7, '#fff'),
+  panel: S('M38.5 57 Q38.5 53.5 42 53.5 L58 53.5 Q61.5 53.5 61.5 57 L61.5 66.5 Q61.5 70 58 70 L42 70 Q38.5 70 38.5 66.5 Z', 'url(#gW)', WS, 1.4) + C(44, 59, 2, 'url(#gR)', '#8f1d1d', 0.7) + C(50, 59, 2, 'url(#gY)', '#9a5200', 0.7) + C(56, 59, 2, 'url(#gB)', '#1d3c80', 0.7) + L('M43 65 L57 65', '#8b86a6', 1.8, 0.6),
+};
 export const OUTFITS = {
   none: { back: '', front: '' },
   sailor: { back: '', front: S('M33 21 Q33 7 50 7 Q67 7 67 21 Z', 'url(#gW)', WS) + L('M34 18 Q50 12 66 18', '#2c55b8', 2.6) + S('M27 22 Q50 14 73 22 Q74 27.5 50 24.5 Q26 27.5 27 22 Z', 'url(#gW)', WS) + L('M39 11 Q43 9 47 9', '#fff', 1.6, 0.9) + S('M34 50.5 Q50 56 66 50.5 L52 69 Q50 71 48 69 Z', 'url(#gB)', '#1d3c80') + L('M38.5 53.5 Q50 58.5 61.5 53.5', '#fff', 1.3, 0.9) + C(50, 56.5, 3.3, 'url(#gR)', '#8f1d1d', 1.2) },
@@ -409,7 +417,7 @@ export const OUTFITS = {
   night: { back: '', front: S('M31 23 Q32 5 55 6 Q75 7 85 24 Q76 17 68 15 Q70 19 69 23 Z', 'url(#gB)', '#1d3c80') + star(45, 13, 2.6, '#fff6a8') + star(58, 10, 2, '#fff6a8') + star(73, 15, 1.8, '#fff6a8') + star(62, 19, 1.5, '#fff6a8') + S('M29 21 Q50 15 71 21 L71 27 Q50 21 29 27 Z', 'url(#gW)', WS, 1.5) + C(86, 26, 4.5, 'url(#gY)', '#9a5200', 1.4) + '<text x="17" y="17" font-size="9" font-weight="900" fill="#5b8ef0" stroke="#fff" stroke-width="2" paint-order="stroke" font-family="system-ui,sans-serif">z</text><text x="10" y="9" font-size="6.5" font-weight="900" fill="#5b8ef0" stroke="#fff" stroke-width="1.6" paint-order="stroke" font-family="system-ui,sans-serif">z</text>' },
   party: { back: '', front: S('M39 21 L50 2 L61 21 Q50 24 39 21 Z', 'url(#gK)', '#b8155a') + L('M45.5 12 L53.5 9.5 M42 18.5 L57.5 14', '#fff', 2, 0.8) + C(47, 16.5, 1.3, '#ffd23c') + C(54, 18.6, 1.3, '#5b8ef0') + C(51, 11.5, 1.1, '#63c94f') + C(50, 3, 3.5, 'url(#gY)', '#9a5200', 1.3) + S('M50 54 L38.5 48.5 Q36.5 54 38.5 59.5 Z', 'url(#gB)', '#1d3c80') + S('M50 54 L61.5 48.5 Q63.5 54 61.5 59.5 Z', 'url(#gB)', '#1d3c80') + C(50, 54, 3, 'url(#gB)', '#1d3c80', 1.4) + C(42, 52, 1.1, '#fff') + C(58.5, 56, 1.1, '#fff') + C(41.5, 56.5, 1, '#fff') + C(58, 51.5, 1, '#fff') },
   berry: { back: '', front: S('M29 24 Q28 5 50 5 Q72 5 71 24 Q50 19 29 24 Z', 'url(#gR)', '#8f1d1d') + [[38, 13], [46, 10], [55, 10.5], [63, 14], [42, 18.5], [51, 16], [59, 19], [34, 19.5], [66, 20]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1.1" ry="1.6" fill="#ffe27a"/>`).join('') + S('M37 8.5 L42.5 2.5 L46.5 7 L50 0.8 L53.5 7 L57.5 2.5 L63 8.5 Q50 12.5 37 8.5 Z', 'url(#gG)', '#1f6a1f', 1.4) + L('M35 12 Q38 9 41 9', '#fff', 1.5, 0.7) },
-  space: { back: '', front: C(50, 35, 29, 'url(#gGlass)', '#c8d3e6', 3) + C(50, 35, 29, 'none', '#8b86a6', 1).replace('/>', ' opacity=".6"/>') + L('M29 22 Q35 12 45 9.5', '#fff', 3, 0.85) + L('M27 30 L26.5 33', '#fff', 2.4, 0.7) + S('M23 55 Q50 69 77 55 L78 61 Q50 75 22 61 Z', 'url(#gW)', WS) + L('M64.5 9.5 L70 2.5', '#8b86a6', 1.6) + C(70.5, 2.6, 2.3, 'url(#gR)', '#8f1d1d', 1) },
+  space: { back: '', front: '', head: HELM.hood + HELM.visor + HELM.ears + HELM.ant, body: HELM.panel, defs: '<defs>' + lg('gV', [[0, '#d9f3ff'], [0.5, '#8fd0f7'], [1, '#4b97d6']]) + '</defs>' },   // 帽子、胸前面板分開對位
   detective: { back: '', front: S('M31 22 Q31 7 50 7 Q69 7 69 22 Z', 'url(#gN)', '#5a3412') + L('M40 9 L40 21 M50 7 L50 21 M60 9 L60 21 M32 14 L68 14', '#5a3412', 1, 0.35) + S('M29 21 Q50 16.5 71 21 Q67 27.5 50 26 Q33 27.5 29 21 Z', 'url(#gN)', '#5a3412') + C(50, 7.2, 1.8, '#7a4a1f') + L('M13 65 L20 75', '#7a4a1f', 3.2) + C(9.5, 58.5, 7, 'url(#gGlass)', '#e4a400', 2.6) + L('M6 55 Q8 53 10.5 53', '#fff', 1.4, 0.9) },
   chef: { back: '', front: S('M37 58.5 Q50 55.5 63 58.5 L66 85 Q50 90.5 34 85 Z', 'url(#gW)', '#a9a2bf') + L('M38.5 58.8 L36.5 51.5 M61.5 58.8 L63.5 51.5', '#a9a2bf', 1.6) + S('M50 76 Q44 71 46 68 Q48 66 50 68.5 Q52 66 54 68 Q56 71 50 76 Z', 'url(#gK)', '#b8155a', 1.2) + S('M35.5 22 L36.5 15 Q50 13 63.5 15 L64.5 22 Q50 24 35.5 22 Z', 'url(#gW)', '#a9a2bf') + S('M36.5 16 Q28 10.5 34 4.5 Q38.5 -0.5 45 2.3 Q50 -1.8 55.5 2.3 Q62 -0.5 66 4.5 Q72 10.5 63.5 16 Z', 'url(#gW)', '#a9a2bf') + L('M40 8 Q42 5 45 5', '#fff', 1.6, 0.9) },
   wizard: { back: '', front: '<ellipse cx="50" cy="21" rx="26" ry="5.5" fill="url(#gP)" stroke="#3e1a80" stroke-width="1.6"/>' + S('M36 20 Q42 10 47 3 Q53 -1.5 58.5 4 Q55 5.5 55.5 9 Q60 15 64 20 Q50 23 36 20 Z', 'url(#gP)', '#3e1a80') + L('M37.5 17.5 Q50 21 62.5 17.5', '#ffd23c', 2.6) + star(51, 11, 3.4, '#ffe36e', '#9a5200', 0.8) + L('M86 72 L94 51', '#7a4a1f', 2.6) + star(94.5, 47, 5.5, 'url(#gY)', '#9a5200', 1.3) + C(86, 44, 1, '#fff') + C(98, 57, 0.9, '#fff') },
@@ -422,40 +430,87 @@ export const OUTFITS = {
   painter: { back: '', front: L('M50 6 L51 1.5', '#8f1d1d', 2.6) + S('M28 20 Q24 8 46 6 Q70 5 74 15 Q74 22 62 22 Q45 25 28 20 Z', 'url(#gR)', '#8f1d1d') + L('M33 13 Q38 8 46 8', '#fff', 1.5, 0.75) + S('M4 64 Q3 55 13.5 55 Q24 55 24 63 Q24 68 19 67 Q15 66 15 70 Q15 74 10 73 Q4 71 4 64 Z', '#f3d9b5', '#7a4a1f', 1.4) + C(8.5, 61, 1.9, '#ff5a5a') + C(13.5, 58.5, 1.9, '#ffd23c') + C(19, 60, 1.9, '#5b8ef0') + C(9.5, 67, 1.9, '#63c94f') + L('M22 76 L31.5 61', '#7a4a1f', 2.2) + S('M30.6 62.4 L33.8 56.5 L34.6 60.6 Z', '#ff86bd', '#b8155a', 0.9) },
 };
 // ---------- 角色對位表：別隻玩偶穿薯餅的造型 ----------
-// 造型是照薯餅畫的。換成別隻時，y < split 的部分（帽子）和下面的部分（領子、披風、道具）各自位移縮放，
-// 對到那隻玩偶的頭頂和身體。整體對位不好看的造型，在 per 裡個別調：all = 整套用同一個 transform（不切上下）。
-// 量法（egg_n.png 的不透明範圍，0–100）：蛋黃哥頭頂約 y9、y20 那排頭寬 x23–77；薯餅帽沿那排（y24）頭寬 x27–68。
+// 造型是照薯餅畫的。穿在玩偶身上時，y < split 的部分（帽子）和下面的部分（領子、披風、道具）各自位移縮放，
+// 對到那隻玩偶的頭頂和身體。head、body 可以是 transform 字串，或 { x, y, s, r, w }（造型對齊台存下來的數值）：
+//   以帽子中心 (50, 24)、衣服中心 (50, 60) 為準，往右 x、往下 y、放大 s 倍、轉 r 度、寬度再乘 w。
+// 沒寫 head 也沒寫 body 的造型照原圖畫。per 裡個別調；all = 整套用同一個 transform（不切上下）。
+// 帽子和衣服分開畫的造型（OUTFITS 裡有 head、body，例如太空頭盔）不切上下，兩塊各自套 head、body。
 // skip：怎麼調都怪、先不穿的造型（衣櫃預覽會出「蛋黃哥這套還在做」）
 export const OUTFIT_FIT = {
-  sloth: null,
+  sloth: {
+    split: 36,
+    per: {   // 造型對齊台（11/24）的數值；沒寫的那一半照原圖
+      sailor: { head: { x: 3, y: -8.5, s: 1, r: -5 }, body: { x: 6.5, y: -2.5, s: 1, r: -5 } },
+      night: { head: { x: 3, y: -7.5, s: 1, r: -5 } },
+      party: { head: { x: 1, y: -6.5, s: 0.88, r: -10 }, body: { x: 7.5, y: -0.5, s: 1, r: -10 } },
+      berry: { head: { x: 2.5, y: -4.5, s: 1, r: -5 } },
+      snow: { head: { x: 3, y: -6, s: 1, r: -5 }, body: { x: 7.5, y: 1, s: 1, r: -5 } },
+      space: { head: { x: 3.5, y: -4, s: 1, r: -5, w: 1.08 }, body: { x: 6.5, y: 0, s: 1, r: -5 } },
+      detective: { head: { x: 3, y: -2, s: 1, r: -10 }, body: { x: 1, y: -0.5, s: 1, r: 0 } },
+      chef: { head: { x: 1.5, y: -6, s: 0.92, r: -10 }, body: { x: 6, y: -3, s: 1.02, r: -5 } },
+      pumpkin: { head: { x: 2, y: -4.5, s: 1, r: -10 }, body: { x: 7, y: -1, s: 1, r: -5 } },
+      wizard: { head: { x: 1.5, y: -7, s: 0.9, r: -10 }, body: { x: 3, y: 4, s: 1, r: 0 } },
+      king: { head: { x: 0, y: -4.5, s: 1, r: -10 }, body: { x: 7.5, y: -1, s: 1, r: -5 } },
+      dino: { head: { x: 3, y: 0, s: 1, r: -10 } },   // 恐龍下半身沒有圖，衣服的值不套
+      painter: { head: { x: 2, y: 3, s: 1, r: -10 } },
+    },
+    skip: [],
+  },
   egg: {
     split: 36,
     head: 'translate(50 21) scale(1.12) translate(-50 -24)',
     body: 'translate(0 -2)',
-    per: {
-      space: { all: 'translate(50 28) scale(1.14) translate(-50 -35)' },   // 頭盔包住整顆蛋黃，衣領落在蛋殼口
-      dino: { head: 'translate(50 18) scale(1.12) translate(-50 -24)' },     // 牙齒那排會蓋到眼睛，再往上提一點
+    per: {   // 造型對齊台（11/24）的數值；沒寫 body 的照上面的 body（往上 2）
+      sailor: { head: { x: 8.5, y: -18, s: 0.66, r: 0 }, body: { x: 6, y: 0, s: 1, r: 0 } },
+      night: { head: { x: 8, y: -13, s: 0.82, r: 0 } },
+      party: { head: { x: -5.5, y: -14.5, s: 0.62, r: -30 } },
+      berry: { head: { x: 8.5, y: -12.5, s: 0.7, r: 0 } },
+      snow: { head: { x: 7, y: -14, s: 0.6, r: 0 }, body: { x: 8, y: -2, s: 1, r: 0 } },
+      space: { head: { x: 7, y: -13.5, s: 0.7, r: 0, w: 1.7 }, body: { x: 6.5, y: 6.5, s: 1.1, r: 0 } },
+      detective: { head: { x: 8, y: -18.5, s: 0.61, r: 0 }, body: { x: 8, y: -16.5, s: 1, r: 0 } },
+      chef: { head: { x: 7.5, y: -14, s: 0.63, r: 0 }, body: { x: 8, y: -6, s: 1.45, r: 0 } },
+      pumpkin: { head: { x: 7.5, y: -17, s: 0.55, r: 0 }, body: { x: 7, y: 1.5, s: 1, r: 0 } },
+      wizard: { head: { x: 7, y: -18, s: 0.5, r: 0 } },
+      king: { head: { x: 6.5, y: -17, s: 0.55, r: 0 }, body: { x: 6, y: 1, s: 1, r: 0 } },
+      dino: { head: { x: 29, y: -13.5, s: 0.5, r: 39 } },   // 恐龍下半身沒有圖，衣服的值不套
+      painter: { head: { x: 7, y: -15.5, s: 0.5, r: 0 } },
     },
     skip: [],
   },
 };
 const outfitKey = id => String(id || '').replace(/^outfit\./, '');
 export const outfitSkipped = (id, who) => { const f = OUTFIT_FIT[who]; return !!(f && f.skip.includes(outfitKey(id))); };
+const r2 = n => Math.round(n * 100) / 100;
+// 對齊台的換算：translate(50+x, 中心+y) rotate(r) scale(s*w, s) translate(-50, -中心)
+function fitTf(v, py) {
+  if (typeof v === 'string') return v;
+  const s = v.s == null ? 1 : v.s, w = v.w == null ? 1 : v.w;
+  return `translate(${r2(50 + (v.x || 0))} ${r2(py + (v.y || 0))})${v.r ? ` rotate(${r2(v.r)})` : ''} scale(${r2(s * w)} ${r2(s)}) translate(-50 -${py})`;
+}
+const wrap = (v, py, inner) => v ? `<g transform="${fitTf(v, py)}">${inner}</g>` : inner;
 function fitBody(body, k, who) {
   const f = OUTFIT_FIT[who];
   if (!f) return body;
   const p = Object.assign({ head: f.head, body: f.body }, f.per[k]);
-  if (p.all) return `<g transform="${p.all}">${body}</g>`;
+  if (p.all) return wrap(p.all, 35, body);
+  if (!p.head && !p.body) return body;
   const sp = p.split || f.split;
   return `<clipPath id="fu"><rect x="-60" y="-60" width="220" height="${sp + 60}"/></clipPath><clipPath id="fd"><rect x="-60" y="${sp}" width="220" height="${160 - sp}"/></clipPath>`
-    + `<g transform="${p.head}"><g clip-path="url(#fu)">${body}</g></g><g transform="${p.body}"><g clip-path="url(#fd)">${body}</g></g>`;
+    + wrap(p.head, 24, `<g clip-path="url(#fu)">${body}</g>`) + wrap(p.body, 60, `<g clip-path="url(#fd)">${body}</g>`);
+}
+// 帽子、衣服分開畫的造型：front 畫兩塊（各自對位），back 照常
+function fitParts(o, k, who) {
+  const f = OUTFIT_FIT[who], p = (f && f.per[k]) || {};
+  return wrap(p.head, 24, o.head || '') + wrap(p.body, 60, o.body || '');
 }
 // who：'sloth'（預設）或 'egg'；SVG 各自是一張圖，clipPath 的 id 不會跟別張撞
 export function outfitSvg(id, layer, who = 'sloth') {
   const k = outfitKey(id), o = OUTFITS[k];
-  const body = o && o[layer];
-  if (!body || outfitSkipped(k, who)) return '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${fitBody(body, k, who)}</svg>`;
+  if (!o || outfitSkipped(k, who)) return '';
+  if (layer === 'front' && (o.head || o.body)) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${o.defs || ''}${fitParts(o, k, who)}</svg>`;
+  const body = o[layer];
+  if (!body) return '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-6 -6 112 112">${GRAD}${o.defs || ''}${fitBody(body, k, who)}</svg>`;
 }
 
 // ---------- 頭像外圈（地圖左下角頭像外面那一圈）----------

@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zi';
-import { SLOGANS } from './slogans.js?v=20261124zi';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zi';
-import { blockerCanvas } from './blockers.js?v=20261124zi';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zi';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zi';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zi';
-import { STORY } from './story.js?v=20261124zi';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zj';
+import { SLOGANS } from './slogans.js?v=20261124zj';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zj';
+import { blockerCanvas } from './blockers.js?v=20261124zj';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zj';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zj';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zj';
+import { STORY } from './story.js?v=20261124zj';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zi';
+const MOD_V = '?v=20261124zj';
 
 window.__plushBooted = true;
 
@@ -1363,7 +1363,9 @@ const closet = createCloset();
 closet.onChange = () => { if (account && CLOSET_CLOUD) schedulePush(); };   // 兌換、開寶箱、換裝、換頭像 → 1.5 秒後跟進度一起存雲端
 const closetKey = () => saveKey + '.closet';
 let clR = null, clCat = 'outfit', tryOn = {};
-let clWho = 'sloth';   // 造型、外圈分頁的預覽穿在誰身上（薯餅／蛋黃哥），只是看看，不存檔
+// 頭像用哪一隻（工作單22）：存在衣櫃的 avatar.who（'shubing'／'egg'），畫圖時用 'sloth'／'egg'。沒有或看不懂就是薯餅
+const lookWho = l => (l && l.who === 'egg' ? 'egg' : 'sloth');
+const meWho = () => lookWho(closet.avatar());
 let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
 function loadCloset() {
   closet.load(closetKey());
@@ -1424,10 +1426,11 @@ function avatarToy(outfit, hat, who = 'sloth') {
   return toy;
 }
 // look：{ who, bg, hat, outfit, ring, fx }（自己的 meLook()、朋友的 p.look）
-// who：頭像裡放哪隻玩偶（'sloth'、'egg'），外圈、白底圓盤、裝飾照舊
-function renderAvatar(host, look, who = 'sloth') {
+// who：頭像裡放哪隻玩偶（'sloth'、'egg'）；沒給就看 look.who（玩家自己選的），外圈、白底圓盤、裝飾照舊
+function renderAvatar(host, look, who) {
   if (!host) return;
   const l = cleanLook(look), r = ringData(l.ring), bg = avatarBg(l.bg);
+  if (!who) who = lookWho(l);
   const ring = el('span', 'av-ring');
   ring.style.background = r.ring;
   ring.style.setProperty('--ring-sh', r.sh);
@@ -1459,6 +1462,8 @@ function renderMeAvatar() {
 // 衣櫃的「我的頭像」：試穿也看得到；底色點了馬上換
 function renderClosetMe() {
   renderAvatar($('#cl-me-av'), previewLook());
+  const sub = $('#cl-me-who');
+  if (sub) sub.textContent = (meWho() === 'egg' ? '蛋黃哥' : '薯餅') + '・穿著現在的衣服';
   const box = $('#cl-bgs'), cur = closet.avatar().bg;
   box.replaceChildren(...AVATAR_BGS.map(b => {
     const btn = el('button', 'cl-bg');
@@ -1486,8 +1491,11 @@ function renderClosetAva() {
   $('#cl-board').hidden = ava;
   $('#cl-demo').hidden = ava;
   $('#cl-who').hidden = !ava;
-  for (const b of $$('#cl-who button')) b.setAttribute('aria-pressed', b.dataset.who === clWho ? 'true' : 'false');
-  if (ava) renderAvatar($('#cl-ava-me'), previewLook(), clWho);
+  for (const b of $$('#cl-who button')) {   // 小頭照每次重畫：開機時玩偶圖可能還沒載好
+    b.setAttribute('aria-pressed', b.dataset.who === meWho() ? 'true' : 'false');
+    b.replaceChildren(toyEl(avatarPiece(b.dataset.who), 14));
+  }
+  if (ava) renderAvatar($('#cl-ava-me'), previewLook());
 }
 // 往下捲時預覽＋分頁黏在上面變小。縮掉的高度用 margin-bottom 補回去，下面的格子不會跳
 function clStick(on) {
@@ -1521,7 +1529,6 @@ function renderClosetBtn() {
 function coinEl(big) { return el('i', 'coin' + (big ? ' big' : '')); }
 function openCloset() {
   tryOn = {};
-  clWho = 'sloth';
   const sc = $('#m-closet .cl-scroll');
   if (sc) sc.scrollTop = 0;
   clStick(false);
@@ -1610,7 +1617,7 @@ function renderCloset() {
     const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
     b.type = 'button';
     const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
-    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none', clWho));   // 造型：直接看薯餅（或蛋黃哥）穿起來的樣子
+    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none', meWho()));   // 造型：直接看薯餅（或蛋黃哥）穿起來的樣子
     else { const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false; pic.appendChild(img); }
     if (closet.isNew(it, stars)) b.appendChild(el('span', 'ci-new', '新'));
     if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
@@ -4074,12 +4081,15 @@ function bindUI() {
   $('#mw-closet').addEventListener('click', () => { audio.play('tap'); openCloset(); });
   $('#cl-demo').addEventListener('click', closetDemo);
   $('#cl-ready').addEventListener('click', () => { audio.play('tap'); scrollToChests(); });
-  for (const b of $$('#cl-who button')) b.addEventListener('click', () => {
-    if (clWho === b.dataset.who) return;
-    clWho = b.dataset.who;
-    audio.play('tap');
-    renderCloset(); renderClosetAva();
-  });
+  // 頭像用哪一隻：點了就存（跟底色一樣），地圖、排行榜、朋友看到的頭像都換
+  for (const b of $$('#cl-who button')) {
+    b.addEventListener('click', () => {
+      if (closetBusy) { toast('衣櫃讀取中，等一下下再換', 1400); return; }
+      if (!closet.setAvatar({ who: b.dataset.who === 'egg' ? 'egg' : 'shubing' })) return;
+      audio.play('tap');
+      applyLook(); renderCloset();
+    });
+  }
   $('#m-closet .cl-scroll').addEventListener('scroll', clStickCheck, { passive: true });
   $('#cp-ok').addEventListener('click', () => { $('#cl-pop').hidden = true; renderCloset(); });
   $('#ml-retry').addEventListener('click', () => startLevel(levelIdx));
