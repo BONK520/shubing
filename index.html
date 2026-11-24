@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261123z">
+<link rel="stylesheet" href="style.css?v=20261124a">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -120,13 +120,24 @@
   <section id="scr-map" class="screen" aria-label="關卡地圖">
     <div class="topbar">
       <button class="icon-btn" id="map-back" aria-label="回到標題"><svg><use href="#i-back"/></svg></button>
-      <span class="map-here" id="map-here" aria-live="polite"></span>
+      <!-- 點一下打開站點清單（工作單10） -->
+      <button class="map-here" id="map-here" type="button" aria-live="polite" aria-haspopup="dialog" title="所有站點"></button>
       <!-- 好友排行榜：登入、而且讀得到排行榜才出現（main.js initFriends） -->
       <button class="icon-btn gold" id="map-friends" aria-label="好友排行榜" hidden><svg><use href="#i-trophy"/></svg></button>
       <button class="icon-btn" data-open-settings aria-label="設定"><svg><use href="#i-gear"/></svg></button>
     </div>
     <div class="map-scroll" id="map-scroll">
       <div class="map-inner" id="map-inner"></div>
+    </div>
+    <!-- 快速捲動條（工作單10）：地圖右邊一條細細的糖果軌道，拖曳或點一下就跳過去。上面是最新的關卡、下面是第 1 關；
+         圓點＝每一站（走到的有顏色）、星星＝目前關卡、白色圓鈕＝畫面現在的位置。拖曳時左邊的泡泡寫是哪一站 -->
+    <div class="map-scrub" id="map-scrub" role="slider" tabindex="0" aria-label="快速捲動到其他關卡" aria-orientation="vertical" aria-valuemin="1" aria-valuemax="1" aria-valuenow="1">
+      <div class="scb-track" id="scb-track" aria-hidden="true">
+        <div class="scb-dots" id="scb-dots"></div>
+        <svg class="scb-me" id="scb-me"><use href="#i-star"/></svg>
+        <span class="scb-knob" id="scb-knob"></span>
+        <span class="scb-bubble" id="scb-bubble"></span>
+      </div>
     </div>
     <!-- 底部固定列（76px）：頭像（點了捲回目前關卡）、造型幣、星星、玩偶衣櫃。是地圖下面的一列，不疊在地圖上，第 1 關不會被蓋住 -->
     <div class="map-dock">
@@ -392,6 +403,16 @@
   </div>
 </div>
 
+<!-- 站點清單（工作單10）：點地圖右上角的站名打開；點一站，地圖就捲到那一站 -->
+<div class="modal" id="m-stations" role="dialog" aria-modal="true" aria-labelledby="sl-title" aria-hidden="true">
+  <div class="card stations-card">
+    <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
+    <div class="ribbon"><span id="sl-title">所有站點</span></div>
+    <button class="btn green sl-home" id="sl-home" type="button"><span class="bt" data-t="回到目前關卡">回到目前關卡</span></button>
+    <ol class="sl-list" id="sl-list" aria-label="站點"></ol>
+  </div>
+</div>
+
 <!-- 登入時：這台裝置上有沒登入時玩的進度，問要不要帶進帳號 -->
 <div class="modal" id="m-merge" role="dialog" aria-modal="true" aria-labelledby="mm-title" aria-hidden="true">
   <div class="card merge-card">
@@ -431,7 +452,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261123z"></script>
-<script type="module" src="js/main.js?v=20261123z"></script>
+<script type="module" src="js/opening.js?v=20261124a"></script>
+<script type="module" src="js/main.js?v=20261124a"></script>
 </body>
 </html>

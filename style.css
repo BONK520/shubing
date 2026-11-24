@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261123z") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261123z") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124a") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124a") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -508,6 +508,88 @@ html:not(.is-loading) .cv-load { display: none; }
 }
 .map-here:empty { visibility: hidden; }
 .map-here small { display: block; font-size: 11px; color: #b46a8b; }
+button.map-here { border: 0; font-family: inherit; cursor: pointer; flex: 0 1 auto; }   /* 點了打開站點清單 */
+button.map-here::after { content: ''; display: inline-block; width: 0; height: 0; margin-left: 5px; vertical-align: 2px; border: 4px solid transparent; border-top: 5px solid #d46a9a; border-bottom: 0; }
+button.map-here:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(107, 45, 74, .25); }
+
+/* 快速捲動條（工作單10）：右邊一條細細的白色糖果軌道，平常淡淡的，捲動或手指按著時變清楚，放開 1.5 秒後再變淡
+   觸控範圍 36px 寬，看得到的軌道 6px；顏色（--sc）跟著畫面中間那一站變 */
+.map-scrub {
+  --sc: #ff5fa8;
+  position: absolute; z-index: 2; right: var(--safe-r); width: 36px;
+  top: calc(var(--safe-t) + 70px); bottom: calc(86px + var(--safe-b));
+  touch-action: none; cursor: pointer; outline: none;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  opacity: .5; transition: opacity .35s ease;
+}
+.map-scrub.live, .map-scrub:focus-visible { opacity: 1; transition-duration: .12s; }
+.scb-track {   /* 圓點、星星、圓鈕都用 top:% 排在軌道上：0%＝最上面（最新的關卡）、100%＝第 1 關 */
+  position: absolute; top: 9px; bottom: 9px; right: 9px; width: 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 0 0 1.5px rgba(107, 45, 74, .28), 0 1px 4px rgba(60, 20, 40, .35);
+  transition: width .15s ease, right .15s ease, border-radius .15s ease;
+}
+.map-scrub.drag .scb-track { width: 8px; right: 8px; border-radius: 4px; }
+.map-scrub:focus-visible .scb-track { box-shadow: 0 0 0 1.5px rgba(107, 45, 74, .28), 0 0 0 4px #fff, 0 0 0 6.5px var(--sc); }
+.scb-dots i { position: absolute; left: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #cfc3c9; }
+.scb-dots i.on { background: var(--sc); }
+.scb-me {   /* 目前關卡：金色星星 */
+  position: absolute; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; overflow: visible;
+  fill: url(#g-gold); stroke: #fff7cc; stroke-width: 2; paint-order: stroke; filter: drop-shadow(0 1px 0 #c46d00);
+}
+.scb-knob {   /* 畫面現在的位置：白色糖果圓鈕，外圈是這一站的顏色 */
+  position: absolute; left: 50%; top: 0; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff 45%, #ffeef6);
+  box-shadow: 0 0 0 3px var(--sc), 0 2px 0 3px rgba(107, 45, 74, .35), 0 3px 6px 3px rgba(60, 20, 40, .2);
+  will-change: transform;
+}
+.map-scrub.drag .scb-knob { width: 20px; height: 20px; margin: -10px 0 0 -10px; }
+.scb-bubble {   /* 拖曳時，手指左邊的泡泡：第N站・站名／第X～Y關（跟右上角一樣） */
+  position: absolute; right: 26px; top: 0; will-change: transform;
+  padding: 7px 13px; border-radius: 16px; white-space: nowrap; text-align: right;
+  background: #fffaf6; color: #6b2d4a; font-weight: 900; font-size: 15px; line-height: 1.25;
+  box-shadow: 0 0 0 3px var(--sc), 0 4px 0 3px rgba(107, 45, 74, .3), 0 8px 14px rgba(60, 20, 40, .25);
+  opacity: 0; visibility: hidden; transition: opacity .12s, visibility 0s linear .12s; pointer-events: none;
+}
+.scb-bubble small { display: block; font-size: 12px; font-weight: 800; color: #b46a8b; }
+.map-scrub.drag .scb-bubble { opacity: 1; visibility: visible; transition: opacity .08s; }
+@media (max-height: 500px) {
+  .map-scrub { top: calc(var(--safe-t) + 62px); bottom: calc(68px + var(--safe-b)); }
+  .scb-dots i { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+  .scb-bubble { font-size: 14px; padding: 5px 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .map-scrub, .scb-track, .scb-bubble { transition: none; } }
+
+/* 站點清單（工作單10）：每一站一列，還沒走到的灰色但一樣可以點 */
+.stations-card { gap: 12px; }
+.sl-home { flex: none; }
+.sl-list {
+  list-style: none; margin: 0; padding: 4px 4px 6px; width: 100%;
+  flex: 1 1 auto; min-height: 0; max-height: min(52vh, 420px); overflow-y: auto; scrollbar-width: none;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.sl-list::-webkit-scrollbar { display: none; }
+.sl-row {
+  width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 7px 12px; border-radius: 18px; border: 3px solid #fff; background: #fdf1e8; cursor: pointer;
+  font-family: inherit; text-align: left; color: var(--ink);
+  box-shadow: 0 4px 0 #ecc9c0, 0 6px 10px rgba(112, 40, 64, .1);
+}
+.sl-row:active { transform: translateY(3px); box-shadow: 0 1px 0 #ecc9c0; }
+.sl-row.here { background: #ffe6f1; box-shadow: 0 4px 0 #f3b7cf, 0 6px 10px rgba(112, 40, 64, .1); }
+.sl-k { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 900 15px/1 var(--font-num); color: #fff; background: linear-gradient(180deg, #ff9fc8, #ff5fa8); box-shadow: 0 2px 0 #c42a74; }
+.sl-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; font-size: 17px; }
+.sl-nm small { display: block; font-size: 12.5px; font-weight: 800; color: var(--ink-soft); }
+.sl-me { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 900; vertical-align: 2px; color: #fff; background: #ff5fa8; }
+.sl-st { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.sl-st svg { width: 20px; height: 20px; fill: url(#g-gold); stroke: #fff7cc; stroke-width: 1.4; paint-order: stroke; filter: drop-shadow(0 1.5px 0 #c46d00); }
+.sl-st b { font: 900 17px/1 var(--font-num); color: var(--ink); }
+.sl-st small { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.sl-row.locked { background: #f1ecea; box-shadow: 0 4px 0 #d9d0cd; color: #9a8e92; }
+.sl-row.locked .sl-k { background: #c9bec2; box-shadow: 0 2px 0 #a2969a; }
+.sl-row.locked .sl-st svg { fill: #ddd3d6; filter: none; stroke: #fff; }
+.sl-row.locked .sl-st b, .sl-row.locked .sl-nm small { color: #a79ba0; }
+@media (max-height: 500px) { .sl-list { max-height: calc(100vh - 180px - var(--safe-t, 0px) - var(--safe-b, 0px)); } .sl-row { padding: 5px 12px; } }
 @media (prefers-reduced-motion: reduce) { .map-spot.ph img, .map-spot.pk img { animation: none; } .map-art .ma-drift { animation: none; transform: translateX(var(--x)); } }
 
 @keyframes peek { 0%, 100% { translate: 0 6px; rotate: -4deg; } 50% { translate: 0 -2px; rotate: 4deg; } }

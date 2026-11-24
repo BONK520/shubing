@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261123z';
-import { SLOGANS } from './slogans.js?v=20261123z';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261123z';
-import { blockerCanvas } from './blockers.js?v=20261123z';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123z';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261123z';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261123z';
-import { STORY } from './story.js?v=20261123z';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124a';
+import { SLOGANS } from './slogans.js?v=20261124a';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124a';
+import { blockerCanvas } from './blockers.js?v=20261124a';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124a';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124a';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124a';
+import { STORY } from './story.js?v=20261124a';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261123z';
+const MOD_V = '?v=20261124a';
 
 window.__plushBooted = true;
 
@@ -192,7 +192,7 @@ function refreshAfterSwitch() {
   applyLook();
   renderClosetBtn();
   renderAccount();
-  if (screen === 'map') { buildMap(); setTimeout(offerResume, 350); }   // 換成這個帳號後，看這個帳號有沒有玩到一半的關
+  if (screen === 'map') { buildMap(); buildScrubber(); setTimeout(offerResume, 350); }   // 換成這個帳號後，看這個帳號有沒有玩到一半的關
   if (screen === 'game') renderBoosters();
 }
 
@@ -1475,6 +1475,166 @@ function scrollMapToCurrent() {
   const node = mapNodes[currentIndex()];
   if (node) $('#map-scroll').scrollTo({ top: mapTarget(parseFloat(node.style.top) || 0), behavior: 'smooth' });
 }
+// ---------- 快速捲動條（工作單10）----------
+// 條上的位置直接對到 scrollTop：最上面（0%）＝地圖最上面＝最新的關卡，最下面（100%）＝第 1 關
+const scrub = { drag: false, raf: 0, want: -1, fade: 0, k: '', h: 0 };
+const scrubMax = sc => Math.max(1, sc.scrollHeight - sc.clientHeight);
+// 地圖上某個高度移到畫面正中間時，圓鈕在條上的位置（0～1）
+const scrubFrac = (sc, y) => clamp((y - sc.clientHeight / 2) / scrubMax(sc), 0, 1);
+// 畫面中間是第幾關（0 起算）
+function levelAtY(y) {
+  const y0 = mapNodes[0] ? parseFloat(mapNodes[0].style.top) : 0;
+  return clamp(Math.round((y0 - y) / MAP_GAP), 0, LEVELS.length - 1);
+}
+// 這一站的糖果色：取那一站背景中段的顏色，加飽和、壓暗一點，白色軌道上看得清楚；顏色太淡（雪地之類）就用粉紅
+const stColorCache = new Map();
+function stationColor(r) {
+  if (stColorCache.has(r.name)) return stColorCache.get(r.name);
+  let out = '#ff5fa8';
+  const st = r.stops || [], hex = st.length ? st[Math.floor(st.length / 2)][1] : '';
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || '');
+  if (m) {
+    const [R0, G0, B0] = [1, 2, 3].map(i => parseInt(m[i], 16) / 255);
+    const mx = Math.max(R0, G0, B0), mn = Math.min(R0, G0, B0), d = mx - mn, l = (mx + mn) / 2;
+    const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    if (sat > 0.12 && d > 0.04) {
+      let h = mx === R0 ? ((G0 - B0) / d) % 6 : mx === G0 ? (B0 - R0) / d + 2 : (R0 - G0) / d + 4;
+      h = Math.round((h * 60 + 360) % 360);
+      out = `hsl(${h} ${Math.round(clamp(sat * 100 + 25, 60, 88))}% ${h > 40 && h < 75 ? 42 : 52}%)`;
+    }
+  }
+  stColorCache.set(r.name, out);
+  return out;
+}
+// 地圖重排、轉向、關卡變多時重算：每一站的圓點、目前關卡的星星
+function buildScrubber() {
+  const sc = $('#map-scroll'), box = $('#map-scrub'), dots = $('#scb-dots'), track = $('#scb-track');
+  if (!sc || !box || !mapSt.length || !sc.clientHeight) return;
+  scrub.h = track.clientHeight;
+  const reached = clamp(save.unlocked, 1, LEVELS.length);
+  dots.replaceChildren(...mapSt.map(r => {
+    const d = el('i', r.from <= reached ? 'on' : '');
+    d.style.top = (scrubFrac(sc, (r.top + r.bottom) / 2) * 100).toFixed(2) + '%';
+    return d;
+  }));
+  const node = mapNodes[currentIndex()];
+  $('#scb-me').style.top = (scrubFrac(sc, node ? parseFloat(node.style.top) : 0) * 100).toFixed(2) + '%';
+  box.setAttribute('aria-valuemax', String(LEVELS.length));
+  scrub.k = '';
+  updateScrubber();
+}
+function updateScrubber() {
+  const sc = $('#map-scroll'), box = $('#map-scrub');
+  if (!box || !mapSt.length || !sc.clientHeight) return;
+  if (!scrub.h) scrub.h = $('#scb-track').clientHeight;
+  const y = clamp(sc.scrollTop / scrubMax(sc), 0, 1) * scrub.h;
+  $('#scb-knob').style.transform = `translateY(${y.toFixed(1)}px)`;
+  const mid = sc.scrollTop + sc.clientHeight / 2;
+  const r = stationAt(mapSt, mid), lv = levelAtY(mid) + 1;
+  if (box.getAttribute('aria-valuenow') !== String(lv)) {
+    box.setAttribute('aria-valuenow', String(lv));
+    box.setAttribute('aria-valuetext', `第${lv}關，第${r.k}站・${r.name}`);
+  }
+  const bub = $('#scb-bubble');
+  if (scrub.k !== r.k + '|' + r.to) {
+    scrub.k = r.k + '|' + r.to;
+    box.style.setProperty('--sc', stationColor(r));
+    bub.innerHTML = `第${r.k}站・${r.name}<small>第${r.from}～${r.to}關</small>`;
+  }
+  // 泡泡跟著圓鈕，上下不超出軌道
+  const bh = bub.offsetHeight || 44;
+  bub.style.transform = `translateY(${clamp(y - bh / 2, -6, Math.max(-6, scrub.h - bh + 6)).toFixed(1)}px)`;
+}
+// 捲動或按著時變清楚，放開 1.5 秒後變淡（不會完全藏起來）
+function wakeScrub() {
+  const box = $('#map-scrub');
+  if (!box) return;
+  box.classList.add('live');
+  clearTimeout(scrub.fade);
+  if (!scrub.drag) scrub.fade = setTimeout(() => box.classList.remove('live'), 1500);
+}
+function onMapScroll() { updateMapHere(); updateScrubber(); wakeScrub(); }
+// 手指在條上的位置 → scrollTop（同一幀只寫一次，不用平滑捲動）
+function scrubTo(clientY) {
+  const sc = $('#map-scroll'), tr = $('#scb-track').getBoundingClientRect();
+  if (!tr.height) return;
+  scrub.want = Math.round(clamp((clientY - tr.top) / tr.height, 0, 1) * scrubMax(sc));
+  if (!scrub.raf) scrub.raf = requestAnimationFrame(() => { scrub.raf = 0; if (scrub.want >= 0) sc.scrollTop = scrub.want; });
+}
+// 畫面中間移到某一站的正中間
+function scrollToStation(r) {
+  const sc = $('#map-scroll');
+  sc.scrollTop = clamp((r.top + r.bottom) / 2 - sc.clientHeight / 2, 0, scrubMax(sc));
+}
+function bindScrubber() {
+  const box = $('#map-scrub');
+  box.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    scrub.drag = true;
+    try { box.setPointerCapture(e.pointerId); } catch (err) {}
+    box.classList.add('drag');
+    wakeScrub();
+    updateScrubber();
+    scrubTo(e.clientY);
+  });
+  box.addEventListener('pointermove', e => { if (scrub.drag) scrubTo(e.clientY); });
+  const end = () => {
+    if (!scrub.drag) return;
+    scrub.drag = false;
+    box.classList.remove('drag');
+    wakeScrub();
+  };
+  box.addEventListener('pointerup', end);
+  box.addEventListener('pointercancel', end);
+  box.addEventListener('lostpointercapture', end);
+  box.addEventListener('click', e => e.stopPropagation());
+  // 鍵盤：上下鍵一次一站（上＝往後面的關卡），Home＝第 1 關、End＝最新的關卡
+  box.addEventListener('keydown', e => {
+    const sc = $('#map-scroll');
+    if (!mapSt.length) return;
+    const r = stationAt(mapSt, sc.scrollTop + sc.clientHeight / 2);
+    let t = null;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'PageUp') t = mapSt[Math.min(r.k, mapSt.length - 1)];
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'PageDown') t = mapSt[Math.max(r.k - 2, 0)];
+    else if (e.key === 'Home') t = mapSt[0];
+    else if (e.key === 'End') t = mapSt[mapSt.length - 1];
+    if (!t) return;
+    e.preventDefault();
+    scrollToStation(t);
+    wakeScrub();
+  });
+}
+
+// ---------- 站點清單（工作單10）：點右上角的站名打開 ----------
+function openStations() {
+  const sc = $('#map-scroll'), list = $('#sl-list');
+  if (!mapSt.length) return;
+  const here = stationAt(mapSt, sc.scrollTop + sc.clientHeight / 2);
+  const reached = clamp(save.unlocked, 1, LEVELS.length), meLv = currentIndex() + 1;
+  let hereRow = null;
+  list.replaceChildren(...mapSt.map(r => {
+    const got = LEVELS.slice(r.from - 1, r.to).reduce((s, l) => s + (Number(save.stars[l.id]) || 0), 0);
+    const max = (r.to - r.from + 1) * 3, locked = r.from > reached, me = meLv >= r.from && meLv <= r.to;
+    const li = el('li');
+    const b = el('button', 'sl-row' + (locked ? ' locked' : '') + (r === here ? ' here' : ''));
+    b.type = 'button';
+    b.setAttribute('aria-label', `第${r.k}站，${r.name}，第${r.from}到${r.to}關，${got} 顆星${locked ? '，還沒走到' : ''}${me ? '，目前的關卡在這一站' : ''}`);
+    b.innerHTML = `<span class="sl-k">${r.k}</span><span class="sl-nm">${r.name}${me ? '<span class="sl-me">目前</span>' : ''}<small>第${r.from}～${r.to}關</small></span>`
+      + `<span class="sl-st"><svg><use href="#i-star"/></svg><b>${got}</b><small>/${max}</small></span>`;
+    b.addEventListener('click', () => { audio.play('tap'); closeModal('m-stations'); scrollToStation(r); });
+    li.appendChild(b);
+    if (r === here) hereRow = li;
+    return li;
+  }));
+  openModal('m-stations');
+  if (hereRow) list.scrollTop = Math.max(0, hereRow.offsetTop - list.clientHeight / 2 + hereRow.offsetHeight / 2);
+}
+function scrollMapToCurrentNow() {
+  const node = mapNodes[currentIndex()];
+  if (node) $('#map-scroll').scrollTop = mapTarget(parseFloat(node.style.top) || 0);
+}
+
 function showMap({ pop = -1, thenOpen = -1 } = {}) {
   const pts = buildMap(pop);
   renderClosetBtn();
@@ -1489,6 +1649,7 @@ function showMap({ pop = -1, thenOpen = -1 } = {}) {
     sc.scrollTop = target(cur);
   }
   updateMapHere();
+  buildScrubber();
   if (thenOpen >= 0) setTimeout(() => { if (screen === 'map') openLevel(thenOpen); }, 750);
   else setTimeout(offerResume, 450);       // 剛剛有玩到一半的關（網頁被重新載入）：問要不要接著玩
 }
@@ -3163,7 +3324,10 @@ function renderVersion() {
 function bindUI() {
   $('#btn-start').addEventListener('click', () => showMap());
   $('#map-back').addEventListener('click', () => show('title'));
-  $('#map-scroll').addEventListener('scroll', updateMapHere, { passive: true });
+  $('#map-scroll').addEventListener('scroll', onMapScroll, { passive: true });
+  bindScrubber();
+  $('#map-here').addEventListener('click', () => { audio.play('tap'); openStations(); });
+  $('#sl-home').addEventListener('click', () => { audio.play('tap'); closeModal('m-stations'); scrollMapToCurrentNow(); });
   for (const b of $$('[data-open-settings]')) b.addEventListener('click', openSettings);
   // 一步還在結算（掉落、連鎖）時不能暫停，免得過關／失敗的流程跑在暫停選單後面
   const canPause = () => (state === 'play' && !moving && !(R && R.busy)) || state === 'intro';
@@ -3172,8 +3336,8 @@ function bindUI() {
   $('#mr-go').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); if (r) startLevel(r.idx, r); });
   $('#mr-new').addEventListener('click', () => { const r = pendingResume; pendingResume = null; closeModal('m-resume'); clearInProgress(); if (r) startLevel(r.idx); });
   for (const b of $$('[data-close]')) b.addEventListener('click', () => closeModal(b.closest('.modal').id));
-  // 點背景關閉（只限開始卡、設定、好友排行榜）
-  for (const id of ['m-start', 'm-settings', 'm-friends']) {
+  // 點背景關閉（只限開始卡、設定、好友排行榜、站點清單）
+  for (const id of ['m-start', 'm-settings', 'm-friends', 'm-stations']) {
     const m = document.getElementById(id);
     m.addEventListener('click', e => { if (e.target === m) closeModal(id); });
   }
@@ -3246,6 +3410,7 @@ function bindUI() {
     if (isOpen('m-login')) closeModal('m-login');
     else if (isOpen('m-settings')) closeModal('m-settings');
     else if (isOpen('m-start')) closeModal('m-start');
+    else if (isOpen('m-stations')) closeModal('m-stations');
     else if (screen === 'game' && canPause()) openSettings();
   });
   // iOS：擋住雙指縮放
@@ -3253,7 +3418,7 @@ function bindUI() {
   document.addEventListener('dblclick', e => e.preventDefault());
 
   const onResize = () => {
-    if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); }
+    if (screen === 'game') sizeBoard(); else if (screen === 'map') { refreshMapArt(); updateMapHere(); buildScrubber(); }
     if (screen === 'title') { clearTimeout(coverTimer); coverTimer = setTimeout(buildCover, 250); } else coverDirty = true;
   };
   window.addEventListener('resize', onResize);
@@ -3288,7 +3453,7 @@ function installDebug() {
       if (state === 'play' && !moving && !R.busy) winFlow();
     },
     setMoves(n) { movesLeft = dispMoves = n; renderMoves(); },
-    unlockAll() { save.unlocked = LEVELS.length; writeSave(); if (screen === 'map') buildMap(); },
+    unlockAll() { save.unlocked = LEVELS.length; writeSave(); if (screen === 'map') { buildMap(); buildScrubber(); } },
     cellCenter(r, c) {
       if (!cellCenters) cellCenters = computeCenters();
       return cellCenters[r + ',' + c] || null;
