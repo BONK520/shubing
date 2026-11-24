@@ -1812,6 +1812,7 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* ä¸Šæ
 .ci-lock svg { width: 13px; height: 13px; fill: #fff; color: #fff; }
 .ci-name { font-size: 13px; font-weight: 900; line-height: 1.2; text-align: center; }
 .ci-state { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 800; color: #a07a92; line-height: 1.2; text-align: center; }
+.ci-note { font-size: 11px; font-weight: 800; line-height: 1.2; color: #b0577f; text-align: center; }
 .ci-state .coin { width: 13px; height: 13px; }
 .cl-item.on .ci-state { color: #c27a00; }
 .cl-item.can .ci-state { color: #c26a00; }

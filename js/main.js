@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zn';
-import { SLOGANS } from './slogans.js?v=20261124zn';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zn';
-import { blockerCanvas } from './blockers.js?v=20261124zn';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zn';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261124zn';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zn';
-import { STORY } from './story.js?v=20261124zn';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zo';
+import { SLOGANS } from './slogans.js?v=20261124zo';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zo';
+import { blockerCanvas } from './blockers.js?v=20261124zo';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zo';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261124zo';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zo';
+import { STORY } from './story.js?v=20261124zo';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zn';
+const MOD_V = '?v=20261124zo';
 
 window.__plushBooted = true;
 
@@ -1397,6 +1397,14 @@ const avatarPiece = who => (who !== 'sloth' && PIECES.find(p => p.id === who)) |
 // sloth_n.png 不透明部分的外框（0–1）：帽子照遊戲盤面上戴的位置放，跟 renderer.js accOverlay 同一套算法
 const SLOTH_BOX = { x0: 0.051, y0: 0.148, x1: 0.949, y1: 0.852 };
 const TOY_BOX = { sloth: SLOTH_BOX, egg: { x0: 0.125, y0: 0.043, x1: 0.875, y1: 0.961 } };   // egg_n.png 的不透明外框
+// 工作單26：穿了造型，頭像就不戴頭頂的配件（帽子、髮夾、兔耳⋯會跟造型的帽子、頭套疊在一起）；
+// 臉上的（墨鏡、愛心眼鏡、腮紅）照戴。太空頭盔把整顆頭罩住，臉上的也不戴。盤面上的玩偶不受影響
+function hatHiddenBy(outfit, hat) {
+  outfit = String(outfit || 'none').replace(/^outfit\./, '');
+  if (outfit === 'none' || !hat || hat === 'none') return false;
+  if (outfit === 'space') return true;
+  return ((ACCESSORY_PLACE[hat] && ACCESSORY_PLACE[hat].anchor) || 'top') === 'top';
+}
 function avatarHat(name, who = 'sloth') {
   const svg = name && name !== 'none' ? ACCESSORY_SVG[name] : '';
   if (!svg) return null;
@@ -1423,7 +1431,7 @@ function avatarToy(outfit, hat, who = 'sloth') {
   t.classList.add('av-sloth');
   toy.appendChild(t);
   if (front) toy.appendChild(svgImg(front, 'av-out'));
-  const h = avatarHat(hat, who);
+  const h = (back || front) && hatHiddenBy(outfit, hat) ? null : avatarHat(hat, who);
   if (h) toy.appendChild(h);
   return toy;
 }
@@ -1639,6 +1647,10 @@ function renderCloset() {
     else if (it.unlock.coins) { stt.appendChild(coinEl()); stt.appendChild(document.createTextNode(trying && can ? `再點兌換` : unlockText(it))); }
     else stt.textContent = unlockText(it);
     b.appendChild(stt);
+    if (it.cat === 'hat' && (on || trying)) {
+      const o = previewLook().outfit;
+      if (o && o !== 'none' && !outfitSkipped(o, meWho()) && hatHiddenBy(o, it.id.split('.')[1])) b.appendChild(el('span', 'ci-note', '穿造型時頭像不戴'));
+    }
     b.addEventListener('click', () => onClosetItem(it));
     grid.appendChild(b);
   }
