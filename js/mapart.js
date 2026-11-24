@@ -426,6 +426,9 @@ const place = (x, y, sc, inner) => `<g transform="translate(${fx(x)} ${fx(y)}) s
 /* ---------- 全島縮圖（開頭動畫第二段、封面 B 的背景） ---------- */
 // 24 站的顏色由下往上疊成一座小島，中間一條彎彎的路，每站一顆圓點；下面是碼頭和船
 export function islandMiniHTML(W, H, p = 'oi-') {
+  // 視窗被藏起來時 innerWidth／innerHeight 可能是 0，島會除以 0 變成 NaN；先用手機直式的大小畫（viewBox 會縮放）
+  if (!(W > 0)) W = 390;
+  if (!(H > 0)) H = 844;
   const rng = rngOf(2411), cx = W / 2, cy = H * .5;
   const rx = Math.min(W * .42, H * .3), ry = Math.min(H * .4, rx * 2.1);
   const blob = Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, k = 1 + (rng() - .5) * .14; return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]; });

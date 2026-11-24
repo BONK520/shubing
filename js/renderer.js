@@ -19,9 +19,9 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123w';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123w';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123w';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261123z';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261123z';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261123z';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -34,21 +34,21 @@ const TILE = 0.8;         // 圓角方塊邊長 / 格（改版 2026-11：從 0.8
 const MAX_PARTS = 900;
 
 // ---- 節奏（毫秒）----
-const SWAP_MS = 200;      // 成功交換（主動的那顆有一點點回彈）
+const SWAP_MS = 220;      // 成功交換（主動的那顆有一點點回彈）
 const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
 const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
-const POP_LEAD = 105;     // 最後一顆閃光之後 ~100ms 上面的方塊就開始往下灌（碎開的動畫在背景收尾，不等）
-const GROUP_STAGGER = 24; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高
-const POP_SEQ = 26;       // 同一組裡一顆接一顆爆（「啵、啵、啵」，很快）
+const POP_LEAD = 150;     // 最後一顆閃光之後 ~150ms 上面的方塊才開始往下灌（碎開的動畫在背景收尾，不等；2026-11 從 105 拉長，消掉的那一下看得到）
+const GROUP_STAGGER = 40; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高（2026-11 從 24 拉開，聲音不會黏成一團）
+const POP_SEQ = 34;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
 const MERGE_MS = 140;     // 合成特殊方塊：同組的方塊吸過去
 const POPIN_MS = 420;     // 新特殊方塊 / 變身的彈出（放大到 1.3 倍再彈回；改版 2026-11 從 340 拉長，大的那一下看得清楚）
 const LAND_MS = 130;      // 落地壓扁回彈（麻糬：壓扁 1.16 / 0.84 → 回彈 0.95 / 1.06 → 恢復），約 120ms 內做完
-const LAND_HOLD = 80;     // 下一輪連鎖：會被消掉的方塊落地後 80ms 就爆（瀑布一樣接著連消）
-const G_FALL = 0.00009;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.1 秒、整欄約 0.35 秒
-const V0_FALL = 0.006;    // 掉落初速（格 / ms）
-const STAGGER_ROW = 30, STAGGER_MAX = 150, COL_JITTER = 16;   // 同一欄一顆接一顆落下（間隔約 0.03 秒），像瀑布
+const LAND_HOLD = 230;    // 下一輪連鎖：會被消掉的方塊落地後停一拍（230ms）才爆，每一段連鎖分得開（2026-11 從 80 拉長：玩家覺得太快、全部黏在一起）
+const G_FALL = 0.00006;   // 掉落重力加速度（格 / ms²）：越掉越快，一格約 0.12 秒、整欄約 0.44 秒（2026-11 放慢約兩成）
+const V0_FALL = 0.005;    // 掉落初速（格 / ms）
+const STAGGER_ROW = 36, STAGGER_MAX = 180, COL_JITTER = 16;   // 同一欄一顆接一顆落下（間隔約 0.036 秒），像瀑布
 // 特效傳到某格要多久
 // CHAIN_MS：被波及的特殊方塊，一個接一個接力引爆的間隔（70ms）
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 110, CLEAR_CAP = 900;
@@ -280,6 +280,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   let texts = [];                   // 飄分
   let word = null;                  // 連鎖字（口號）
   let surpriseUsed = false;         // 照片驚喜口號每關最多一次（setBoard 重設）
+  // 口號語音（2026-11：玩家覺得太吵、每段連鎖都講一句全部黏在一起）：學 Candy Crush 平常安靜，
+  // 一步最多講一句，連到第 3 段以上（或組合技、照片驚喜）才講，兩句之間至少隔 VOICE_GAP 毫秒。字照樣每段都跳
+  const VOICE_GAP = 6000;
+  let lastVoiceAt = -Infinity, moveVoiced = false;
   let banners = [];
   let shakes = [];
   let sched = [];                   // 定時動作 { t, fn }
@@ -2106,7 +2110,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       fx.push({ type: 'flash', x: cl.c + 0.5, y: cl.r + 0.5, t0: tt, dur: 300, R: 0.95 });
       burst(cl.c + 0.5, cl.r + 0.5, kindColor(p.kind), 4, tt, { speed: 2.2, stars: 3 });
     }));
-    await wait((n - 1) * stagger + 220);
+    // 過關後剩下的步數一步一步變特效：play(events, { sugarStep }) 每步至少停 sugarStep 毫秒，看得清楚一顆一顆變
+    const hold = ev.sugar && curOpts && curOpts.sugarStep > 220 ? curOpts.sugarStep : 220;
+    await wait((n - 1) * stagger + hold);
     flushSched();
   }
 
@@ -2416,15 +2422,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
 
     // 口號（js/slogans.js）：連鎖第 2/3/4/5+ 步；組合技；很大的一步偶爾來一張照片驚喜（每關最多一次）
     const isCombo = removed.some(it => it.cause === 'combo') || effects.some(e => e.fx === 'board');
+    if (cascade <= 1) moveVoiced = false;                       // 新的一步
+    const canSpeak = lvl => lvl >= 3 && !moveVoiced && now() - lastVoiceAt >= VOICE_GAP;
     if (cascade >= 4 && !surpriseUsed && SLOGANS.surprise.length && Math.random() < 0.4) {
       surpriseUsed = true;
       const sl = SLOGANS.surprise[Math.floor(Math.random() * SLOGANS.surprise.length)];
-      showWord(sl.text, 5, sl);
+      showWord(sl.text, 5, sl, canSpeak(5));
     } else if (cascade >= 2) {
       const sl = cascadeSlogan(cascade);
-      if (sl) showWord(sl.text, cascade, sl);
+      if (sl) showWord(sl.text, cascade, sl, canSpeak(cascade));
     } else if (isCombo) {
-      showWord(SLOGANS.combo.text, 4, SLOGANS.combo);
+      showWord(SLOGANS.combo.text, 4, SLOGANS.combo, canSpeak(4));
     }
     if (cascade >= 2) cue('chime', 40, { level: cascade + 1 });   // 每次跳口號都叮咚一下
     // 稱讚字：在消除的地方彈出來（2 連消以上、或特殊組合），連越多字越大、越華麗
@@ -2473,8 +2481,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   async function animFall(ev, next) {
     const t = now();
     const seq = ++fallSeq;
-    // play(events, { slowFall: k })：慢 k 倍播掉落（教學小卡的傳送門要看清楚從哪裡掉出來）；遊戲裡不給，跟原本一樣
-    const slow = curOpts && curOpts.slowFall > 1 ? curOpts.slowFall : 1;
+    // play(events, { slowFall: k })：慢 k 倍播掉落（教學小卡的傳送門要看清楚從哪裡掉出來）；k < 1 是快一點（過關後的剩餘步數獎勵）
+    const slow = curOpts && curOpts.slowFall > 0 ? clamp(curOpts.slowFall, 0.5, 4) : 1;
     const g = G_FALL / (slow * slow), v0f = V0_FALL / slow;
     const items = [];
     for (const m of ev.moves || []) {
@@ -2545,7 +2553,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         }
         v.mv = mv;
         v.landT = mv.t0 + mv.dur;
-        v.landAmp = clamp((vel + g * mv.dur) * 2.2 * slow, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84）
+        v.landAmp = clamp((vel + g * mv.dur) * 2.6 * slow, 0.07, 0.16);     // 掉越高越 Q（最多 1.16 / 0.84；掉落放慢後係數 2.2 → 2.6，Q 的程度不變）
         endAll = Math.max(endAll, v.landT);
         firstLand = Math.min(firstLand, v.landT);
         lands.push({ t: v.landT, r: it.to.r, c: it.to.c });
@@ -2576,7 +2584,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         const v = p ? visuals.get(p.id) : cellV(q);
         if (v && v.mv && v.mv.fall) endInv = Math.max(endInv, v.landT);
       }
-      if (cells.length) end = Math.min(endAll, endInv + LAND_HOLD);
+      // play(events, { landHold })：過關後的特效連爆不用每段停那麼久（main.js 的剩餘步數獎勵）
+      const hold = curOpts && curOpts.landHold != null ? curOpts.landHold : LAND_HOLD;
+      if (cells.length) end = Math.min(endAll, endInv + hold);
     }
     await wait(end - now());
   }
@@ -2644,30 +2654,50 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     await wait(dur + 10);
   }
 
-  // 龍龍走到出口：開心地跳兩下，第二下跳高飛走（main.js 接著讓牠沿弧線飛到上面的目標圖示）
+  // 龍龍走到出口（2026-11 改成破殼）：蛋殼左右搖一搖 →「喀」破殼、殼片噴出去 → 變大隻 → 往上飛
+  // （main.js 接著讓牠從飛到的位置沿弧線飛到上面的目標圖示；dinoout 的 dy 是往上飛了幾格）
+  const HATCH_WOB = 420, HATCH_GROW = 430, HATCH_RISE = 360, HATCH_UP = 1.25;
   async function animExit(ev) {
-    const t = now();
+    const t = now(), total = HATCH_WOB + HATCH_GROW + HATCH_RISE;
     let i = 0;
     for (const q of ev.cells || []) {
       if (!q) continue;
-      const v = (q.piece && visuals.get(q.piece.id)) || cellV(q), t1 = t + i * 90;
+      const v = (q.piece && visuals.get(q.piece.id)) || cellV(q), t1 = t + i * 140, tc = t1 + HATCH_WOB;
       i++;
       if (v) {
-        v.mv = { t0: t1, dur: 520, x1: q.c, y1: q.r, top: true, path: u => {
-          const hop = u < 0.45 ? Math.sin(Math.PI * u / 0.45) * 0.35 : Math.sin(Math.PI * Math.min(1, (u - 0.45) / 0.55) * 0.5) * 1.2;
-          return { x: q.c, y: q.r - hop, s: u < 0.7 ? 1 + 0.15 * Math.sin(Math.PI * u / 0.7) : 1 - (u - 0.7) / 0.3 * 0.7 };
+        v.hatchT = tc;
+        v.mv = { t0: t1, dur: total, x1: q.c, y1: q.r, top: true, path: u => {
+          const ms = u * total;
+          if (ms < HATCH_WOB) {                       // 搖蛋：越搖越大力
+            const k = ms / HATCH_WOB;
+            return { x: q.c + Math.sin(ms / 34) * 0.07 * (0.35 + 0.65 * k), y: q.r, s: 1 + 0.05 * k };
+          }
+          if (ms < HATCH_WOB + HATCH_GROW) {          // 破殼：一下子變大隻（彈一下），身體往上浮
+            const k = (ms - HATCH_WOB) / HATCH_GROW;
+            return { x: q.c, y: q.r - 0.25 * easeOutCubic(k), s: 1 + 0.6 * easeOutBack(k, 2.4) };
+          }
+          const k = (ms - HATCH_WOB - HATCH_GROW) / HATCH_RISE;   // 往上飛，慢慢縮回原本大小
+          return { x: q.c, y: q.r - 0.25 - (HATCH_UP - 0.25) * easeInCubic(k), s: 1.6 - 0.5 * k };
         } };
-        at(t1 + 520, () => { visuals.delete(v.id); if (cellMap[q.r] && cellMap[q.r][q.c] === v) cellMap[q.r][q.c] = null; });
+        at(t1 + total, () => { visuals.delete(v.id); if (cellMap[q.r] && cellMap[q.r][q.c] === v) cellMap[q.r][q.c] = null; });
       }
-      at(t1, tt => {
-        fx.push({ type: 'ring', x: q.c + 0.5, y: q.r + 0.5, R: 1.2, t0: tt, dur: 480, col: DINO_GLOW });
-        sparkle(q.c + 0.5, q.r + 0.5, 10, tt, 0.4);
-        addText('救出！', q.c + 0.5, q.r + 0.1, tt + 120, DINO_GLOW, true);
+      at(tc, tt => {
+        // 殼片：奶油色和綠點點的碎片往上噴、往下掉
+        for (let k = 0; k < 12; k++) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.8, sp = 2.2 + Math.random() * 2.6;
+          emit({ type: 1, img: getCrumb(k % 4 === 0 ? '#8fe3b0' : k % 2 ? '#fbf3e1' : '#f1e2c2'), x: q.c + 0.5 + Math.cos(a) * 0.22, y: q.r + 0.6 + Math.sin(a) * 0.12,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.4, g: 11, drag: 1.1, t0: tt, life: 560 + Math.random() * 300, size: 0.2 + Math.random() * 0.13, rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 12 });
+        }
+        fx.push({ type: 'flash', x: q.c + 0.5, y: q.r + 0.5, t0: tt, dur: 320, R: 1.1 });
+        fx.push({ type: 'ring', x: q.c + 0.5, y: q.r + 0.5, R: 1.5, t0: tt, dur: 520, col: DINO_GLOW });
+        sparkle(q.c + 0.5, q.r + 0.4, 14, tt, 0.5);
+        addText('破殼！', q.c + 0.5, q.r - 0.2, tt + 60, DINO_GLOW, true);
       });
-      cue('dino', t1 - t, { r: q.r, c: q.c });
-      cue('dinoout', t1 - t + 420, { r: q.r, c: q.c });
+      cue('hatch', t1 - t, { r: q.r, c: q.c, crack: HATCH_WOB });
+      cue('dino', tc - t + 90, { r: q.r, c: q.c });
+      cue('dinoout', t1 - t + total - 60, { r: q.r, c: q.c, dy: -HATCH_UP });
     }
-    await wait(Math.max(460, (i - 1) * 90 + 470));
+    await wait(Math.max(460, (i - 1) * 140 + total - 40));
   }
   // 巧克力蔓延：一團巧克力從旁邊那格長過去，把那一格的玩偶吃掉
   async function animSpread(ev) {
@@ -2876,10 +2906,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     photoCache.set(key, sp);
     return sp;
   }
-  function showWord(text, level, sl) {
+  function showWord(text, level, sl, speak = false) {
     if (!text || quiet) return;
     word = { text, level, t0: now(), dur: 1150, sp: null, size: 0, pic: sloganPic(sl), tilt: (Math.random() - 0.5) * 0.5 };
-    if (sl && sl.voice) cue('voice', 60, { id: sl.voice });
+    if (speak && sl && sl.voice) { cue('voice', 60, { id: sl.voice }); lastVoiceAt = now(); moveVoiced = true; }
     requestDraw();
   }
   function banner(text, { sub = '', duration = 1600 } = {}) {
@@ -3149,21 +3179,40 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     blockCache.set('dino', c);
     return c;
   }
-  function dinoBubble() {
+  // 龍龍的蛋（2026-11：還沒救出來的龍龍是蛋裡的龍寶寶）：back = 蛋殼內側（在龍龍後面），front = 下半顆蛋殼（蓋在龍龍前面，上緣是鋸齒裂口）
+  function dinoEgg() {
     const S = Math.max(8, Math.round(cs * dpr));
     if (S !== blockS) { blockCache.clear(); blockS = S; }
-    let c = blockCache.get('bubble');
+    let c = blockCache.get('egg');
     if (c) return c;
-    const n = Math.round(S * 0.86), h = n / 2;
-    c = makeCanvas(n, n);
-    const g = c.getContext('2d');
-    const rg = g.createRadialGradient(h * 0.8, h * 0.7, n * 0.04, h, h, h);
-    rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.55, '#d4fbe3'); rg.addColorStop(1, '#7fe3a8');
-    g.beginPath(); g.arc(h, h, h * 0.93, 0, Math.PI * 2); g.fillStyle = rg; g.fill();
-    g.lineWidth = n * 0.06; g.strokeStyle = '#2fbf6a'; g.stroke();
-    g.lineWidth = n * 0.022; g.strokeStyle = 'rgba(255,255,255,0.9)';
-    g.beginPath(); g.arc(h, h, h * 0.8, Math.PI * 1.1, Math.PI * 1.45); g.stroke();
-    blockCache.set('bubble', c);
+    const n = Math.round(S * 0.92), ex = n / 2, ey = n * 0.57, rx = n * 0.37, ry = n * 0.41;
+    const egg = g => { g.beginPath(); g.ellipse(ex, ey, rx, ry, 0, 0, Math.PI * 2); };
+    const zigPts = y => { const pts = [], N = 8; for (let i = 0; i <= N; i++) pts.push([n * i / N, y + (i % 2 ? -1 : 1) * n * 0.05]); return pts; };
+    const below = (g, y) => { g.beginPath(); g.moveTo(0, n); for (const [x, yy] of zigPts(y)) g.lineTo(x, yy); g.lineTo(n, n); g.closePath(); };
+    const ink = '#b8996b';
+    const back = makeCanvas(n, n), gb = back.getContext('2d');
+    gb.save(); below(gb, n * 0.44); gb.clip(); egg(gb);
+    const ig = gb.createLinearGradient(0, n * 0.4, 0, n);
+    ig.addColorStop(0, '#eadcbc'); ig.addColorStop(1, '#c9b48d');
+    gb.fillStyle = ig; gb.fill(); gb.lineWidth = n * 0.03; gb.strokeStyle = ink; gb.stroke(); gb.restore();
+    const front = makeCanvas(n, n), gf = front.getContext('2d');
+    gf.save(); below(gf, n * 0.53); gf.clip(); egg(gf);
+    const fg = gf.createRadialGradient(ex - rx * 0.4, ey - ry * 0.05, n * 0.03, ex, ey, ry * 1.1);
+    fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.55, '#fbf3e1'); fg.addColorStop(1, '#e6d2a8');
+    gf.fillStyle = fg; gf.fill();
+    gf.save(); egg(gf); gf.clip();
+    for (const [x, y, r, col] of [[0.3, 0.7, 0.07, '#8fe3b0'], [0.6, 0.83, 0.09, '#6fd69c'], [0.72, 0.64, 0.055, '#8fe3b0'], [0.44, 0.9, 0.05, '#6fd69c'], [0.5, 0.66, 0.04, '#6fd69c']]) {
+      gf.beginPath(); gf.arc(n * x, n * y, n * r, 0, Math.PI * 2); gf.fillStyle = col; gf.fill();
+    }
+    gf.restore();
+    egg(gf); gf.lineWidth = n * 0.035; gf.strokeStyle = ink; gf.stroke();
+    gf.restore();
+    gf.save(); egg(gf); gf.clip();
+    gf.beginPath(); zigPts(n * 0.53).forEach(([x, y], i) => (i ? gf.lineTo(x, y) : gf.moveTo(x, y)));
+    gf.lineWidth = n * 0.035; gf.lineJoin = 'round'; gf.strokeStyle = ink; gf.stroke();
+    gf.restore();
+    c = { back, front };
+    blockCache.set('egg', c);
     return c;
   }
   function getCrumb(hex) {
@@ -3187,12 +3236,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
   }
   // 一顆機關（糖霜 / 巧克力 / 甘草 / 龍龍）：s 縮放、sx / sy 壓扁（以底部為準）
-  function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0) {
+  function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0, hatchT = 0) {
     const ga = ctx.globalAlpha, w = cs * s * sx, h = cs * s * sy, dy = (1 - sy) * cs * s * 0.5;
     if (block === 'dino') {
-      // 綠色的光一明一暗；東張西望（每隔幾秒轉頭）、輕輕彈跳
+      // 綠色的光一明一暗；東張西望（每隔幾秒轉頭）、輕輕彈跳。還沒救出來時坐在蛋殼裡（只露出上半身），
+      // 到出口破殼之後（hatchT）殼不見、身體變回原本大小（animExit 再把牠放大、往上飛）
+      const hatched = hatchT > 0 && t >= hatchT;
       const k = 0.5 + 0.5 * Math.sin(t / 420 + phase), z = cs * (1.3 + 0.1 * k) * s;
-      ctx.globalAlpha = ga * (0.32 + 0.25 * k);
+      ctx.globalAlpha = ga * (hatched ? 0.7 : 0.32 + 0.25 * k);
       ctx.drawImage(getGlowCol(DINO_GLOW), cx - z / 2, cy - z / 2, z, z);
       ctx.globalAlpha = ga;
       const img = dinoSprite(), turn = Math.tanh(Math.sin(t / 1300 + phase * 3) * 4);
@@ -3201,16 +3252,17 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
         ctx.beginPath(); ctx.arc(cx, cy + dy, cs * 0.36 * s, 0, Math.PI * 2); ctx.fillStyle = '#5fd8a8'; ctx.fill();
         return;
       }
-      // 薄荷色的「救援泡泡」墊在後面：一眼看出牠不是普通的玩偶
-      const R0 = cs * 0.43 * s;
-      ctx.drawImage(dinoBubble(), cx - R0, cy + dy - R0, R0 * 2, R0 * 2);
+      // 蛋殼（一眼看出牠不是普通的玩偶）：內側墊在後面、下半顆蓋在前面
+      const egg = hatched ? null : dinoEgg(), E = cs * 0.92 * s;
+      if (egg) ctx.drawImage(egg.back, cx - E / 2, cy + dy - E / 2, E, E);
       ctx.save();
-      ctx.translate(cx, cy + dy - bob);
+      ctx.translate(cx, cy + dy - bob - (egg ? cs * 0.08 * s : 0));
       ctx.rotate(0.06 * Math.sin(t / 700 + phase));
       ctx.scale((turn >= 0 ? 1 : -1) * (0.35 + 0.65 * Math.abs(turn)), 1);
-      const bw = cs * 0.9 * s * sx, bh = cs * 0.9 * s * sy;
+      const kz = egg ? 0.76 : 0.9, bw = cs * kz * s * sx, bh = cs * kz * s * sy;
       ctx.drawImage(img, -bw / 2, -bh * 0.54, bw, bh);
       ctx.restore();
+      if (egg) ctx.drawImage(egg.front, cx - E / 2, cy + dy - E / 2, E, E);
     } else if (block === 'alarm') {
       // 鬧鐘：平常偶爾歪一下頭；剩 3 步以下一陣一陣地抖（以底部為軸）
       const u = ((t / 900 + phase * 0.31) % 1 + 1) % 1;
@@ -3417,7 +3469,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       ctx.drawImage(g, cx - gs / 2, cy - gs / 2, gs, gs);
       ctx.globalAlpha = 1;
     }
-    if (v.block) { drawBlock(v.block, v.hp, cx, cy, st.s, st.sx, st.sy, t, v.phase); return; }
+    if (v.block) { drawBlock(v.block, v.hp, cx, cy, st.s, st.sx, st.sy, t, v.phase, 0, v.hatchT || 0); return; }
     let kind = v.kind, special = v.special;
     if (v.morph) {
       if (t < v.morph.until) { kind = v.morph.kind; special = v.morph.special; } else v.morph = null;
