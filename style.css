@@ -1633,7 +1633,7 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .av-disc { position: absolute; inset: 0; border-radius: 50%; border: calc(var(--s) * .058) solid #fff; background: radial-gradient(circle at 50% 35%, #fff, #ffe3f2); box-shadow: inset 0 calc(var(--s) * -.077) 0 var(--disc-sh, rgba(255, 111, 176, .22)); }
 .av-toy { position: absolute; inset: calc(var(--s) * -.135); filter: drop-shadow(0 2px 2px rgba(80, 20, 90, .3)); }
 .av-toy > img, .av-toy > .toy-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.av-toy > .av-out { inset: -6%; width: 112%; height: 112%; }
+.av-toy > .av-out { inset: 0 auto auto -6%; width: 100%; height: 100%; }
 /* 帽子：位置在 main.js avatarHat() 算好（跟遊戲盤面上戴的位置一樣），這裡只取消上面的 inset */
 .av-toy > .av-hat { inset: auto; object-fit: fill; }
 /* 小地方的頭像（帳號、排行榜、地圖上的朋友）：外框換成打扮好的薯餅，帽子可以超出圓框 */
