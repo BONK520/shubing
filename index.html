@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124w">
+<link rel="stylesheet" href="style.css?v=20261124x">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播）。?cover=b 看封面 B -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -314,6 +314,7 @@
       <span class="cl-try" id="cl-try" hidden>試穿中</span>
       <button class="cl-demo" id="cl-demo" type="button">試試消除特效</button>
     </div>
+    <div class="cl-me" id="cl-me"><span class="av" id="cl-me-av" aria-hidden="true"></span><span class="cl-me-t"><b>我的頭像</b><small>薯餅・穿著現在的衣服</small></span><div class="cl-bgs" id="cl-bgs" role="radiogroup" aria-label="頭像底色"></div></div>
     <div class="cl-tabs" id="cl-tabs" role="tablist" aria-label="分類"></div>
     <div class="cl-grid" id="cl-grid" role="tabpanel"></div>
     <div class="cl-sub" id="cl-chest-sec">三星豪華寶箱<small>星星總數到了就能開</small></div>
@@ -454,7 +455,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124w"></script>
-<script type="module" src="js/main.js?v=20261124w"></script>
+<script type="module" src="js/opening.js?v=20261124x"></script>
+<script type="module" src="js/main.js?v=20261124x"></script>
 </body>
 </html>

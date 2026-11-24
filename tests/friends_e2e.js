@@ -275,7 +275,7 @@ const num = v => v ? +(v.integerValue ?? v.doubleValue) : NaN;
   check('rules: a player may write any 24-letter name into their own doc', await put(evil.token, 'players', evil.uid, { code: 'EVEVEV', name: evilName.slice(0, 24), stars: 5, best: {}, friends: [aliceUid], t: Date.now() }) === 200);
   await openBoard(pa);
   r = await rows(pa);
-  check('board: odd names shown as plain text, nothing runs', r.some(x => x.name === evilName.slice(0, 12)) && await G(pa, () => !window.__xss && !document.querySelector('#fr-list img')), JSON.stringify(r.map(x => x.name)));
+  check('board: odd names shown as plain text, nothing runs', r.some(x => x.name === evilName.slice(0, 12)) && await G(pa, () => !window.__xss && !document.querySelector('#fr-list .fr-nm img, #fr-list [onerror]')), JSON.stringify(r.map(x => x.name)));
 
   // 登出 → 獎盃收起來；再登入 → 回來
   await closeAll(pa);

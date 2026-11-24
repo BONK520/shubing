@@ -108,6 +108,35 @@ export const ITEMS = [
 ];
 export const DEFAULT_LOOK = { outfit: 'outfit.none', hat: 'hat.none', fx: 'fx.default', frame: 'frame.jelly', theme: 'theme.macaron', ring: 'ring.pink' };
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
+
+// ---------- 我的頭像（衣櫃裡的「我的頭像」：角色 + 圓形底色）----------
+// 角色目前只有薯餅；底色只用程式畫的顏色和漸層。sakura 是原本的底色（舊玩家的頭像看起來不變）
+export const AVATAR_WHO = ['shubing'];
+export const AVATAR_BGS = [
+  { id: 'sakura', name: '櫻花粉', bg: 'radial-gradient(circle at 50% 35%, #fff, #ffe3f2)', sh: 'rgba(255, 111, 176, .22)' },
+  { id: 'sea',    name: '海邊藍', bg: 'radial-gradient(circle at 50% 35%, #f5fcff, #b4e0ff)', sh: 'rgba(40, 130, 220, .22)' },
+  { id: 'grass',  name: '草地綠', bg: 'radial-gradient(circle at 50% 35%, #f6fff0, #bfe9a8)', sh: 'rgba(60, 150, 50, .22)' },
+  { id: 'yolk',   name: '蛋黃黃', bg: 'radial-gradient(circle at 50% 35%, #fffdf0, #ffdd6e)', sh: 'rgba(220, 140, 0, .24)' },
+  { id: 'night',  name: '夜空紫', bg: 'radial-gradient(circle at 50% 30%, #b2a6f4, #4f409e)', sh: 'rgba(20, 10, 70, .3)' },
+];
+export const DEFAULT_AVATAR = { who: 'shubing', bg: 'sakura' };
+export const avatarBg = id => AVATAR_BGS.find(b => b.id === id) || AVATAR_BGS[0];
+// 頭像的樣子（朋友的 players.look、雲端衣櫃的 avatar 都用這個格式）：{ who, bg, hat, outfit, ring, fx }，值都是去掉分類前綴的短 id。
+// 看不懂的值（舊版、亂寫、以後才有的品項）一律換回預設薯餅的那一項
+const LOOK_PARTS = ['hat', 'outfit', 'ring', 'fx'];
+export function cleanLook(l) {
+  const o = l && typeof l === 'object' && !Array.isArray(l) ? l : {};
+  const out = {
+    who: AVATAR_WHO.includes(o.who) ? o.who : DEFAULT_AVATAR.who,
+    bg: AVATAR_BGS.some(b => b.id === o.bg) ? o.bg : DEFAULT_AVATAR.bg,
+  };
+  for (const c of LOOK_PARTS) {
+    const v = typeof o[c] === 'string' && o[c].length <= 40 ? o[c] : '';
+    const it = v && itemById(c + '.' + v);
+    out[c] = it && it.cat === c ? v : DEFAULT_LOOK[c].split('.')[1];
+  }
+  return out;
+}
 // 上一版就有的 19 件（「新」標記用：舊衣櫃讀進來時，這些不標「新」）
 const OLD_IDS = new Set(['hat.none', 'hat.bow', 'hat.blush', 'hat.crown', 'hat.shades', 'hat.chef', 'hat.halo', 'fx.default', 'fx.sakura', 'fx.bubbles', 'fx.gold',
   'frame.jelly', 'frame.cookie', 'frame.capsule', 'frame.petal', 'theme.macaron', 'theme.claw', 'theme.picnic', 'theme.galaxy']);
@@ -402,7 +431,8 @@ export function createCloset() {
   let st = blank();
   let hadData = false;
   // seen：這台裝置上點過（看過）的品項，只用來決定「新」標記；null＝還沒整理過
-  function blank() { return { owned: [], chests: [], equip: { ...DEFAULT_LOOK }, seen: null }; }
+  // avatar：我的頭像（角色、底色）；t：最後一次換裝 / 換頭像的時間（雲端衣櫃合併時，穿著和頭像用比較新的那份）
+  function blank() { return { owned: [], chests: [], equip: { ...DEFAULT_LOOK }, avatar: { ...DEFAULT_AVATAR }, t: 0, seen: null }; }
   function norm(o) {
     const s = blank();
     if (!o || typeof o !== 'object') return s;
@@ -412,10 +442,17 @@ export function createCloset() {
       const it = itemById(o.equip[c.id]);
       if (it && it.cat === c.id) s.equip[c.id] = it.id;
     }
+    if (o.avatar && typeof o.avatar === 'object') { const a = cleanLook(o.avatar); s.avatar = { who: a.who, bg: a.bg }; }
+    if (Number.isInteger(o.t) && o.t > 0) s.t = o.t;
     if (Array.isArray(o.seen)) s.seen = o.seen.filter(id => typeof id === 'string' && itemById(id));
     return s;
   }
-  function persist() { if (!key) return; try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { /* 無痕模式：照玩 */ } }
+  // sync=false：只改了這台裝置自己的東西（看過的品項）或剛從雲端合併進來，不用再叫 main.js 排雲端存檔
+  function persist(sync = true) {
+    if (!key) return;
+    try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { /* 無痕模式：照玩 */ }
+    if (sync && typeof api.onChange === 'function') { try { api.onChange(); } catch (e) { /* ignore */ } }
+  }
   const api = {
     // 換帳號 / 開機時：讀這個帳號在這台裝置上的衣櫃
     load(k) {
@@ -433,7 +470,7 @@ export function createCloset() {
       if (st.seen) return false;
       const fromOld = hadData;
       st.seen = ITEMS.filter(it => api.isUnlocked(it, stars) && (!fromOld || OLD_IDS.has(it.id) || Object.values(DEFAULT_LOOK).includes(it.id))).map(it => it.id);
-      persist();
+      persist(false);
       return fromOld && st.chests.some(i => i >= 5 && i <= 12);
     },
     isNew(item, stars) {
@@ -443,7 +480,7 @@ export function createCloset() {
     hasNew(stars, cat) { return ITEMS.some(it => (!cat || it.cat === cat) && api.isNew(it, stars)); },
     markSeen(id) {
       if (!st.seen || !itemById(id) || st.seen.includes(id)) return;
-      st.seen.push(id); persist();
+      st.seen.push(id); persist(false);
     },
     get state() { return st; },
     coinsEarned(stars) {
@@ -474,7 +511,28 @@ export function createCloset() {
     equip(item, stars) {
       if (typeof item === 'string') item = itemById(item);
       if (!item || !api.isUnlocked(item, stars)) return false;
-      st.equip[item.cat] = item.id; persist();
+      st.equip[item.cat] = item.id; st.t = Date.now(); persist();
+      return true;
+    },
+    avatar() { return { ...st.avatar }; },
+    // 雲端衣櫃（saves/{uid}.closet）：兌換的、開過的寶箱、穿著、頭像、換裝時間。seen 是這台裝置的，不上雲端
+    onChange: null,
+    cloudData() {
+      return { owned: [...new Set(st.owned)].slice(0, 300), chests: [...new Set(st.chests)].slice(0, 100), equip: { ...st.equip }, avatar: { ...st.avatar }, t: st.t };
+    },
+    // 雲端那份合進這台裝置的：兌換的、開過的寶箱兩邊合在一起（不會少），穿著和頭像用換得比較晚的那份。回傳 true＝內容有變
+    mergeCloud(remote) {
+      if (!remote || typeof remote !== 'object' || Array.isArray(remote)) return false;
+      const r = norm(remote), before = JSON.stringify(api.cloudData());
+      const newer = r.t > st.t ? r : st;
+      st = { ...st, owned: [...new Set([...st.owned, ...r.owned])], chests: [...new Set([...st.chests, ...r.chests])], equip: { ...newer.equip }, avatar: { ...newer.avatar }, t: Math.max(st.t, r.t) };
+      persist(false);
+      return JSON.stringify(api.cloudData()) !== before;
+    },
+    setAvatar(part) {
+      const a = cleanLook({ ...st.avatar, ...part });
+      if (a.who === st.avatar.who && a.bg === st.avatar.bg) return false;
+      st.avatar = { who: a.who, bg: a.bg }; st.t = Date.now(); persist();
       return true;
     },
     // 'open' 開過了、'ready' 可以開、'locked' 星星還不夠

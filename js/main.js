@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124w';
-import { SLOGANS } from './slogans.js?v=20261124w';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg } from './cosmetics.js?v=20261124w';
-import { blockerCanvas } from './blockers.js?v=20261124w';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124w';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124w';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124w';
-import { STORY } from './story.js?v=20261124w';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124x';
+import { SLOGANS } from './slogans.js?v=20261124x';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124x';
+import { blockerCanvas } from './blockers.js?v=20261124x';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124x';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124x';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124x';
+import { STORY } from './story.js?v=20261124x';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124w';
+const MOD_V = '?v=20261124x';
 
 window.__plushBooted = true;
 
@@ -40,6 +40,10 @@ const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const SVGNS = 'http://www.w3.org/2000/svg';
 const SCANNED = PIECES.filter(p => p.scan);
+// 頭像（players.look）、衣櫃（saves.closet）上雲端：Firebase 規則發布之前一定要是 false（舊規則會擋掉整份存檔 / 排行榜）。
+// 使用者在 Firebase 主控台發布 2026-11-24 的規則後改成 true。測試：模擬器加 ?closetcloud=1 才打開
+const RULES_2026_11_24 = false;
+const CLOSET_CLOUD = RULES_2026_11_24 || (DEBUG && params.has('emu') && params.has('closetcloud'));
 const TITLE_TOYS = (SCANNED.length >= 3 ? SCANNED : PIECES).slice(0, 3);
 
 // ---------- 存檔 ----------
@@ -145,6 +149,7 @@ async function switchAccountNow(u) {
   // 重新整理後開機先讀了上次那個帳號的存檔；結果沒登入（登入過期）時，不能直接 return，要換回訪客存檔
   if ((account ? account.uid : null) === uid && (uid || saveKey === SAVE_KEY)) { account = u; renderAccount(); return; }
   clearTimeout(pushTimer); pushTimer = 0;
+  closetFresh = null;
   const prevKey = saveKey, wasUser = !!account;
   if (!u) {                                  // 登出 → 回到這台裝置的訪客存檔
     if (wasUser) clearInProgress(prevKey);   // 換帳號：上一個帳號玩到一半的關不留（登入過期就留著，下次登入還在）
@@ -167,8 +172,8 @@ async function switchAccountNow(u) {
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
   if (explicit || wasUser) clearInProgress(prevKey);   // 自己換帳號才清；重新整理後自動恢復登入時，訪客那份不動
   setSync('syncing');
-  let remote = null, online = true;
-  try { const d = await cloud.load(); remote = d ? normSave(d) : null; } catch (e) { online = false; console.warn('[cloud] 讀取失敗', e); }
+  let remote = null, remoteCloset = null, online = true;
+  try { const d = await cloud.load(); remote = d ? normSave(d) : null; remoteCloset = d ? d.closet : null; } catch (e) { online = false; console.warn('[cloud] 讀取失敗', e); }
   if (!account || account.uid !== uid) return;            // 讀的時候又換人了
   // 雲端的 + 這台裝置上這個帳號的副本（可能有離線時玩、還沒傳上去的進度）
   let merged = mergeSave(remote, loadSave(saveKey)) || normSave(null);
@@ -187,6 +192,8 @@ async function switchAccountNow(u) {
   save.seen = seen;
   try { localStorage.setItem(saveKey, JSON.stringify(save)); } catch (e) { /* ignore */ }
   if (remote) lastPushed = JSON.stringify(progressOf(remote));
+  // 雲端衣櫃：雲端那份合進這台裝置的（兩邊兌換的都留著），下面 pushCloud 再把合好的寫回去
+  if (CLOSET_CLOUD && online) { closet.load(closetKey()); if (remoteCloset) closet.mergeCloud(remoteCloset); closetFresh = uid; }
   refreshAfterSwitch();
   if (online) { pushCloud(); initFriends(uid); } else setSync('offline');
   if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
@@ -196,17 +203,45 @@ function schedulePush() {
   pushTimer = setTimeout(pushCloud, 1500);      // 連續好幾個變動（過關：星星、最高分、道具）合成一次
   if (syncState !== 'offline') setSync('syncing');
 }
+// 要寫到雲端的：進度（＋規則發布後的衣櫃）
+const cloudPayload = () => (CLOSET_CLOUD && !closetDenied ? { ...progressOf(save), closet: closet.cloudData() } : progressOf(save));
+// 雲端衣櫃：cloud.save 會整份換掉，所以每次寫之前先讀雲端那份合進來（另一台裝置剛兌換的才不會被蓋掉）。剛登入時讀過了就不再讀
+let closetDenied = false, closetFresh = null;
+async function pullCloset(uid) {
+  if (closetFresh === uid) { closetFresh = null; return true; }
+  try {
+    const d = await cloud.load();
+    if (!account || account.uid !== uid) return false;
+    if (d && d.closet && closet.mergeCloud(d.closet)) { applyLook(); renderClosetBtn(); if (isOpen('m-closet')) renderCloset(); }
+    return true;
+  } catch (e) {
+    console.warn('[cloud] 讀取失敗，連上網路或下次存檔時再試', e);
+    if (account && account.uid === uid) setSync('offline');
+    return false;
+  }
+}
 async function pushCloud() {
   clearTimeout(pushTimer); pushTimer = 0;
   if (!cloud || !account) return;
-  const uid = account.uid, data = progressOf(save), json = JSON.stringify(data);
+  const uid = account.uid;
+  if (CLOSET_CLOUD && !closetDenied && !(await pullCloset(uid))) return;
+  if (!account || account.uid !== uid) return;
+  let data = cloudPayload(), json = JSON.stringify(data);
   if (json === lastPushed) { setSync('synced'); return; }
   setSync('syncing');
   try {
-    await cloud.save(data, uid);                // cloud.js 會確認目前登入的還是這個人，才寫
+    try {
+      await cloud.save(data, uid);              // cloud.js 會確認目前登入的還是這個人，才寫
+    } catch (e) {
+      if (!(data.closet && e && e.code === 'permission-denied')) throw e;
+      closetDenied = true;                      // 規則還沒發布：拿掉衣櫃再寫一次，進度照存
+      console.info('[cloud] 衣櫃還不能上雲端（規則還沒更新），先只存進度');
+      data = cloudPayload(); json = JSON.stringify(data);
+      await cloud.save(data, uid);
+    }
     if (!account || account.uid !== uid) return;
     lastPushed = json;
-    setSync(JSON.stringify(progressOf(save)) === json ? 'synced' : 'syncing');
+    setSync(JSON.stringify(cloudPayload()) === json ? 'synced' : 'syncing');
     publishProfile();                           // 排行榜上的星星和最高分也跟著更新（沒開好友排行榜就不做事）
   } catch (e) {
     console.warn('[cloud] 寫入失敗，連上網路或下次存檔時再試', e);
@@ -260,7 +295,15 @@ const sumStars = () => levelIds().reduce((s, id) => s + Math.max(0, Math.min(3, 
 function myProfile() {
   const best = {};
   for (const id of levelIds()) { const v = Number(save.best[id]); if (v > 0) best[id] = Math.round(v); }
-  return { code: cloud.friendCode(account.uid), name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: Math.min(3000, sumStars()), best };
+  const out = { code: cloud.friendCode(account.uid), name: Array.from(String(account.name || '玩家')).slice(0, 12).join(''), stars: Math.min(3000, sumStars()), best };
+  if (CLOSET_CLOUD && !lookDenied) out.look = cloudLook();
+  return out;
+}
+// 朋友看得到的頭像：只放這六項（規則 okLook），值都是短 id
+let lookDenied = false;     // 規則還沒更新、寫 look 被擋：這次開著的期間都不帶 look，排行榜照常
+function cloudLook() {
+  const l = cleanLook(meLook());
+  return { who: l.who, bg: l.bg, hat: l.hat, outfit: l.outfit, ring: l.ring, fx: l.fx };
 }
 // 寫自己的公開資料（星星、每關最高分）。沒變就不寫；addUid：順便加好友（失敗時丟出去，讓「加好友」顯示錯誤）
 async function publishProfile(addUid) {
@@ -268,8 +311,18 @@ async function publishProfile(addUid) {
   const uid = account.uid, p = myProfile(), key = JSON.stringify(p);
   if (!addUid && key === lastPublished) return;
   try {
-    await cloud.publish({ ...p, t: Date.now() }, uid, addUid);
-    if (account && account.uid === uid) lastPublished = key;
+    let sent = key;
+    try {
+      await cloud.publish({ ...p, t: Date.now() }, uid, addUid);
+    } catch (e) {
+      if (!(p.look && e && e.code === 'permission-denied')) throw e;
+      lookDenied = true;                        // 規則還沒發布：拿掉頭像再寫一次，排行榜不關
+      console.info('[friends] 頭像還不能上雲端（規則還沒更新），先只寫分數');
+      const { look, ...rest } = p;
+      await cloud.publish({ ...rest, t: Date.now() }, uid, addUid);
+      sent = JSON.stringify(rest);
+    }
+    if (account && account.uid === uid) lastPublished = sent;
   } catch (e) {
     if (addUid) throw e;
     friendsQuiet('分數沒寫上排行榜，下次存檔再試', e);
@@ -284,7 +337,7 @@ function cleanPlayer(p) {
   if (p.best && typeof p.best === 'object') {
     for (const [k, v] of Object.entries(p.best)) { const n = Math.round(Number(v)); if (Number.isFinite(n) && n > 0) best[k] = n; }
   }
-  return { uid: p.uid, name, stars: Math.max(0, Math.min(3000, Math.round(Number(p.stars) || 0))), best, level: levelOfBest(best) };
+  return { uid: p.uid, name, stars: Math.max(0, Math.min(3000, Math.round(Number(p.stars) || 0))), best, level: levelOfBest(best), look: cleanLook(p.look) };
 }
 // 朋友玩到第幾關：有最高分的關卡裡最後面那一關的下一關（最多到最後一關）；沒有分數就是第 1 關。對不到現在關卡的編號不算
 let idIdx = null;
@@ -303,7 +356,7 @@ function levelOfBest(best) {
 // 地圖上朋友的小頭像：站在朋友目前那一關旁邊，一關最多 3 個，多的用「+N」。點一下看是誰、第幾關、幾顆星
 function friendFace(p) {
   const f = el('span', 'fr-face');
-  f.textContent = Array.from(p.name)[0] || '?';
+  putAvatar(f, p.look);           // 朋友打扮好的薯餅；沒有頭像資料（舊版、規則還沒更新）就是原本的薯餅
   return f;
 }
 function renderFriendPins() {
@@ -386,7 +439,7 @@ function renderBoard() {
     const li = el('li', 'fr-row' + (p.me ? ' me' : ''));
     li.dataset.rank = rank;
     const rk = el('span', 'fr-rank'); rk.textContent = rank;
-    const av = el('span', 'acct-av fr-av'); av.textContent = Array.from(p.name)[0] || '?';
+    const av = el('span', 'acct-av fr-av'); putAvatar(av, p.me ? meLook() : p.look);
     const nm = el('span', 'fr-nm');
     const nt = el('span', 'fr-nt'); nt.textContent = p.name;
     if (p.me) nt.appendChild(el('small', '', '（我）'));
@@ -1094,6 +1147,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && mo
 // ---------- 玩偶衣櫃（三星外觀獎勵，js/cosmetics.js）----------
 // 衣櫃存在這台裝置的 localStorage，每個帳號一份（key 跟著存檔走）；造型幣、星星照存檔裡的關卡星星算
 const closet = createCloset();
+closet.onChange = () => { if (account && CLOSET_CLOUD) schedulePush(); };   // 兌換、開寶箱、換裝、換頭像 → 1.5 秒後跟進度一起存雲端
 const closetKey = () => saveKey + '.closet';
 let clR = null, clCat = 'outfit', tryOn = {};
 let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
@@ -1117,31 +1171,92 @@ function svgImg(svg, cls) {
   const img = new Image(); img.alt = ''; img.draggable = false; img.className = cls; img.src = svgUrl(svg);
   return img;
 }
-function avatarToy(outfit) {
+// 頭像上的薯餅（角色目前只有薯餅）
+const shubingToy = () => PIECES.find(p => p.id === 'sloth') || TITLE_TOYS[1] || TITLE_TOYS[0];
+// sloth_n.png 不透明部分的外框（0–1）：帽子照遊戲盤面上戴的位置放，跟 renderer.js accOverlay 同一套算法
+const SLOTH_BOX = { x0: 0.051, y0: 0.148, x1: 0.949, y1: 0.852 };
+function avatarHat(name) {
+  const svg = name && name !== 'none' ? ACCESSORY_SVG[name] : '';
+  if (!svg) return null;
+  const vb = /viewBox="([^"]+)"/.exec(svg), d = vb ? vb[1].trim().split(/[\s,]+/).map(Number) : [0, 0, 1, 1];
+  const face = TOY_FACE.sloth, place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 }, tune = accTune('sloth', name);
+  const b = SLOTH_BOX, bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+  const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * (d[3] || 1) / (d[2] || 1);
+  const ax = b.x0 + face.x * bw + place.dx * fw + tune.offsetX * bw;
+  const ay = b.y0 + (face[place.anchor] != null ? face[place.anchor] : face.top) * bh - place.ay * ah + tune.offsetY * bh;
+  const img = svgImg(svg, 'av-hat');
+  const pc = v => (v * 100).toFixed(2) + '%';
+  img.style.left = pc(ax - aw / 2); img.style.top = pc(ay); img.style.width = pc(aw); img.style.height = pc(ah);
+  return img;
+}
+function avatarToy(outfit, hat) {
   const toy = el('span', 'av-toy');
   const back = outfitSvg(outfit, 'back'), front = outfitSvg(outfit, 'front');
   if (back) toy.appendChild(svgImg(back, 'av-out'));
-  const t = toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22);
+  const t = toyEl(shubingToy(), 22);
   t.classList.add('av-sloth');
   toy.appendChild(t);
   if (front) toy.appendChild(svgImg(front, 'av-out'));
+  const h = avatarHat(hat);
+  if (h) toy.appendChild(h);
   return toy;
 }
+// look：{ who, bg, hat, outfit, ring, fx }（自己的 meLook()、朋友的 p.look）
 function renderAvatar(host, look) {
   if (!host) return;
-  const r = ringData(look.ring);
+  const l = cleanLook(look), r = ringData(l.ring), bg = avatarBg(l.bg);
   const ring = el('span', 'av-ring');
   ring.style.background = r.ring;
   ring.style.setProperty('--ring-sh', r.sh);
-  const parts = [ring, el('span', 'av-disc'), avatarToy(look.outfit)];
-  const deco = ringDecoSvg(look.ring);
+  const disc = el('span', 'av-disc');
+  disc.style.background = bg.bg;
+  disc.style.setProperty('--disc-sh', bg.sh);
+  const parts = [ring, disc, avatarToy(l.outfit, l.hat)];
+  const deco = ringDecoSvg(l.ring);
   if (deco) parts.push(svgImg(deco, 'av-deco'));
   host.replaceChildren(...parts);
 }
-function renderMeAvatar() { renderAvatar($('#dk-me'), closet.look(save.stars)); }
+// 小地方的頭像（排行榜、地圖上的朋友、帳號）：圓框裡放一個打扮好的薯餅
+function putAvatar(host, look) {
+  const a = el('span', 'av');
+  renderAvatar(a, look);
+  host.classList.add('has-av');
+  host.replaceChildren(a);
+}
+const meLook = () => ({ ...closet.look(save.stars), ...closet.avatar() });
+function renderMeAvatar() {
+  const l = meLook();
+  renderAvatar($('#dk-me'), l);
+  const acct = $('#acct-box .acct-av');
+  if (acct && account) putAvatar(acct, l);
+  const mine = $('#fr-list .fr-row.me .fr-av');
+  if (mine) putAvatar(mine, l);
+}
+// 衣櫃的「我的頭像」：試穿也看得到；底色點了馬上換
+function renderClosetMe() {
+  renderAvatar($('#cl-me-av'), previewLook());
+  const box = $('#cl-bgs'), cur = closet.avatar().bg;
+  box.replaceChildren(...AVATAR_BGS.map(b => {
+    const btn = el('button', 'cl-bg');
+    btn.type = 'button';
+    btn.setAttribute('role', 'radio');
+    btn.setAttribute('aria-checked', b.id === cur ? 'true' : 'false');
+    btn.setAttribute('aria-label', '頭像底色：' + b.name);
+    btn.title = b.name;
+    btn.style.background = b.bg;
+    btn.addEventListener('click', () => {
+      if (closetBusy) { toast('衣櫃讀取中，等一下下再換', 1400); return; }
+      if (!closet.setAvatar({ bg: b.id })) return;
+      audio.play('tap');
+      applyLook();
+    });
+    return btn;
+  }));
+}
 function renderClosetAva() {
   const box = $('#cl-ava');
   if (!box || !isOpen('m-closet')) return;
+  renderClosetMe();
   const ava = AVA_CATS.includes(clCat);
   box.hidden = !ava;
   $('#cl-board').hidden = ava;
@@ -1149,7 +1264,7 @@ function renderClosetAva() {
   if (ava) renderAvatar($('#cl-ava-me'), previewLook());
 }
 function previewLook() {
-  const l = closet.look(save.stars);
+  const l = meLook();
   for (const [cat, id] of Object.entries(tryOn)) l[cat] = id.split('.')[1];
   return l;
 }
@@ -1198,6 +1313,7 @@ function closetClosed() {
   if (clR) { clR.setBoard(null); clR.pause(); }
   applyLook();
   renderClosetBtn();
+  if (CLOSET_CLOUD) publishProfile();      // 換好衣服 → 朋友排行榜上的頭像也換（內容沒變就不寫）
 }
 // 試試消除特效：預覽盤面上連續爆三下
 function closetDemo() {
@@ -1243,7 +1359,7 @@ function renderCloset() {
     const b = el('button', 'cl-item' + (on ? ' on' : '') + (unlocked ? '' : ' locked') + (can ? ' can' : '') + (trying ? ' trying' : ''));
     b.type = 'button';
     const pic = el('span', 'ci-pic' + (it.cat === 'hat' ? ' hat' : ''));
-    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id));   // 薯餅造型：直接看薯餅穿起來的樣子
+    if (it.cat === 'outfit') pic.appendChild(avatarToy(it.id, 'none'));   // 薯餅造型：直接看薯餅穿起來的樣子
     else { const img = new Image(); img.alt = ''; img.src = svgUrl(iconSvg(it.id)); img.draggable = false; pic.appendChild(img); }
     if (closet.isNew(it, stars)) b.appendChild(el('span', 'ci-new', '新'));
     if (!unlocked) { const lk = el('span', 'ci-lock'); lk.innerHTML = '<svg><use href="#i-lock"/></svg>'; pic.appendChild(lk); }
@@ -3362,8 +3478,9 @@ const SYNC_TEXT = {
 // 頭像：名字的第一個字；沒登入是一朵雲
 function paintAvatar(box) {
   box.textContent = '';
+  box.classList.remove('has-av');
   if (account) {
-    box.textContent = Array.from(account.name || '?')[0] || '?';
+    putAvatar(box, meLook());      // 登入了：衣櫃裡打扮好的薯餅
   } else {
     const s = document.createElementNS(SVGNS, 'svg'), u = document.createElementNS(SVGNS, 'use');
     u.setAttribute('href', '#i-cloud'); s.appendChild(u); box.appendChild(s);

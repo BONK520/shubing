@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124w") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124w") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124x") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124x") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -1669,10 +1669,18 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .av { position: relative; display: block; width: var(--s); height: var(--s); }
 .av > * { pointer-events: none; }
 .av-ring { position: absolute; inset: calc(var(--s) * -.075); border-radius: 50%; box-shadow: 0 calc(var(--s) * .075) 0 var(--ring-sh), 0 calc(var(--s) * .15) calc(var(--s) * .2) calc(var(--s) * .03) rgba(94, 33, 54, .22); }
-.av-disc { position: absolute; inset: 0; border-radius: 50%; border: calc(var(--s) * .058) solid #fff; background: radial-gradient(circle at 50% 35%, #fff, #ffe3f2); box-shadow: inset 0 calc(var(--s) * -.077) 0 rgba(255, 111, 176, .22); }
+.av-disc { position: absolute; inset: 0; border-radius: 50%; border: calc(var(--s) * .058) solid #fff; background: radial-gradient(circle at 50% 35%, #fff, #ffe3f2); box-shadow: inset 0 calc(var(--s) * -.077) 0 var(--disc-sh, rgba(255, 111, 176, .22)); }
 .av-toy { position: absolute; inset: calc(var(--s) * -.135); filter: drop-shadow(0 2px 2px rgba(80, 20, 90, .3)); }
 .av-toy > img, .av-toy > .toy-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .av-toy > .av-out { inset: -6%; width: 112%; height: 112%; }
+/* 帽子：位置在 main.js avatarHat() 算好（跟遊戲盤面上戴的位置一樣），這裡只取消上面的 inset */
+.av-toy > .av-hat { inset: auto; object-fit: fill; }
+/* 小地方的頭像（帳號、排行榜、地圖上的朋友）：外框換成打扮好的薯餅，帽子可以超出圓框 */
+.acct-av.has-av, .fr-face.has-av { background: none !important; box-shadow: none; overflow: visible; border: 0; }
+.acct-av.has-av > .av { --s: 25px; }
+.acct-row .acct-av.has-av > .av { --s: 37px; }
+.fr-av.has-av > .av { --s: 30px; }
+.fr-face.has-av > .av { --s: 18px; }
 .av-deco { position: absolute; inset: calc(var(--s) * -.1923); width: calc(var(--s) * 1.3846); height: calc(var(--s) * 1.3846); }
 .dk-stats { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .dk-stat {
@@ -1804,6 +1812,18 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .cl-ava[hidden] { display: none; }
 .cl-ava .av { --s: 104px; }
 #cl-board[hidden], .cl-demo[hidden] { display: none; }
+/* 衣櫃「我的頭像」：自己的頭像＋底色（main.js renderClosetMe） */
+.cl-me { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 14px; border-radius: 18px; background: #fff7fb; border: 2px solid #fff; box-shadow: 0 3px 0 #f0cfdc; box-sizing: border-box; }
+.cl-me > .av { --s: 40px; flex: none; margin: 12px 3px 2px; }   /* 上面留位置給帽子、兔耳朵 */
+.cl-me-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; line-height: 1.2; }
+.cl-me-t b { font-size: 14px; color: var(--ink); }
+.cl-me-t small { font-size: 11px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-bgs { display: flex; gap: 6px; flex: none; }
+.cl-bg { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(111, 40, 64, .18), 0 2px 3px rgba(111, 40, 64, .2); cursor: pointer; }
+.cl-bg[aria-checked="true"] { box-shadow: 0 0 0 2.5px #ff5f9e, 0 2px 3px rgba(111, 40, 64, .2); }
+.cl-bg:focus-visible { outline: 3px solid #2f8cf0; outline-offset: 2px; }
+#m-closet.busy .cl-bgs { opacity: .55; pointer-events: none; }
+@media (max-width: 380px) { .cl-bgs { gap: 4px; } .cl-bg { width: 23px; height: 23px; } .cl-me { gap: 7px; padding-left: 10px; } .cl-me-t small { display: none; } }
 /* 6 個分頁：兩排各 3 個，360 寬也不會被切掉 */
 .cl-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; }
 .cl-tab { position: relative; padding: 8px 2px; border: 0; border-radius: 14px; background: #f6e6ef; color: #9a5a7a; font-size: 14px; font-weight: 900; cursor: pointer; box-shadow: 0 3px 0 #e8cadb; }
