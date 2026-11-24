@@ -19,9 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124a';
-import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124a';
-import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS } from './blockers.js?v=20261124a';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124b';
+import { TOY_FACE, ACCESSORY_PLACE, ACCESSORY_TUNING, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124b';
+import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124b';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -39,6 +40,9 @@ const SWAP_BAD_MS = 150;  // 不成立的交換：過去
 const SWAP_BACK_MS = 170; //                 彈回來
 const POP_MS = 380;       // 消除：放大 + 白光 → 碎開
 const POP_HIT = 75;       // 頓幀：被消的玩偶先在 75ms 內放大到 1.2 倍、閃一下亮白，才「啵」地爆開
+// 機關被消掉 / 被打一下時的音效提示名稱（main.js 的 CUE_SOUND 再對到實際的聲音）
+const BLOCK_CUE = { frost: 'frost', choco: 'choco', alarm: 'alarmoff', shell: 'shell', gate: 'gate', jar: 'jar', surprise: 'egg', lantern: 'lantern', oven: 'oven' };
+const BLOCK_HIT_CUE = { frost: 'frost', shell: 'shell', gate: 'gate', jar: 'jarfill', surprise: 'eggcrack', oven: 'ovenfire' };
 const POP_LEAD = 150;     // 最後一顆閃光之後 ~150ms 上面的方塊才開始往下灌（碎開的動畫在背景收尾，不等；2026-11 從 105 拉長，消掉的那一下看得到）
 const GROUP_STAGGER = 40; // 同一步裡好幾組消除：一組接一組爆，音高一組比一組高（2026-11 從 24 拉開，聲音不會黏成一團）
 const POP_SEQ = 34;       // 同一組裡一顆接一顆爆（「啵、啵、啵」）
@@ -52,6 +56,7 @@ const STAGGER_ROW = 36, STAGGER_MAX = 180, COL_JITTER = 16;   // 同一欄一顆
 // 特效傳到某格要多久
 // CHAIN_MS：被波及的特殊方塊，一個接一個接力引爆的間隔（70ms）
 const LINE_MS = 28, BLAST_MS = 55, BOARD_MS = 36, CHAIN_MS = 70, BOMB_FIRST = 110, CLEAR_CAP = 900;
+const TICKET_MS = 430;   // 車票從玩偶身上飛到票閘的時間
 // 飛天玩偶（2×2 正方形變的特殊方塊，引擎裡叫 'fish'）飛到目標的時間：基本 + 每格距離，最久 FISH_MAX
 // （先往上飛出一段弧線再俯衝，看得清楚）
 const FISH_BASE = 430, FISH_PER = 30, FISH_MAX = 720;
@@ -1784,7 +1789,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   // ================= 盤面同步 =================
   function make2D(r, c, v) { return Array.from({ length: r }, () => new Array(c).fill(v)); }
   function newVisual(p, r, c) {
-    return { id: p.id, kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, r, c, mv: null,
+    return { id: p.id, kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, tk: p.tk | 0, jk: p.jk, r, c, mv: null,
       landT: -1e9, landAmp: 0, popT: -1e9, hideUntil: 0, morph: null, phase: Math.random() * Math.PI * 2 };
   }
   function cellV(q) { return q && cellMap[q.r] ? cellMap[q.r][q.c] || null : null; }
@@ -1828,7 +1833,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       if (!v || nv.has(p.id)) v = newVisual(p, r, c);
       if (!mvEndsAt(v.mv, r, c)) v.mv = null;
       if (v.morph && (v.kind !== p.kind || v.special !== (p.special || 'none'))) v.morph = null;
-      v.kind = p.kind; v.special = p.special || 'none'; v.block = p.block || null; v.hp = p.hp | 0; v.r = r; v.c = c;
+      v.kind = p.kind; v.special = p.special || 'none'; v.block = p.block || null; v.hp = p.hp | 0; v.tk = p.tk | 0; v.jk = p.jk; v.r = r; v.c = c;
       nv.set(p.id, v);
       cellMap[r][c] = v;
     }
@@ -2134,6 +2139,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       }
       case 'board': return Math.hypot(r - (rows - 1) / 2, c - (cols - 1) / 2) * BOARD_MS;
       case 'fish': return e.to && r === e.to.r && c === e.to.c ? fishMs(e) : -1;
+      case 'ticket': return e.to && r === e.to.r && c === e.to.c ? TICKET_MS : -1;
     }
     return -1;
   }
@@ -2176,7 +2182,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const E = effects.map(e => ({ e, r: e.r, c: e.c, start: Infinity, board: e.fx === 'board' }));
     for (const x of E) {
       const it = x.board ? null : remAt.get(key(x.r, x.c));
-      if (x.board || !it || it.cause === 'match' || it.cause === 'combo') x.start = x.board ? 0 : (matchT.get(key(x.r, x.c)) || 0);
+      if (x.board || (it && (it.cause === 'match' || it.cause === 'combo'))) x.start = x.board ? 0 : (matchT.get(key(x.r, x.c)) || 0);
+      else if (!it || it.cause === 'near') {
+        // 烤箱、蜂蜜罐：被旁邊的配對碰到才發動（等旁邊那組爆開）
+        let tm = Infinity;
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const n = key(x.r + dr, x.c + dc); if (matchT.has(n)) tm = Math.min(tm, matchT.get(n) + 90); }
+        x.start = tm === Infinity ? (it ? Infinity : 0) : tm;
+      }
     }
     for (let iter = 0; iter < 10; iter++) {
       let changed = false;
@@ -2251,9 +2263,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       const m = it.cause === 'match' ? mergeTo.get(k) : null;
       const tm = tOf(it.r, it.c);
       const ch = charge && it.piece && charge.ids.has(it.piece.id) ? { t: charge.t, dur: charge.dur, S: charge.S, x: charge.at.c, y: charge.at.r } : null;
-      ghosts.push({ kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, x: gx, y: gy, t0: t0 + tm,
+      ghosts.push({ kind: p.kind, special: p.special || 'none', block: p.block || null, hp: p.hp | 0, jk: p.jk, x: gx, y: gy, t0: t0 + tm,
         dur: m ? MERGE_MS : POP_MS, to: m ? { x: m.c, y: m.r } : null, fired: false, heavy, phase, charge: ch });
-      if (p.block) cue(p.block === 'frost' ? 'frost' : p.block === 'choco' ? 'choco' : p.block === 'alarm' ? 'alarmoff' : p.block === 'shell' ? 'shell' : 'swirl', tm + POP_HIT, { r: it.r, c: it.c });
+      if (p.block) cue(BLOCK_CUE[p.block] || 'swirl', tm + POP_HIT, { r: it.r, c: it.c, block: p.block });
+      if (p.block === 'lantern' || p.block === 'gate' || p.block === 'jar' || p.block === 'surprise') {
+        const col = p.block === 'lantern' ? parseColor(LANTERN_COLORS[(Math.max(1, p.hp) - 1) % 4]) : p.block === 'surprise' ? [190, 160, 255] : RING_GOLD;
+        const word = p.block === 'lantern' ? '點亮！' : p.block === 'gate' ? '開閘！' : p.block === 'jar' ? '裝滿！' : '';
+        at(t0 + tm + POP_HIT, tt => {
+          fx.push({ type: 'ring', x: it.c + 0.5, y: it.r + 0.5, R: 1.1, t0: tt, dur: 460, col });
+          sparkle(it.c + 0.5, it.r + 0.5, 8, tt, 0.35);
+          if (word && !(p.block === 'lantern' && it !== removed.find(o => o.piece && o.piece.block === 'lantern' && o.piece.hp === p.hp))) addText(word, it.c + 0.5, it.r + 0.1, tt + 40, col, true);
+        });
+      }
       lastPop = Math.max(lastPop, tm);
     }
 
@@ -2282,10 +2303,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       const tm = tOf(q.r, q.c);
       at(t0 + tm, tt => {
         const v = cellV(q);
-        crumbs(q.c + 0.5, q.r + 0.5, q.block === 'shell' ? 'shell' : 'frost', (q.left | 0) + 1, tt, 10);
+        const ct = q.block === 'shell' || q.block === 'surprise' ? q.block : q.block === 'frost' ? 'frost' : null;
+        if (ct) crumbs(q.c + 0.5, q.r + 0.5, ct, (q.left | 0) + 1, tt, 10);
+        else if (q.block === 'jar') sparkle(q.c + 0.5, q.r + 0.4, 5, tt, 0.3);
+        else if (q.block === 'oven') { crumbs(q.c + 0.5, q.r + 0.3, 'oven', 1, tt, q.left ? 5 : 12); if (!q.left) addText('烤好了！', q.c + 0.5, q.r - 0.1, tt + 40, [255, 150, 60], true); }
+        else if (q.block === 'gate') fx.push({ type: 'pring', x: q.c + 0.5, y: q.r + 0.5, t0: tt, dur: 320, col: RING_GOLD, R: 0.9 });
         if (v) { v.hp = q.left | 0; v.landT = tt; v.landAmp = 0.16; }
       });
-      cue(q.block === 'shell' ? 'shell' : 'frost', tm, { r: q.r, c: q.c });
+      cue(BLOCK_HIT_CUE[q.block] || 'frost', tm, { r: q.r, c: q.c, block: q.block, left: q.left | 0 });
     }
 
     // --- 特效 ---
@@ -2327,6 +2352,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
           shake(3, 200, tt);
         });
         cue('fish', st, { carry: e.carry || null, dur });
+      } else if (e.fx === 'ticket' && e.to) {
+        const dur = TICKET_MS * f;
+        fx.push({ type: 'ticketfly', x0: e.c + 0.5, y0: e.r + 0.5, x1: e.to.c + 0.5, y1: e.to.r + 0.5, t0: at0, dur });
+        at(at0 + dur, tt => { sparkle(e.to.c + 0.5, e.to.r + 0.5, 7, tt, 0.3); fx.push({ type: 'pring', x: e.to.c + 0.5, y: e.to.r + 0.5, t0: tt, dur: 320, col: RING_GOLD, R: 1 }); });
+        cue('ticket', st, { dur });
       } else if (e.fx === 'board') {
         fx.push({ type: 'boardfx', t0: at0, dur: 800 });
         shake(9, 560, at0);
@@ -2654,6 +2684,55 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     await wait(dur + 10);
   }
 
+  // 熱氣球往上飄一格：氣球和上面那顆玩偶交換位置（玩偶往下掉一格）。
+  // 經過傳送門時，氣球從這一格往上縮進門裡、從另一個門的下面冒出來；玩偶反過來
+  async function animFloat(ev) {
+    const t = now(), dur = 340;
+    for (const m of ev.moves || []) {
+      if (!m || !m.from || !m.to) continue;
+      const v = visuals.get(m.id) || cellV(m.from);
+      if (!v) continue;
+      const f = m.from, q = m.to, up = v.block === 'balloon';
+      if (m.warp) {
+        const d = up ? -1 : 1;
+        v.mv = { t0: t, dur, x1: q.c, y1: q.r, clip: true, path: u => {
+          if (u < 0.5) { const k = u * 2; return { x: f.c, y: f.r + d * 0.5 * k, s: 1 - 0.88 * k }; }
+          const k = (u - 0.5) * 2;
+          return { x: q.c, y: q.r - d * 0.5 * (1 - k), s: 0.12 + 0.88 * k };
+        } };
+      } else if (up) {
+        v.mv = { t0: t, dur, x1: q.c, y1: q.r, top: true, path: u => { const e = easeOutCubic(u); return { x: lerp(f.c, q.c, e) + Math.sin(u * Math.PI) * 0.06, y: lerp(f.r, q.r, e), s: 1 + 0.06 * Math.sin(u * Math.PI) }; } };
+      } else {
+        v.mv = { t0: t, dur, x1: q.c, y1: q.r, path: u => { const e = easeInOutCubic(u); return { x: lerp(f.c, q.c, e), y: lerp(f.r, q.r, e), s: 1 }; } };
+      }
+    }
+    cue('float');
+    await wait(dur + 10);
+  }
+  // 熱氣球飄出盤面最上面：往上升、輕輕左右搖、慢慢變淡，留下一串星星
+  async function animBalloonOut(ev) {
+    const t = now(), total = 620;
+    let i = 0;
+    for (const q of ev.cells || []) {
+      if (!q) continue;
+      const v = (q.piece && visuals.get(q.piece.id)) || cellV(q), t1 = t + i * 120;
+      i++;
+      if (v) {
+        v.mv = { t0: t1, dur: total, x1: q.c, y1: q.r, top: true, path: u => {
+          const e = easeInCubic(u);
+          return { x: q.c + Math.sin(u * Math.PI * 2) * 0.12, y: q.r - 1.6 * e, s: Math.max(0.02, (1 + 0.15 * Math.sin(u * Math.PI)) * (1 - 0.95 * Math.max(0, (u - 0.55) / 0.45))) };
+        } };
+        at(t1 + total - 24, () => { visuals.delete(v.id); if (cellMap[q.r] && cellMap[q.r][q.c] === v) cellMap[q.r][q.c] = null; });
+      }
+      at(t1 + 80, tt => {
+        sparkle(q.c + 0.5, q.r + 0.3, 10, tt, 0.4);
+        fx.push({ type: 'ring', x: q.c + 0.5, y: q.r + 0.5, R: 1.2, t0: tt, dur: 460, col: [255, 160, 200] });
+        addText('飛走囉！', q.c + 0.5, q.r - 0.3, tt + 60, [255, 120, 170], true);
+      });
+      cue('balloon', t1 - t, { r: q.r, c: q.c });
+    }
+    await wait(Math.max(420, (i - 1) * 120 + total - 60));
+  }
   // 龍龍走到出口（2026-11 改成破殼）：蛋殼左右搖一搖 →「喀」破殼、殼片噴出去 → 變大隻 → 往上飛
   // （main.js 接著讓牠從飛到的位置沿弧線飛到上面的目標圖示；dinoout 的 dy 是往上飛了幾格）
   const HATCH_WOB = 420, HATCH_GROW = 430, HATCH_RISE = 360, HATCH_UP = 1.25;
@@ -2767,7 +2846,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     switch (ev && ev.t) {
       case 'tick': return animTick(ev);
       case 'alarm': return animAlarm(ev);
-      case 'exit': return animExit(ev);
+      case 'exit': return ev.balloon ? animBalloonOut(ev) : animExit(ev);
+      case 'float': return animFloat(ev);
       case 'spread': return animSpread(ev);
       case 'swap': return animSwap(ev, false, next);
       case 'swapBack': return animSwap(ev, true, next);
@@ -3163,6 +3243,13 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       else if (type === 'pot') paintPot(g, S);
       else if (type === 'wrap') paintWrap(g, S);
       else if (type === 'exit') paintExitArrow(g, S);
+      else if (type === 'ticket') paintTicket(g, S);
+      else if (type === 'gate') paintGate(g, S, hp);
+      else if (type === 'balloon') paintBalloon(g, S);
+      else if (type === 'jar') paintJar(g, S);
+      else if (type === 'surprise') paintSurprise(g, S, hp);
+      else if (type === 'lantern') paintLantern(g, S, hp);
+      else if (type === 'oven') paintOven(g, S, hp);
       blockCache.set(key, c);
     }
     return c;
@@ -3177,6 +3264,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (!im) return null;
     c = outlined(vivid(scaled(im, Math.round(S * 0.9))));
     blockCache.set('dino', c);
+    return c;
+  }
+  // 蜂蜜罐上要的那種玩偶（小小一隻，白邊）
+  function jarToy(kind) {
+    const S = Math.max(8, Math.round(cs * dpr));
+    if (S !== blockS) { blockCache.clear(); blockS = S; }
+    const key = 'jt' + kind;
+    let c = blockCache.get(key);
+    if (c) return c;
+    const all = imgsFor(pieceInfo(kind).id), im = usable(all.clean) ? all.clean : usable(all.sprite) ? all.sprite : null;
+    if (!im) return null;
+    c = outlined(vivid(scaled(im, Math.round(S * 0.42))));
+    blockCache.set(key, c);
     return c;
   }
   // 龍龍的蛋（2026-11：還沒救出來的龍龍是蛋裡的龍寶寶）：back = 蛋殼內側（在龍龍後面），front = 下半顆蛋殼（蓋在龍龍前面，上緣是鋸齒裂口）
@@ -3236,7 +3336,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
   }
   // 一顆機關（糖霜 / 巧克力 / 甘草 / 龍龍）：s 縮放、sx / sy 壓扁（以底部為準）
-  function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0, hatchT = 0) {
+  function drawBlock(block, hp, cx, cy, s, sx, sy, t, phase, white = 0, hatchT = 0, jk = undefined) {
     const ga = ctx.globalAlpha, w = cs * s * sx, h = cs * s * sy, dy = (1 - sy) * cs * s * 0.5;
     if (block === 'dino') {
       // 綠色的光一明一暗；東張西望（每隔幾秒轉頭）、輕輕彈跳。還沒救出來時坐在蛋殼裡（只露出上半身），
@@ -3272,6 +3372,41 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       ctx.rotate(a);
       ctx.drawImage(blockSprite('alarm', hp), -w / 2, -h, w, h);
       ctx.restore();
+    } else if (block === 'balloon') {
+      // 熱氣球：上下輕輕飄、左右微微晃
+      const bob = Math.sin(t / 520 + phase) * cs * 0.04 * s;
+      ctx.save();
+      ctx.translate(cx, cy + dy + bob);
+      ctx.rotate(Math.sin(t / 900 + phase) * 0.05);
+      ctx.drawImage(blockSprite('balloon'), -w / 2, -h / 2, w, h);
+      ctx.restore();
+    } else if (block === 'lantern') {
+      // 燈籠：以掛繩為軸輕輕擺，裡面的光一明一暗
+      const k = 0.5 + 0.5 * Math.sin(t / 600 + phase);
+      const z = cs * 0.95 * s;
+      ctx.globalAlpha = ga * (0.18 + 0.18 * k);
+      ctx.drawImage(getGlowCol(parseColor(LANTERN_COLORS[(Math.max(1, hp) - 1) % 4])), cx - z / 2, cy - z / 2, z, z);
+      ctx.globalAlpha = ga;
+      ctx.save();
+      ctx.translate(cx, cy - h * 0.42 + dy);
+      ctx.rotate(Math.sin(t / 1100 + phase) * 0.07);
+      ctx.drawImage(blockSprite('lantern', hp), -w / 2, -h * 0.08, w, h);
+      ctx.restore();
+    } else if (block === 'jar') {
+      ctx.drawImage(blockSprite('jar'), cx - w / 2, cy - h / 2 + dy, w, h);
+      const toy = jk != null ? jarToy(jk) : null, tz = cs * 0.42 * s;
+      if (toy) ctx.drawImage(toy, cx - tz / 2, cy + dy + cs * 0.1 * s - tz / 2, tz, tz);
+      if (hp > 0) {
+        const bx = cx + cs * 0.3 * s, by = cy + dy + cs * 0.3 * s, br = cs * 0.17 * s;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+        ctx.lineWidth = Math.max(1, cs * 0.03 * s); ctx.strokeStyle = '#c2541e'; ctx.stroke();
+        ctx.font = `900 ${Math.round(br * 1.35)}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#a2400e'; ctx.fillText(String(hp), bx, by + br * 0.06);
+      }
+    } else if (block === 'oven') {
+      // 烤箱：兩格火的時候輕輕抖，看得出「再一下就烤好」
+      const shiver = hp >= 2 ? Math.sin(t / 45 + phase) * cs * 0.015 * s : 0;
+      ctx.drawImage(blockSprite('oven', hp), cx - w / 2 + shiver, cy - h / 2 + dy, w, h);
     } else if (block === 'licorice') {
       ctx.save();
       ctx.translate(cx, cy + dy);
@@ -3469,12 +3604,49 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       ctx.drawImage(g, cx - gs / 2, cy - gs / 2, gs, gs);
       ctx.globalAlpha = 1;
     }
-    if (v.block) { drawBlock(v.block, v.hp, cx, cy, st.s, st.sx, st.sy, t, v.phase, 0, v.hatchT || 0); return; }
+    if (v.block) { drawBlock(v.block, v.hp, cx, cy, st.s, st.sx, st.sy, t, v.phase, 0, v.hatchT || 0, v.jk); return; }
     let kind = v.kind, special = v.special;
     if (v.morph) {
       if (t < v.morph.until) { kind = v.morph.kind; special = v.morph.special; } else v.morph = null;
     }
     drawPieceAt(kind, special, cx, cy, st.s, st.sx, st.sy, t, v.phase);
+    if (v.tk) drawTicketTag(cx, cy, st.s, t, v.phase);
+  }
+  // 帶著車票的玩偶：右上角一張小票，輕輕晃
+  function drawTicketTag(cx, cy, s, t, phase) {
+    const z = cs * 0.44 * s;
+    ctx.save();
+    ctx.translate(cx + cs * 0.27 * s, cy - cs * 0.27 * s);
+    ctx.rotate(0.25 + Math.sin(t / 500 + phase) * 0.08);
+    ctx.drawImage(blockSprite('ticket'), -z / 2, -z / 2, z, z);
+    ctx.restore();
+  }
+  // 同一串的燈籠用一條細繩連起來（畫在玩偶上面、燈籠下面）
+  function drawLanternThreads(list) {
+    const by = new Map();
+    for (const [v, st] of list) { if (!by.has(v.hp)) by.set(v.hp, []); by.get(v.hp).push(st); }
+    ctx.lineCap = 'round';
+    for (const [sid, pts] of by) {
+      if (pts.length < 2) continue;
+      // 從最左上那顆開始，每次接最近的下一顆
+      pts.sort((a, b) => a.y - b.y || a.x - b.x);
+      const path = [pts.shift()];
+      while (pts.length) {
+        const a = path[path.length - 1];
+        let bi = 0, bd = Infinity;
+        pts.forEach((b, i) => { const d = Math.hypot(a.x - b.x, a.y - b.y); if (d < bd) { bd = d; bi = i; } });
+        path.push(pts.splice(bi, 1)[0]);
+      }
+      ctx.beginPath();
+      for (let i = 0; i < path.length; i++) {
+        const x = ox + (path[i].x + 0.5) * cs, y = oy + (path[i].y + 0.12) * cs;
+        if (!i) { ctx.moveTo(x, y); continue; }
+        const px = ox + (path[i - 1].x + 0.5) * cs, py = oy + (path[i - 1].y + 0.12) * cs;
+        ctx.quadraticCurveTo((px + x) / 2, (py + y) / 2 + cs * 0.28, x, y);
+      }
+      ctx.lineWidth = cs * 0.07; ctx.strokeStyle = 'rgba(90,40,10,0.55)'; ctx.stroke();
+      ctx.lineWidth = cs * 0.035; ctx.strokeStyle = LANTERN_COLORS[(Math.max(1, sid) - 1) % 4]; ctx.stroke();
+    }
   }
 
   function drawSelected(v, st, t) {
@@ -3493,7 +3665,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     try { drawSelectedBody(v, cx, cy, s, t, age); } finally { ctx.restore(); }
   }
   function drawSelectedBody(v, cx, cy, s, t, age) {
-    if (v.block) { drawBlock(v.block, v.hp, cx, cy, s, 1, 1, t, v.phase); return; }
+    if (v.block) { drawBlock(v.block, v.hp, cx, cy, s, 1, 1, t, v.phase, 0, 0, v.jk); return; }
+    if (v.tk) { drawSelectedToy(v, cx, cy, s, t, age); drawTicketTag(cx, cy, s, t, v.phase); return; }
+    drawSelectedToy(v, cx, cy, s, t, age);
+  }
+  function drawSelectedToy(v, cx, cy, s, t, age) {
     if (v.special === 'bomb' || v.kind < 0) { drawBomb(cx, cy, s, t, v.phase, 3); return; }
     if (v.special === 'fish') drawWings(cx, cy - cs * 0.08 * s, cs * 0.66 * s, cs * 0.26 * s, 0.5 + 0.5 * Math.sin(age / 90), 1);   // 選著的飛天玩偶翅膀拍快一點
     const e = getTile(v.kind, v.special), P = e.P / dpr * s;
@@ -3665,13 +3841,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   function drawPieces(t) {
     const sel = selected ? cellV(selected) : null;
     let selSt = null;
-    const falling = [], tops = [], late = [], still = [];
+    const falling = [], tops = [], late = [], still = [], lanterns = [];
     for (const v of visuals.values()) {
       const st = evalVisual(v, t);
       if (v === sel && !v.mv) { selSt = st; continue; }
       if (st.falling) falling.push([v, st]);
       else if (st.top) tops.push([v, st]);
       else if (v.special === 'wrap' || v.special === 'fish') late.push([v, st]);   // 糖果紙兩端 / 翅膀要蓋在鄰居上面
+      else if (v.block === 'lantern') lanterns.push([v, st]);
       else still.push([v, st]);
     }
     // 由上往下、由左往右畫：糖果往右下的落影只會落在盤面上，不會蓋到鄰居
@@ -3679,6 +3856,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     still.sort(byPos); late.sort(byPos);
     for (const [v, st] of still) drawVisual(v, st, t);
     for (const [v, st] of late) drawVisual(v, st, t);
+    if (lanterns.length) { drawLanternThreads(lanterns); for (const [v, st] of lanterns) drawVisual(v, st, t); }
     drawJellyRims(t);
     drawLocks(t);
     drawBeltsTop(t);
@@ -3862,6 +4040,19 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
             if (h) ctx.drawImage(star, q - sz / 2, cy - sz / 2, sz, sz); else ctx.drawImage(star, cx - sz / 2, q - sz / 2, sz, sz);
           }
         }
+      } else if (f.type === 'ticketfly') {
+        // 車票：從玩偶身上彈起，畫一道弧線轉著飛進票閘
+        const e = easeInOutCubic(p), x = ox + (f.x0 + (f.x1 - f.x0) * e) * cs;
+        const y = oy + (f.y0 + (f.y1 - f.y0) * e) * cs - Math.sin(Math.PI * p) * cs * (0.9 + 0.12 * Math.hypot(f.x1 - f.x0, f.y1 - f.y0));
+        const z = cs * (0.5 + 0.25 * Math.sin(Math.PI * p));
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.5 * (1 - p);
+        ctx.drawImage(getGlowCol(RING_GOLD), x - z, y - z, z * 2, z * 2);
+        ctx.globalAlpha = 1;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(p * Math.PI * 2.2);
+        ctx.drawImage(blockSprite('ticket'), -z / 2, -z / 2, z, z);
+        ctx.restore();
+        ctx.globalCompositeOperation = 'lighter';
       } else if (f.type === 'cagebreak') {
         // 籠子從中間裂開，左右兩半往外翻、往下掉
         const spr = blockSprite(f.spr || 'cage'), S2 = spr.width, x = ox + (f.c + 0.5) * cs, y = oy + (f.r + 0.5) * cs, e = easeOutCubic(p);

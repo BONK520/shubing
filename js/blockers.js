@@ -1,4 +1,5 @@
-// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、巧克力壺、保鮮膜、龍龍出口箭頭、傳送門顏色、輸送帶小圖）
+// 毛絨消消樂 — 盤面機關的圖（鐵籠子、多層糖霜、巧克力、甘草漩渦糖、鬧鐘、硬殼、巧克力壺、保鮮膜、龍龍出口箭頭、傳送門顏色、輸送帶小圖；
+// 第131關起：車票、票閘、熱氣球、蜂蜜罐、驚喜蛋、燈籠、烤箱）
 // 全部用 canvas 畫（不用額外的圖檔）。每個 paint 函式畫在 S×S 的畫布上（S = 一格的裝置像素），
 // renderer.js 畫一次就快取起來；main.js 也拿它們畫目標圖示 / 新機關教學小卡。
 
@@ -596,6 +597,7 @@ export function paintOrder(g, S, what) {
 }
 
 // DOM 用的小圖（目標圖示、教學小卡）：type = 'cage' | 'frost' | 'frost2' | 'frost3' | 'choco' | 'swirl' | 'alarm' | 'shell' | 'shell2' | 'pot' | 'exit' | 'portal' | 'o-<訂單>'
+//   第131關起：'gate' | 'gate2' | 'ticket' | 'balloon' | 'jar' | 'surprise' | 'lantern' | 'oven'
 export function blockerCanvas(type, px) {
   const c = document.createElement('canvas');
   c.width = c.height = Math.max(8, Math.round(px));
@@ -623,9 +625,266 @@ export function blockerCanvas(type, px) {
     g.restore();
     paintWrap(g, S);
   }
+  else if (type.startsWith('gate')) paintGate(g, S, +(type.slice(4) || 1));
+  else if (type === 'ticket') paintTicket(g, S);
+  else if (type === 'balloon') paintBalloon(g, S);
+  else if (type === 'jar') {
+    paintJar(g, S);
+    // 教學小卡：罐子上一顆粉紅色的圓（代表要的玩偶）
+    g.beginPath(); g.arc(S / 2, S * 0.6, S * 0.15, 0, Math.PI * 2); g.fillStyle = '#ff8fbf'; g.fill();
+    g.lineWidth = S * 0.025; g.strokeStyle = '#ffffff'; g.stroke();
+  }
+  else if (type === 'surprise') paintSurprise(g, S, 3);
+  else if (type === 'lantern') paintLantern(g, S, 1);
+  else if (type === 'oven') paintOven(g, S, 2);
   else if (type === 'exit') paintExitArrow(g, S);
   else if (type === 'portal') paintPortalIcon(g, S);
   else if (type === 'belt') paintBeltIcon(g, S);
   else if (type.startsWith('o-')) paintOrder(g, S, type.slice(2));
   return c;
 }
+
+// ================= 第131關起的新機關（工作單9）=================
+// ---------------- 車票：粉黃色的小票，兩側半圓缺口、中間一顆星（貼在玩偶右上角 / 飛向票閘）----------------
+export function paintTicket(g, S) {
+  const x = S * 0.08, y = S * 0.24, w = S * 0.84, h = S * 0.52, n = h * 0.2;
+  const shape = () => {
+    g.beginPath();
+    g.moveTo(x + n, y); g.lineTo(x + w - n, y); g.arcTo(x + w, y, x + w, y + n, n);
+    g.lineTo(x + w, y + h / 2 - n); g.arc(x + w, y + h / 2, n, -Math.PI / 2, Math.PI / 2, true);
+    g.lineTo(x + w, y + h - n); g.arcTo(x + w, y + h, x + w - n, y + h, n);
+    g.lineTo(x + n, y + h); g.arcTo(x, y + h, x, y + h - n, n);
+    g.lineTo(x, y + h / 2 + n); g.arc(x, y + h / 2, n, Math.PI / 2, -Math.PI / 2, true);
+    g.lineTo(x, y + n); g.arcTo(x, y, x + n, y, n);
+    g.closePath();
+  };
+  g.save(); g.translate(S * 0.02, S * 0.05); shape(); g.fillStyle = 'rgba(60,20,40,0.35)'; g.fill(); g.restore();
+  const gr = g.createLinearGradient(0, y, 0, y + h);
+  gr.addColorStop(0, '#fff6b8'); gr.addColorStop(1, '#ffc24a');
+  shape(); g.fillStyle = gr; g.fill();
+  g.lineWidth = S * 0.05; g.strokeStyle = '#c2541e'; g.lineJoin = 'round'; g.stroke();
+  // 虛線撕線
+  g.setLineDash([S * 0.05, S * 0.05]); g.lineWidth = S * 0.03; g.strokeStyle = '#e07a3a';
+  g.beginPath(); g.moveTo(x + w * 0.68, y + S * 0.06); g.lineTo(x + w * 0.68, y + h - S * 0.06); g.stroke(); g.setLineDash([]);
+  // 星星
+  const cx = x + w * 0.36, cy = y + h / 2, R = h * 0.3;
+  g.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * 0.45 : R; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  g.closePath(); g.fillStyle = '#ff5a8a'; g.fill();
+}
+
+// ---------------- 票閘：深藍色的小閘門，上面金色招牌，中間紅白相間的欄杆；要 2 張票時左下兩張小票 ----------------
+export function paintGate(g, S, hp = 1) {
+  hp = Math.max(1, Math.min(2, hp | 0));
+  const m = S * 0.08;
+  g.fillStyle = 'rgba(10,8,30,0.35)'; rr(g, m + S * 0.02, S * 0.2 + S * 0.05, S - 2 * m, S * 0.72, S * 0.12); g.fill();
+  const gr = g.createLinearGradient(0, S * 0.2, 0, S * 0.92);
+  gr.addColorStop(0, '#6d86e8'); gr.addColorStop(0.6, '#3e4fb4'); gr.addColorStop(1, '#2a3383');
+  rr(g, m, S * 0.2, S - 2 * m, S * 0.72, S * 0.12); g.fillStyle = gr; g.fill();
+  g.lineWidth = S * 0.035; g.strokeStyle = '#1b1f55'; g.stroke();
+  // 招牌（金色圓角 + 小星星）
+  const sg = g.createLinearGradient(0, S * 0.06, 0, S * 0.3);
+  sg.addColorStop(0, '#fff2a8'); sg.addColorStop(1, '#ffb52e');
+  rr(g, S * 0.22, S * 0.06, S * 0.56, S * 0.24, S * 0.1); g.fillStyle = sg; g.fill();
+  g.lineWidth = S * 0.03; g.strokeStyle = '#a2520e'; g.stroke();
+  const cx = S / 2, cy = S * 0.18, R = S * 0.07;
+  g.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * 0.45 : R; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  g.closePath(); g.fillStyle = '#ff5a8a'; g.fill();
+  // 欄杆：紅白相間（關著）
+  const by = S * 0.52, bh = S * 0.12;
+  g.save(); rr(g, S * 0.14, by, S * 0.72, bh, bh / 2); g.clip();
+  for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#ffffff' : '#ff4f6e'; g.fillRect(S * 0.14 + i * S * 0.12, by, S * 0.12, bh); }
+  g.restore();
+  rr(g, S * 0.14, by, S * 0.72, bh, bh / 2); g.lineWidth = S * 0.025; g.strokeStyle = '#7a1630'; g.stroke();
+  // 刷票口（亮青色）
+  rr(g, S * 0.36, S * 0.72, S * 0.28, S * 0.07, S * 0.035); g.fillStyle = '#5ff0ff'; g.fill();
+  g.lineWidth = S * 0.02; g.strokeStyle = '#1b1f55'; g.stroke();
+  // 左上亮光
+  g.lineWidth = S * 0.025; g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(m + S * 0.06, S * 0.36); g.lineTo(m + S * 0.06, S * 0.46); g.stroke();
+  if (hp >= 2) {
+    for (let i = 0; i < 2; i++) {
+      g.save(); g.translate(m + S * 0.02 + i * S * 0.13, S * 0.76); g.scale(0.2, 0.2); paintTicket(g, S); g.restore();
+    }
+  }
+}
+
+// ---------------- 熱氣球：粉紅 / 奶油色相間的球，底下一個小藤籃 ----------------
+export function paintBalloon(g, S) {
+  const cx = S / 2, cy = S * 0.38, rx = S * 0.34, ry = S * 0.33;
+  const env = () => {
+    g.beginPath();
+    g.moveTo(cx, cy + ry * 1.12);
+    g.bezierCurveTo(cx - rx * 0.6, cy + ry * 0.85, cx - rx * 1.05, cy + ry * 0.3, cx - rx, cy - ry * 0.1);
+    g.bezierCurveTo(cx - rx * 0.95, cy - ry * 1.05, cx + rx * 0.95, cy - ry * 1.05, cx + rx, cy - ry * 0.1);
+    g.bezierCurveTo(cx + rx * 1.05, cy + ry * 0.3, cx + rx * 0.6, cy + ry * 0.85, cx, cy + ry * 1.12);
+    g.closePath();
+  };
+  g.save(); g.translate(S * 0.02, S * 0.04); env(); g.fillStyle = 'rgba(20,10,40,0.25)'; g.fill(); g.restore();
+  g.save(); env(); g.clip();
+  const cols = ['#ff7fae', '#fff1c9', '#7fd6ff', '#fff1c9', '#ff7fae'];
+  for (let i = 0; i < 5; i++) { g.fillStyle = cols[i]; g.beginPath(); g.ellipse(cx, cy, rx * (1 - i * 0.2) + 0.01, ry * 1.3, 0, 0, Math.PI * 2); g.fill(); }
+  const sh = g.createRadialGradient(cx - rx * 0.4, cy - ry * 0.45, S * 0.02, cx, cy, rx * 1.2);
+  sh.addColorStop(0, 'rgba(255,255,255,0.55)'); sh.addColorStop(0.5, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(60,20,60,0.25)');
+  g.fillStyle = sh; g.fillRect(0, 0, S, S);
+  g.restore();
+  env(); g.lineWidth = S * 0.03; g.strokeStyle = '#8a2f5c'; g.stroke();
+  // 繩子 + 籃子
+  const by = S * 0.78;
+  g.lineWidth = S * 0.02; g.strokeStyle = '#7a4a2a';
+  g.beginPath(); g.moveTo(cx - rx * 0.32, cy + ry * 0.95); g.lineTo(S * 0.41, by); g.moveTo(cx + rx * 0.32, cy + ry * 0.95); g.lineTo(S * 0.59, by); g.stroke();
+  const bg = g.createLinearGradient(0, by, 0, S * 0.93);
+  bg.addColorStop(0, '#e3a868'); bg.addColorStop(1, '#a9682f');
+  rr(g, S * 0.38, by, S * 0.24, S * 0.15, S * 0.04); g.fillStyle = bg; g.fill();
+  g.lineWidth = S * 0.025; g.strokeStyle = '#5e3414'; g.stroke();
+  g.lineWidth = S * 0.012; g.strokeStyle = 'rgba(94,52,20,0.6)';
+  g.beginPath(); g.moveTo(S * 0.39, by + S * 0.075); g.lineTo(S * 0.61, by + S * 0.075); g.stroke();
+}
+
+// ---------------- 蜂蜜罐：琥珀色玻璃罐，上面格子布蓋 + 小蝴蝶結（要的玩偶和數字由 renderer 畫在罐子上）----------------
+export function paintJar(g, S) {
+  const body = () => { rr(g, S * 0.14, S * 0.28, S * 0.72, S * 0.64, S * 0.2); };
+  g.save(); g.translate(S * 0.02, S * 0.04); body(); g.fillStyle = 'rgba(40,20,0,0.3)'; g.fill(); g.restore();
+  const gr = g.createLinearGradient(0, S * 0.28, 0, S * 0.92);
+  gr.addColorStop(0, '#ffe7a0'); gr.addColorStop(0.45, '#ffbe3c'); gr.addColorStop(1, '#e08a12');
+  body(); g.fillStyle = gr; g.fill();
+  g.lineWidth = S * 0.035; g.strokeStyle = '#8a4c06'; g.stroke();
+  // 玻璃反光
+  g.lineWidth = S * 0.04; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(S * 0.24, S * 0.42); g.lineTo(S * 0.24, S * 0.7); g.stroke();
+  // 罐口 + 格子布蓋
+  rr(g, S * 0.2, S * 0.2, S * 0.6, S * 0.1, S * 0.04); g.fillStyle = '#c7781a'; g.fill();
+  g.beginPath();
+  g.moveTo(S * 0.12, S * 0.24); g.quadraticCurveTo(S * 0.5, S * 0.02, S * 0.88, S * 0.24);
+  g.lineTo(S * 0.82, S * 0.3); g.lineTo(S * 0.18, S * 0.3); g.closePath();
+  g.fillStyle = '#ff8fb4'; g.fill();
+  g.save(); g.clip();
+  g.fillStyle = 'rgba(255,255,255,0.7)';
+  for (let i = 0; i < 6; i++) g.fillRect(S * (0.14 + i * 0.13), S * 0.02, S * 0.05, S * 0.3);
+  g.restore();
+  g.lineWidth = S * 0.025; g.strokeStyle = '#a23a64'; g.stroke();
+  // 蜂蜜往下滴
+  g.beginPath(); g.moveTo(S * 0.62, S * 0.3); g.quadraticCurveTo(S * 0.66, S * 0.4, S * 0.64, S * 0.44);
+  g.arc(S * 0.62, S * 0.44, S * 0.025, 0, Math.PI); g.quadraticCurveTo(S * 0.6, S * 0.38, S * 0.58, S * 0.3); g.closePath();
+  g.fillStyle = '#ffb21f'; g.fill();
+}
+
+// ---------------- 驚喜蛋：淡紫色的蛋，中間一圈薄荷綠鋸齒、問號和小星星（跟黃色的蛋黃哥玩偶完全不一樣）----------------
+// hp = 還要幾下才孵出來（3 / 2 / 1）：少一下多一條裂縫
+export function paintSurprise(g, S, hp = 3) {
+  hp = Math.max(1, Math.min(3, hp | 0));
+  const cx = S / 2, cy = S * 0.54, rx = S * 0.34, ry = S * 0.4;
+  const egg = () => {
+    g.beginPath();
+    g.moveTo(cx, cy - ry);
+    g.bezierCurveTo(cx + rx * 0.8, cy - ry, cx + rx * 1.05, cy + ry * 0.2, cx + rx, cy + ry * 0.4);
+    g.bezierCurveTo(cx + rx * 0.9, cy + ry * 1.0, cx - rx * 0.9, cy + ry * 1.0, cx - rx, cy + ry * 0.4);
+    g.bezierCurveTo(cx - rx * 1.05, cy + ry * 0.2, cx - rx * 0.8, cy - ry, cx, cy - ry);
+    g.closePath();
+  };
+  g.save(); g.translate(S * 0.02, S * 0.04); egg(); g.fillStyle = 'rgba(30,10,50,0.3)'; g.fill(); g.restore();
+  const gr = g.createRadialGradient(cx - rx * 0.35, cy - ry * 0.4, S * 0.03, cx, cy, ry * 1.2);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.45, '#e2d3ff'); gr.addColorStop(1, '#a98be6');
+  egg(); g.fillStyle = gr; g.fill();
+  g.save(); egg(); g.clip();
+  // 薄荷綠鋸齒帶
+  const zy = cy + ry * 0.05, a = S * 0.06;
+  g.beginPath(); g.moveTo(0, zy - a);
+  for (let i = 0; i <= 8; i++) g.lineTo(S * i / 8, zy + (i % 2 ? a : -a));
+  for (let i = 8; i >= 0; i--) g.lineTo(S * i / 8, zy + S * 0.1 + (i % 2 ? a : -a));
+  g.closePath(); g.fillStyle = '#7fe8c8'; g.fill();
+  // 小星星點點
+  g.fillStyle = '#ffd84a';
+  for (const [x, y, r] of [[0.32, 0.3, 0.035], [0.7, 0.36, 0.03], [0.36, 0.82, 0.03], [0.66, 0.8, 0.035]]) {
+    g.beginPath();
+    for (let i = 0; i < 10; i++) { const t = -Math.PI / 2 + i * Math.PI / 5, rr2 = i % 2 ? S * r * 0.45 : S * r; g.lineTo(S * x + Math.cos(t) * rr2, S * y + Math.sin(t) * rr2); }
+    g.closePath(); g.fill();
+  }
+  // 裂縫
+  g.lineWidth = S * 0.028; g.strokeStyle = '#5a3a8a'; g.lineJoin = 'round'; g.lineCap = 'round';
+  const cracks = [[[0.62, 0.18], [0.56, 0.3], [0.64, 0.38], [0.58, 0.46]], [[0.24, 0.5], [0.34, 0.56], [0.3, 0.66]]];
+  for (let i = 0; i < 3 - hp; i++) { g.beginPath(); cracks[i].forEach(([x, y], j) => (j ? g.lineTo(S * x, S * y) : g.moveTo(S * x, S * y))); g.stroke(); }
+  g.restore();
+  egg(); g.lineWidth = S * 0.03; g.strokeStyle = '#5a3a8a'; g.stroke();
+  // 問號
+  g.font = `900 ${Math.round(S * 0.3)}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = S * 0.05; g.strokeStyle = '#5a3a8a'; g.strokeText('?', cx, cy - S * 0.08);
+  g.fillStyle = '#ffffff'; g.fillText('?', cx, cy - S * 0.08);
+}
+
+// ---------------- 燈籠：紙燈籠（一串一個顏色），上下金色蓋子、底下流蘇 ----------------
+export const LANTERN_COLORS = ['#ff5f6d', '#ffa63d', '#5cc8ff', '#b88cff'];
+export function paintLantern(g, S, sid = 1) {
+  const hex = LANTERN_COLORS[(Math.max(1, sid | 0) - 1) % LANTERN_COLORS.length];
+  const cx = S / 2, cy = S * 0.5, rx = S * 0.32, ry = S * 0.27;
+  g.save(); g.translate(S * 0.02, S * 0.04); g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(30,10,20,0.3)'; g.fill(); g.restore();
+  const gr = g.createRadialGradient(cx - rx * 0.3, cy - ry * 0.35, S * 0.02, cx, cy, rx * 1.1);
+  gr.addColorStop(0, '#fff3dc'); gr.addColorStop(0.35, hex); gr.addColorStop(1, 'rgba(60,10,20,0.9)');
+  g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.fillStyle = hex; g.fill(); g.fillStyle = gr; g.fill();
+  // 骨架
+  g.lineWidth = S * 0.018; g.strokeStyle = 'rgba(80,20,20,0.45)';
+  for (const k of [-0.6, 0, 0.6]) { g.beginPath(); g.ellipse(cx, cy, rx * Math.abs(k) + 0.01, ry, 0, -Math.PI / 2, Math.PI / 2, k < 0); g.stroke(); }
+  g.beginPath(); g.moveTo(cx, cy - ry); g.lineTo(cx, cy + ry); g.stroke();
+  g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.lineWidth = S * 0.03; g.strokeStyle = '#6a1a24'; g.stroke();
+  // 金色蓋子
+  const cap = (y) => { rr(g, cx - rx * 0.55, y - S * 0.045, rx * 1.1, S * 0.09, S * 0.03); g.fillStyle = '#ffcf4a'; g.fill(); g.lineWidth = S * 0.02; g.strokeStyle = '#8a5a06'; g.stroke(); };
+  cap(cy - ry); cap(cy + ry);
+  // 掛繩 + 流蘇
+  g.lineWidth = S * 0.025; g.strokeStyle = '#8a5a06';
+  g.beginPath(); g.moveTo(cx, cy - ry - S * 0.045); g.lineTo(cx, S * 0.08); g.stroke();
+  g.strokeStyle = hex; g.lineWidth = S * 0.03;
+  for (const dx of [-0.04, 0, 0.04]) { g.beginPath(); g.moveTo(cx + S * dx * 0.5, cy + ry + S * 0.045); g.lineTo(cx + S * dx, S * 0.95); g.stroke(); }
+}
+
+// ---------------- 烤箱：奶油色的小烤箱，窗戶裡一顆麵包，窗下三格火苗（hp = 已經有幾格火 0–2）----------------
+export function paintOven(g, S, hp = 0) {
+  const fire = Math.max(0, Math.min(3, hp | 0));
+  const m = S * 0.08;
+  g.fillStyle = 'rgba(30,15,5,0.35)'; rr(g, m + S * 0.02, S * 0.14 + S * 0.05, S - 2 * m, S * 0.76, S * 0.12); g.fill();
+  const gr = g.createLinearGradient(0, S * 0.14, 0, S * 0.9);
+  gr.addColorStop(0, '#fff6e6'); gr.addColorStop(0.6, '#ffd9b0'); gr.addColorStop(1, '#e8a878');
+  rr(g, m, S * 0.14, S - 2 * m, S * 0.76, S * 0.12); g.fillStyle = gr; g.fill();
+  g.lineWidth = S * 0.035; g.strokeStyle = '#7a3e1a'; g.stroke();
+  // 旋鈕
+  for (const x of [0.3, 0.5, 0.7]) { g.beginPath(); g.arc(S * x, S * 0.23, S * 0.04, 0, Math.PI * 2); g.fillStyle = x === 0.5 ? '#ff7f9e' : '#9a6a4a'; g.fill(); }
+  // 窗戶 + 麵包
+  rr(g, S * 0.2, S * 0.31, S * 0.6, S * 0.34, S * 0.08);
+  const wg = g.createLinearGradient(0, S * 0.31, 0, S * 0.65);
+  wg.addColorStop(0, '#5a2a14'); wg.addColorStop(1, fire ? '#d8561e' : '#3a1a0a');
+  g.fillStyle = wg; g.fill(); g.lineWidth = S * 0.03; g.strokeStyle = '#7a3e1a'; g.stroke();
+  g.beginPath(); g.ellipse(S * 0.5, S * 0.54, S * 0.16, S * 0.08, 0, Math.PI, 0); g.closePath();
+  g.fillStyle = '#f2b45e'; g.fill(); g.lineWidth = S * 0.018; g.strokeStyle = '#8a4a12'; g.stroke();
+  g.lineWidth = S * 0.014; g.strokeStyle = '#b06a22';
+  for (const x of [0.44, 0.5, 0.56]) { g.beginPath(); g.moveTo(S * x, S * 0.49); g.lineTo(S * x + S * 0.02, S * 0.53); g.stroke(); }
+  // 窗戶反光
+  g.lineWidth = S * 0.025; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(S * 0.27, S * 0.37); g.lineTo(S * 0.34, S * 0.37); g.stroke();
+  // 三格火苗
+  for (let i = 0; i < 3; i++) {
+    const x = S * (0.32 + i * 0.18), y = S * 0.78, on = i < fire;
+    g.beginPath();
+    g.moveTo(x, y - S * 0.08);
+    g.quadraticCurveTo(x + S * 0.07, y - S * 0.01, x + S * 0.04, y + S * 0.04);
+    g.quadraticCurveTo(x, y + S * 0.07, x - S * 0.04, y + S * 0.04);
+    g.quadraticCurveTo(x - S * 0.07, y - S * 0.01, x, y - S * 0.08);
+    g.closePath();
+    if (on) {
+      const fg = g.createLinearGradient(0, y - S * 0.08, 0, y + S * 0.06);
+      fg.addColorStop(0, '#ffe45a'); fg.addColorStop(1, '#ff5a1f');
+      g.fillStyle = fg;
+    } else g.fillStyle = 'rgba(122,62,26,0.25)';
+    g.fill();
+    g.lineWidth = S * 0.016; g.strokeStyle = on ? '#b8340a' : 'rgba(122,62,26,0.5)'; g.stroke();
+  }
+}
+
+// 新機關的碎屑顏色
+Object.assign(CRUMBS, {
+  gate: () => ['#ffd24a', '#ff4f6e', '#ffffff'],
+  balloon: () => ['#ff7fae', '#7fd6ff', '#fff1c9'],
+  jar: () => ['#ffbe3c', '#ff8fb4', '#fff3c0'],
+  surprise: () => ['#e2d3ff', '#7fe8c8', '#ffd84a'],
+  lantern: hp => [LANTERN_COLORS[(Math.max(1, hp | 0) - 1) % 4], '#ffcf4a', '#fff3dc'],
+  oven: () => ['#ffe45a', '#ff8a3a', '#fff6e6'],
+});

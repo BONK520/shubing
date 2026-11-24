@@ -64,7 +64,7 @@ export const CHESTS = [
   { stars: 180, coins: 4, name: '造型幣大禮包' },
   { stars: 220, coins: 5, name: '造型幣大禮包' },
   { stars: 260, coins: 5, name: '造型幣大禮包' },
-  { stars: 300, coins: 8, name: '全 100 關三星紀念禮包' },   // 第 1–100 關全部三星
+  { stars: 300, coins: 8, name: '三星紀念大禮包' },   // 300 顆星（大約 100 關全部三星）
 ];
 export const chestItems = i => ITEMS.filter(it => it.unlock && it.unlock.chest === i);
 

@@ -1,4 +1,4 @@
-// 薯餅蛋蛋島 — 關卡地圖的 24 站背景：每站的底色和物件、兩站交界的銜接物、站牌、駐站娃娃（雲台合照／雲後探頭）
+// 薯餅蛋蛋島 — 關卡地圖每一站的背景：每站的底色和物件、兩站交界的銜接物、站牌、駐站娃娃（雲台合照／雲後探頭）
 // 畫法照 shubing夜間/草稿/大地圖示意/island-map.html 的 A 樣式（完整風景）搬過來；全部用程式畫 SVG，不用另外載圖
 function rngOf(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const pick = (r, a) => a[Math.floor(r() * a.length)];
@@ -83,19 +83,66 @@ const PR = {
   pipe: r => `<path d="M-18 0V-28Q-18-42 0-42Q18-42 18-28V0" stroke="#ff9fc6" stroke-width="10" fill="none"/><path d="M-18 0V-28Q-18-42 0-42Q18-42 18-28V0" stroke="#fff" stroke-width="3" fill="none" stroke-dasharray="6 7" opacity=".7"/>`,
   belt: r => `<rect x="-32" y="-12" width="64" height="12" rx="6" fill="#9aa2d6"/>${[-24, -12, 0, 12, 24].map(x => `<circle cx="${x}" cy="-6" r="3" fill="#dfe3ff"/>`).join('')}<rect x="-12" y="-28" width="16" height="16" rx="3" fill="${pick(r, PINKS)}"/>`,
   sparkle: r => `<path d="${star(0, -8, 8, 2.4, 4)}" fill="#fff" opacity=".9"/>`,
+  // ---- 第 25–44 站（工作單9）----
+  train: r => { const c = pick(r, ['#ff8fb8', '#8fc9ff', '#ffb36b']); return sh(30) + `<rect x="-30" y="-14" width="60" height="5" rx="2.5" fill="#b9a7c9"/><rect x="-26" y="-36" width="30" height="24" rx="6" fill="${c}"/><rect x="2" y="-46" width="24" height="34" rx="6" fill="${c}"/><rect x="7" y="-42" width="14" height="11" rx="3" fill="#dff3ff"/><rect x="-22" y="-44" width="9" height="10" rx="3" fill="#6b5a7a"/><circle cx="-18" cy="-52" r="5" fill="#fff" opacity=".9"/><circle cx="-12" cy="-60" r="6.5" fill="#fff" opacity=".8"/><rect x="-28" y="-38" width="56" height="4" rx="2" fill="#fff" opacity=".45"/>${[-17, -3, 15].map(x => `<circle cx="${x}" cy="-9" r="6.5" fill="#5a4a6e"/><circle cx="${x}" cy="-9" r="2.4" fill="#ffd45c"/>`).join('')}`; },
+  platsign: r => sh(12) + `<path d="M0 0V-38" stroke="#8a7a9a" stroke-width="4" stroke-linecap="round"/><circle cx="0" cy="-44" r="13" fill="#fff" stroke="${pick(r, ['#ff8fb8', '#8fc9ff', '#7fd6a6'])}" stroke-width="4"/><path d="M-7-44h14" stroke="#6b2d4a" stroke-width="3" stroke-linecap="round"/>`,
+  platlamp: r => sh(10) + `<path d="M0 0V-46M0-46H10" stroke="#7a6a8e" stroke-width="3.5" stroke-linecap="round" fill="none"/><path d="M5-46h12l-2 8H7Z" fill="#7a6a8e"/><circle cx="11" cy="-36" r="5" fill="#fff3b0"/><circle cx="11" cy="-34" r="13" fill="#fff3b0" opacity=".25"/>`,
+  hotair: r => { const c = pick(r, ['#ff8fb8', '#ffb36b', '#8fc9ff', '#b99bff']), d = pick(r, ['#fff', '#ffd45c']); return `<g transform="translate(0 ${-6 - Math.floor(r() * 14)})"><path d="M-6-14L-8-26M6-14L8-26" stroke="#a5657f" stroke-width="1.5"/><rect x="-7" y="-14" width="14" height="11" rx="3" fill="#c98f5e"/><path d="M-8-26Q-24-44-18-60Q-10-74 0-74Q10-74 18-60Q24-44 8-26Z" fill="${c}"/><path d="M-3-26Q-9-48-5-74M3-26Q9-48 5-74" stroke="${d}" stroke-width="3.5" fill="none" opacity=".85"/><ellipse cx="-10" cy="-58" rx="3.5" ry="7" fill="#fff" opacity=".5"/></g>`; },
+  windmill: r => sh(18) + `<path d="M-11 0L-6-44H6L11 0Z" fill="#fff4e6"/><path d="M-4 0V-12A4 4 0 0 1 4-12V0Z" fill="#c98f6b"/><path d="M-9-44L0-54L9-44Z" fill="${pick(r, ['#ff8fb8', '#8fc9ff'])}"/><g transform="translate(0 -44) rotate(${Math.floor(r() * 90)})">${[0, 90, 180, 270].map(a => `<rect x="-3" y="-30" width="6" height="26" rx="2" fill="#f1dcc8" transform="rotate(${a})"/><rect x="2" y="-29" width="8" height="20" rx="2" fill="#fff" transform="rotate(${a})"/>`).join('')}<circle r="3.5" fill="#a5657f"/></g>`,
+  grass: r => `<g fill="${pick(r, ['#6fc48c', '#86d39c', '#5fb37a'])}"><path d="M-12 0Q-12-12-16-20Q-6-12-4 0Z"/><path d="M-4 0Q-2-16 0-26Q4-14 4 0Z"/><path d="M4 0Q8-12 15-18Q12-8 12 0Z"/></g>`,
+  hive: r => sh(16) + `<path d="M0-48V-56" stroke="#8f6143" stroke-width="3"/>${[[-9, -48, 9], [-14, -38, 14], [-16, -27, 16], [-14, -16, 14], [-9, -6, 9]].map(([x, y, w]) => `<rect x="${x - 1}" y="${y}" width="${w * 2 + 2}" height="11" rx="5.5" fill="#f6c14f"/><path d="M${x + 2} ${y + 10.5}h${w * 2 - 4}" stroke="#d99a2b" stroke-width="1.5"/>`).join('')}<path d="M-5 0V-6A5 5 0 0 1 5-6V0Z" fill="#8a5a24"/><g transform="translate(16 -46)"><ellipse rx="5" ry="4" fill="#ffd45c"/><path d="M-1-3.5V3.5M2-3V3" stroke="#6b4a2a" stroke-width="1.5"/><ellipse cx="-1" cy="-5" rx="3" ry="2" fill="#fff" opacity=".8"/></g>`,
+  honeypot: r => sh(15) + `<path d="M-14-24Q-18-4-10 0H10Q18-4 14-24Z" fill="#e3a14a"/><rect x="-15" y="-30" width="30" height="8" rx="3" fill="#c98738"/><path d="M-12-30Q-12-38-4-36Q0-42 6-36Q12-38 12-30Z" fill="#ffcf5a"/><path d="M-8-26Q-8-18-5-14" stroke="#ffcf5a" stroke-width="4" stroke-linecap="round" fill="none"/><rect x="-8" y="-16" width="16" height="9" rx="2" fill="#fff4dc"/>`,
+  pumpkin: r => { const c = pick(r, ['#ff9b45', '#ffb04f', '#f78a3a']); return sh(20) + `<ellipse cx="-9" cy="-14" rx="10" ry="14" fill="${c}"/><ellipse cx="9" cy="-14" rx="10" ry="14" fill="${c}"/><ellipse cx="0" cy="-14" rx="10" ry="15" fill="#ffc06a"/><path d="M0-28Q1-36 6-38" stroke="#5f9a4f" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M2-30Q10-34 13-28Q8-26 2-30Z" fill="#7fc46a"/><ellipse cx="-4" cy="-20" rx="2.5" ry="5" fill="#fff" opacity=".35"/>`; },
+  scarecrow: r => sh(14) + `<path d="M0 0V-44M-22-34H22" stroke="#a87650" stroke-width="4" stroke-linecap="round"/><path d="M-12-36H12L9-14H-9Z" fill="${pick(r, ['#8fc9ff', '#ff8fb8', '#7fd6a6'])}"/><path d="M-12-30H12" stroke="#fff" stroke-width="2" opacity=".6"/><circle cx="0" cy="-46" r="9" fill="#fff1c4"/><circle cx="-3" cy="-46" r="1.4" fill="#6b2d4a"/><circle cx="3" cy="-46" r="1.4" fill="#6b2d4a"/><path d="M-15-51H15L8-55Q0-66-8-55Z" fill="#e6b45c"/><path d="M-26-36l4 4M26-36l-4 4" stroke="#f0d07a" stroke-width="3" stroke-linecap="round"/>`,
+  onsen: r => `<ellipse cx="0" cy="-6" rx="30" ry="11" fill="#bfa58e"/><ellipse cx="0" cy="-8" rx="25" ry="8" fill="#9fdbe0"/><ellipse cx="-8" cy="-10" rx="8" ry="2.5" fill="#fff" opacity=".6"/>${[-18, 12, 24].map((x, i) => `<circle cx="${x}" cy="${-4 + (i % 2) * 3}" r="5" fill="#d2c0ae"/>`).join('')}<path d="M-10-18q-5-7 0-13t0-12M2-18q-5-7 0-13t0-12M14-18q-5-7 0-13" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".75"/>`,
+  steam: r => `<g fill="#fff" opacity=".7"><circle cx="-6" cy="-10" r="7"/><circle cx="4" cy="-20" r="9"/><circle cx="-3" cy="-32" r="7"/><circle cx="6" cy="-40" r="5"/></g>`,
+  bucket: r => sh(14) + `<path d="M-13-22H13L10 0H-10Z" fill="#d6a874"/><path d="M-12-15H12M-11-6H11" stroke="#a87650" stroke-width="2.5"/><ellipse cx="0" cy="-22" rx="13" ry="3.5" fill="#bfe6ea"/><rect x="-16" y="-25" width="6" height="3" rx="1.5" fill="#a87650"/><rect x="10" y="-25" width="6" height="3" rx="1.5" fill="#a87650"/><path d="M-6-25Q-8-32-4-34" stroke="#fff" stroke-width="2.5" fill="none" opacity=".7"/>`,
+  bamboo: r => { const h = 50 + Math.floor(r() * 16); let s = ''; for (const [x, hh] of [[-7, h], [6, h - 12]]) { s += `<rect x="${x - 4}" y="${-hh}" width="8" height="${hh}" rx="3" fill="#7cc77e"/>`; for (let y = -12; y > -hh + 4; y -= 13) s += `<rect x="${x - 4.5}" y="${y}" width="9" height="2.6" rx="1.3" fill="#5aa860"/>`; s += `<ellipse cx="${x + 9}" cy="${-hh + 10}" rx="8" ry="3" fill="#8fd68a" transform="rotate(-25 ${x + 9} ${-hh + 10})"/>`; } return sh(14) + s; },
+  bambasket: r => sh(16) + `<path d="M-16-18H16L12 0H-12Z" fill="#d9b874"/><path d="M-15-12H15M-14-6H14M-6-18L-5 0M2-18V0M9-18L8 0" stroke="#b8954f" stroke-width="1.6"/><path d="M-12-18Q0-36 12-18" stroke="#b8954f" stroke-width="3" fill="none"/><circle cx="-5" cy="-21" r="4.5" fill="#ff8f8f"/><circle cx="4" cy="-22" r="4.5" fill="#ffd45c"/>`,
+  stonelamp: r => sh(14) + `<rect x="-10" y="-8" width="20" height="8" rx="2" fill="#bdb6ad"/><rect x="-4" y="-20" width="8" height="12" fill="#cfc8bf"/><rect x="-11" y="-34" width="22" height="14" rx="2" fill="#cfc8bf"/><rect x="-6" y="-31" width="12" height="8" rx="1.5" fill="#ffe28a"/><path d="M-16-34L0-46L16-34Z" fill="#b3aca3" stroke="#b3aca3" stroke-width="3" stroke-linejoin="round"/><circle cx="0" cy="-48" r="3" fill="#b3aca3"/>`,
+  paperlantern: r => { const c = pick(r, ['#ff6b6b', '#ff8fb8', '#ffb36b']); return `<path d="M0-50V-38" stroke="#6a4a3a" stroke-width="2"/><rect x="-6" y="-40" width="12" height="4" rx="1.5" fill="#d6a63a"/><ellipse cx="0" cy="-26" rx="13" ry="11" fill="${c}"/><path d="M-6-36Q-9-26-6-16M6-36Q9-26 6-16M0-37V-15" stroke="#fff" stroke-width="1.2" fill="none" opacity=".45"/><rect x="-6" y="-17" width="12" height="4" rx="1.5" fill="#d6a63a"/><path d="M0-13V-5" stroke="#ffd45c" stroke-width="2.5" stroke-linecap="round"/><circle cx="0" cy="-26" r="22" fill="#ffd45c" opacity=".16"/>`; },
+  stall: r => { const c = pick(r, ['#ff6b8a', '#ffb36b', '#8fc9ff']); return sh(26) + `<rect x="-24" y="-24" width="48" height="24" rx="3" fill="#c98f5e"/><rect x="-24" y="-24" width="48" height="5" fill="#e3b07a"/><path d="M-22-24V-48M22-24V-48" stroke="#8a5a44" stroke-width="3"/><path d="M-28-56H28L24-44H-24Z" fill="#fff"/>${[-20, -8, 4, 16].map(x => `<path d="M${x - 4} -56h8l-1 12h-6Z" fill="${c}"/>`).join('')}${[-14, -2, 10].map((x, i) => `<circle cx="${x}" cy="-28" r="4" fill="${['#ffd45c', '#ff8fb8', '#9fe0a0'][i]}"/>`).join('')}<circle cx="0" cy="-36" r="16" fill="#ffe28a" opacity=".14"/>`; },
+  flags: r => `<path d="M-26-44Q0-30 26-44" stroke="#c49ab0" stroke-width="1.4" fill="none"/>${[-20, -10, 0, 10, 20].map(x => { const y = -44 + 14 * (1 - (x / 26) ** 2) * .9; return `<path d="M${x - 5} ${y.toFixed(1)}L${x + 5} ${y.toFixed(1)}L${x} ${(y + 11).toFixed(1)}Z" fill="${pick(r, PINKS)}"/>`; }).join('')}<path d="M-26-44V0M26-44V0" stroke="#a87650" stroke-width="3" stroke-linecap="round"/>`,
+  tank: r => sh(24) + `<rect x="-24" y="-38" width="48" height="38" rx="6" fill="#d6f2fb" stroke="#fff" stroke-width="3"/><rect x="-21" y="-28" width="42" height="25" rx="3" fill="#8fd6ef"/><path d="M-21-28q5-3 10.5 0t10.5 0t10.5 0t10.5 0" stroke="#fff" stroke-width="2" fill="none" opacity=".7"/><g transform="translate(-6 -14) scale(.5)"><path d="M10 0L20-8V8Z" fill="#ffb36b"/><ellipse rx="13" ry="9" fill="#ffb36b"/><circle cx="-6" cy="-2" r="2" fill="#2b2b44"/></g><path d="M12-5Q8-12 12-18" stroke="#4fbf8f" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="8" cy="-22" r="2" fill="#fff" opacity=".8"/>`,
+  fern: r => { const c = pick(r, ['#5fb37a', '#6cc48a', '#4fae7c']); let s = ''; for (const a of [-50, -20, 10, 40]) { let leaf = `<path d="M0 0Q4-24 0-46" stroke="${c}" stroke-width="3" fill="none"/>`; for (let k = 1; k < 7; k++) leaf += `<ellipse cx="${k % 2 ? 6 : -6}" cy="${-k * 6.5}" rx="7" ry="2.6" fill="${c}" transform="rotate(${k % 2 ? -30 : 30} ${k % 2 ? 6 : -6} ${-k * 6.5})"/>`; s += `<g transform="rotate(${a})">${leaf}</g>`; } return sh(18) + s; },
+  footprint: r => `<g fill="#6b4a3a" opacity=".16" transform="rotate(${Math.floor(r() * 60) - 30} 0 -10)"><ellipse cx="0" cy="-8" rx="10" ry="8"/><ellipse cx="-9" cy="-22" rx="3.5" ry="6" transform="rotate(-25 -9 -22)"/><ellipse cx="0" cy="-25" rx="3.5" ry="6.5"/><ellipse cx="9" cy="-22" rx="3.5" ry="6" transform="rotate(25 9 -22)"/></g>`,
+  dinoegg: r => sh(14) + `<path d="M-12-10Q-14 0-6 0H6Q14 0 12-10" fill="#c8a983"/><ellipse cx="0" cy="-18" rx="11" ry="15" fill="#fff6e4"/>${[[-4, -24, 3], [5, -16, 2.5], [-3, -12, 2], [4, -27, 2]].map(([x, y, rr]) => `<circle cx="${x}" cy="${y}" r="${rr}" fill="${pick(r, ['#7fd6a6', '#8fc9ff', '#ffb36b'])}"/>`).join('')}<path d="M-11-10l4-3 3 3 4-3 3 3 4-3 4 3" stroke="#e6d5b8" stroke-width="2" fill="none"/>`,
+  puddle: r => `<ellipse cx="0" cy="-4" rx="24" ry="7" fill="#a9d4ef" opacity=".8"/><ellipse cx="-6" cy="-5" rx="9" ry="2" fill="#fff" opacity=".6"/><ellipse cx="8" cy="-3" rx="5" ry="1.6" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/>`,
+  rainarc: r => ['#ff9fb8', '#ffc98a', '#fff09a', '#a8e6b4', '#9fd2ff'].map((c, i) => `<path d="M${-28 + i * 5} 0A${28 - i * 5} ${28 - i * 5} 0 0 1 ${28 - i * 5} 0" stroke="${c}" stroke-width="5" fill="none"/>`).join('') + `<use href="#ma-cloud" x="-42" y="-14" width="30" height="16"/><use href="#ma-cloud" x="13" y="-14" width="30" height="16"/>`,
+  shelf: r => { let s = sh(22) + `<rect x="-22" y="-56" width="44" height="56" rx="3" fill="#b07a55"/>`; for (const y of [-52, -34, -16]) { s += `<rect x="-19" y="${y}" width="38" height="15" fill="#8a5a44"/>`; let x = -18; while (x < 15) { const w = 4 + Math.floor(r() * 4), hh = 10 + Math.floor(r() * 5); s += `<rect x="${x}" y="${y + 15 - hh}" width="${w}" height="${hh}" rx="1" fill="${pick(r, PINKS)}"/>`; x += w + 1; } } return s; },
+  bookstack: r => { let s = sh(16), y = 0; for (let k = 0; k < 4; k++) { const w = 26 + Math.floor(r() * 8), h = 6 + Math.floor(r() * 3), dx = Math.floor(r() * 6) - 3; s += `<rect x="${-w / 2 + dx}" y="${y - h}" width="${w}" height="${h}" rx="2" fill="${pick(r, PINKS)}"/><rect x="${w / 2 + dx - 3}" y="${y - h + 1.5}" width="2" height="${h - 3}" fill="#fff" opacity=".7"/>`; y -= h; } return s; },
+  desklamp: r => sh(12) + `<ellipse cx="0" cy="-3" rx="11" ry="3.5" fill="#8a7a9a"/><path d="M0-3L-6-26L8-38" stroke="#8a7a9a" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M2-44L18-34L10-28Z" fill="${pick(r, ['#ff8fb8', '#7fd6a6', '#ffd45c'])}"/><path d="M14-30L4 0" stroke="#ffe28a" stroke-width="16" opacity=".18"/>`,
+  bread: r => sh(18) + `<path d="M-20 0Q-24-20 0-22Q24-20 20 0Z" fill="#d9954a"/><path d="M-18-2Q-20-18 0-19Q20-18 18-2Z" fill="#efb96f"/>${[-9, 0, 9].map(x => `<path d="M${x - 4}-8L${x + 3}-17" stroke="#fff1d0" stroke-width="3" stroke-linecap="round"/>`).join('')}`,
+  ovenprop: r => sh(24) + `<path d="M-24 0V-26Q-24-48 0-48Q24-48 24-26V0Z" fill="#e8b89a"/><path d="M-24-26Q-24-48 0-48Q24-48 24-26" stroke="#c98f6b" stroke-width="3" fill="none"/><path d="M-12 0V-16Q-12-28 0-28Q12-28 12-16V0Z" fill="#5a3424"/><path d="M-8 0Q-6-10 0-12Q6-10 8 0Z" fill="#ffb02e"/><path d="M-3 0Q-2-6 0-7Q2-6 3 0Z" fill="#ffe28a"/><rect x="10" y="-62" width="9" height="16" rx="2" fill="#c98f6b"/>`,
+  flourbag: r => sh(14) + `<path d="M-13 0Q-16-20-10-28H10Q16-20 13 0Z" fill="#fffaf0" stroke="#e6d8c4" stroke-width="2"/><path d="M-10-28L-6-34H6L10-28" fill="#fffaf0" stroke="#e6d8c4" stroke-width="2"/><path d="M-6-34Q0-30 6-34" stroke="#c98f6b" stroke-width="2" fill="none"/><path d="${star(0, -14, 6, 2.6)}" fill="#ffd45c"/>`,
+  easel: r => sh(16) + `<path d="M-14 0L-2-50M14 0L2-50M0-12V0" stroke="#b07a55" stroke-width="3.5" stroke-linecap="round"/><rect x="-17" y="-46" width="34" height="28" rx="2" fill="#fff" stroke="#e6d3b4" stroke-width="2"/><circle cx="-6" cy="-34" r="5" fill="${pick(r, ['#ff8fb8', '#ffd45c'])}"/><path d="M-12-24Q-2-34 6-26T14-30" stroke="${pick(r, ['#8fc9ff', '#7fd6a6'])}" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="-17" y="-20" width="34" height="3" rx="1.5" fill="#b07a55"/>`,
+  palette: r => `<path d="M-20-8Q-22-24 0-24Q22-24 20-10Q18-2 8-6Q2-8 0-2Q-4 4-14 0Q-20-2-20-8Z" fill="#f3d7b0"/>${[['#ff6b8a', -12, -16], ['#ffd45c', -2, -19], ['#5bb8ff', 9, -17], ['#7fd6a6', 13, -10]].map(([c, x, y]) => `<circle cx="${x}" cy="${y}" r="3.6" fill="${c}"/>`).join('')}<ellipse cx="-8" cy="-6" rx="3.5" ry="2.5" fill="#fff" opacity=".7"/>`,
+  crayon: r => { const c = pick(r, ['#ff6b8a', '#5bb8ff', '#ffd45c', '#7fd6a6', '#b99bff']); return `<g transform="rotate(${Math.floor(r() * 40) - 70} 0 -4)"><rect x="-14" y="-8" width="24" height="8" rx="2" fill="${c}"/><path d="M10-8L18-4L10 0Z" fill="${c}"/><rect x="-8" y="-8" width="10" height="8" fill="#fff" opacity=".55"/></g>`; },
+  icecream: r => sh(14) + `<path d="M-14-16H14L10 0H-10Z" fill="${pick(r, ['#ff8fb8', '#8fc9ff', '#ffd45c'])}"/><path d="M-12-10H12" stroke="#fff" stroke-width="2" opacity=".6"/><circle cx="-6" cy="-21" r="9" fill="#fff4f8"/><circle cx="7" cy="-22" r="9" fill="${pick(r, ['#ffc6dc', '#c9f0d8', '#fff0b0'])}"/><circle cx="0" cy="-31" r="9" fill="${pick(r, ['#b98257', '#ffc6dc', '#d8c8ff'])}"/><circle cx="2" cy="-42" r="3.5" fill="#ff4f7b"/>`,
+  cone: r => `<path d="M-11-24L0 0L11-24Z" fill="#e8b46a"/><path d="M-7-20L4-8M-2-24L7-14M5-24L-5-12" stroke="#c98f45" stroke-width="1.4"/><circle cx="0" cy="-30" r="11" fill="${pick(r, ['#ffc6dc', '#c9f0d8', '#fff0b0', '#d8c8ff'])}"/><path d="M-11-26Q-6-20-2-26Q3-20 7-26Q10-22 11-26" fill="${pick(r, ['#ffc6dc', '#c9f0d8', '#fff0b0'])}"/><circle cx="-4" cy="-34" r="2.5" fill="#fff" opacity=".7"/>`,
+  awning: r => { const c = pick(r, ['#ff8fb8', '#8fc9ff', '#7fd6a6']); return sh(24) + `<rect x="-22" y="-26" width="44" height="26" rx="3" fill="#fff4e6"/><rect x="-16" y="-20" width="14" height="14" rx="2" fill="#bfe6ff"/><rect x="4" y="-20" width="12" height="20" rx="2" fill="#c98f6b"/>${[-24, -12, 0, 12].map((x, i) => `<path d="M${x} -38h12v8a6 6 0 0 1-12 0Z" fill="${i % 2 ? '#fff' : c}"/>`).join('')}<circle cx="0" cy="-48" r="7" fill="#fff0b0"/><path d="M-4-48L0-40L4-48" fill="#e8b46a"/>`; },
+  float: r => { const c = pick(r, ['#ff8fb8', '#b99bff', '#8fc9ff']); return sh(30) + `<rect x="-30" y="-20" width="60" height="16" rx="6" fill="${c}"/><path d="M-30-16H30" stroke="#fff" stroke-width="3" opacity=".5"/>${[-18, 0, 18].map(x => `<circle cx="${x}" cy="-4" r="5" fill="#5a4a6e"/>`).join('')}${[-18, -6, 6, 18].map((x, i) => `<circle cx="${x}" cy="${-27 - (i % 2) * 4}" r="${7 + (i % 2) * 2}" fill="${['#ffd45c', '#fff', '#ff6b8a', '#7fd6a6'][i]}"/>`).join('')}<path d="M0-34V-56" stroke="#a5657f" stroke-width="2"/><path d="M0-56L14-51L0-46Z" fill="#ffd45c"/>`; },
+  streamer: r => `<path d="M-16-8Q-8-24 0-12T16-20" stroke="${pick(r, PINKS)}" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M-12-30Q-4-40 4-30T18-34" stroke="${pick(r, PINKS)}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+  minibridge: r => sh(30) + `<path d="M-30 0Q0-30 30 0" stroke="#d6a874" stroke-width="10" fill="none"/><path d="M-30-2Q0-32 30-2" stroke="#fff" stroke-width="2" fill="none" opacity=".5"/>${[-20, -10, 0, 10, 20].map(x => { const y = -30 * (1 - (x / 30) ** 2) + 2; return `<path d="M${x} ${y.toFixed(1)}v-12" stroke="#b9875a" stroke-width="2.5" stroke-linecap="round"/>`; }).join('')}<path d="M-20-12Q0-42 20-12" stroke="#b9875a" stroke-width="2" fill="none"/>`,
+  telescope: r => sh(16) + `<path d="M-12 0L0-22L12 0M0-22V0" stroke="#8a7a9a" stroke-width="3" stroke-linecap="round" fill="none"/><g transform="rotate(-32 0 -24)"><rect x="-22" y="-31" width="40" height="13" rx="5" fill="${pick(r, ['#ff8fb8', '#8fc9ff', '#ffd45c'])}"/><rect x="16" y="-33" width="9" height="17" rx="3" fill="#fff"/><rect x="-26" y="-28" width="6" height="7" rx="2" fill="#6b5a7a"/></g>`,
+  starmap: r => sh(18) + `<path d="M0 0V-14" stroke="#a87650" stroke-width="3"/><rect x="-20" y="-46" width="40" height="32" rx="4" fill="#3c4290" stroke="#ffe9b0" stroke-width="2.5"/><path d="M-12-36L-2-26L8-38L14-24" stroke="#ffe9b0" stroke-width="1.4" fill="none" opacity=".8"/>${[[-12, -36], [-2, -26], [8, -38], [14, -24]].map(([x, y]) => `<path d="${star(x, y, 3.2, 1.3)}" fill="#ffe27a"/>`).join('')}`,
+  dome: r => sh(28) + `<rect x="-24" y="-20" width="48" height="20" rx="3" fill="#e8e4f7"/><path d="M-26-20A26 24 0 0 1 26-20Z" fill="#f6f3ff"/><path d="M-4-44L4-44L6-20H-6Z" fill="#6a5aa0"/><path d="M-2-42L14-58" stroke="#8a7a9a" stroke-width="5" stroke-linecap="round"/><rect x="-5" y="-14" width="10" height="14" rx="5" fill="#c9bde6"/><circle cx="-14" cy="-10" r="3" fill="#ffe28a"/><circle cx="14" cy="-10" r="3" fill="#ffe28a"/>`,
+  pennant: r => sh(8) + `<path d="M0 0V-52" stroke="#a5657f" stroke-width="3" stroke-linecap="round"/><path d="M1-52Q14-50 24-44Q14-40 1-38Z" fill="${pick(r, ['#ff6b8a', '#ffd45c', '#8fc9ff', '#b99bff'])}"/><circle cx="0" cy="-54" r="3" fill="#ffd45c"/>`,
+  crown: r => sh(18) + `<path d="M-18 0V-10L-20-30L-9-18L0-34L9-18L20-30L18-10V0Z" fill="#ffd45c" stroke="#f0b93a" stroke-width="3" stroke-linejoin="round"/><rect x="-18" y="-10" width="36" height="10" rx="2" fill="#f0b93a"/>${[[-20, -30, '#ff6b8a'], [0, -34, '#5bb8ff'], [20, -30, '#7fd6a6']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.6" fill="${c}"/>`).join('')}<circle cx="0" cy="-5" r="3" fill="#ff6b8a"/><circle cx="-10" cy="-5" r="2.2" fill="#fff"/><circle cx="10" cy="-5" r="2.2" fill="#fff"/>`,
+  citygate: r => sh(32) + `<rect x="-32" y="-46" width="20" height="46" rx="3" fill="#f6ead6"/><rect x="12" y="-46" width="20" height="46" rx="3" fill="#f6ead6"/><path d="M-12-40H12V0H6V-18A6 6 0 0 0-6-18V0H-12Z" fill="#efdcc0"/>${[-32, -24, -18, 12, 18, 26].map(x => `<rect x="${x}" y="-52" width="6" height="7" fill="#f6ead6"/>`).join('')}<path d="M-6 0V-18A6 6 0 0 1 6-18V0Z" fill="#c98f6b"/><path d="M-22-46V-60M22-46V-60" stroke="#a5657f" stroke-width="2"/><path d="M-22-60L-10-56L-22-52ZM22-60L34-56L22-52Z" fill="#ff8fb8"/><circle cx="0" cy="-30" r="5" fill="#ffd45c"/>`,
 };
 
-/* ---------- 24站 ---------- */
+/* ---------- 各站（from～to 是這一站的關卡；關卡還沒做到的站不會畫出來） ---------- */
 const R = [
-  { name: '蛋蛋碼頭', from: 1, to: 15, isNew: true, stops: [[0, '#8fd3ef'], [.1, '#b8e6f4'], [.13, '#ffecc8'], [.27, '#fdeccb'], [.38, '#d4f1bd'], [1, '#cdeeb4']],
+  { name: '蛋蛋碼頭', from: 1, to: 15, stops: [[0, '#8fd3ef'], [.1, '#b8e6f4'], [.13, '#ffecc8'], [.27, '#fdeccb'], [.38, '#d4f1bd'], [1, '#cdeeb4']],
     zones: [[.01, .1, ['wave', 'wave', 'boat']], [.14, .28, ['palm', 'shell', 'egg', 'starfish', 'umbrella']], [.36, .99, ['flower', 'bush', 'egg', 'hashbrown', 'flower', 'house']]], dens: 1.15,
     link: '矮柵欄，路從柵欄門穿過去', bridge: 'fence' },
-  { name: '毛毛村', from: 16, to: 20, isNew: true, stops: [[0, '#cdeeb4'], [1, '#e1f3c2']], props: ['house', 'doghouse', 'paw', 'fence', 'flower', 'egg'], link: '一排圓圓的樹叢', bridge: 'hedge' },
-  { name: '果樹林', from: 21, to: 25, isNew: true, stops: [[0, '#e1f3c2'], [1, '#bfe4a6']], props: ['fruittree', 'fruittree', 'basket', 'bush', 'flower'], link: '城牆和城門', bridge: 'wall' },
-  { name: '薯餅城堡', from: 26, to: 30, isNew: true, stops: [[0, '#bfe4a6'], [.25, '#f1e6cf'], [1, '#f3e7cf']], props: ['tower', 'hashbrown', 'hashbrown', 'egg', 'flower'], link: '出了城門是沙丘', bridge: 'dune' },
+  { name: '毛毛村', from: 16, to: 20, stops: [[0, '#cdeeb4'], [1, '#e1f3c2']], props: ['house', 'doghouse', 'paw', 'fence', 'flower', 'egg'], link: '一排圓圓的樹叢', bridge: 'hedge' },
+  { name: '果樹林', from: 21, to: 25, stops: [[0, '#e1f3c2'], [1, '#bfe4a6']], props: ['fruittree', 'fruittree', 'basket', 'bush', 'flower'], link: '城牆和城門', bridge: 'wall' },
+  { name: '薯餅城堡', from: 26, to: 30, stops: [[0, '#bfe4a6'], [.25, '#f1e6cf'], [1, '#f3e7cf']], props: ['tower', 'hashbrown', 'hashbrown', 'egg', 'flower'], link: '出了城門是沙丘', bridge: 'dune' },
   { name: '海邊', from: 31, to: 35, stops: [[0, '#f3e7cf'], [1, '#fff1d6']], props: ['shell', 'umbrella', 'starfish', 'ball', 'palm'], extra: 'sea', link: '沙灘慢慢變成糖霜，上面滴下奶油', bridge: 'drip' },
   { name: '甜點', from: 36, to: 40, stops: [[0, '#ffd3e3'], [.35, '#ffe2ec'], [1, '#ffdbe8']], props: ['cupcake', 'donut', 'cookie', 'sprinkle', 'sprinkle'], link: '棉花糖雲往上堆，走進天空', bridge: 'clouds' },
-  { name: '天空', from: 41, to: 45, stops: [[0, '#ffdbe8'], [.35, '#e6e4ff'], [1, '#d6ebff']], props: ['cloud', 'cloud', 'balloon', 'bird'], link: '彩虹從雲上落到花圃', bridge: 'rainbow' },
+  { name: '天空', from: 41, to: 45, drift: 4, stops: [[0, '#ffdbe8'], [.35, '#e6e4ff'], [1, '#d6ebff']], props: ['cloud', 'cloud', 'balloon', 'bird'], link: '彩虹從雲上落到花圃', bridge: 'rainbow' },
   { name: '花園', from: 46, to: 50, stops: [[0, '#d6ebff'], [.25, '#dcf3d0'], [1, '#ece4ff']], props: ['tulip', 'flower', 'butterfly', 'bush', 'tulip'], link: '積木排成矮牆，進到玩具屋', bridge: 'blocks' },
   { name: '玩具屋', from: 51, to: 55, stops: [[0, '#ece4ff'], [.2, '#f8e4cc'], [1, '#f6dec4']], props: ['block', 'ball', 'rug', 'block', 'balloon'], extra: 'planks', link: '玩具屋的木門打開，外面是山路', bridge: 'door' },
   { name: '大冒險', from: 56, to: 60, stops: [[0, '#f6dec4'], [.3, '#e3e9c8'], [.75, '#dce6dc'], [1, '#e4eef7']], props: ['rock', 'signpost', 'tent', 'pine', 'rock'], link: '山脊積雪，進入雪地', bridge: 'mountains' },
@@ -107,12 +154,33 @@ const R = [
   { name: '宇宙', from: 86, to: 90, stops: [[0, '#5a98d2'], [.3, '#40478f'], [1, '#2e2f6d']], props: ['planet', 'star', 'moon', 'rocket', 'star'], extra: 'stars', link: '夜空下面出現城市的剪影', bridge: 'skyline' },
   { name: '城市', from: 91, to: 95, stops: [[0, '#2e2f6d'], [.45, '#8b6fae'], [1, '#ffd8c4']], props: ['building', 'building', 'lamp', 'building'], link: '天亮了，城市後面是最後一座山', bridge: 'hills' },
   { name: '終極冒險', from: 96, to: 100, stops: [[0, '#ffd8c4'], [1, '#fff0b6']], props: ['peak', 'firework', 'trophy', 'firework', 'rock'], link: '山頂放煙火，彩色紙片飄到工廠', bridge: 'confetti' },
-  { name: '玩具工廠', from: 101, to: 105, isPlan: true, stops: [[0, '#fff0b6'], [.3, '#f0ecdf'], [1, '#e5e8f5']], props: ['chimney', 'box', 'gear', 'block', 'belt'], link: '工廠的齒輪一路接到鐘錶店', bridge: 'gears' },
-  { name: '鐘錶店', from: 106, to: 110, isPlan: true, stops: [[0, '#e5e8f5'], [.3, '#f2e5d6'], [1, '#efdfcb']], props: ['clock', 'grandclock', 'gear', 'clock'], extra: 'planks', link: '鐘錶店地下室通往礦坑洞口', bridge: 'cave' },
-  { name: '糖果礦坑', from: 111, to: 115, isPlan: true, stops: [[0, '#8f7393'], [1, '#6c557a']], props: ['crystal', 'crystal', 'cart', 'lantern', 'crystal'], extra: 'sparks', link: '礦坑深處流出巧克力', bridge: 'chocdrip' },
-  { name: '巧克力工坊', from: 116, to: 120, isPlan: true, stops: [[0, '#93644f'], [.45, '#c99677'], [.8, '#ecd0ba'], [1, '#ffe3ee']], props: ['chocpot', 'chocobar', 'chocpot', 'cookie'], extra: 'river', link: '巧克力外面綁上緞帶，進到包裝室', bridge: 'ribbon' },
-  { name: '禮物包裝室', from: 121, to: 125, isPlan: true, stops: [[0, '#ffe3ee'], [1, '#fff1f6']], props: ['gift', 'gift', 'roll', 'gift'], link: '緞帶上的星星飄向夢幻工廠', bridge: 'starband' },
-  { name: '夢幻工廠', from: 126, to: 130, isPlan: true, stops: [[0, '#fff1f6'], [.4, '#efe7ff'], [1, '#e2f1ff']], props: ['pipe', 'belt', 'sparkle', 'cloud', 'gear'], extra: 'sparkles', link: '', bridge: null },
+  { name: '玩具工廠', from: 101, to: 105, stops: [[0, '#fff0b6'], [.3, '#f0ecdf'], [1, '#e5e8f5']], props: ['chimney', 'box', 'gear', 'block', 'belt'], link: '工廠的齒輪一路接到鐘錶店', bridge: 'gears' },
+  { name: '鐘錶店', from: 106, to: 110, stops: [[0, '#e5e8f5'], [.3, '#f2e5d6'], [1, '#efdfcb']], props: ['clock', 'grandclock', 'gear', 'clock'], extra: 'planks', link: '鐘錶店地下室通往礦坑洞口', bridge: 'cave' },
+  { name: '糖果礦坑', from: 111, to: 115, stops: [[0, '#8f7393'], [1, '#6c557a']], props: ['crystal', 'crystal', 'cart', 'lantern', 'crystal'], extra: 'sparks', link: '礦坑深處流出巧克力', bridge: 'chocdrip' },
+  { name: '巧克力工坊', from: 116, to: 120, stops: [[0, '#93644f'], [.45, '#c99677'], [.8, '#ecd0ba'], [1, '#ffe3ee']], props: ['chocpot', 'chocobar', 'chocpot', 'cookie'], extra: 'river', link: '巧克力外面綁上緞帶，進到包裝室', bridge: 'ribbon' },
+  { name: '禮物包裝室', from: 121, to: 125, stops: [[0, '#ffe3ee'], [1, '#fff1f6']], props: ['gift', 'gift', 'roll', 'gift'], link: '緞帶上的星星飄向夢幻工廠', bridge: 'starband' },
+  { name: '夢幻工廠', from: 126, to: 130, stops: [[0, '#fff1f6'], [.4, '#efe7ff'], [1, '#e2f1ff']], props: ['pipe', 'belt', 'sparkle', 'cloud', 'gear'], extra: 'sparkles', drift: 3, link: '夢幻工廠的輸送帶接上星光車站的鐵軌', bridge: 'rails' },
+  // ---- 第 25–44 站（工作單9） ----
+  { name: '星光車站', from: 131, to: 135, stops: [[0, '#e2f1ff'], [.4, '#e8e4f7'], [1, '#f3e9f0']], props: ['train', 'platsign', 'platlamp', 'platsign'], link: '鐵軌旁邊是一片小山坡', bridge: 'hills' },
+  { name: '熱氣球草原', from: 136, to: 140, stops: [[0, '#f3e9f0'], [.3, '#e0f2cc'], [1, '#d3eebb']], props: ['hotair', 'windmill', 'grass', 'hotair', 'flower'], link: '熱氣球降落在蜂巢旁邊', bridge: 'honeycomb' },
+  { name: '蜂蜜森林', from: 141, to: 145, stops: [[0, '#d3eebb'], [.4, '#f6e3a6'], [1, '#f3dba0']], props: ['hive', 'honeypot', 'bigtree', 'flower'], link: '森林外面圍著木柵欄，裡面種滿南瓜', bridge: 'fence' },
+  { name: '南瓜田', from: 146, to: 150, stops: [[0, '#f3dba0'], [.5, '#f6d6aa'], [1, '#f2dcc0']], props: ['pumpkin', 'scarecrow', 'pumpkin', 'fence'], link: '田邊冒出白白的熱氣，是溫泉', bridge: 'steam' },
+  { name: '溫泉山谷', from: 151, to: 155, stops: [[0, '#f2dcc0'], [.4, '#d9ecea'], [1, '#cfe8e3']], props: ['onsen', 'steam', 'bucket', 'rock'], link: '溫泉後面長出一整排竹子', bridge: 'bamboo' },
+  { name: '竹林', from: 156, to: 160, stops: [[0, '#cfe8e3'], [.4, '#c8e6bf'], [1, '#b9dca8']], props: ['bamboo', 'bambasket', 'stonelamp', 'bamboo'], link: '竹林外天黑了，燈籠一盞盞亮起', bridge: 'lanterns' },
+  { name: '燈籠夜市', from: 161, to: 165, stops: [[0, '#b9dca8'], [.28, '#5e4f80'], [1, '#43386a']], props: ['paperlantern', 'stall', 'flags', 'paperlantern'], extra: 'stars', link: '夜市走到底是海邊的碼頭', bridge: 'wave' },
+  { name: '水族館', from: 166, to: 170, stops: [[0, '#43386a'], [.3, '#5f9fd0'], [.6, '#7cc4e6'], [1, '#a8dcee']], props: ['tank', 'fish', 'seaweed', 'bubble', 'coral'], extra: 'rays', link: '水族館外面長滿大蕨葉', bridge: 'ferns' },
+  { name: '恐龍谷', from: 171, to: 175, stops: [[0, '#a8dcee'], [.3, '#c8e2b0'], [1, '#e6dcb8']], props: ['fern', 'footprint', 'dinoegg', 'rock'], link: '恐龍谷上空飄來雨雲', bridge: 'raincloud' },
+  { name: '雨天小鎮', from: 176, to: 180, stops: [[0, '#e6dcb8'], [.3, '#d5dfea'], [1, '#e9eaf2']], props: ['umbrella', 'puddle', 'house', 'rainarc'], extra: 'rain', link: '躲雨躲進了圖書館', bridge: 'books' },
+  { name: '圖書館', from: 181, to: 185, stops: [[0, '#e9eaf2'], [.3, '#efe2cf'], [1, '#ead8c2']], props: ['shelf', 'bookstack', 'desklamp', 'bookstack'], extra: 'planks', link: '圖書館旁邊是一片麥田', bridge: 'wheat' },
+  { name: '麵包店', from: 186, to: 190, stops: [[0, '#ead8c2'], [.4, '#fbe7c8'], [1, '#f8dfc0']], props: ['bread', 'ovenprop', 'flourbag', 'bread'], link: '麵包店樓上是美術教室', bridge: 'crayons' },
+  { name: '美術教室', from: 191, to: 195, stops: [[0, '#f8dfc0'], [.4, '#fdf1e4'], [.7, '#f3ecfb'], [1, '#ecf3fb']], props: ['easel', 'palette', 'crayon', 'crayon'], link: '顏料滴下來，變成冰淇淋', bridge: 'drip' },
+  { name: '冰淇淋店', from: 196, to: 200, stops: [[0, '#ecf3fb'], [.35, '#ffe3ec'], [.7, '#e6f6f0'], [1, '#fff0d8']], props: ['icecream', 'cone', 'awning', 'cone'], link: '街上掛起彩旗，遊行要開始了', bridge: 'bunting' },
+  { name: '遊行大街', from: 201, to: 205, stops: [[0, '#fff0d8'], [.5, '#ffe6ee'], [1, '#f1e2ff']], props: ['float', 'balloon', 'streamer', 'balloon'], link: '遊行的彩色紙片一路飄到月亮島', bridge: 'confetti' },
+  { name: '月亮島', from: 206, to: 210, stops: [[0, '#f1e2ff'], [.3, '#4a5596'], [.6, '#33397a'], [1, '#2f3370']], props: ['moon', 'star', 'boat', 'star'], extra: 'stars', link: '天快亮時，月亮旁邊出現彩虹', bridge: 'rainbow' },
+  { name: '彩虹橋', from: 211, to: 215, drift: 3, stops: [[0, '#2f3370'], [.3, '#c9c4ef'], [.6, '#fdeef6'], [1, '#e8f4ff']], props: ['rainarc', 'cloud', 'minibridge', 'cloud'], link: '走過彩虹，雲上就是天文台', bridge: 'clouds' },
+  { name: '天文台', from: 216, to: 220, stops: [[0, '#e8f4ff'], [.3, '#4a4f92'], [1, '#2a2d66']], props: ['telescope', 'starmap', 'dome', 'star'], extra: 'stars', link: '望遠鏡看到的星星後面是一座城堡', bridge: 'starband' },
+  { name: '雲上城堡', from: 221, to: 225, drift: 3, stops: [[0, '#2a2d66'], [.35, '#d9cff5'], [.6, '#f5f0ff'], [1, '#fff4e6']], props: ['tower', 'cloud', 'pennant', 'tower'], link: '城堡的城門打開，就是薯餅王國', bridge: 'wall' },
+  { name: '薯餅王國', from: 226, to: 230, stops: [[0, '#fff4e6'], [.5, '#ffefc4'], [1, '#ffe6a8']], props: ['crown', 'citygate', 'firework', 'hashbrown'], extra: 'sparkles', link: '', bridge: null },
 ];
 
 /* ---------- 站內的固定花樣 ---------- */
@@ -123,6 +191,7 @@ function extra(r, W, h, rng) {
     case 'stars': { let s = ''; for (let i = 0; i < 70; i++) s += `<circle cx="${(rng() * W).toFixed(1)}" cy="${(rng() * h).toFixed(1)}" r="${(rng() * 1.4 + .5).toFixed(1)}" fill="#fff" opacity="${(Math.min(1, (h - (i * 7 % h)) / h + .2) * (.4 + rng() * .6)).toFixed(2)}"/>`; return s; }
     case 'sparks': case 'sparkles': { let s = ''; for (let i = 0; i < 26; i++) s += `<path d="${star(rng() * W, rng() * h, 4 + rng() * 3, 1.2, 4)}" fill="#fff" opacity="${(.35 + rng() * .5).toFixed(2)}"/>`; return s; }
     case 'rays': return [.15, .42, .7].map(f => `<path d="M${W * f} 0L${W * (f + .12)} 0L${W * (f + .02)} ${h}L${W * (f - .08)} ${h}Z" fill="#fff" opacity=".1"/>`).join('');
+    case 'rain': { let s = ''; for (let i = 0; i < 64; i++) { const x = rng() * W, y = rng() * h; s += `<path d="M${x.toFixed(1)} ${y.toFixed(1)}l-4 11" stroke="#9ec3e6" stroke-width="2" stroke-linecap="round" opacity="${(.35 + rng() * .4).toFixed(2)}"/>`; } return s; }
     case 'planks': { let s = ''; for (let y = 30; y < h; y += 38) s += `<path d="M0 ${y}H${W}" stroke="#d9b58f" stroke-width="1.4" opacity=".45"/>`; return s; }
   }
   return '';
@@ -234,6 +303,47 @@ function bridge(type, W, gx, rng, a, b) {
       s += `<path d="M${bx} ${cy + 14}Q${bx - 34} ${cy - 16} ${bx - 26} ${cy + 22}Q${bx - 10} ${cy + 26} ${bx} ${cy + 14}Q${bx + 10} ${cy + 26} ${bx + 26} ${cy + 22}Q${bx + 34} ${cy - 16} ${bx} ${cy + 14}Z" fill="#ff6fa3"/><circle cx="${bx}" cy="${cy + 14}" r="6" fill="#ffc2dc"/>`;
       return s;
     }
+    // ---- 第 25–44 站的銜接物 ----
+    case 'rails': {
+      for (let x = 4; x < W; x += 14) if (!gap(x, 30)) s += `<rect x="${x - 3}" y="${cy - 12}" width="6" height="26" rx="2" fill="#c9a27e"/>`;
+      for (const y of [cy - 6, cy + 8]) s += `<path d="M0 ${y}H${gx - 30}M${gx + 30} ${y}H${W}" stroke="#9aa2c6" stroke-width="3.5" stroke-linecap="round"/>`;
+      const sx = gx + (gx > W / 2 ? -54 : 54);
+      s += `<path d="M${sx} ${cy + 30}V${cy - 34}" stroke="#8a7a9a" stroke-width="3"/><g transform="translate(${sx} ${cy - 42})"><path d="M-12-6L12 6M-12 6L12-6" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M-12-6L12 6M-12 6L12-6" stroke="#ff6b8a" stroke-width="3.5" stroke-linecap="round"/></g>`;
+      for (let i = 0; i < 8; i++) s += `<path d="${star(rng() * W, cy - 66 + rng() * 26, 3.5, 1.4)}" fill="#fff" opacity=".85"/>`;
+      return s;
+    }
+    case 'honeycomb': {
+      const hx = (x, y, q) => `M${x} ${y - q}L${(x + q * .87).toFixed(1)} ${y - q / 2}V${y + q / 2}L${x} ${y + q}L${(x - q * .87).toFixed(1)} ${y + q / 2}V${y - q / 2}Z`;
+      for (let row = 0; row < 2; row++) for (let x = row ? 11 : 0; x < W + 14; x += 21) if (!gap(x, 30)) s += `<path d="${hx(x, cy - 6 + row * 18, 12)}" fill="${pick(rng, ['#ffd45c', '#f6c14f', '#ffe08a'])}" stroke="#fff3c4" stroke-width="2"/>`;
+      for (let x = 20; x < W; x += 64) if (!gap(x, 36)) s += `<path d="M${x} ${cy + 18}q2 10 0 16" stroke="#f6b93a" stroke-width="5" stroke-linecap="round" fill="none"/>`;
+      return s;
+    }
+    case 'steam': for (let i = 0; i < 24; i++) { const x = rng() * W; if (gap(x, 30)) continue; s += `<circle cx="${x.toFixed(1)}" cy="${(cy - 30 + rng() * 60).toFixed(1)}" r="${(12 + rng() * 14).toFixed(1)}" fill="#fff" opacity="${(.45 + rng() * .3).toFixed(2)}"/>`; } return s;
+    case 'bamboo':
+      for (let x = 6; x < W; x += 12) if (!gap(x, 32)) { const h = 40 + rng() * 30; s += `<rect x="${x - 4}" y="${(cy + 24 - h).toFixed(1)}" width="8" height="${h.toFixed(1)}" rx="3" fill="${pick(rng, ['#7cc77e', '#8fd68a', '#6cbc72'])}"/><rect x="${x - 4.5}" y="${(cy + 6 - h * .4).toFixed(1)}" width="9" height="2.5" fill="#5aa860"/>`; }
+      s += `<path d="M0 ${cy}H${gx - 32}M${gx + 32} ${cy}H${W}" stroke="#c8a96a" stroke-width="3"/>`;
+      return s;
+    case 'lanterns':
+      for (const row of [0, 1]) {
+        const y0 = cy - 28 + row * 34; s += `<path d="M0 ${y0}Q${W / 2} ${y0 + 26} ${W} ${y0}" stroke="#6a4a3a" stroke-width="1.4" fill="none"/>`;
+        for (let x = 16 + row * 14; x < W; x += 30) { const t = x / W, y = y0 + 26 * 2 * t * (1 - t) + 2, c = pick(rng, ['#ff6b6b', '#ff8fb8', '#ffb36b']); s += `<circle cx="${x}" cy="${(y + 9).toFixed(1)}" r="14" fill="#ffd45c" opacity=".18"/><ellipse cx="${x}" cy="${(y + 10).toFixed(1)}" rx="7" ry="6.5" fill="${c}"/><rect x="${x - 3.5}" y="${(y + 2.5).toFixed(1)}" width="7" height="2" fill="#d6a63a"/><rect x="${x - 3.5}" y="${(y + 15.5).toFixed(1)}" width="7" height="2" fill="#d6a63a"/>`; }
+      }
+      return s;
+    case 'ferns': for (let x = 10; x < W; x += 34) if (!gap(x, 36)) s += `<g transform="translate(${x} ${cy + 26}) scale(${(.7 + rng() * .3).toFixed(2)})">${PR.fern(rng)}</g>`; return s;
+    case 'raincloud':
+      for (let x = -10; x < W + 20; x += 62) { if (gap(x + 35, 46)) continue; s += `<use href="#ma-cloud" x="${x}" y="${cy - 46}" width="72" height="38"/>`; for (let j = 0; j < 4; j++) s += `<path d="M${x + 16 + j * 13} ${(cy + 2 + rng() * 10).toFixed(1)}l-3 9" stroke="#8fb7e0" stroke-width="2.4" stroke-linecap="round"/>`; }
+      return s;
+    case 'books': {
+      let x = -4; while (x < W) { const w = 9 + rng() * 7, h = 26 + rng() * 22; if (!gap(x + w / 2, 30)) s += `<rect x="${x.toFixed(1)}" y="${(cy + 26 - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="${pick(rng, PINKS)}"/><rect x="${x.toFixed(1)}" y="${(cy + 30 - h * .7).toFixed(1)}" width="${w.toFixed(1)}" height="2.5" fill="#fff" opacity=".6"/>`; x += w + 1.5; }
+      s += `<rect x="0" y="${cy + 26}" width="${Math.max(0, gx - 30).toFixed(1)}" height="6" fill="#b07a55"/><rect x="${(gx + 30).toFixed(1)}" y="${cy + 26}" width="${Math.max(0, W - gx - 30).toFixed(1)}" height="6" fill="#b07a55"/>`;
+      return s;
+    }
+    case 'wheat':
+      for (let x = 6; x < W; x += 11) if (!gap(x, 32)) { const h = 34 + rng() * 20, b = (rng() - .5) * 8; s += `<path d="M${x} ${cy + 28}Q${(x + b / 2).toFixed(1)} ${(cy + 28 - h / 2).toFixed(1)} ${(x + b).toFixed(1)} ${(cy + 28 - h).toFixed(1)}" stroke="#d9b45e" stroke-width="2" fill="none"/>`; for (let k = 0; k < 4; k++) s += `<ellipse cx="${(x + b + (k % 2 ? 3 : -3)).toFixed(1)}" cy="${(cy + 32 - h + k * 5).toFixed(1)}" rx="2.6" ry="4.5" fill="#f0c96a"/>`; }
+      return s;
+    case 'crayons':
+      for (let x = 8; x < W; x += 20) if (!gap(x, 32)) { const c = pick(rng, ['#ff6b8a', '#5bb8ff', '#ffd45c', '#7fd6a6', '#b99bff', '#ffb36b']), h = 36 + rng() * 20, y = cy + 28 - h; s += `<rect x="${x - 7}" y="${y.toFixed(1)}" width="14" height="${h.toFixed(1)}" rx="2" fill="${c}"/><path d="M${x - 7} ${y.toFixed(1)}L${x} ${(y - 12).toFixed(1)}L${x + 7} ${y.toFixed(1)}Z" fill="${c}"/><rect x="${x - 7}" y="${(y + 8).toFixed(1)}" width="14" height="${(h * .4).toFixed(1)}" fill="#fff" opacity=".5"/>`; }
+      return s;
   }
   return s;
 }
@@ -271,7 +381,7 @@ export function mapStations(n, H) {
   return list.map((r, k) => {
     const last = k === list.length - 1, to = Math.min(r.to, n);
     return {
-      name: r.name, k: k + 1, from: r.from, to, stops: r.stops, zones: r.zones, dens: r.dens, props: r.props, extra: r.extra,
+      name: r.name, k: k + 1, from: r.from, to, stops: r.stops, zones: r.zones, dens: r.dens, props: r.props, extra: r.extra, drift: r.drift,
       bridge: last ? null : r.bridge,
       bottom: r.from === 1 ? H : yOf(r.from - 1) + GAP / 2,
       top: last ? 0 : yOf(to - 1) - GAP / 2,
@@ -291,7 +401,13 @@ const SPOTS = [
   [['pk', 'piggy', 'dino']], [['ph', 'sloth_bed']], [['pk', 'snoopy', 'dog']], [['ph', 'group']],
   [['pk', 'dino', 'sloth', 'nyanko']], [['ph', 'snoopy_sloth']], [['pk', 'moodeng', 'piggy']], [['pk', 'dino', 'egg']],
   [['ph', 'pig']], [['ph', 'sloth_orange']], [['pk', 'piggy', 'nyanko']], [['ph', 'sloth_pig']],
-  [['pk', 'dino', 'dog']], [['ph', 'sloth_bed']], [['pk', 'moodeng', 'snoopy', 'egg']], [['ph', 'group'], ['pk', 'sloth', 'egg']]];
+  [['pk', 'dino', 'dog']], [['ph', 'sloth_bed']], [['pk', 'moodeng', 'snoopy', 'egg']], [['ph', 'group']],
+  // 第 25–44 站
+  [['pk', 'nyanko', 'egg']], [['ph', 'sloth_orange']], [['pk', 'piggy', 'sloth']], [['ph', 'pig']],
+  [['ph', 'sloth_bed']], [['pk', 'moodeng', 'dog']], [['pk', 'snoopy', 'nyanko', 'egg']], [['ph', 'snoopy_sloth']],
+  [['pk', 'dino', 'egg', 'piggy']], [['ph', 'sloth_pig']], [['pk', 'sloth', 'nyanko']], [['ph', 'group']],
+  [['pk', 'dog', 'moodeng']], [['ph', 'pig']], [['pk', 'snoopy', 'piggy', 'dog']], [['ph', 'sloth_bed']],
+  [['pk', 'egg', 'dino']], [['ph', 'snoopy_sloth']], [['pk', 'moodeng', 'sloth']], [['ph', 'group'], ['pk', 'dog', 'egg', 'sloth']]];
 // 每組放在那一段路彎得最外面的地方（離中線最遠），擺在路的另一側（23% 或 77%）
 // 回傳的 y 是娃娃的底邊；關卡還沒做到的那一段不放
 function dollSpots(st, n, H) {
@@ -359,9 +475,9 @@ export function mapArtHTML(W, n, H) {
       html += `<svg class="ma-bridge" style="top:${by - 90}px;height:180px" viewBox="0 0 ${W} 180"><defs><linearGradient id="ma-fg${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".14" stop-color="#fff"/><stop offset=".86" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient><mask id="ma-fm${k}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="180"><rect width="${W}" height="180" fill="url(#ma-fg${k})"/></mask></defs><g mask="url(#ma-fm${k})">${bridge(r.bridge, W, gx, rngOf(k * 31 + 7), r, st[k + 1])}</g></svg>`;
     }
   });
-  // 天空和夢幻工廠有幾朵立體雲慢慢飄過去（減少動態時停在畫面裡的 --x，不會停在畫面外）
-  [[6, 4], [23, 3]].forEach(([k, cnt]) => {
-    const r = st[k]; if (!r) return;
+  // 有 drift 的站（天空、夢幻工廠、彩虹橋、雲上城堡）有幾朵立體雲慢慢飄過去（減少動態時停在畫面裡的 --x，不會停在畫面外）
+  st.forEach((r, k) => {
+    const cnt = r.drift; if (!cnt) return;
     const rng = rngOf(k * 53 + 5), span = W + 280;
     for (let j = 0; j < cnt; j++) {
       const w = 70 + rng() * 50, y = r.top + 40 + (r.bottom - r.top - 120) * (j + rng() * .6) / cnt, d = 46 + rng() * 30, f = rng();
@@ -424,8 +540,9 @@ function openCurve(P) {
 const place = (x, y, sc, inner) => `<g transform="translate(${fx(x)} ${fx(y)}) scale(${sc})">${inner}</g>`;
 
 /* ---------- 全島縮圖（開頭動畫第二段、封面 B 的背景） ---------- */
-// 24 站的顏色由下往上疊成一座小島，中間一條彎彎的路，每站一顆圓點；下面是碼頭和船
-export function islandMiniHTML(W, H, p = 'oi-') {
+// 各站的顏色由下往上疊成一座小島，中間一條彎彎的路，每站一顆圓點；下面是碼頭和船
+// n＝目前有幾關（只畫已經有關卡的站）；沒給就畫全部的站
+export function islandMiniHTML(W, H, p = 'oi-', n = 0) {
   // 視窗被藏起來時 innerWidth／innerHeight 可能是 0，島會除以 0 變成 NaN；先用手機直式的大小畫（viewBox 會縮放）
   if (!(W > 0)) W = 390;
   if (!(H > 0)) H = 844;
@@ -434,13 +551,14 @@ export function islandMiniHTML(W, H, p = 'oi-') {
   const blob = Array.from({ length: 16 }, (_, i) => { const a = i / 16 * Math.PI * 2, k = 1 + (rng() - .5) * .14; return [cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]; });
   const isl = closedCurve(blob);
   const half = y => { const t = (y - cy) / ry; return rx * Math.sqrt(Math.max(0, 1 - t * t)); };
-  const y0 = cy + ry * .86, y1 = cy - ry * .86, band = (y0 - y1) / 23;
-  const road = R.map((_, k) => { const y = y0 - k * band; return [cx + half(y) * .45 * Math.sin(k * 1.05 + .4), y]; });
+  const RS = n > 0 ? R.filter(r => r.from <= n) : R, NS = RS.length, many = NS > 30;
+  const y0 = cy + ry * .86, y1 = cy - ry * .86, band = (y0 - y1) / Math.max(1, NS - 1);
+  const road = RS.map((_, k) => { const y = y0 - k * band; return [cx + half(y) * .45 * Math.sin(k * 1.05 + .4), y]; });
   // 第 1 站在小島最下面，從沙灘開始（海水畫在島外面）
   const st1 = [[0, '#ffecc8'], [.35, '#fdeccb'], [.55, '#d4f1bd'], [1, '#cdeeb4']];
   let stops = '';
-  R.forEach((r, k) => (k ? r.stops : st1).forEach(([o, c]) => { stops += `<stop offset="${((k + o) / 24).toFixed(4)}" stop-color="${c}"/>`; }));
-  let s = `<defs>${cloudDefs('ma-')}<linearGradient id="ma-ig" gradientUnits="userSpaceOnUse" x1="0" y1="${fx(y0 + band / 2)}" x2="0" y2="${fx(y0 + band / 2 - 24 * band)}">${stops}</linearGradient></defs>`;
+  RS.forEach((r, k) => (k ? r.stops : st1).forEach(([o, c]) => { stops += `<stop offset="${((k + o) / NS).toFixed(4)}" stop-color="${c}"/>`; }));
+  let s = `<defs>${cloudDefs('ma-')}<linearGradient id="ma-ig" gradientUnits="userSpaceOnUse" x1="0" y1="${fx(y0 + band / 2)}" x2="0" y2="${fx(y0 + band / 2 - NS * band)}">${stops}</linearGradient></defs>`;
   s += `<rect width="${W}" height="${H}" fill="#8fd3ef"/>`;
   // 海浪
   for (let i = 0, n = 0; i < 60 && n < 12; i++) {
@@ -448,7 +566,7 @@ export function islandMiniHTML(W, H, p = 'oi-') {
     if (((x - cx) / (rx + 34)) ** 2 + ((y - cy) / (ry + 34)) ** 2 < 1) continue;
     s += place(x, y, (.45 + rng() * .2).toFixed(2), PR.wave(rng)); n++;
   }
-  // 島：淺海、浪花、沙邊，再填 24 站的顏色
+  // 島：淺海、浪花、沙邊，再填各站的顏色
   s += `<path d="${isl}" fill="none" stroke="#b8e6f4" stroke-width="34" stroke-linejoin="round"/><path d="${isl}" fill="none" stroke="#fff" stroke-width="16" opacity=".6" stroke-linejoin="round"/>`;
   s += `<path d="${isl}" fill="#fbe3b4" stroke="#fbe3b4" stroke-width="8" stroke-linejoin="round"/><path d="${isl}" fill="url(#ma-ig)"/>`;
   // 碼頭和船（島的最下面）
@@ -456,10 +574,10 @@ export function islandMiniHTML(W, H, p = 'oi-') {
   s += `<path d="M${fx(px - 7)} ${fx(py - 10)}h14v${fx(ry * .14 + 10)}h-14Z" fill="#d6a874"/>`;
   for (let j = 0; j < 5; j++) s += `<path d="M${fx(px - 7)} ${fx(py - 4 + j * (ry * .14 / 5))}h14" stroke="#b9875a" stroke-width="1.4"/>`;
   s += place(px + 30, py + ry * .12, .5, PR.boat(rng));
-  // 每站兩個小物件，放在路的兩邊
-  R.forEach((r, k) => {
+  // 每站兩個小物件，放在路的兩邊（站很多時每站一個，左右輪流）
+  RS.forEach((r, k) => {
     const list = (k ? r.props : ['palm', 'umbrella', 'shell', 'starfish']).filter(id => id !== 'spot');
-    [-1, 1].forEach(side => {
+    (many ? [k % 2 ? 1 : -1] : [-1, 1]).forEach(side => {
       const y = road[k][1] + (rng() - .5) * band * .5 + band * .35, hw = half(y);
       const x = cx + side * hw * (.5 + rng() * .28);
       if (Math.abs(x - road[k][0]) < 22 || hw < 30) return;
@@ -468,7 +586,7 @@ export function islandMiniHTML(W, H, p = 'oi-') {
   });
   const rd = openCurve(road);
   s += `<path d="${rd}" fill="none" stroke="rgba(87,31,50,.2)" stroke-width="9" stroke-linecap="round" transform="translate(0 2)"/><path d="${rd}" fill="none" stroke="#f1d9c4" stroke-width="8" stroke-linecap="round"/><path d="${rd}" fill="none" stroke="#fffaf3" stroke-width="5.5" stroke-linecap="round"/><path d="${rd}" fill="none" stroke="#ecc6b2" stroke-width="2.4" stroke-dasharray="0 7" stroke-linecap="round"/>`;
-  road.forEach(([x, y], k) => { s += `<circle cx="${fx(x)}" cy="${fx(y)}" r="4.2" fill="${PINKS[k % 6]}" stroke="#fff" stroke-width="1.6"/>`; });
+  road.forEach(([x, y], k) => { s += `<circle cx="${fx(x)}" cy="${fx(y)}" r="${many ? 3.4 : 4.2}" fill="${PINKS[k % 6]}" stroke="#fff" stroke-width="1.6"/>`; });
   // 四角的立體雲
   [[.1, .12], [.86, .2], [.08, .78], [.9, .86]].forEach(([a, b], j) => {
     const w = 78 + j * 6;

@@ -217,6 +217,86 @@ export const DEMO = {
       },
     ],
   },
+  // ---- 工作單9 新機關（第131關起）。盤面和種子用 scratchpad 的搜尋程式找的，每個種子都試過 ----
+  // 票閘：左下角帶車票的玩偶被消掉，車票飛到右上角的票閘，票閘打開、留下一個條紋方塊。目標「還差」1 → 0
+  gate: {
+    kinds: [0, 1, 2, 3],
+    layout: ['2 1 2 0 0', '2 2 1 1 0', '3 0 0 3 2', '2 3 0 1 1', '2 2 1 3 3'],
+    obstacles: ['....G', '.....', '.....', '.....', 'T....'],
+    opts: CLEAN,
+    seeds: range(1, 10),
+    chip: { icon: 'gate', val: s => s.gateLeft },
+    steps: [{ a: at(1, 0), b: at(2, 0), mark: { t: 'ok', at: at(0, 4) }, ok: (s0, s1) => s0.gateLeft === 1 && s1.gateLeft === 0 && s1.prog.gatesOpened === 1 }],
+    still: 'ring', ringAt: at(0, 4),
+  },
+  // 熱氣球：每走一步往上飄一格；第二步從最上面飄走。目標「還差」1 → 0
+  balloon: {
+    kinds: [0, 2, 3, 5],
+    layout: ['5 0 0 3 3', '5 5 5 3 0', '2 0 3 2 2', '5 2 5 3 0', '2 3 2 2 5'],
+    obstacles: ['.....', '..O..', '.....', '.....', '.....'],
+    opts: CLEAN,
+    seeds: [3, 4, 13, 17, 18, 22, 24, 26, 29, 30],
+    chip: { icon: 'balloon', val: s => s.balloonLeft },
+    steps: [
+      { a: at(2, 0), b: at(3, 0), ok: (s0, s1, res) => s1.balloonLeft === 1 && res.events.some(e => e.t === 'float') },
+      { a: at(0, 1), b: at(1, 1), ok: (s0, s1) => s1.prog.balloonsOut === 1 && s1.balloonLeft === 0 },
+    ],
+    still: 'steps',
+  },
+  // 蜂蜜罐：罐子上畫的是樹懶。旁邊消掉貓 ✕ 不會裝；消掉三隻樹懶 ✓ 裝滿、爆開一圈
+  jar: {
+    kinds: [1, 0, 3, 4],
+    layout: ['3 3 4 3 3', '4 3 1 0 4', '4 4 3 1 3', '0 4 3 1 4', '3 1 4 0 3'],
+    obstacles: ['.....', '.....', '..a..', '.....', '.....'],
+    opts: { ...CLEAN, jar: { need: 3 } },
+    seeds: range(1, 10),
+    chip: { icon: 'jar', val: s => s.jarLeft },
+    steps: [
+      { a: at(1, 0), b: at(1, 1), mark: { t: 'x', at: at(2, 2) },
+        ok: (s0, s1, res) => s1.jarLeft === 1 && !res.events.some(e => e.t === 'clear' && (e.blockerHits || []).some(b => b.block === 'jar')) },
+      { a: at(1, 2), b: at(1, 3), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s1.prog.jarsFilled === 1 && s1.jarLeft === 0 },
+    ],
+    still: 'steps',
+  },
+  // 驚喜蛋：已經有一道裂痕（引擎選項 egg.hp 2）。旁邊配一次再裂一點，再配一次孵出特殊方塊
+  egg: {
+    kinds: [0, 1, 4, 6],
+    layout: ['4 1 4 6 4', '4 6 6 0 6', '0 0 6 0 1', '0 4 6 6 4', '4 1 0 6 0'],
+    obstacles: ['.....', '.....', '..U..', '.....', '.....'],
+    opts: { ...CLEAN, egg: { hp: 2 } },
+    seeds: [1, 2, 4, 5, 6, 9, 11, 12, 13, 15],
+    chip: { icon: 'surprise', val: s => s.eggLeft },
+    steps: [
+      { a: at(0, 3), b: at(1, 3), ok: (s0, s1, res) => s1.eggLeft === 1 && res.events.some(e => e.t === 'clear' && (e.blockerHits || []).some(b => b.block === 'surprise' && b.left === 1)) },
+      { a: at(1, 3), b: at(2, 3), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s1.prog.eggsHatched === 1 && s1.eggLeft === 0 },
+    ],
+    still: 'steps',
+  },
+  // 燈籠串：上面三顆是同一串，在右邊那顆旁邊配對，三顆一起亮。目標「還差」1 → 0
+  lantern: {
+    kinds: [0, 3, 5, 6],
+    layout: ['5 3 5 6 5', '5 6 6 0 6', '0 0 6 0 3', '0 5 5 3 0', '6 0 6 0 0'],
+    obstacles: ['..m..', 'm...m', '.....', '.....', '.....'],
+    opts: CLEAN,
+    seeds: range(1, 10),
+    chip: { icon: 'lantern', val: s => s.lanternLeft },
+    steps: [{ a: at(0, 3), b: at(1, 3), mark: { t: 'ok', at: at(0, 2) }, ok: (s0, s1) => s0.lanternLeft === 1 && s1.lanternLeft === 0 && s1.prog.lanternsLit === 1 }],
+    still: 'ring', ringAt: at(0, 2),
+  },
+  // 烤箱：已經有一把火（引擎選項 oven.fire 1）。旁邊配一次加到兩把，再配一次烤好，往十字方向打出去。目標「還差」1 → 0
+  oven: {
+    kinds: [1, 2, 4, 5],
+    layout: ['4 2 4 5 4', '4 5 5 1 5', '1 1 5 1 2', '1 4 5 5 4', '4 2 1 5 1'],
+    obstacles: ['.....', '.....', '..K..', '.....', '.....'],
+    opts: { ...CLEAN, oven: { fire: 1 } },
+    seeds: [1, 3, 6, 7, 8, 10, 12, 13, 14, 16],
+    chip: { icon: 'oven', val: s => Math.max(0, 1 - ((s.prog && s.prog.bakes) | 0)) },
+    steps: [
+      { a: at(0, 3), b: at(1, 3), ok: (s0, s1, res) => s1.prog.bakes === 0 && res.events.some(e => e.t === 'clear' && (e.blockerHits || []).some(b => b.block === 'oven' && b.left === 2)) },
+      { a: at(1, 3), b: at(2, 3), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s1.prog.bakes === 1 },
+    ],
+    still: 'steps',
+  },
 };
 
 // 一張小卡的每一段（大部分只有一段）

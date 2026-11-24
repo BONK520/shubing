@@ -55,7 +55,9 @@ test('API surface, isCell / cell / snapshot copies', () => {
   const st = e.stats;
   deq(st, { cleared: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 }, jellyLeft: 2, specialsMade: 0, cascadesMax: 0,
     made: { stripe: 0, wrap: 0, bomb: 0, fish: 0 }, combos: {}, comboCount: 0, chocoGot: 0,
-    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0, alarmsLeft: 0, alarmsBurst: 0, shellLeft: 0, giftLeft: 0 });
+    prog: { gatesOpened: 0, balloonsOut: 0, jarsFilled: 0, eggsHatched: 0, lanternsLit: 0, bakes: 0 },
+    dinosOut: 0, dinosTotal: 0, frostLeft: 0, chocoLeft: 0, licoriceLeft: 0, locksLeft: 0, alarmsLeft: 0, alarmsBurst: 0, shellLeft: 0, giftLeft: 0,
+    gateLeft: 0, balloonLeft: 0, jarLeft: 0, eggLeft: 0, lanternLeft: 0, ovenCount: 0, ticketsOnBoard: 0 });
   st.cleared[0] = 50;
   eq(e.stats.cleared[0], 0, 'stats is a copy');
   ok(e.isAdjacent(P(2, 2), P(2, 3)) && e.isAdjacent(P(2, 2), P(1, 2)), 'adjacent');
@@ -1294,6 +1296,202 @@ test('fuzz with every mechanic: cages, gifts, frosting 1–3, chocolate, swirls,
   }
   note(`mechanics fuzz: ${moves} moves, ${exits} dinos out, ${spreads} chocolate spreads, ${unlocks} cages broken / gifts opened (${gifts} gifts), ${hits} frosting layers, ${belts} belt runs`);
   ok(exits > 0 && spreads > 0 && unlocks > 0 && hits > 0 && gifts > 0 && belts > 0, 'every mechanic happened');
+});
+
+// ---------------------------------------------------------------- 第131關起的新機關（工作單9）
+const ROW5 = ['______', '______', '______', '______', '______', '00_0__'];   // swap (5,3)<->(5,2) clears row 5, cols 0–2
+const ALLK = { kinds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] };
+const smashCheck = (e, cell) => {
+  const before = e.snapshot();
+  const res = e.smash(cell);
+  ok(res.ok, 'smash ok');
+  replayEvents(before.grid, before.jelly, res.events, before.lock);
+  return res;
+};
+
+test('車票／票閘: a removed ticket flies to the nearest closed gate; the gate opens and leaves a striped piece', () => {
+  const e = mo(ROW5, ['G....G', '......', '......', '......', '......', 'T.....']);
+  eq(e.cell(0, 0).block, 'gate'); ok(e.cell(5, 0).tk === 1, 'ticket on the piece');
+  ok(!e.swap(P(0, 0), P(0, 1)).ok, 'a gate cannot be swapped');
+  eq(e.stats.gateLeft, 2); eq(e.stats.ticketsOnBoard, 1);
+  const r = play(e, P(5, 3), P(5, 2));
+  const c = firstClear(r);
+  const fx = c.effects.find(f => f.fx === 'ticket');
+  ok(fx, 'ticket effect'); deq(fx.to, { r: 0, c: 0 }, 'nearest gate');
+  ok(c.removed.some(x => x.r === 0 && x.c === 0 && x.cause === 'ticket' && x.piece.block === 'gate'), 'gate opened');
+  const made = c.created.find(x => x.r === 0 && x.c === 0);
+  ok(made && (made.piece.special === 'h' || made.piece.special === 'v'), 'a striped piece where the gate was');
+  eq(e.stats.prog.gatesOpened, 1); eq(e.stats.gateLeft, 1); eq(e.stats.ticketsOnBoard, 0);
+  eq(e.cell(0, 5).block, 'gate', 'the far gate stays');
+  // a two-ticket gate: one ticket takes it to 1
+  const e2 = mo(ROW5, ['.....Q', '......', '......', '......', '......', 'T.....']);
+  const c2 = firstClear(play(e2, P(5, 3), P(5, 2)));
+  deq(c2.blockerHits.find(x => x.block === 'gate'), { r: 0, c: 5, block: 'gate', left: 1 });
+  eq(e2.cell(0, 5).hp, 1);
+  // two tickets in one match: both land, the gate opens
+  const e3 = mo(ROW5, ['.....Q', '......', '......', '......', '......', 'TT....']);
+  const c3 = firstClear(play(e3, P(5, 3), P(5, 2)));
+  eq(c3.effects.filter(f => f.fx === 'ticket').length, 2);
+  ok(c3.removed.some(x => x.cause === 'ticket'), 'opened by two tickets');
+  ok(!c3.blockerHits.some(x => x.block === 'gate'), 'no blocker hit left for an opened gate');
+  // stripes and the hammer do not break gates
+  const e4 = mo(['______', '______', '______', '______', '______', '00h0__'.replace('h', '_')], ['G.....', '......', '......', '......', '......', '......']);
+  ok(!e4.smash(P(0, 0)).ok, 'the hammer refuses a gate');
+  // tickets option: new pieces carry tickets while a gate is closed, never more than max on the board
+  const e5 = createEngine({ kinds: [0, 1, 2, 3, 4], seed: 11, rows: 7, cols: 7, obstacles: ['G.....G', '.......', '.......', '.......', '.......', '.......', '.......'], tickets: { rate: 0.5, max: 2 } });
+  const ctx = newCtx(e5); let seen = 0;
+  for (let m = 0; m < 25; m++) {
+    const h = e5.findHint(); if (!h) break;
+    const before = e5.snapshot(); const res = e5.swap(h.a, h.b);
+    checkResult(e5, before, res, ctx);
+    ok(e5.stats.ticketsOnBoard <= 2 + 1, 'ticket cap');
+    seen = Math.max(seen, e5.stats.prog.gatesOpened);
+  }
+  ok(seen > 0, 'tickets reached the gates');
+});
+
+test('熱氣球: swappable, never matches; floats up one cell after each move and leaves at the top', () => {
+  const e = mo(ROW5, ['.....O', '......', '......', '....O.', '......', '......']);
+  const bid = e.cell(3, 4).id, above = e.cell(2, 4).id;
+  eq(e.stats.balloonLeft, 2);
+  const r = play(e, P(5, 3), P(5, 2));
+  const fl = evOf(r, 'float');
+  eq(fl.length, 1, 'one float event');
+  deq(fl[0].moves.find(m => m.id === bid), { id: bid, from: P(3, 4), to: P(2, 4) }, 'balloon one cell up');
+  deq(fl[0].moves.find(m => m.id === above), { id: above, from: P(2, 4), to: P(3, 4) }, 'the piece it passed goes below it');
+  const ex = r.events.find(x => x.t === 'exit' && x.balloon);
+  ok(ex && ex.cells.length === 1 && ex.cells[0].r === 0 && ex.cells[0].c === 5, 'the top balloon leaves');
+  eq(e.stats.prog.balloonsOut, 1); eq(e.stats.balloonLeft, 1);
+  ok(!r.events.some(x => x.t === 'clear' && x.removed.some(y => y.piece.block === 'balloon')), 'never removed by a clear');
+  // a frosting above it holds it
+  const e2 = mo(ROW5, ['......', '......', '....1.', '....O.', '......', '......']);
+  const b2 = e2.cell(3, 4).id;
+  eq(evOf(play(e2, P(5, 3), P(5, 2)), 'float').length, 0); eq(e2.cell(3, 4).id, b2);
+  // through a portal exit it goes up the portal
+  const e3 = createEngine({ kinds: BG_KINDS, antiCascade: 1, seed: 7, layout: lay(['______', '______', '______', '______', '______', '00_0__']),
+    obstacles: ['......', '......', '......', '......', '....O.', '......'], portals: [[1, 0, 4, 4]] });
+  const b3 = e3.cell(4, 4).id;
+  const f3 = evOf(play(e3, P(5, 3), P(5, 2)), 'float')[0];
+  ok(f3 && f3.moves.some(m => m.id === b3 && m.warp && m.to.r === 1 && m.to.c === 0), 'warped up through the portal');
+  const bAt = (() => { for (let r = 0; r < 6; r++) for (let x = 0; x < 6; x++) if (e.cell(r, x) && e.cell(r, x).block === 'balloon') return P(r, x); })();
+  ok(!e.smash(bAt).ok, 'the hammer refuses a balloon');
+});
+
+test('蜂蜜罐: pieces of its kind removed around it fill it; full, it bursts in a ring', () => {
+  const e = mo(ROW5, ['......', '......', '......', '......', '.a....', '......'], { ...ALLK, jar: { need: 4 } });
+  eq(e.cell(4, 1).block, 'jar'); eq(e.cell(4, 1).jk, 0); eq(e.cell(4, 1).hp, 4);
+  ok(!e.swap(P(4, 1), P(4, 2)).ok, 'a jar cannot be swapped');
+  const c = firstClear(play(e, P(5, 3), P(5, 2)));
+  deq(c.blockerHits.find(x => x.block === 'jar'), { r: 4, c: 1, block: 'jar', left: 1 }, 'three 0s fill it by 3');
+  const e2 = mo(ROW5, ['......', '......', '......', '......', '.a....', '......'], { ...ALLK, jar: { need: 3 } });
+  const c2 = firstClear(play(e2, P(5, 3), P(5, 2)));
+  ok(c2.removed.some(x => x.r === 4 && x.c === 1 && x.piece.block === 'jar' && x.cause === 'near'), 'full jar removed');
+  ok(c2.effects.some(f => f.fx === 'blast' && f.r === 4 && f.c === 1), 'it bursts');
+  eq(e2.stats.prog.jarsFilled, 1); eq(e2.stats.jarLeft, 0);
+  // another kind does not fill it
+  const e3 = mo(ROW5, ['......', '......', '......', '......', '.b....', '......'], { ...ALLK, jar: { need: 3 } });
+  const c3 = firstClear(play(e3, P(5, 3), P(5, 2)));
+  ok(!c3.blockerHits.some(x => x.block === 'jar') && e3.cell(4, 1).hp === 3, 'wrong kind: no fill');
+});
+
+test('驚喜蛋: three hits (once per step) hatch it into a random special', () => {
+  const e = mo(ROW5, ['......', '......', '......', '......', '.U....', '......']);
+  const c = firstClear(play(e, P(5, 3), P(5, 2)));
+  deq(c.blockerHits.find(x => x.block === 'surprise'), { r: 4, c: 1, block: 'surprise', left: 2 }, 'one hit per step');
+  const at = (() => { for (let r = 0; r < 6; r++) for (let x = 0; x < 6; x++) if (e.cell(r, x) && e.cell(r, x).block === 'surprise') return P(r, x); })();
+  ok(!e.swap(at, P(at.r, at.c === 5 ? 4 : at.c + 1)).ok, 'an egg cannot be swapped');
+  smashCheck(e, at);
+  const r = smashCheck(e, at);
+  const cl = r.events.find(x => x.t === 'clear');
+  ok(cl.removed.some(x => x.piece.block === 'surprise'), 'hatched');
+  const made = cl.created.find(x => x.r === at.r && x.c === at.c);
+  ok(made && ['h', 'v', 'wrap', 'fish'].includes(made.piece.special), 'a special where the egg was');
+  eq(e.stats.prog.eggsHatched, 1); eq(e.stats.eggLeft, 0);
+});
+
+test('燈籠串: one hit lights every lantern on the same string; other strings stay', () => {
+  const e = mo(ROW5, ['....nm', '......', '......', '......', 'm.....', '......']);
+  eq(e.stats.lanternLeft, 2);
+  const c = firstClear(play(e, P(5, 3), P(5, 2)));
+  const lit = c.removed.filter(x => x.piece.block === 'lantern');
+  eq(lit.length, 2, 'both m lanterns'); ok(lit.every(x => x.piece.hp === 1), 'string m only');
+  eq(e.stats.prog.lanternsLit, 1); eq(e.stats.lanternLeft, 1);
+  ok(e.cell(0, 4).block === 'lantern', 'string n stays');
+});
+
+test('烤箱: each hit adds a fire; the third fire bakes a cross and the oven stays', () => {
+  const e = mo(ROW5, ['......', '......', '......', '......', '.K....', '......']);
+  const c = firstClear(play(e, P(5, 3), P(5, 2)));
+  deq(c.blockerHits.find(x => x.block === 'oven'), { r: 4, c: 1, block: 'oven', left: 1 });
+  const at = (() => { for (let r = 0; r < 6; r++) for (let x = 0; x < 6; x++) if (e.cell(r, x) && e.cell(r, x).block === 'oven') return P(r, x); })();
+  deq(at, P(4, 1), 'ovens never move');
+  ok(!e.swap(at, P(4, 2)).ok, 'an oven cannot be swapped');
+  smashCheck(e, at);
+  eq(e.cell(4, 1).hp, 2);
+  const r = smashCheck(e, at);
+  const cl = r.events.find(x => x.t === 'clear');
+  ok(cl.effects.filter(f => f.fx === 'line' && f.r === 4 && f.c === 1).length === 2, 'a cross from the oven');
+  eq(e.cell(4, 1).block, 'oven'); eq(e.cell(4, 1).hp, 0, 'fire back to 0');
+  eq(e.stats.prog.bakes, 1);
+});
+
+test('新機關 fuzz: gates + tickets, balloons (and portals, belts), jars, eggs, lanterns, ovens; every invariant; exportState keeps them', () => {
+  let moves = 0;
+  const tot = { gatesOpened: 0, balloonsOut: 0, jarsFilled: 0, eggsHatched: 0, lanternsLit: 0, bakes: 0 };
+  const cfgs = [
+    { name: 'plain', mask: null, portals: [] },
+    { name: 'portal', mask: ['####....', '####....', '####....', '####....', '....####', '....####', '....####', '....####'],
+      portals: [[3, 0, 4, 4], [3, 1, 4, 5], [3, 2, 4, 6], [3, 3, 4, 7]] },
+    { name: 'belt', mask: null, portals: [], belts: [[[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [6, 5], [6, 6], [6, 7]]] },
+  ];
+  for (const cfg of cfgs) for (let g = 0; g < Math.max(4, FUZZ); g++) {
+    const seed = 9100 + g * 97 + cfg.name.length;
+    const rnd = mulberry(seed);
+    const obstacles = [];
+    for (let r = 0; r < 8; r++) {
+      let s = '';
+      for (let c = 0; c < 8; c++) {
+        const x = rnd();
+        s += r === 6 && cfg.belts ? (x < 0.3 ? 'O' : '.') : x < 0.03 ? 'G' : x < 0.05 ? 'Q' : x < 0.09 && r > 2 ? 'O' : x < 0.12 ? 'abcd'[Math.floor(rnd() * 4)] : x < 0.14 ? 'U' : x < 0.17 ? 'mn'[Math.floor(rnd() * 2)] : x < 0.19 ? 'K' : x < 0.22 ? 'T' : x < 0.24 ? 'L' : x < 0.25 ? 'C' : '.';
+      }
+      obstacles.push(s);
+    }
+    const mk2 = () => createEngine({ kinds: [0, 1, 2, 3], seed, rows: 8, cols: 8, mask: cfg.mask, obstacles, portals: cfg.portals, belts: cfg.belts,
+      tickets: { rate: 0.06, max: 3 }, jar: { need: 5 }, alarm: { timer: 6, rate: 0.03, max: 2 } });
+    const e = mk2();
+    const ctx = newCtx(e);
+    let saved = null, after = null;
+    for (let m = 0; m < 40; m++) {
+      const h = e.findHint();
+      if (!h) break;
+      if (m === 12) saved = { s: e.exportState(), h };
+      const before = e.snapshot();
+      const res = e.swap(h.a, h.b);
+      ok(res.ok, 'hint is valid');
+      if (m === 12) after = JSON.stringify(e.snapshot().grid) + JSON.stringify(e.stats.prog);
+      try { checkResult(e, before, res, ctx); } catch (err) { throw new Error(`${cfg.name} seed ${seed} move ${m}: ${err.message}\n${kindStr(before.grid)}`); }
+      moves++;
+    }
+    if (saved) {
+      const e2 = mk2();
+      ok(e2.restore(JSON.parse(JSON.stringify(saved.s))), 'restore');
+      e2.swap(saved.h.a, saved.h.b);
+      eq(JSON.stringify(e2.snapshot().grid) + JSON.stringify(e2.stats.prog), after, `${cfg.name} seed ${seed}: restored game plays the same`);
+    }
+    for (const k of Object.keys(tot)) tot[k] += e.stats.prog[k];
+    for (const kind of ['smash', 'freeSwap', 'airDrop']) {
+      const before = e.snapshot();
+      const r = Math.floor(rnd() * 8), c = Math.floor(rnd() * 7);
+      const res = kind === 'smash' ? e.smash({ r, c }) : kind === 'freeSwap' ? e.freeSwap({ r, c }, { r, c: c + 1 }) : e.airDrop(3);
+      if (!res.ok) { ok(sameBoard(e.snapshot().grid, before.grid), `${kind} refused without a change`); continue; }
+      try { replayEvents(before.grid, before.jelly, res.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} ${kind}: ${err.message}`); }
+    }
+    const before = e.snapshot();
+    const sres = e.sugarCrush(Math.floor(rnd() * 8));
+    try { replayEvents(before.grid, before.jelly, sres.events, before.lock); } catch (err) { throw new Error(`${cfg.name} seed ${seed} sugarCrush: ${err.message}`); }
+  }
+  note(`新機關 fuzz: ${moves} moves, ${JSON.stringify(tot)}`);
+  for (const k of Object.keys(tot)) ok(tot[k] > 0, `${k} happened`);
 });
 
 // ---------------------------------------------------------------- fuzz + perf

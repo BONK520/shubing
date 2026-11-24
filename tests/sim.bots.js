@@ -143,6 +143,10 @@ function bestMove(s, moves, level, e, W, rnd) {
     cage: leftOf('cage') > 0 ? W.block * urg('cage') : 0.4,
     shell: leftOf('shell') > 0 ? W.block * urg('shell') : 0.3,
     licorice: 0.4,
+    // 第131關起：驚喜蛋 / 燈籠 / 烤箱被旁邊的配對打到；票閘、熱氣球、蜂蜜罐不吃一般打擊（看 cellVal）
+    surprise: leftOf('egg') > 0 ? W.block * urg('egg') : 0.5,
+    lantern: leftOf('lantern') > 0 ? W.block * urg('lantern') : 0.3,
+    oven: leftOf('bake') > 0 ? W.block * urg('bake') : 0.3,
   };
   const blkV = q => (q.block === 'alarm' ? W.alarm * (q.hp <= 2 ? 3 : q.hp <= 4 ? 1.5 : 0.6) : BLK[q.block]);
   // 訂單：還要做的特殊方塊 / 組合（做出來加分；組合訂單也會想先做出那兩種特殊方塊）
@@ -193,11 +197,20 @@ function bestMove(s, moves, level, e, W, rnd) {
   };
   // the fewer jelly layers are left, the more a player focuses on them (the last few are the hard part)
   const jellyW = jellyGoal ? W.jelly * (1 + W.urgency / Math.max(1, e.stats.jellyLeft)) : 0;
+  const ticketW = leftOf('gate') > 0 ? W.block * urg('gate') : 0;
+  const jarW = leftOf('jar') > 0 ? W.block * urg('jar') : 0.3;
   const cellVal = key => {
     const y = (key / C) | 0, x = key % C, p = g[y][x];
     let v = 1;
     if (jellyGoal && J[y][x] > 0) v += jellyW;
     if (p && want.has(p.kind)) v += W.want;
+    if (p && p.tk && ticketW) v += ticketW;                       // 帶車票的玩偶：消掉就有一張車票飛去票閘
+    if (p && jarW && p.kind >= 0) {                               // 蜂蜜罐旁邊八格、罐子畫的那種玩偶
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const q = (dy || dx) && isCell(y + dy, x + dx) ? g[y + dy][x + dx] : null;
+        if (q && q.block === 'jar' && q.hp > 0 && q.jk === p.kind) v += jarW;
+      }
+    }
     return v;
   };
   // a fish hits one cell, and it picks a useful one (jelly / a piece the goal still needs) when there is one

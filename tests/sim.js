@@ -26,7 +26,7 @@ const pct = x => `${Math.round(100 * x)}%`;
 // 難度 t：第 1–15 關從 0 慢慢到 0.85；第 16 關起每五關一章，章頭 0.55 / 0.60 / 0.65 / 0.70 / 0.75（之後都 0.75）、
 //   每關 +0.07（章末最多約 1.03），章末最難、下一章開頭先放鬆。
 // 2026-11-23 輕鬆玩：第 41–100 關章頭 0.70、每關 +0.05、章末 0.90（只加步數、只降星星門檻，見 新增30關企劃 §6）；
-//   第 101–130 關照企劃表的難度（0.50–0.90，王關 0.80–0.86，最後一關 0.90）。
+//   第 101–130 關照企劃表的難度（0.50–0.90，王關 0.80–0.86，第 130 關 0.90）；第 131–230 關見下面 newT。
 const NEW_T = {
   101: 0.50, 102: 0.55, 103: 0.60, 104: 0.65, 105: 0.80,
   106: 0.52, 107: 0.57, 108: 0.62, 109: 0.67, 110: 0.82,
@@ -35,9 +35,17 @@ const NEW_T = {
   121: 0.50, 122: 0.55, 123: 0.60, 124: 0.65, 125: 0.80,
   126: 0.58, 127: 0.63, 128: 0.68, 129: 0.73, 130: 0.90,
 };
+// 第131關起（工作單9）：每五關一章，章頭 0.50 / 0.52 / 0.54 / 0.56 / 0.58 輪流、每關 +0.05，
+//   王關 0.80 / 0.82 / 0.84 / 0.86 輪流，最後一關（目前第230關）0.90。
+export function newT(id) {
+  if (id === 230) return 0.90;
+  const ch = Math.floor((id - 131) / 5), pos = (id - 131) % 5;
+  return pos === 4 ? 0.80 + 0.02 * (ch % 4) : 0.50 + 0.02 * (ch % 5) + 0.05 * pos;
+}
 export function difficulty(id) {
   if (id <= 15) return 0.85 * Math.max(0, (id - 1) / 14);
   if (NEW_T[id] != null) return NEW_T[id];
+  if (id >= 131) return Math.round(newT(id) * 100) / 100;
   const k = Math.floor((id - 16) / 5), pos = (id - 16) % 5;
   if (id >= 41) return 0.70 + 0.05 * pos;
   return 0.55 + 0.05 * Math.min(k, 4) + 0.07 * pos;
@@ -123,9 +131,10 @@ function goalStr(L) {
   if (g.type === 'score') return `分數 ${g.target}`;
   if (g.type === 'collect') return '收集 ' + Object.entries(g.items).map(([k, v]) => `${PIECES[PIECES.findIndex(p => p.id === k)].name}${v}`).join(' ');
   if (g.type === 'jelly') return '果凍';
-  const NAME = { jelly: '果凍', dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '籠子', shell: '硬殼' };
+  const NAME = { jelly: '果凍', dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '籠子', shell: '硬殼',
+    gate: '票閘', balloon: '熱氣球', jar: '蜂蜜罐', egg: '驚喜蛋', lantern: '燈籠' };
   return goalParts(L).map(q => q.kind === 'collect' ? `${PIECES[PIECES.findIndex(p => p.id === q.id)].name}${q.need}`
-    : q.kind === 'dino' ? `龍龍${q.need}` : q.kind === 'order' ? `訂單${q.what}${q.need}` : q.kind === 'chocoGot' ? `收巧克力${q.need}`
+    : q.kind === 'dino' ? `龍龍${q.need}` : q.kind === 'order' ? `訂單${q.what}${q.need}` : q.kind === 'chocoGot' ? `收巧克力${q.need}` : q.kind === 'bake' ? `烤${q.need}盤`
     : NAME[q.kind] || q.kind).join('+');
 }
 

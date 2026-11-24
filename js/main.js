@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124a';
-import { SLOGANS } from './slogans.js?v=20261124a';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124a';
-import { blockerCanvas } from './blockers.js?v=20261124a';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124a';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124a';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124a';
-import { STORY } from './story.js?v=20261124a';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124b';
+import { SLOGANS } from './slogans.js?v=20261124b';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124b';
+import { blockerCanvas } from './blockers.js?v=20261124b';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124b';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124b';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124b';
+import { STORY } from './story.js?v=20261124b';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124a';
+const MOD_V = '?v=20261124b';
 
 window.__plushBooted = true;
 
@@ -63,7 +63,7 @@ function normSave(s) {
     music: s.music !== false,
     boosters: Object.fromEntries(Object.keys(BST0).map(k => [k, Number.isFinite(obj(s.boosters)[k]) ? Math.max(0, Math.floor(s.boosters[k])) : BST0[k]])),
     t: Number.isFinite(s.t) ? s.t : 0,
-    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 40) : [],   // 看過教學小卡的機關（這台裝置）。小卡有15種，留空間給之後新增的
+    seen: Array.isArray(s.seen) ? s.seen.filter(x => typeof x === 'string').slice(0, 120) : [],   // 看過教學小卡的機關（這台裝置）。小卡有21種，留空間給之後新增的
   };
 }
 function loadSave(key) {
@@ -525,10 +525,12 @@ function dinoImg() {
   return img;
 }
 // 目標的一個部分（levels.js goalParts）→ 圖示
-const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage'), shell: () => blockerImg('shell2') };
-const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子', shell: '硬殼' };
+const PART_ICON = { dino: () => dinoImg(), frost: () => blockerImg('frost2'), choco: () => blockerImg('choco'), cage: () => blockerImg('cage'), shell: () => blockerImg('shell2'),
+  gate: () => blockerImg('gate'), balloon: () => blockerImg('balloon'), jar: () => blockerImg('jar'), egg: () => blockerImg('surprise'), lantern: () => blockerImg('lantern'), bake: () => blockerImg('oven') };
+const PART_NAME = { dino: '龍龍', frost: '糖霜', choco: '巧克力', cage: '鐵籠子', shell: '硬殼',
+  gate: '票閘', balloon: '熱氣球', jar: '蜂蜜罐', egg: '驚喜蛋', lantern: '燈籠', bake: '烤點心' };
 // 用好幾個「部分」來顯示的目標類型（goalParts）
-const PART_GOALS = ['dino', 'clear', 'order', 'chocoGot', 'mix'];
+const PART_GOALS = ['dino', 'clear', 'order', 'chocoGot', 'bake', 'mix'];
 // 訂單：做出哪一種特殊方塊 / 打出哪一種組合
 const ORDER_NAME = { stripe: '條紋方塊', wrap: '包裝糖', bomb: '彩色炸彈', fish: '飛天玩偶', combo: '特殊組合' };
 const SHORT_NAME = { stripe: '條紋', wrap: '包裝糖', bomb: '彩色炸彈', fish: '飛天玩偶' };
@@ -562,6 +564,13 @@ const INTRO = {
   // 玩到一半點目標列的圖示（有小卡的目標）、或暫停選單的「這關的機關」也能再看一次
   combo: { name: '特殊組合', text: '把兩個特殊方塊換在一起，就會一起爆開！條紋、包裝糖、彩色炸彈、飛天玩偶都可以。', icon: () => blockerImg('o-combo'), ribbon: '新目標！', demo: 'combo' },
   bomb: { name: '彩色炸彈', text: '五個一樣的連成一直線，就會變成彩色炸彈！L形、T形不算喔。', icon: () => blockerImg('o-bomb'), ribbon: '新目標！', demo: 'bomb' },
+  // 工作單9 新機關（第131關起）
+  gate: { name: '票閘', text: '消掉帶車票的玩偶，車票會飛到最近的票閘；票閘打開時會留下一個條紋方塊！', icon: () => blockerImg('gate'), demo: 'gate' },
+  balloon: { name: '熱氣球', text: '每走一步，熱氣球就往上飄一格；飄出最上面就算收集到！', icon: () => blockerImg('balloon'), demo: 'balloon' },
+  jar: { name: '蜂蜜罐', text: '在罐子旁邊消掉罐子上畫的那種玩偶，就會裝進去；裝滿會爆開一圈！', icon: () => blockerImg('jar'), demo: 'jar' },
+  egg: { name: '驚喜蛋', text: '在蛋旁邊配對三次，蛋就會孵出一個特殊方塊！', icon: () => blockerImg('surprise'), demo: 'egg' },
+  lantern: { name: '燈籠串', text: '同一條線上的燈籠是一串，在其中一顆旁邊配對，整串一起點亮！', icon: () => blockerImg('lantern'), demo: 'lantern' },
+  oven: { name: '烤箱', text: '在烤箱旁邊配對會加一把火，三把火就烤好一盤，還會往十字方向打出去！', icon: () => blockerImg('oven'), ribbon: '新目標！', demo: 'oven' },
 };
 // 訂單目標對到哪張小卡：組合（combo、'a+b'）→ combo，彩色炸彈 → bomb，條紋、包裝糖、飛天玩偶 → order
 const introOfOrder = what => (what === 'combo' || String(what).includes('+') ? 'combo' : what === 'bomb' ? 'bomb' : 'order');
@@ -580,6 +589,12 @@ function levelMechs(lvl) {
   if (/[-|WB]/.test(obs)) out.add('gift');
   if (lvl.portals && lvl.portals.length) out.add('portal');
   if (lvl.belts && lvl.belts.length) out.add('belt');
+  if (/[GQT]/.test(obs) || lvl.tickets) out.add('gate');
+  if (obs.includes('O')) out.add('balloon');
+  if (/[a-d]/.test(obs)) out.add('jar');
+  if (obs.includes('U')) out.add('egg');
+  if (/[m-p]/.test(obs)) out.add('lantern');
+  if (obs.includes('K') || goalPartsOf(lvl).some(p => p.kind === 'bake')) out.add('oven');
   for (const p of goalPartsOf(lvl)) if (p.kind === 'order') out.add(introOfOrder(p.what));
   return Object.keys(INTRO).filter(k => out.has(k));
 }
@@ -1262,7 +1277,7 @@ function buildCover() {
   const act = start && [start.left - lw - 4, start.top - 4, start.right + lw + 4, start.bottom + 4];
   const avoid = [pad(head, 6), pad(gear, 4), act, pad(ar, 4), pad(toys, 0, .12)]
     .concat(clouds.map(([x, y]) => [x, y, x + cw, y + chh])).filter(Boolean);
-  bg.innerHTML = (COVER_B ? islandMiniHTML(W, H, 'cb-') : coverArtHTML(W, H, { sandY, seaY, avoid }, 'cv-'))
+  bg.innerHTML = (COVER_B ? islandMiniHTML(W, H, 'cb-', LEVELS ? LEVELS.length : 0) : coverArtHTML(W, H, { sandY, seaY, avoid }, 'cv-'))
     + clouds.map(([x, y], j) => `<i class="cv-cloud" style="left:${Math.round(x)}px;top:${Math.round(y)}px;width:${cw}px;height:${chh}px;animation-delay:${-j * 9}s"></i>`).join('');
 }
 
@@ -1367,7 +1382,7 @@ function buildMap(popIndex = -1) {
   const pts = LEVELS.map((_, i) => nodePos(i, n, H));
   const cur = currentIndex();
 
-  // 24 站的風景墊在最底下（寬度一樣就用上次畫好的）
+  // 每一站的風景墊在最底下（寬度一樣就用上次畫好的）
   const art = el('div', 'map-art');
   art.innerHTML = mapArt(inner, n, H);
   inner.appendChild(art);
@@ -1436,7 +1451,9 @@ function buildMap(popIndex = -1) {
   const ava = $('#dk-ava');
   if (ava) ava.replaceChildren(toyEl(TITLE_TOYS[1] || TITLE_TOYS[0], 22));   // 中間那隻（薯餅）當頭像
 
-  const end = el('span', 'map-end', '更多關卡製作中…');
+  // 最後一站後面的「待續」路牌：跟著目前最後一關走，之後加站不用改這裡
+  const end = el('span', 'map-end');
+  end.append(el('b', '', '待續'), el('small', '', '新關卡製作中…'));
   end.style.top = (top - MAP_TOP * 0.58) + 'px';   // 按鈕列下面一點（和最後一關的距離跟以前一樣）
   inner.appendChild(end);
 
@@ -1677,6 +1694,12 @@ function goalText(lvl) {
       else if (part.kind === 'choco') out.push('清光巧克力');
       else if (part.kind === 'cage') out.push('打開全部鐵籠子');
       else if (part.kind === 'shell') out.push('打破全部硬殼');
+      else if (part.kind === 'gate') out.push('打開全部票閘');
+      else if (part.kind === 'balloon') out.push('放走全部熱氣球');
+      else if (part.kind === 'jar') out.push('裝滿全部蜂蜜罐');
+      else if (part.kind === 'egg') out.push('孵出全部驚喜蛋');
+      else if (part.kind === 'lantern') out.push('點亮全部燈籠');
+      else if (part.kind === 'bake') out.push(`烤 ${part.need} 次點心`);
       else if (part.kind === 'order') {
         const sp = ['stripe', 'wrap', 'bomb', 'fish'].includes(part.what);
         out.push(sp ? `做出 ${part.need} 個${orderName(part.what)}` : `打出 ${part.need} 次${orderName(part.what)}`);
@@ -1833,16 +1856,25 @@ let dispScore = 0, shownScore = 0;
 let liveCleared = {};
 let jellyLive = 0, jellyCountsLayers = true;
 // 機關目標的即時數字：救出的龍龍、還剩的糖霜層數 / 巧克力 / 鐵籠子（跟著每一步的事件更新）
-let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0, shell: 0 };
+let mechLive = { dino: 0, frost: 0, choco: 0, cage: 0, shell: 0, gate: 0, balloon: 0, jar: 0, egg: 0, lantern: 0 };
+// 第 131 關起的機關（票閘、熱氣球、蜂蜜罐、驚喜蛋、燈籠串）也算「還剩幾個」
+const mechOf = st => ({ dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0, shell: st.shellLeft | 0,
+  gate: st.gateLeft | 0, balloon: st.balloonLeft | 0, jar: st.jarLeft | 0, egg: st.eggLeft | 0, lantern: st.lanternLeft | 0 });
+const MECH_KINDS = ['frost', 'choco', 'cage', 'shell', 'gate', 'balloon', 'jar', 'egg', 'lantern'];
 // 訂單 / 收集巧克力的即時數字（engine 每個事件帶的 ev.cnt）
-let liveCnt = { made: {}, combos: {}, comboCount: 0, chocoGot: 0 };
-const cntOf = st => ({ made: { ...(st.made || {}) }, combos: { ...(st.combos || {}) }, comboCount: st.comboCount | 0, chocoGot: st.chocoGot | 0 });
+let liveCnt = { made: {}, combos: {}, comboCount: 0, chocoGot: 0, prog: {} };
+const cntOf = st => ({ made: { ...(st.made || {}) }, combos: { ...(st.combos || {}) }, comboCount: st.comboCount | 0, chocoGot: st.chocoGot | 0, prog: { ...(st.prog || {}) } });
 function countBlocks(board, lock) {
-  const o = { frost: 0, choco: 0, shell: 0 };
+  const o = { frost: 0, choco: 0, shell: 0, gate: 0, balloon: 0, jar: 0, egg: 0 };
+  const strings = new Set();
   let cage = 0;
-  for (const row of board || []) for (const p of row || []) if (p && p.block) { if (p.block === 'frost') o.frost += p.hp | 0; else if (p.block === 'shell') o.shell += p.hp | 0; else if (p.block === 'choco') o.choco++; }
+  for (const row of board || []) for (const p of row || []) if (p && p.block) {
+    if (p.block === 'frost') o.frost += p.hp | 0; else if (p.block === 'shell') o.shell += p.hp | 0; else if (p.block === 'choco') o.choco++;
+    else if (p.block === 'gate') o.gate++; else if (p.block === 'balloon') o.balloon++; else if (p.block === 'jar') o.jar++;
+    else if (p.block === 'surprise') o.egg++; else if (p.block === 'lantern') strings.add(p.hp);
+  }
   for (const row of lock || []) for (const v of row || []) if (v) cage++;
-  return { ...o, cage };
+  return { ...o, cage, lantern: strings.size };
 }
 let selected = null;
 let moving = false;
@@ -2012,7 +2044,7 @@ async function startLevel(idx, resume = null) {
   jellyCountsLayers = statJ === layers || layers === cells;
   jellyLive = statJ;
   const st0 = engine.stats || {};
-  mechLive = { dino: st0.dinosOut | 0, frost: st0.frostLeft | 0, choco: st0.chocoLeft | 0, cage: st0.locksLeft | 0, shell: st0.shellLeft | 0 };
+  mechLive = mechOf(st0);
   liveCnt = cntOf(st0);
   // 接著玩：盤面、分數、目標進度、機關、亂數都放回剛剛那一步
   let resumed = false;
@@ -2022,7 +2054,7 @@ async function startLevel(idx, resume = null) {
       const st = engine.stats || {};
       liveCleared = { ...(st.cleared || {}) };
       if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
-      mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0, shell: st.shellLeft | 0 };
+      mechLive = mechOf(st);
       liveCnt = cntOf(st);
       dispScore = shownScore = engine.score;
       movesLeft = dispMoves = resume.movesLeft;
@@ -2143,6 +2175,7 @@ function computeCenters() {
 function introOfPart(part) {
   if (part.kind === 'order') return introOfOrder(part.what);
   if (part.kind === 'chocoGot') return (level && (level.obstacles || []).join('').includes('P')) ? 'pot' : 'choco';
+  if (part.kind === 'bake') return 'oven';
   return INTRO[part.kind] ? part.kind : '';
 }
 // 目標列的圖示：有示意動畫小卡的，點一下再看一次（工作單4、工作單11；不動盤面、步數、分數，也不再記一次看過）
@@ -2233,10 +2266,10 @@ function renderGoal(init = false) {
     } else if (r.kind === 'dino') {
       const left = Math.max(0, r.need - mechLive.dino + flyDino);      // 飛到圖示了才扣
       txt = String(left); done = left <= 0;
-    } else if (r.kind === 'frost' || r.kind === 'choco' || r.kind === 'cage' || r.kind === 'shell') {
+    } else if (MECH_KINDS.includes(r.kind)) {
       const left = Math.max(0, mechLive[r.kind]);
       txt = String(left); done = left <= 0;
-    } else if ((r.kind === 'order' || r.kind === 'chocoGot') && levMod.partLeft) {
+    } else if ((r.kind === 'order' || r.kind === 'chocoGot' || r.kind === 'bake') && levMod.partLeft) {
       const left = levMod.partLeft(r.part, liveCnt, kindOf);
       txt = String(left); done = left <= 0;
     } else {
@@ -2367,7 +2400,10 @@ const buzzLater = (delay, pattern, minGap) => { if (delay > 8) setTimeout(() => 
 const CUE_SOUND = { voice: 'voice', swap: 'swap', invalid: 'invalid', pop: 'pop', stripe: 'stripe', wrap: 'wrap', bomb: 'bomb', board: 'board',
   combo: 'combo', special: 'special', land: 'land', chime: 'chime', shuffle: 'shuffle', fish: 'fish',
   cage: 'cage', frost: 'frost', choco: 'choco', swirl: 'swirl', spread: 'spread', dino: 'dino', hatch: 'hatch',
-  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift', belt: 'belt' };
+  tick: 'tick', tickhot: 'tickhot', alarm: 'alarm', alarmoff: 'alarmoff', shell: 'shell', gift: 'gift', belt: 'belt',
+  // 工作單9 新機關：先借用現有的音效
+  gate: 'cage', ticket: 'chime', jar: 'wrap', jarfill: 'pop', egg: 'hatch', eggcrack: 'shell', lantern: 'chime',
+  oven: 'stripe', ovenfire: 'tick', balloon: 'special' };
 function onCue(name, data, token) {
   if (token !== session) return;
   const snd = CUE_SOUND[name];
@@ -2378,6 +2414,7 @@ function onCue(name, data, token) {
     case 'pop': buzzLater(d, 10, 80); break;
     case 'special': buzzLater(d, 12, 60); break;
     case 'stripe': case 'wrap': case 'fish': buzzLater(d, 16, 60); break;
+    case 'gate': case 'jar': case 'egg': case 'lantern': case 'oven': case 'balloon': buzzLater(d, 14, 60); break;
     case 'bomb': case 'board': case 'combo': buzzLater(d, [18, 40, 18], 60); break;
     case 'cage': case 'frost': case 'choco': case 'gift': buzzLater(d, 12, 60); break;
     case 'shell': buzzLater(d, 16, 60); break;
@@ -2526,6 +2563,13 @@ function onEvent(ev, token) {
       break;
     }
     case 'exit': {
+      if (ev.balloon) {     // 熱氣球飄出最上面：直接扣
+        if (ev.board) Object.assign(mechLive, countBlocks(ev.board, ev.lock));
+        else mechLive.balloon = Math.max(0, mechLive.balloon - (ev.cells || []).length);
+        if (ev.cnt) liveCnt = cntOf(ev.cnt);
+        renderGoal();
+        break;
+      }
       // 龍龍走到出口：飛到上面的目標圖示才扣數字
       const dinoBefore = mechLive.dino;
       mechLive.dino += (ev.cells || []).length;
@@ -2547,7 +2591,7 @@ function syncFromEngine() {
     for (const k in st.cleared) liveCleared[k] = st.cleared[k];
   }
   if (typeof st.jellyLeft === 'number') jellyLive = st.jellyLeft;
-  mechLive = { dino: st.dinosOut | 0, frost: st.frostLeft | 0, choco: st.chocoLeft | 0, cage: st.locksLeft | 0, shell: st.shellLeft | 0 };
+  mechLive = mechOf(st);
   liveCnt = cntOf(st);
   dispScore = engine.score;
   renderScore();
@@ -2945,7 +2989,12 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
   toys.hidden = !!coinChip;
   $('#mw-body').classList.toggle('no-toys', !!coinChip);
   $('#mw-body').scrollTop = 0;
-  if (last) $('#mw-title').textContent = '全部過關！';
+  // 最後一關（看 LEVELS.length，不寫死關數）：不說「結局」，只說目前的關卡過完了、新關卡還在做（工作單9）
+  if (last) {
+    $('#mw-title').textContent = '目前的關卡都過完了';
+    const bl = $('#mw-best-line');
+    bl.textContent = [bl.textContent, '新關卡製作中'].filter(Boolean).join('　');
+  }
   openModal('m-win');
   confetti();
   for (let k = 0; k < stars; k++) {
@@ -3471,6 +3520,7 @@ function installDebug() {
     offerResume,
     ipKey: () => ipKey(),
     resetResumeOffer() { resumeOffered = ''; },
+    reopenIntro,   // 教學小卡（截圖用）
   };
 }
 

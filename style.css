@@ -1,6 +1,6 @@
 /* 源泉圓體（SIL OFL 1.1，只留遊戲用到的字；tools/font_subset.py 產生） */
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124a") format("woff2"); font-weight: 400 800; font-display: swap; }
-@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124a") format("woff2"); font-weight: 801 1000; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-bold.woff2?v=20261124b") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "GenSenRounded"; src: url("assets/fonts/gensen-rounded-heavy.woff2?v=20261124b") format("woff2"); font-weight: 801 1000; font-display: swap; }
 /* 胖數字：源泉圓體 Heavy 的數字再膨脹一圈（筆畫約粗 22%、轉角更圓，tools/fat_digits.py 產生），只有數字和符號；中文字照用源泉圓體 */
 @font-face { font-family: "PlushNum"; src: url("assets/fonts/plush-num.woff2") format("woff2"); font-weight: 400 1000; font-display: swap; unicode-range: U+0025, U+002B-002F, U+0030-0039, U+00D7; }
 /* 毛絨消消樂 — 介面樣式（糖果風、手機直式優先） */
@@ -669,7 +669,7 @@ svg.on .hi { opacity: .9; }
   50% { box-shadow: var(--nshadow), var(--nglow), 0 0 0 24px rgba(255, 255, 255, 0); }
 }
 @keyframes unlockPop { 0% { transform: translate(-50%, -50%) scale(.3); } 100% { transform: translate(-50%, -50%) scale(1); } }
-.map-end { /* 「更多關卡製作中」的立牌：實體的糖果板 + 白字深玫瑰粗描邊 */
+.map-end { /* 最後一站後面的「待續」路牌：實體的糖果板 + 白字深玫瑰粗描邊，下面一根木柱 */
   --o: #b8325f; --w: 1.4px;
   position: absolute; left: 50%; transform: translate(-50%, -50%);
   padding: 9px 20px 10px; border-radius: 18px; border: 3px solid #fff;
@@ -679,6 +679,9 @@ svg.on .hi { opacity: .9; }
   box-shadow: inset 0 3px 0 rgba(255, 255, 255, .7), inset 0 -5px 0 rgba(150, 20, 70, .22),
     0 0 0 2px #e35583, 0 6px 0 2px #b8325f, 0 13px 14px 2px rgba(120, 30, 60, .3);
 }
+.map-end b { display: block; font-size: 20px; text-align: center; letter-spacing: .2em; padding-left: .2em; }
+.map-end small { display: block; font-size: 12px; text-align: center; opacity: .95; }
+.map-end::after { content: ''; position: absolute; left: 50%; top: 100%; width: 8px; height: 30px; margin: 9px 0 0 -4px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, #d39a6a, #b07a55); z-index: -1; }
 
 /* ---------- 遊戲畫面 ---------- */
 #scr-game { gap: 8px; padding-bottom: calc(6px + var(--safe-b)); padding-left: calc(8px + var(--safe-l)); padding-right: calc(8px + var(--safe-r)); }

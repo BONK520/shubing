@@ -61,13 +61,15 @@ export function squaresIn(board) {
 // everything that would clear: runs of 3+ and 2×2 squares
 export const matchesIn = board => [...runsIn(board), ...squaresIn(board)];
 
-export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}${p.block ? ':' + p.block + p.hp : ''}` : '-');
+export const pieceStr = p => (p ? `${p.id}:${p.kind}:${p.special}${p.block ? ':' + p.block + p.hp : ''}${p.tk ? ':t' : ''}${p.jk !== undefined ? ':j' + p.jk : ''}` : '-');
 export const boardStr = b => b.map(row => row.map(pieceStr).join(' ')).join('\n');
 export const sameBoard = (a, b) => boardStr(a) === boardStr(b);
-const BLOCK_CH = { dino: 'D', frost: 'F', choco: 'C', licorice: 'S', alarm: 'A', shell: 'X' };
+const BLOCK_CH = { dino: 'D', frost: 'F', choco: 'C', licorice: 'S', alarm: 'A', shell: 'X', pot: 'P',
+  gate: 'G', balloon: 'O', jar: 'J', surprise: 'U', lantern: 'L', oven: 'K' };
 export const kindStr = b => b.map(row => row.map(p => (!p ? '.' : p.block ? BLOCK_CH[p.block] + (p.block === 'frost' || p.block === 'shell' ? p.hp : ' ') : p.special === 'bomb' ? 'B' : p.kind + (p.special === 'none' ? ' ' : p.special[0]))).join('')).join('\n');
 // pieces that never move: frosting, chocolate, shells, anything in a cage
-export const isFixed = (p, locked) => !!locked || (!!p && (p.block === 'frost' || p.block === 'choco' || p.block === 'shell'));
+const FIXED = new Set(['frost', 'choco', 'shell', 'gate', 'jar', 'surprise', 'lantern', 'oven']);
+export const isFixed = (p, locked) => !!locked || (!!p && FIXED.has(p.block));
 
 const fail = msg => { throw new Error(msg); };
 const copyBoard = b => b.map(row => row.map(p => (p ? { ...p } : null)));
@@ -106,7 +108,10 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
       for (const x of e.blockerHits || []) {
         at(x, where);
         const cur = g[x.r][x.c];
-        if (!cur || cur.block !== x.block || x.left !== cur.hp - 1 || x.left < 1) fail(`${where}: blocker hit ${JSON.stringify(x)} on ${pieceStr(cur)}`);
+        // an oven gains a fire (back to 0 when it bakes); gates and honey jars can take several in one step
+        const okLeft = !cur ? false : x.block === 'oven' ? x.left === (cur.hp + 1) % 3
+          : x.block === 'gate' || x.block === 'jar' ? x.left < cur.hp && x.left >= 1 : x.left === cur.hp - 1 && x.left >= 1;
+        if (!cur || cur.block !== x.block || !okLeft) fail(`${where}: blocker hit ${JSON.stringify(x)} on ${pieceStr(cur)}`);
         g[x.r][x.c] = { ...cur, hp: x.left };
       }
       for (const x of e.removed) {
@@ -168,12 +173,32 @@ export function replayEvents(board0, jelly0, events, lock0 = null) {
         if (g[m.to.r][m.to.c]) fail(`${where}: belt move of id ${m.id} lands on occupied ${m.to.r},${m.to.c}`);
         g[m.to.r][m.to.c] = p;
       }
+    } else if (e.t === 'float') {
+      // hot-air balloons: each balloon trades places with the piece above it (lift all, then drop)
+      if (!e.moves.length || e.moves.length % 2) fail(`${where}: bad float`);
+      const lifted = [];
+      for (const m of e.moves) {
+        at(m.from, where); at(m.to, where);
+        const cur = g[m.from.r][m.from.c];
+        if (!cur || cur.id !== m.id) fail(`${where}: float move of id ${m.id} from ${m.from.r},${m.from.c} but board has ${pieceStr(cur)}`);
+        if (isFixed(cur, L[m.from.r][m.from.c]) || cur.block === 'pot' || L[m.to.r][m.to.c]) fail(`${where}: float moves a fixed piece / into a cage ${JSON.stringify(m)}`);
+        const adj = Math.abs(m.from.r - m.to.r) + Math.abs(m.from.c - m.to.c) === 1;
+        if (adj === !!m.warp) fail(`${where}: float warp flag wrong ${JSON.stringify(m)}`);
+        if (cur.block === 'balloon' && !m.warp && m.to.r !== m.from.r - 1) fail(`${where}: balloon not floating up ${JSON.stringify(m)}`);
+        lifted.push([m, cur]);
+        g[m.from.r][m.from.c] = null;
+      }
+      if (lifted.filter(([, p]) => p.block === 'balloon').length * 2 !== lifted.length) fail(`${where}: float without one balloon per pair`);
+      for (const [m, p] of lifted) {
+        if (g[m.to.r][m.to.c]) fail(`${where}: float move of id ${m.id} lands on occupied ${m.to.r},${m.to.c}`);
+        g[m.to.r][m.to.c] = p;
+      }
     } else if (e.t === 'exit') {
       if (!e.cells.length) fail(`${where}: empty exit`);
       for (const x of e.cells) {
         at(x, where);
         const cur = g[x.r][x.c];
-        if (!cur || cur.block !== 'dino' || cur.id !== x.piece.id) fail(`${where}: exit of ${pieceStr(x.piece)} but board has ${pieceStr(cur)}`);
+        if (!cur || cur.block !== (e.balloon ? 'balloon' : 'dino') || cur.id !== x.piece.id) fail(`${where}: exit of ${pieceStr(x.piece)} but board has ${pieceStr(cur)}`);
         g[x.r][x.c] = null;
       }
     } else if (e.t === 'tick') {
@@ -221,7 +246,7 @@ function checkPath(pts, from, to, where, m) {
     if (!ok) fail(`${where}: bad path step ${JSON.stringify(a)} -> ${JSON.stringify(b)} in ${JSON.stringify(m)}`);
   }
 }
-const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish', 'near']);
+const CAUSES = new Set(['match', 'h', 'v', 'wrap', 'bomb', 'combo', 'fish', 'near', 'ticket']);
 const SHAPES = new Set(['3', '4', '5', 'L', 'T', 'square']);
 const SPECIALS = new Set(['none', 'h', 'v', 'wrap', 'bomb', 'fish']);
 
@@ -270,12 +295,17 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     } else if (e.t === 'tick') {
       // alarms count down once, after the move has settled (then maybe burst, fall and cascade)
       if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'tick')) fail('tick must come once, after the move');
-      if (evs[i - 1] && evs[i - 1].t !== 'fall' && evs[i - 1].t !== 'belt') fail(`tick after ${evs[i - 1].t}`);
+      if (evs[i - 1] && evs[i - 1].t !== 'fall' && evs[i - 1].t !== 'belt' && evs[i - 1].t !== 'float') fail(`tick after ${evs[i - 1].t}`);
     } else if (e.t === 'belt') {
       // belts run once, after the move has settled and before the alarms tick
       if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'belt' || x.t === 'tick')) fail('belt must come once, after the move');
       if (!evs[i - 1] || evs[i - 1].t !== 'fall') fail(`belt after ${evs[i - 1] && evs[i - 1].t}`);
       ctx.belts = (ctx.belts || 0) + 1;
+    } else if (e.t === 'float') {
+      // balloons float once, after the move (and the belts) settled, before the alarms tick
+      if (sugar || !sawClear || evs.slice(0, i).some(x => x.t === 'float' || x.t === 'tick')) fail('float must come once, after the move');
+      if (!evs[i - 1] || (evs[i - 1].t !== 'fall' && evs[i - 1].t !== 'belt')) fail(`float after ${evs[i - 1] && evs[i - 1].t}`);
+      ctx.floats = (ctx.floats || 0) + 1;
     } else if (e.t === 'alarm') {
       if (!evs[i - 1] || evs[i - 1].t !== 'tick') fail('alarm not preceded by tick');
       if (!evs[i + 1] || evs[i + 1].t !== 'fall') fail('alarm not followed by fall');
@@ -336,7 +366,8 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       for (const f of e.effects) {
         const okFx = (f.fx === 'line' && (f.dir === 'h' || f.dir === 'v')) || (f.fx === 'blast' && f.radius >= 1) ||
           (f.fx === 'bomb' && Array.isArray(f.targets)) || f.fx === 'board' ||
-          (f.fx === 'fish' && f.to && Number.isInteger(f.to.r) && Number.isInteger(f.to.c) && [null, 'h', 'v', 'wrap'].includes(f.carry));
+          (f.fx === 'fish' && f.to && Number.isInteger(f.to.r) && Number.isInteger(f.to.c) && [null, 'h', 'v', 'wrap'].includes(f.carry)) ||
+          (f.fx === 'ticket' && f.to && Number.isInteger(f.to.r) && Number.isInteger(f.to.c));
         if (!okFx) fail(`bad effect ${JSON.stringify(f)}`);
         if (f.reach && !(f.fx === 'line' && Array.isArray(f.reach) && f.reach.length === 2)) fail(`bad beam reach ${JSON.stringify(f)}`);
       }
@@ -354,6 +385,7 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
       gainedSum += e.gained;
     } else if (e.gained !== undefined) fail(`${e.t} has gained`);
     if (e.t === 'exit') for (const x of e.cells) ctx.gone.add(x.piece.id);
+    if (e.t === 'exit' && e.balloon) ctx.balloons = (ctx.balloons || 0) + e.cells.length;
     if (e.t === 'alarm') for (const x of e.cells) ctx.gone.add(x.piece.id);
     if (e.t === 'spread') { ctx.gone.add(e.was.id); if (e.piece.id <= ctx.maxId) fail(`spread reuses id ${e.piece.id}`); }
     if (e.t === 'fall') {
@@ -404,6 +436,18 @@ export function checkResult(engine, before, res, ctx, { sugar = false } = {}) {
     if (st.frostLeft !== cnt.frost || st.chocoLeft !== cnt.choco || st.licoriceLeft !== cnt.licorice || st.locksLeft !== locks
       || (st.shellLeft !== undefined && st.shellLeft !== cnt.shell) || (st.giftLeft !== undefined && st.giftLeft !== gifts))
       fail(`blocker stats ${JSON.stringify(st)} vs board ${JSON.stringify(cnt)} locks ${locks} gifts ${gifts}`);
+  }
+  if (st.gateLeft !== undefined) {
+    const n = { gate: 0, balloon: 0, jar: 0, surprise: 0, oven: 0, tk: 0 }, strings = new Set();
+    for (const row of after.grid) for (const p of row) {
+      if (!p) continue;
+      if (p.tk) n.tk++;
+      if (p.block === 'lantern') strings.add(p.hp); else if (p.block in n) n[p.block]++;
+    }
+    if (st.gateLeft !== n.gate || st.balloonLeft !== n.balloon || st.jarLeft !== n.jar || st.eggLeft !== n.surprise ||
+      st.ovenCount !== n.oven || st.ticketsOnBoard !== n.tk || st.lanternLeft !== strings.size)
+      fail(`new-mechanic stats ${JSON.stringify(st)} vs board ${JSON.stringify(n)} strings ${strings.size}`);
+    if (ctx.balloons !== undefined && st.prog && st.prog.balloonsOut < ctx.balloons) fail('balloonsOut too small');
   }
   ctx.moves++;
 }

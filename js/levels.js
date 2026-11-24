@@ -6,9 +6,15 @@
 //   巧克力 + 收集）→ 冰果凍 + 糖霜 / 傳送門 → 章末王關（好幾個目標一起）。
 //   糖霜從下往上疊（底下不會空著），而且每一塊旁邊都有能湊成三連的格子；巧克力放在中間；傳送門接起盤面中間的空隙。
 // 進度：收集（1–4，第 2 關條紋、第 3 關飛天玩偶、第 4 關包裝）→ 造型盤面（5–6）→ 果凍（7–9）→ 綜合挑戰（10–15）
-//   → 第 16–100 關：每五關一章，新的造型盤面輪流收集 / 果凍；章末（20、25、…、100）最難，下一章開頭先放鬆一點。
+//   → 第 16 關以後：每五關一章，新的造型盤面輪流換目標；章末（20、25、30、…）最難，下一章開頭先放鬆一點。
 //   第 31–60 關六章：海邊、甜點、天空、花園、玩具屋、大冒險。
 //   第 61–100 關八章：雪地、遊樂園、森林、音樂會、海底、宇宙、城市、終極冒險（第 100 關放煙火）。
+//   第 101–130 關六章：玩具工廠、時鐘塔、礦坑、巧克力工坊、禮物包裝、夢幻工廠（每章一種新機關）。
+//   第 131–230 關二十章（第 25–44 站）：星光車站到薯餅王國，新機關票閘、熱氣球、蜂蜜罐、驚喜蛋、燈籠串、烤箱，
+//   其他章用舊機關換搭配。每章前四關各用不同目標、第五關是王關（最多兩個目標）。
+// 以後再加關卡：每一批只加 1–2 種新機關就好，其他章拿舊機關換搭配，免得機關和教學小卡多到記不住。
+//   關卡總數、最後一站、寶箱星星、「全部過關」都從 LEVELS.length 和站點清單算，不要寫死數字；
+//   最後一關的說明卡也不要寫「最後一關」，之後還會往後接。
 //   果凍只放在「橫的能連三」的格子上（只能直的消的格子，機器人幾十步都消不掉）。
 // 顏色數：寬闊的大盤面 5 色，窄的、彎的 4 色（2026-11：連消多很多）；收集目標的種類一定在。掃描的三隻（dog / sloth / egg）優先出現。
 // 補位用引擎預設：antiCascade 0、cascadeBias 0.18（新方塊有一點偏向旁邊的顏色，比較容易一路連消）。
@@ -279,7 +285,7 @@ const CANDY = [        // 包裝糖果（上下兩端是糖果紙）
   '###.###',
 ];
 
-const CROWN = [        // 王冠（最後一關）
+const CROWN = [        // 王冠（第 30 關）
   '#..#..#',
   '#.###.#',
   '#######',
@@ -640,7 +646,7 @@ const HEARTS2 = [   // 兩顆愛心
   '..###..',
 ];
 
-const TROPHY = [   // 冠軍獎盃（最後一關）
+const TROPHY = [   // 冠軍獎盃（第 60 關）
   '#######',
   '#######',
   '#.###.#',
@@ -1463,6 +1469,62 @@ const BIGFACTORY = [   // 薯餅大工廠（第 130 關）
   '#######',
   '#######',
 ];
+const TRAINHEAD = [   // 火車頭（第 131 關）
+  '..###..',
+  '..###..',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+  '.##.##.',
+  '.##.##.',
+];
+const SIGNAL = [   // 號誌燈（第 132 關）
+  '.#####.',
+  '#######',
+  '#######',
+  '.#####.',
+  '..###..',
+  '..###..',
+  '..###..',
+  '.#####.',
+  '#######',
+];
+const PLATFORM = [   // 月台（第 133 關）
+  '###.###',
+  '###.###',
+  '#######',
+  '#######',
+  '###.###',
+  '###.###',
+  '#######',
+  '#######',
+  '###.###',
+];
+const BOOTH = [   // 售票亭（第 134 關）
+  '..###..',
+  '.#####.',
+  '#######',
+  '##.#.##',
+  '##.#.##',
+  '#######',
+  '#######',
+  '#######',
+  '#######',
+];
+const STARTRAIN = [   // 星光列車（第 135 關）
+  '#.###.#',
+  '#######',
+  '#######',
+  '#######',
+  '.#.#.#.',
+  '#######',
+  '#######',
+  '#######',
+  '.#.#.#.',
+];
+
 export const LEVELS = [
   {
     id: 1, rows: 9, cols: 7, moves: 15, kinds: ['dog', 'sloth', 'egg', 'snoopy'],
@@ -4184,7 +4246,113 @@ export const LEVELS = [
       [[4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6]],
     ],
     dinos: { onBoard: 1, rate: 0.4 },
-    hint: '王關！最後一關，每種機關都來一點',
+    hint: '王關！夢幻工廠裡，每種機關都來一點',
+  },
+  // ---- 第 27 章 星光車站（131–135）：票閘，消掉車票方塊，車票會飛去打開票閘 ----
+  {
+    id: 131, rows: 9, cols: 7, moves: 12, kinds: ['nyanko', 'egg', 'snoopy', 'dog'],
+    goal: { type: 'clear', what: ['gate'] }, stars: [16000, 32000, 48000],
+    mask: TRAINHEAD, jelly: null,
+    seed: 13141,
+    obstacles: [
+      '.......',
+      '.......',
+      '...G...',
+      '.......',
+      '.T...T.',
+      '.......',
+      '.......',
+      '.......',
+      '..G.G..',
+    ],
+    tickets: { rate: 0.12, max: 2 },
+    hint: '消掉帶車票的方塊，車票會飛去開票閘',
+  },
+  {
+    id: 132, rows: 9, cols: 7, moves: 17, kinds: ['nyanko', 'egg', 'snoopy', 'dog'],
+    goal: { type: 'collect', items: { egg: 75 } }, stars: [17000, 34000, 51000],
+    mask: SIGNAL, jelly: null,
+    seed: 13224,
+    obstacles: [
+      '.......',
+      '.T...T.',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '...Q...',
+    ],
+    tickets: { rate: 0.1, max: 2 },
+    hint: '大票閘要兩張車票才打得開',
+  },
+  {
+    id: 133, rows: 9, cols: 7, moves: 12, kinds: ['nyanko', 'egg', 'snoopy', 'dog'],
+    goal: { type: 'jelly' }, stars: [17000, 34000, 51000],
+    mask: PLATFORM, jelly: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '111.111',
+      '1111111',
+      '111.111',
+    ],
+    seed: 13326,
+    obstacles: [
+      '.......',
+      '.......',
+      '...G...',
+      '.......',
+      '.......',
+      '.......',
+      '...G...',
+      '.......',
+      '.......',
+    ],
+    tickets: { rate: 0.1, max: 2 },
+    hint: '票閘打開會留下一顆條紋，拿來清果凍',
+  },
+  {
+    id: 134, rows: 9, cols: 7, moves: 16, kinds: ['nyanko', 'egg', 'snoopy', 'dog'],
+    goal: { type: 'order', orders: { stripe: 7 } }, stars: [16000, 32000, 48000],
+    mask: BOOTH, jelly: null,
+    seed: 13419,
+    obstacles: [
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '...T...',
+      '.......',
+      '.......',
+      '.G...G.',
+    ],
+    tickets: { rate: 0.08, max: 2 },
+    hint: '做出7個條紋，票閘送的不算喔',
+  },
+  {
+    id: 135, rows: 9, cols: 7, moves: 16, kinds: ['nyanko', 'egg', 'snoopy', 'dog'],
+    goal: { type: 'mix', items: { dog: 80 }, clear: ['gate'] }, stars: [16000, 32000, 48000],
+    mask: STARTRAIN, jelly: null,
+    seed: 13526,
+    obstacles: [
+      '.......',
+      '.......',
+      '..T.T..',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.......',
+      '.G.G.G.',
+    ],
+    tickets: { rate: 0.12, max: 3 },
+    hint: '王關！收集皮蛋，也把三個票閘打開',
   },
 ];
 
@@ -4211,6 +4379,13 @@ export function isScoreLevel(L) {
 //   alarm: { timer, rate, max }    鬧鐘：timer = 起始數字（每走一步少 1，數到 0 爆開扣 3 步）；rate / max = 補位時掉下鬧鐘
 //   pot: { max }                   巧克力壺：盤面上巧克力到 max 塊（3–12，預設 8）就先不噴
 //   dinos: { onBoard, rate }       龍龍從最上面掉下來（總數 = 目標的數量）；沒寫 E 的話，每一欄最下面那格都是出口
+//   第 131 關起（工作單9）obstacles 再加：G / Q 票閘（要 1 / 2 張車票）、T 帶車票的方塊、O 熱氣球（可以換、不會被消，
+//                                  每走一步往上飄一格，飄出最上面就算收到）、a–d 蜂蜜罐（裝 kinds[0]–[3] 那種毛絨，
+//                                  旁邊八格消掉那種就裝一格，裝滿炸一圈）、U 驚喜蛋（旁邊消三次孵出隨機特效）、
+//                                  m–p 燈籠串（同一個字母是同一串，打到一個整串一起亮）、K 烤箱（旁邊消一次加一把火，
+//                                  三把火烤一次：橫直各一條；烤箱不會消失）
+//   tickets: { rate, max }         補位時掉下帶車票的方塊（票閘還關著才會掉，盤面上最多 max 張）
+//   jar: { need }                  蜂蜜罐要裝幾格（3–9，預設 6）
 // 目標 goal.type：
 //   'collect' { items }、'jelly'、'score'（原本的三種）
 //   'dino' { count }                       救出 count 隻龍龍
@@ -4218,8 +4393,11 @@ export function isScoreLevel(L) {
 //   'order' { orders: { stripe: 5 } }      訂單：做出幾個特殊方塊（stripe / wrap / bomb / fish）
 //                                          或打出幾次組合（'combo' = 任何兩個特殊方塊互換；'stripe+wrap' 這種 = 指定組合）
 //   'chocoGot' { count }                   收集巧克力：一共打掉 count 塊巧克力
-//   'mix' { items?, jelly?, dinos?, clear?, orders?, chocoGot? }   王關：好幾個目標同時達成
-const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'order', 'chocoGot', 'mix'];
+//   'clear' 第 131 關起還可以寫 'gate' 'balloon' 'jar' 'egg' 'lantern'（打開全部票閘 / 熱氣球全部飄走 / …）
+//   'bake' { count }                       烤箱一共烤 count 次
+//   'mix' { items?, jelly?, dinos?, clear?, orders?, chocoGot?, bakes? }   王關：好幾個目標同時達成
+const GOAL_TYPES = ['collect', 'jelly', 'dino', 'clear', 'order', 'chocoGot', 'bake', 'mix'];
+export const CLEAR_KINDS = ['frost', 'choco', 'cage', 'shell', 'gate', 'balloon', 'jar', 'egg', 'lantern'];
 export const ORDER_SPECIALS = ['stripe', 'wrap', 'bomb', 'fish'];
 export const isOrderKey = w => w === 'combo' || ORDER_SPECIALS.includes(w)
   || (/^[a-z]+\+[a-z]+$/.test(w) && w.split('+').every(x => ORDER_SPECIALS.includes(x)) && w.split('+').sort().join('+') === w);
@@ -4235,6 +4413,8 @@ export function goalParts(L) {
   for (const [what, n] of Object.entries(orders)) out.push({ kind: 'order', what, need: n });
   const got = g.type === 'chocoGot' ? g.count : g.type === 'mix' ? g.chocoGot : 0;
   if (got > 0) out.push({ kind: 'chocoGot', need: got });
+  const bakes = g.type === 'bake' ? g.count : g.type === 'mix' ? g.bakes : 0;
+  if (bakes > 0) out.push({ kind: 'bake', need: bakes });
   if (!out.length) out.push({ kind: 'score' });
   return out;
 }
@@ -4248,6 +4428,8 @@ export function mechOpts(L) {
   if (L.licorice) o.licorice = { ...L.licorice };
   if (L.alarm) o.alarm = { ...L.alarm };
   if (L.pot) o.pot = { ...L.pot };
+  if (L.tickets) o.tickets = { ...L.tickets };
+  if (L.jar) o.jar = { ...L.jar };
   const d = goalParts(L).find(p => p.kind === 'dino');
   if (d) o.dinos = { total: d.need, onBoard: 2, rate: 0.35, ...(L.dinos || {}) };
   return o;
@@ -4263,6 +4445,12 @@ export function partLeft(part, stats, kindOf) {
     case 'choco': return Math.max(0, st.chocoLeft | 0);
     case 'cage': return Math.max(0, st.locksLeft | 0);
     case 'shell': return Math.max(0, st.shellLeft | 0);
+    case 'gate': return Math.max(0, st.gateLeft | 0);
+    case 'balloon': return Math.max(0, st.balloonLeft | 0);
+    case 'jar': return Math.max(0, st.jarLeft | 0);
+    case 'egg': return Math.max(0, st.eggLeft | 0);
+    case 'lantern': return Math.max(0, st.lanternLeft | 0);
+    case 'bake': return Math.max(0, part.need - ((st.prog || {}).bakes | 0));
     case 'order': {
       const done = ORDER_SPECIALS.includes(part.what) ? (st.made || {})[part.what]
         : part.what === 'combo' ? st.comboCount : (st.combos || {})[part.what];
@@ -4293,7 +4481,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
   const out = [];
   const DEF_ROWS = 9, DEF_COLS = 7;   // 長條盤面（像 Candy Crush）
   if (!Array.isArray(levels) || !levels.length) return ['LEVELS 是空的'];
-  if (levels.length < 12 || levels.length > 150) out.push(`關卡數 ${levels.length}（SPEC：12–150）`);
+  if (levels.length < 12 || levels.length > 1000) out.push(`關卡數 ${levels.length}（SPEC：12–1000）`);
   const seenSeeds = new Set();
   levels.forEach((L, i) => {
     const tag = `第 ${i + 1} 關`;
@@ -4381,21 +4569,27 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (layers) bad('collect 關不要放果凍（目標面板不會顯示）');
     } else if (g.type === 'jelly') {
       if (!layers) bad('jelly 關卻沒有果凍');
-    } else if (!['dino', 'clear', 'order', 'chocoGot', 'mix'].includes(g.type)) {
+    } else if (!['dino', 'clear', 'order', 'chocoGot', 'bake', 'mix'].includes(g.type)) {
       bad(`不認識的目標類型：${g.type}`);
     }
 
     // 盤面機關
     const obs = L.obstacles;
-    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, P: 0, frost: 0, shell: 0, gift: 0 };
+    const has = { L: 0, C: 0, S: 0, D: 0, E: 0, A: 0, P: 0, frost: 0, shell: 0, gift: 0, gate: 0, T: 0, O: 0, jar: 0, U: 0, K: 0 };
+    const strings = {};
+    const NEWFIX = 'GQabcdUmnopK', FIXED = '123CXYP' + NEWFIX;
     if (obs != null) {
       if (!Array.isArray(obs) || obs.length !== ROWS || !obs.every(r => typeof r === 'string' && r.length === COLS)) bad(`obstacles 要是 ${ROWS} 個長度 ${COLS} 的字串`);
       else for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const ch = obs[r][c];
         if (ch === '.') continue;
-        if (!'LCSDEA123XYP-|WB'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
+        if (!'LCSDEA123XYP-|WBGQTOabcdUmnopK'.includes(ch)) { bad(`obstacles (${r},${c}) 不認識的字 '${ch}'`); continue; }
         if (!isCell(r, c)) { bad(`obstacles (${r},${c}) 放在洞上`); continue; }
-        if ('123'.includes(ch)) has.frost += +ch; else if ('XY'.includes(ch)) has.shell += ch === 'Y' ? 2 : 1; else if ('-|WB'.includes(ch)) has.gift++; else has[ch]++;
+        if ('123'.includes(ch)) has.frost += +ch; else if ('XY'.includes(ch)) has.shell += ch === 'Y' ? 2 : 1; else if ('-|WB'.includes(ch)) has.gift++;
+        else if ('GQ'.includes(ch)) has.gate += ch === 'Q' ? 2 : 1; else if ('abcd'.includes(ch)) has.jar++;
+        else if ('mnop'.includes(ch)) strings[ch] = (strings[ch] || 0) + 1; else has[ch]++;
+        if (NEWFIX.includes(ch) && isCell(r + 1, c) && !FIXED.includes(obs[r + 1][c])
+          && ![c - 1, c + 1].some(x => isCell(r, x) && !FIXED.includes(obs[r][x]) && obs[r][x] !== 'L')) bad(`obstacles (${r},${c}) 底下的格子補不到（正下方和左右都擋住了）`);
         const jl = L.jelly && L.jelly[r] && L.jelly[r][c] && L.jelly[r][c] !== '.';
         if (jl && '123CXYP'.includes(ch)) bad(`obstacles (${r},${c}) 糖霜 / 巧克力 / 硬殼 / 巧克力壺不要蓋在果凍上`);
         // 糖霜、巧克力底下要是盤面外或同樣不會動的東西（不然底下那格什麼都掉不進去）
@@ -4424,7 +4618,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
           used.add(id);
           if (k && Math.abs(r - b[k - 1][0]) + Math.abs(c - b[k - 1][1]) !== 1) bad(`${nm} 的 (${b[k - 1].join(',')}) → (${r},${c}) 沒有挨著`);
           const ch = Array.isArray(obs) && obs[r] ? obs[r][c] : '.';
-          if (ch && 'L123CXYP-|WB'.includes(ch)) bad(`${nm} 的 (${r},${c}) 上面有不會動的東西 '${ch}'`);
+          if (ch && 'L123CXYP-|WBGQabcdUmnopK'.includes(ch)) bad(`${nm} 的 (${r},${c}) 上面有不會動的東西 '${ch}'`);
         });
       });
     }
@@ -4438,6 +4632,13 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
     if (has.A && L.alarm == null) bad('盤面上有鬧鐘（A），要寫 alarm: { timer }');
     if (L.pot != null && !(Number.isInteger(L.pot.max) && L.pot.max >= 3 && L.pot.max <= 12)) bad('pot 要 { max: 3–12 }');
     if (L.pot != null && !has.P) bad('有 pot 設定，盤面上卻沒有巧克力壺（P）');
+    if (L.tickets != null && !(L.tickets.rate > 0 && L.tickets.rate <= 0.2 && Number.isInteger(L.tickets.max ?? 3) && (L.tickets.max ?? 3) >= 1 && (L.tickets.max ?? 3) <= 4)) bad('tickets 要 { rate: 0–0.2, max: 1–4 }');
+    if (L.tickets != null && !has.gate) bad('有 tickets 設定，盤面上卻沒有票閘');
+    if (has.gate && L.tickets == null && has.T < has.gate) bad(`票閘要 ${has.gate} 張車票，盤面上只有 ${has.T} 張，也不會掉車票`);
+    if (has.T && !has.gate) bad('盤面上有車票（T），卻沒有票閘');
+    if (L.jar != null && !(Number.isInteger(L.jar.need) && L.jar.need >= 3 && L.jar.need <= 9)) bad('jar 要 { need: 3–9 }');
+    if (L.jar != null && !has.jar) bad('有 jar 設定，盤面上卻沒有蜂蜜罐');
+    for (const [k, n] of Object.entries(strings)) if (n < 2) bad(`燈籠串 ${k} 只有 ${n} 個燈籠（一串至少 2 個）`);
     const parts = goalParts(L);
     for (const part of parts) {
       if (part.kind === 'dino' && !(Number.isInteger(part.need) && part.need > 0 && part.need <= 8)) bad('救龍龍的數量要 1–8');
@@ -4447,6 +4648,16 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       if (part.kind === 'cage' && !has.L) bad('要開籠子，盤面上卻沒有鐵籠子');
       if (part.kind === 'shell' && !has.shell) bad('要打破硬殼，盤面上卻沒有硬殼');
       if (part.kind === 'jelly' && !layers) bad('目標有果凍，盤面上卻沒有果凍');
+      if (part.kind === 'gate' && !has.gate) bad('要打開票閘，盤面上卻沒有票閘');
+      if (part.kind === 'balloon' && !has.O) bad('要放走熱氣球，盤面上卻沒有熱氣球');
+      if (part.kind === 'jar' && !has.jar) bad('要裝滿蜂蜜罐，盤面上卻沒有蜂蜜罐');
+      if (part.kind === 'egg' && !has.U) bad('要孵驚喜蛋，盤面上卻沒有驚喜蛋');
+      if (part.kind === 'lantern' && !Object.keys(strings).length) bad('要點燈籠，盤面上卻沒有燈籠');
+      if (part.kind === 'bake') {
+        if (!(Number.isInteger(part.need) && part.need > 0 && part.need <= 12)) bad('烤箱的次數要 1–12');
+        if (!has.K) bad('要烤東西，盤面上卻沒有烤箱');
+      }
+      if (!['collect', 'jelly', 'dino', 'order', 'chocoGot', 'bake', 'score'].includes(part.kind) && !CLEAR_KINDS.includes(part.kind)) bad(`不認識的清除目標：${part.kind}`);
       if (part.kind === 'collect' && !kinds.includes(part.id)) bad(`collect 的 ${part.id} 不在 kinds 裡`);
       if (part.kind === 'order') {
         if (!isOrderKey(part.what)) bad(`不認識的訂單：${part.what}`);
@@ -4458,7 +4669,7 @@ export function validateLevels(levels = LEVELS, pieceIds = ALL_IDS) {
       }
     }
     if (g.type === 'mix' && parts.length < 2) bad('mix 王關至少要兩個目標');
-    if (['dino', 'clear', 'order', 'chocoGot'].includes(g.type) && layers) bad(`${g.type} 關不要放果凍（目標面板不會顯示）`);
+    if (['dino', 'clear', 'order', 'chocoGot', 'bake'].includes(g.type) && layers) bad(`${g.type} 關不要放果凍（目標面板不會顯示）`);
     if (has.D && !parts.some(q => q.kind === 'dino')) bad('盤面上有龍龍，目標卻沒有救龍龍');
   });
   return out;

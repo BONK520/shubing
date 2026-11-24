@@ -2,7 +2,7 @@
 // → 標題後面的立體雲脹大蓋滿畫面，再往四周散開，露出封面。
 // 要不要播是 index.html <head> 裡的小程式決定的（window.__opPlay）；這裡只負責畫和播，跟主程式的載入同時進行。
 // 不放聲音；點一下或按任何鍵就跳過。只用 transform / opacity 動畫，地圖只畫前 22 關（3 站）。
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124a';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124b';
 
 const KEY = 'shubing-op';
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
@@ -87,7 +87,7 @@ function start() {
     + `<div class="map-art">${prefixIds(mapArtHTML(W, N, H), 'op-')}</div>`
     + `<svg class="map-path" viewBox="0 0 100 ${H}" preserveAspectRatio="none" style="height:${H}px">${paths}</svg>`
     + mapSignsHTML(N, H, N + 1) + nodes + `</div></div>`
-    + `<div class="op-island">${islandMiniHTML(vw, vh, 'oi-')}</div>`
+    + `<div class="op-island">${islandMiniHTML(vw, vh, 'oi-', N)}</div>`
     + `<div class="op-title"></div><div class="op-white"></div><div class="op-burst"></div>`
     + `<span class="op-skip">略過</span>`;
   document.body.appendChild(root);
