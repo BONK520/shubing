@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zl';
-import { SLOGANS } from './slogans.js?v=20261124zl';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zl';
-import { blockerCanvas } from './blockers.js?v=20261124zl';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zl';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zl';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zl';
-import { STORY } from './story.js?v=20261124zl';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zm';
+import { SLOGANS } from './slogans.js?v=20261124zm';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zm';
+import { blockerCanvas } from './blockers.js?v=20261124zm';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zm';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261124zm';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zm';
+import { STORY } from './story.js?v=20261124zm';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zl';
+const MOD_V = '?v=20261124zm';
 
 window.__plushBooted = true;
 
@@ -4035,10 +4035,54 @@ function renderVersion() {
   box.appendChild(d);
 }
 
+// 封面「開始」（工作單23）：按住時蛋白壓扁（.pressing），放開蛋白彈一下、蛋黃跳起來、冒六顆星，封面三隻跳一下再進地圖。
+// 連點、鍵盤 Enter／Space 都只會進一次地圖；減少動態效果時只留按住壓扁，放開直接進地圖。
+function bindStart() {
+  const btn = $('#btn-start'), yolk = btn.querySelector('.yolk');
+  let busy = false, run = [], tm = [];
+  const pa = (n, kf, o) => { if (!n) return null; const a = n.animate(kf, Object.assign({ fill: 'none' }, o)); run.push(a); return a; };
+  // 回到封面時清乾淨：計時、還沒播完的動畫、星星、壓扁的樣子
+  const reset = cancel => {
+    tm.forEach(clearTimeout); tm = [];
+    if (cancel) run.forEach(a => { try { a.cancel(); } catch (e) { /* ignore */ } });
+    run = [];
+    for (const s of $$('.cv-spark')) s.remove();
+    btn.classList.remove('pressing');
+    busy = false;
+  };
+  btn.addEventListener('pointerdown', () => { if (!busy) btn.classList.add('pressing'); });
+  for (const t of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(t, () => { if (!busy) btn.classList.remove('pressing'); });
+  btn.addEventListener('click', () => {
+    // 已經不在封面（例如減少動態時直接進了地圖、焦點還留在這顆鈕上）就不再反應
+    if (busy || document.documentElement.dataset.screen !== 'title') return;
+    if (reduceMotion()) { reset(true); showMap(); return; }
+    busy = true;
+    btn.classList.remove('pressing');
+    pa(btn, [{ transform: 'scale(1.1,.84)' }, { transform: 'scale(.94,1.08)', offset: .35 }, { transform: 'scale(1.03,.98)', offset: .7 }, { transform: 'scale(1)' }], { duration: 380, easing: 'ease-out' });
+    pa(yolk, [{ transform: 'translateY(0)' }, { transform: 'translateY(-22px) scale(1.06)', offset: .4 }, { transform: 'translateY(0) scale(1.04,.94)', offset: .75 }, { transform: 'translateY(0)' }], { duration: 460, easing: 'ease-out' });
+    const box = $('.cv-act');
+    for (let k = 0; box && k < 6; k++) {
+      const s = document.createElement('i'); s.className = 'cv-spark'; s.innerHTML = star4(16 + (k % 3) * 5);
+      box.appendChild(s);
+      const a = -Math.PI * (.08 + k * .168), dist = 92 + (k % 2) * 16;
+      const an = pa(s, [{ transform: 'translate(-50%,-50%) scale(.2)', opacity: 0 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * dist * .7}px),calc(-50% + ${Math.sin(a) * dist * .7}px)) scale(1)`, opacity: 1, offset: .5 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * dist}px),calc(-50% + ${Math.sin(a) * dist}px)) scale(.4) rotate(60deg)`, opacity: 0 }], { delay: 120, duration: 520, easing: 'ease-out' });
+      an.finished.then(() => s.remove(), () => s.remove());
+    }
+    tm.push(setTimeout(() => {
+      // 封面三隻和兩邊探頭的一起跳一下（疊在原本的待機動畫上），跳到一半就切到地圖（畫面本身會淡入淡出）
+      pa($('.cv-group'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-9%) scale(.98,1.03)', offset: .4 }, { transform: 'translateY(0) scale(1.03,.97)', offset: .75 }, { transform: 'translateY(0)' }], { duration: 480, easing: 'ease-out', composite: 'add' });
+      $$('.cv-peek').forEach((p, k) => pa(p, [{ transform: 'translateY(0)' }, { transform: 'translateY(-16%)', offset: .45 }, { transform: 'translateY(0)' }], { delay: 80 + k * 70, duration: 420, easing: 'ease-out', composite: 'add' }));
+      tm.push(setTimeout(() => { showMap(); reset(false); }, 380));
+    }, 440));
+  });
+  $('#map-back').addEventListener('click', () => { reset(true); show('title'); });
+}
+
 // ---------- 綁定按鈕 ----------
 function bindUI() {
-  $('#btn-start').addEventListener('click', () => showMap());
-  $('#map-back').addEventListener('click', () => show('title'));
+  bindStart();
   $('#map-scroll').addEventListener('scroll', onMapScroll, { passive: true });
   bindScrubber();
   $('#map-here').addEventListener('click', () => { audio.play('tap'); openStations(); });
