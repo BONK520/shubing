@@ -1391,11 +1391,13 @@ test('exportState / restore: saved mid-level, restored into a fresh engine, the 
 
 // 教學小卡的示意動畫（js/demos.js）：每張的 10 個種子，每一步都照預期（遊戲裡一輪一輪換種子播）
 test('教學示意動畫：每個 DEMO 的 10 個種子每一步都成功、開頭沒有三連、新的示意沒有連鎖', async () => {
-  const { DEMO, demoEngine } = await import('../js/demos.js');
+  const { DEMO, demoEngine, demoSegs } = await import('../js/demos.js');
   const names = Object.keys(DEMO);
-  ok(names.length >= 9, 'DEMO 少於 9 張');
-  for (const nm of names) {
-    const d = DEMO[nm];
+  ok(names.length >= 15, 'DEMO 少於 15 張');
+  // 一張小卡可以有好幾段（特殊方塊訂單：條紋、包裝糖），每一段各自檢查
+  const all = names.flatMap(nm => demoSegs(DEMO[nm]).map((d, i, arr) => [arr.length > 1 ? `${nm}#${i + 1}` : nm, d]));
+  eq(demoSegs(DEMO.order).length, 2, 'order 要兩段');
+  for (const [nm, d] of all) {
     eq(d.seeds.length, 10, `${nm} 種子數`);
     eq(new Set(d.seeds).size, 10, `${nm} 種子重複`);
     ok(d.steps.length >= 1 && d.steps.length <= 2, `${nm} 步數`);

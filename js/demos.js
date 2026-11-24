@@ -10,13 +10,19 @@
 //   obstacles  同引擎的 obstacles（C 巧克力、P 巧克力壺、X 硬殼、A 鬧鐘、S 甘草漩渦糖、- 保鮮膜包條紋…）
 //   opts       其他引擎選項；新的示意都關掉連鎖（cascadeBias 0、antiCascade 1），每一輪都一樣乾淨
 //   seeds      輪流用的 10 個種子，每個都試過：每一步都換得動、沒有連鎖、沒有洗牌、結果照 ok
-//   chip       目標小牌子（只有目標類的機關有）：icon 是 blockers.js 的圖，order 是訂單 0/1，否則顯示「還差 N」
+//   chip       目標小牌子（只有目標類的機關有：冰果凍、龍龍、巧克力、訂單）：icon 是 blockers.js 的圖
+//              （'jelly' 是冰果凍的小方塊、'dino' 是龍龍的圖），order 是「名字 0/1」，否則顯示「還差 N」
 //   steps      一步一步：a、b 是互換的兩格；bounce 是故意換不動（彈回去）；
 //              mark 是這一步演完在某一格打 ✕（灰，不行）或 ✓（綠，可以），at 是格子或 'spread'（巧克力長到的那格）；
 //              hit 是「看到這個事件就算做到了」（不等後面的掉落）；ok 是測試用的檢查
 //   slowFall   掉落慢幾倍（傳送門要看清楚）
-//   still      減少動態時的靜態圖要怎麼畫（combo 十字光、ring 一個大光圈、exit 傳送門出口、steps 每一步各一張）
+//   still      減少動態時的靜態圖要怎麼畫：
+//              combo 十字光；ring 一個大光圈（圈 b 那格剛做出來的特殊方塊，沒有就圈 ringAt 或 b）；
+//              exit 傳送門出口；dino 龍龍站上出口的那一刻、圈出口；belt 帶子走完一格、帶子那排發亮；steps 每一步各一張
 //              steps 的每一步可以再給 stillAt: 'clear'（停在剛消掉那一刻）、stillBeam: 'h'/'v'（在 b 那一排／列疊一道光）
+//   ringAt     still 是 ring 時，沒做出特殊方塊就圈這格（籠子、冰果凍）
+//   segs       一張小卡要演兩個盤面時（特殊方塊訂單：先條紋、再包裝糖），每一段各自一筆上面的欄位，段和段之間淡出換盤面
+//   輸送帶      opts.belts 有給的話，每一步開始前帶子那排先亮一下（箭頭方向），帶子走的時候再亮一次
 const at = (r, c) => ({ r, c });
 const same = (p, q) => !!p && !!q && p.r === q.r && p.c === q.c;
 const range = (a, n) => Array.from({ length: n }, (_, i) => a + i);
@@ -135,9 +141,88 @@ export const DEMO = {
     ],
     still: 'steps',
   },
+  // 冰果凍（11/23 工作單11第二批）：中間一排三格有冰，在上面配對，三格的冰一起碎掉。目標「還差」3 → 0
+  jelly: {
+    kinds: [0, 1, 2, 3],
+    layout: ['2 1 0 0 3', '3 3 1 3 2', '1 0 2 0 1', '1 3 0 2 2', '2 2 1 0 2'],
+    opts: { ...CLEAN, jelly: ['.....', '.....', '.111.', '.....', '.....'] },
+    seeds: range(1, 10),
+    chip: { icon: 'jelly', val: s => s.jellyLeft },
+    steps: [{ a: at(3, 2), b: at(2, 2), ok: (s0, s1) => s0.jellyLeft === 3 && s1.jellyLeft === 0 }],
+    still: 'ring', ringAt: at(2, 2),
+  },
+  // 龍龍：牠站在出口上面一格，消掉出口那一排，龍龍掉到底、從綠色箭頭走出去。目標「龍龍」0/1 → 1/1
+  dino: {
+    kinds: [0, 2, 4, 5],
+    layout: ['4 4 2 2 5', '5 4 0 4 5', '2 0 5 2 0', '2 5 2 0 0', '4 0 5 5 4'],
+    obstacles: ['.....', '.....', '.....', '..D..', '..E..'],
+    opts: CLEAN,
+    seeds: range(1, 10),
+    chip: { icon: 'dino', name: '龍龍', order: true, val: s => s.dinosOut | 0 },
+    steps: [{ a: at(3, 1), b: at(4, 1), ok: (s0, s1, res) => s0.dinosOut === 0 && s1.dinosOut === 1 && res.events.some(e => e.t === 'exit') }],
+    still: 'dino',
+  },
+  // 鐵籠子：籠子裡關著一隻薯餅，旁邊換一隻薯餅過來連成三個，籠子打開 ✓
+  cage: {
+    kinds: [1, 0, 3, 6],
+    layout: ['0 1 3 6 3', '3 6 3 0 1', '0 1 1 0 6', '3 6 3 1 6', '1 0 0 6 3'],
+    obstacles: ['.....', '.....', '..L..', '.....', '.....'],
+    opts: CLEAN,
+    seeds: range(1, 10),
+    steps: [{ a: at(3, 3), b: at(2, 3), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s0.locksLeft === 1 && s1.locksLeft === 0 }],
+    still: 'ring', ringAt: at(2, 2),
+  },
+  // 多層糖霜：三層，上面配一次少一層、下面再配一次又少一層（3 → 2 → 1）
+  frost: {
+    kinds: [0, 1, 4, 6],
+    layout: ['0 1 4 0 1', '1 4 0 4 1', '0 6 0 1 6', '4 6 1 6 0', '4 1 6 0 1'],
+    obstacles: ['.....', '.....', '..3..', '.....', '.....'],
+    opts: CLEAN,
+    seeds: range(1, 10),
+    steps: [
+      { a: at(0, 2), b: at(1, 2), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s0.frostLeft === 3 && s1.frostLeft === 2 },
+      { a: at(4, 2), b: at(3, 2), mark: { t: 'ok', at: at(2, 2) }, ok: (s0, s1) => s0.frostLeft === 2 && s1.frostLeft === 1 },
+    ],
+    still: 'steps',
+  },
+  // 輸送帶：帶子那排先亮（箭頭往右），配一次，帶子上的方塊一起往右跑一格，最右邊那顆從左邊冒出來
+  belt: {
+    kinds: [0, 2, 3, 5],
+    layout: ['2 0 2 3 0', '5 3 0 3 2', '0 2 3 0 5', '0 3 2 5 5', '2 5 0 2 3'],
+    opts: { ...CLEAN, belts: [[[3, 0], [3, 1], [3, 2], [3, 3], [3, 4]]] },
+    seeds: range(1, 10),
+    steps: [{ a: at(2, 2), b: at(1, 2), ok: (s0, s1, res) => res.events.some(e => e.t === 'belt' && (e.moves || []).length === 5) }],
+    still: 'belt',
+  },
+  // 特殊方塊訂單：先四個連成一排做出條紋，再換一個盤面用 L 形做出包裝糖
+  order: {
+    segs: [
+      {
+        kinds: [0, 1, 2, 4],
+        layout: ['2 4 2 0 1', '1 4 4 1 1', '2 2 0 2 0', '4 0 2 0 2', '2 0 4 1 4'],
+        opts: CLEAN,
+        seeds: range(1, 10),
+        chip: { icon: 'o-stripe', name: '條紋', order: true, val: s => ((s.made && s.made.stripe) | 0) >= 1 ? 1 : 0 },
+        steps: [{ a: at(3, 2), b: at(2, 2), ok: (s0, s1) => ((s1.made && s1.made.stripe) | 0) === 1 && ((s1.made && s1.made.wrap) | 0) === 0 }],
+        still: 'ring',
+      },
+      {
+        kinds: [0, 1, 3, 6],
+        layout: ['1 6 3 1 6', '0 3 0 6 3', '3 6 6 0 1', '1 0 3 6 1', '6 1 0 6 3'],
+        opts: CLEAN,
+        seeds: range(1, 10),
+        chip: { icon: 'o-wrap', name: '包裝糖', order: true, val: s => ((s.made && s.made.wrap) | 0) >= 1 ? 1 : 0 },
+        steps: [{ a: at(1, 3), b: at(2, 3), ok: (s0, s1) => ((s1.made && s1.made.wrap) | 0) === 1 }],
+        still: 'ring',
+      },
+    ],
+  },
 };
 
-// 測試和遊戲共用：照 DEMO 開一個引擎（createEngine 由呼叫的人給，這個檔不 import 任何東西）
+// 一張小卡的每一段（大部分只有一段）
+export const demoSegs = d => (d && d.segs) || (d ? [d] : []);
+
+// 測試和遊戲共用：照 DEMO（或其中一段）開一個引擎（createEngine 由呼叫的人給，這個檔不 import 任何東西）
 export function demoEngine(createEngine, d, seed) {
   return createEngine({ kinds: d.kinds, layout: d.layout, obstacles: d.obstacles || undefined, seed, ...(d.opts || {}) });
 }

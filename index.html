@@ -327,6 +327,11 @@
       <button class="toggle" id="tg-music" aria-pressed="true"><svg class="ti"><use href="#i-music"/></svg><span class="tl">音樂</span><span class="sw" aria-hidden="true"><i></i></span></button>
       <button class="toggle" id="tg-op" aria-pressed="false"><svg class="ti"><use href="#i-play"/></svg><span class="tl">每次都播開頭動畫</span><span class="sw" aria-hidden="true"><i></i></span></button>
     </div>
+    <!-- 這關的機關：遊戲中暫停時才顯示，點圖示再看一次說明小卡（js/main.js renderMechs） -->
+    <div class="set-mechs" id="set-mechs" hidden>
+      <span class="sm-t">這關的機關</span>
+      <div class="sm-list" id="set-mechs-list"></div>
+    </div>
     <div class="sheet-actions">
       <button class="btn blue" id="set-map">回到地圖</button>
       <button class="btn orange" id="set-restart">重新開始</button>

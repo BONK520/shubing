@@ -5,7 +5,7 @@ import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } 
 import { blockerCanvas } from './blockers.js?v=20261123w';
 import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261123w';
 import { getOpAlways, setOpAlways } from './opening.js?v=20261123w';
-import { DEMO, demoEngine } from './demos.js?v=20261123w';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261123w';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
 const MOD_V = '?v=20261123w';
 
@@ -541,10 +541,10 @@ const goalPartsOf = lvl => (levMod.goalParts ? levMod.goalParts(lvl) : [{ kind: 
 // ---------- 新機關教學小卡 ----------
 // 第一次遇到某種機關時，開始前先跳一張小卡（圖示 + 一句話），點一下就開始。看過的記在 save.seen（這台裝置）
 const INTRO = {
-  jelly: { name: '冰果凍', text: '在冰塊上面配對，把所有冰果凍敲碎！', icon: () => jellyIcon() },
-  dino: { name: '龍龍', text: '消掉龍龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！' },
-  cage: { name: '鐵籠子', text: '被關住的玩偶不能動，和牠同色配對或用特效就能打開！', icon: () => blockerImg('cage') },
-  frost: { name: '多層糖霜', text: '在旁邊配對就能敲掉一層，最多有三層喔！', icon: () => blockerImg('frost3') },
+  jelly: { name: '冰果凍', text: '在冰塊上面配對，把所有冰果凍敲碎！', icon: () => jellyIcon(), demo: 'jelly' },
+  dino: { name: '龍龍', text: '消掉龍龍下面的玩偶，送牠到綠色箭頭出口！', icon: () => dinoImg(), ribbon: '新朋友！', demo: 'dino' },
+  cage: { name: '鐵籠子', text: '被關住的玩偶不能動，和牠同色配對或用特效就能打開！', icon: () => blockerImg('cage'), demo: 'cage' },
+  frost: { name: '多層糖霜', text: '在旁邊配對就能敲掉一層，最多有三層喔！', icon: () => blockerImg('frost3'), demo: 'frost' },
   choco: { name: '巧克力', text: '每一步都要清掉一點巧克力，不然它會越長越大！', icon: () => blockerImg('choco'), demo: 'choco' },
   lic: { name: '甘草漩渦糖', text: '不能配對，要在旁邊消掉；它還會擋住條紋的光！', icon: () => blockerImg('swirl'), demo: 'lic' },
   portal: { name: '傳送門', text: '從這個門掉下去，會從同顏色的門掉出來！', icon: () => blockerImg('portal'), demo: 'portal' },
@@ -552,10 +552,10 @@ const INTRO = {
   shell: { name: '硬殼', text: '一般配對打不掉，要用條紋、包裝糖這些特殊方塊才打得開！兩個圓點的要打兩下。', icon: () => blockerImg('shell2'), demo: 'shell' },
   pot: { name: '巧克力壺', text: '巧克力壺打不掉。沒打到巧克力、或盤上的巧克力被打光時，它會再噴出新的。', icon: () => blockerImg('pot'), demo: 'pot' },
   gift: { name: '保鮮膜', text: '包在保鮮膜裡的是特殊方塊！在旁邊配對就能拆開，拆開後換一下就能用。', icon: () => blockerImg('wrap'), demo: 'gift' },
-  belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt') },
-  order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！' },
+  belt: { name: '輸送帶', text: '每走一步，帶子上的方塊都會往箭頭方向跑一格！', icon: () => blockerImg('belt'), demo: 'belt' },
+  order: { name: '特殊方塊訂單', text: '照上面的訂單做出特殊方塊：四個連成一排是條紋，L形或T形是包裝糖！', icon: () => blockerImg('o-stripe'), ribbon: '新目標！', demo: 'order' },
   // 有 demo 的小卡，圖示位置放示意動畫（introDemo，資料在 js/demos.js）。以後加新機關，這裡和 DEMO 要一起加
-  // 特殊組合、彩色炸彈：玩到一半點目標列的圖示也能再看一次
+  // 玩到一半點目標列的圖示（有小卡的目標）、或暫停選單的「這關的機關」也能再看一次
   combo: { name: '特殊組合', text: '把兩個特殊方塊換在一起，就會一起爆開！條紋、包裝糖、彩色炸彈、飛天玩偶都可以。', icon: () => blockerImg('o-combo'), ribbon: '新目標！', demo: 'combo' },
   bomb: { name: '彩色炸彈', text: '五個一樣的連成一直線，就會變成彩色炸彈！L形、T形不算喔。', icon: () => blockerImg('o-bomb'), ribbon: '新目標！', demo: 'bomb' },
 };
@@ -591,34 +591,37 @@ const MARK_SVG = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.2 4.2L18.5 7.8"/></svg>',
 };
 function introDemo(kind, host) {
-  const d = DEMO[kind];
-  if (!d || typeof createEngine !== 'function' || typeof createRenderer !== 'function') return null;
-  if (d.kinds.some(k => k >= PIECES.length)) return null;
+  const segs = demoSegs(DEMO[kind]);
+  if (!segs.length || typeof createEngine !== 'function' || typeof createRenderer !== 'function') return null;
+  if (segs.some(d => d.kinds.some(k => k >= PIECES.length))) return null;
   if (!demoCv) { demoCv = document.createElement('canvas'); demoCv.className = 'idemo-cv'; }
   if (!demoR) {
     try { demoR = createRenderer(demoCv, { pieces: PIECES, images, quiet: true }); } catch (e) { console.error(e); demoR = null; return null; }
   }
   const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const R2 = demoR, cv = demoCv, steps = d.steps;
+  const R2 = demoR, cv = demoCv, multi = segs.length > 1;
   const me = ++demoOwner;
-  const newEng = seed => demoEngine(createEngine, d, seed);
-  // 目標小牌子：跟遊戲上方的目標列一樣。訂單是「圖示＋名字＋0/1」，其他目標是「圖示＋還差＋數字」；不是目標的機關不放
-  let chip = null, num = null;
-  if (d.chip) {
-    chip = el('div', 'idemo-chip');
-    chip.appendChild(blockerImg(d.chip.icon));
-    chip.appendChild(el('span', 'nm')).textContent = d.chip.order ? d.chip.name : '還差';
-    num = el('b');
-    chip.appendChild(num);
-  }
-  const chipTxt = v => (d.chip.order ? v + '/1' : String(v));
-  const isDone = v => (d.chip.order ? v >= 1 : v <= 0);
-  const setChip = (v, prev) => {
-    if (!chip) return;
-    num.textContent = chipTxt(v);
-    chip.classList.toggle('done', isDone(v));
-    chip.classList.toggle('up', prev != null && !d.chip.order && v > prev);   // 巧克力長大：數字變多，紅一下
-    if (prev != null && v !== prev) restartAnim(chip, 'pop');
+  const newEng = (d, seed) => demoEngine(createEngine, d, seed);
+  // 目標小牌子：跟遊戲上方的目標列一樣。訂單、龍龍是「圖示＋名字＋0/1」，其他目標是「圖示＋還差＋數字」；不是目標的機關不放。
+  // 兩段的（特殊方塊訂單）每段一個牌子，演到哪一段換哪一個
+  const chipIcon = name => (name === 'jelly' ? jellyIcon() : name === 'dino' ? dinoImg() : blockerImg(name));
+  const chips = segs.map(d => {
+    if (!d.chip) return null;
+    const node = el('div', 'idemo-chip' + (still && multi ? ' sm' : ''));
+    node.appendChild(chipIcon(d.chip.icon));
+    node.appendChild(el('span', 'nm')).textContent = d.chip.order ? d.chip.name : '還差';
+    const num = el('b');
+    node.appendChild(num);
+    return { node, num, c: d.chip };
+  });
+  const chipTxt = (ch, v) => (ch.c.order ? v + '/1' : String(v));
+  const isDone = (ch, v) => (ch.c.order ? v >= 1 : v <= 0);
+  const setChip = (ch, v, prev) => {
+    if (!ch) return;
+    ch.num.textContent = chipTxt(ch, v);
+    ch.node.classList.toggle('done', isDone(ch, v));
+    ch.node.classList.toggle('up', prev != null && !ch.c.order && v > prev);   // 巧克力長大：數字變多，紅一下
+    if (prev != null && v !== prev) restartAnim(ch.node, 'pop');
   };
   const wrap = el('div', 'idemo' + (still ? ' still' : ''));
   host.classList.add('demo');
@@ -635,133 +638,195 @@ function introDemo(kind, host) {
   const putAt = (node, p) => { if (!p) return; node.style.left = p.x + '%'; node.style.top = p.y + '%'; node.style.setProperty('--s', p.s + '%'); };
   // ✕ 灰色＝這樣不行，✓ 綠色＝這樣可以；放在那一格的右上角，不蓋住機關
   const mkMark = (t, p) => { const m = el('i', 'idemo-mark ' + t, MARK_SVG[t] || ''); putAt(m, p); return m; };
-  const markCell = (st, res) => {
+  const markCell = (st, evs) => {
     if (!st.mark) return null;
-    if (st.mark.at === 'spread') { const e = res.events.find(v => v.t === 'spread'); return e ? e.to : null; }
+    if (st.mark.at === 'spread') { const e = evs.find(v => v.t === 'spread'); return e ? e.to : null; }
     return st.mark.at;
   };
-  const playOpts = () => (d.slowFall ? { slowFall: d.slowFall } : {});
+  const playOpts = d => (d.slowFall ? { slowFall: d.slowFall } : {});
+  // 輸送帶那一排的發亮框和箭頭（箭頭朝帶子前進的方向）；位置也是百分比，盤面要先 layout 過
+  const laneBox = d => {
+    const path = d.opts && d.opts.belts && d.opts.belts[0];
+    if (!path || path.length < 2) return null;
+    const ps = path.map(q => cellPct(q[0], q[1]));
+    if (ps.some(p => !p)) return null;
+    const s = ps[0].s, xs = ps.map(p => p.x), ys = ps.map(p => p.y);
+    const dr = path[1][0] - path[0][0], dc = path[1][1] - path[0][1];
+    return { x: Math.min(...xs) - s / 2, y: Math.min(...ys) - s / 2, w: Math.max(...xs) - Math.min(...xs) + s, h: Math.max(...ys) - Math.min(...ys) + s,
+      rot: dc > 0 ? 0 : dc < 0 ? 180 : dr > 0 ? 90 : -90 };
+  };
+  const mkLane = b => {
+    const ln = el('i', 'idemo-lane', '<svg viewBox="0 0 40 24" aria-hidden="true"><path d="M6 4l8 8-8 8M20 4l8 8-8 8"/></svg>');
+    ln.style.left = b.x + '%'; ln.style.top = b.y + '%'; ln.style.width = b.w + '%'; ln.style.height = b.h + '%';
+    ln.style.setProperty('--rot', b.rot + 'deg');
+    return ln;
+  };
 
   // ---- 一般：循環播放 ----
-  let board = null, finger = null;
+  let board = null, finger = null, chipOn = null;
   if (!still) {
     board = el('div', 'idemo-board');
     board.appendChild(cv);
     finger = el('i', 'idemo-finger');
     board.appendChild(finger);
     wrap.appendChild(board);
-    if (chip) wrap.appendChild(chip);
+    chipOn = chips.find(Boolean) || null;
+    if (chipOn) wrap.appendChild(chipOn.node);
   }
+  const showChip = ch => { if (ch && chipOn && ch !== chipOn) { chipOn.node.replaceWith(ch.node); chipOn = ch; } };
   const marks = () => board.querySelectorAll('.idemo-mark');
   async function loop(g) {
     let round = 0;
     while (live(g)) {
-      const eng = newEng(d.seeds[round++ % d.seeds.length]);
-      board.classList.remove('out');
-      for (const m of marks()) m.remove();
-      let val = chip ? d.chip.val(eng.stats) : null;
-      if (chip) chip.classList.remove('pop');
-      setChip(val, null);
-      R2.setBoard(eng.snapshot());
-      R2.layout();
-      for (let i = 0; i < steps.length; i++) {
-        const st = steps[i];
-        for (const m of marks()) m.classList.add('gone');      // 上一步的 ✕ 淡掉
-        R2.hint(st.a, st.b);                                     // 兩顆發亮、跳一跳（第一步 0.6 秒，之後 0.4 秒）
-        if (!await wait(i ? 400 : 600, g)) return;
-        R2.hint(null);
-        for (const m of marks()) m.remove();
-        const pa = cellPct(st.a.r, st.a.c), pb = cellPct(st.b.r, st.b.c);
-        finger.classList.remove('go');
-        putAt(finger, pa);
-        finger.classList.add('on');                              // 手指按住一顆，拖到旁邊那顆（約 0.6 秒）
-        if (!await wait(180, g)) return;
-        finger.classList.add('go');
-        putAt(finger, pb);
-        const dx = st.b.c - st.a.c, dy = st.b.r - st.a.r;
-        for (let k = 1; k <= 5; k++) {
-          R2.drag(st.a, dx * 0.35 * k / 5, dy * 0.35 * k / 5);
-          if (!await wait(80, g)) { R2.drag(null); return; }
+      const k = round++;
+      for (let si = 0; si < segs.length; si++) {
+        const d = segs[si], ch = chips[si], steps = d.steps;
+        const eng = newEng(d, d.seeds[k % d.seeds.length]);
+        board.classList.remove('out');
+        for (const m of board.querySelectorAll('.idemo-mark, .idemo-lane')) m.remove();
+        showChip(ch);
+        let val = ch ? ch.c.val(eng.stats) : null;
+        if (ch) ch.node.classList.remove('pop');
+        setChip(ch, val, null);
+        R2.setBoard(eng.snapshot());
+        R2.layout();
+        const lb = laneBox(d), lane = lb ? mkLane(lb) : null;
+        if (lane) board.insertBefore(lane, finger);
+        for (let i = 0; i < steps.length; i++) {
+          const st = steps[i];
+          for (const m of marks()) m.classList.add('gone');      // 上一步的 ✕ 淡掉
+          if (lane) {                                              // 輸送帶：帶子那排和箭頭先亮 0.7 秒
+            lane.classList.add('on');
+            if (!await wait(700, g)) return;
+          }
+          R2.hint(st.a, st.b);                                     // 兩顆發亮、跳一跳（第一步 0.6 秒，之後 0.4 秒）
+          if (!await wait(i ? 400 : 600, g)) return;
+          R2.hint(null);
+          if (lane) lane.classList.remove('on');
+          for (const m of marks()) m.remove();
+          const pa = cellPct(st.a.r, st.a.c), pb = cellPct(st.b.r, st.b.c);
+          finger.classList.remove('go');
+          putAt(finger, pa);
+          finger.classList.add('on');                              // 手指按住一顆，拖到旁邊那顆（約 0.6 秒）
+          if (!await wait(180, g)) return;
+          finger.classList.add('go');
+          putAt(finger, pb);
+          const dx = st.b.c - st.a.c, dy = st.b.r - st.a.r;
+          for (let j = 1; j <= 5; j++) {
+            R2.drag(st.a, dx * 0.35 * j / 5, dy * 0.35 * j / 5);
+            if (!await wait(80, g)) { R2.drag(null); return; }
+          }
+          R2.drag(null);
+          finger.classList.remove('on');
+          const res = eng.swap(st.a, st.b);
+          if (!res || (!res.ok && !st.bounce)) { console.warn('[introDemo] 換不動', kind, si + 1, i + 1); return; }
+          const opts = playOpts(d);
+          // 帶子走的那一下再亮一次
+          const onBelt = ev => { if (lane && ev && ev.t === 'belt') restartAnim(lane, 'flash'); };
+          if (st.hit) {
+            // 特殊組合、彩色炸彈：看到爆的那一下就算做到，不用等後面的掉落
+            let saw = false, onHit = null;
+            const hitP = new Promise(r => { onHit = r; });
+            opts.onEvent = ev => { onBelt(ev); if (!saw && ev && ev.cnt && st.hit(ev.cnt)) { saw = true; onHit(); } };
+            const playing = R2.play(res.events, opts);
+            await Promise.race([hitP, playing]);
+            if (!live(g)) return;
+            if (!await wait(850, g)) return;                      // 看完爆炸才算數
+            if (i < steps.length - 1) { await playing; if (!live(g)) return; }
+          } else {
+            opts.onEvent = onBelt;
+            await R2.play(res.events, opts);
+            if (!live(g)) return;
+          }
+          if (ch) { const v = ch.c.val(eng.stats); setChip(ch, v, val); val = v; }
+          const mc = markCell(st, res.events);
+          if (mc) board.appendChild(mkMark(st.mark.t, cellPct(mc.r, mc.c)));
+          // 停一下讓人看清楚；打 ✕ 的那一步停久一點，免得還沒看到就換下一步
+          if (!await wait(i < steps.length - 1 ? (st.mark && st.mark.t === 'x' ? 900 : 650) : 800, g)) return;
         }
-        R2.drag(null);
-        finger.classList.remove('on');
-        const res = eng.swap(st.a, st.b);
-        if (!res || (!res.ok && !st.bounce)) { console.warn('[introDemo] 換不動', kind, i + 1); return; }
-        const opts = playOpts();
-        if (st.hit) {
-          // 特殊組合、彩色炸彈：看到爆的那一下就算做到，不用等後面的掉落
-          let saw = false, onHit = null;
-          const hitP = new Promise(r => { onHit = r; });
-          opts.onEvent = ev => { if (!saw && ev && ev.cnt && st.hit(ev.cnt)) { saw = true; onHit(); } };
-          const playing = R2.play(res.events, opts);
-          await Promise.race([hitP, playing]);
-          if (!live(g)) return;
-          if (!await wait(850, g)) return;                      // 看完爆炸才算數
-          if (i < steps.length - 1) { await playing; if (!live(g)) return; }
-        } else {
-          await R2.play(res.events, opts);
-          if (!live(g)) return;
-        }
-        if (chip) { const v = d.chip.val(eng.stats); setChip(v, val); val = v; }
-        const mc = markCell(st, res);
-        if (mc) board.appendChild(mkMark(st.mark.t, cellPct(mc.r, mc.c)));
-        // 停一下讓人看清楚；打 ✕ 的那一步停久一點，免得還沒看到就換下一步
-        if (!await wait(i < steps.length - 1 ? (st.mark && st.mark.t === 'x' ? 900 : 650) : 800, g)) return;
+        board.classList.add('out');                                // 淡出，換下一段或下一輪（換一個種子）
+        if (!await wait(400, g)) return;
+        R2.setBoard(null);                                         // 停掉還沒播完的掉落
       }
-      board.classList.add('out');                                // 淡出，下一輪換一個種子
-      if (!await wait(400, g)) return;
-      R2.setBoard(null);                                         // 停掉還沒播完的掉落
     }
   }
 
   // ---- 減少動態：兩張靜態圖，中間一個箭頭，目標寫成「1 → 2 → 1」 ----
-  // 一步的：換之前（兩顆光圈＋手指）→ 換之後；兩步的：第一步的結果（✕）→ 第二步的結果（✓）
+  // 一步的：換之前（兩顆光圈＋手指）→ 換之後；兩步的：第一步的結果（✕）→ 第二步的結果（✓）；
+  // 兩段的（特殊方塊訂單）：第一段的結果 → 第二段的結果，牌子各放在自己那張下面
   function stills() {
     const row = el('div', 'idemo-frames');
     const f1 = el('div', 'idemo-board sm'), f2 = el('div', 'idemo-board sm');
     const arrow = el('span', 'idemo-arrow');
     arrow.textContent = '→';
     arrow.setAttribute('aria-hidden', 'true');
-    row.append(f1, arrow, f2);
+    if (multi) {
+      const col = (f, ch) => { const c = el('div', 'idemo-col'); c.appendChild(f); if (ch) c.appendChild(ch.node); return c; };
+      row.append(col(f1, chips[0]), arrow, col(f2, chips[1]));
+    } else row.append(f1, arrow, f2);
     wrap.appendChild(row);
-    if (chip) wrap.appendChild(chip);
+    if (!multi && chips[0]) wrap.appendChild(chips[0].node);
     f1.appendChild(cv);
-    const eng = newEng(d.seeds[0]);
-    const snap0 = eng.snapshot();
     const shot = () => { try { return cv.toDataURL(); } catch (e) { return ''; } };
-    const draw = ev => { R2.setBoard(ev ? { ...snap0, grid: ev.board, jelly: ev.jelly || snap0.jelly, lock: ev.lock || snap0.lock } : snap0); R2.layout(); return shot(); };
-    const vals = chip ? [d.chip.val(eng.stats)] : [];
-    const frames = [];                                           // { src, put: [[node, cell]] }
-    if (steps.length === 1) {
-      const st = steps[0];
-      const f = { src: draw(null), put: [] };
-      for (const c of [st.a, st.b]) f.put.push([el('i', 'idemo-ring'), c]);
-      f.put.push([el('i', 'idemo-finger on still'), st.a]);
-      frames.push(f);
-      const res = eng.swap(st.a, st.b);
-      const evs = (res && res.events) || [];
-      if (chip) vals.push(d.chip.val(eng.stats));
-      let ev = evs[evs.length - 1], at = st.b;
+    const isSp = (b, q) => { const p = b && b[q.r] && b[q.r][q.c]; return !!(p && p.special && p.special !== 'none'); };
+    const frames = [];                                           // { src, put: [[node, cell]], beam?, lane? }
+    const vals = [];                                             // 每一段的牌子數字：[[開頭, 第一步後, …], …]
+    // 換完之後的那一張：要停在哪個事件、圈哪一格
+    const after = (d, st, evs, draw) => {
+      let ev = evs[evs.length - 1], at = d.ringAt || st.b;
+      const f = { put: [] };
       if (d.still === 'combo') ev = evs[0];                      // 剛換完、還沒爆的那一刻，上面再疊一個十字光
-      else if (d.still === 'ring') ev = evs.find(e => e.board && e.board[st.b.r] && e.board[st.b.r][st.b.c] && e.board[st.b.r][st.b.c].special === 'bomb') || ev;
+      else if (d.still === 'ring') { const e2 = evs.find(e => isSp(e.board, st.b)); if (e2) { ev = e2; at = st.b; } }   // 剛做出來的特殊方塊
       else if (d.still === 'exit') { const q = d.opts.portals[0]; at = { r: q[2], c: q[3] }; }   // 傳送門：圈出口
-      const f2b = { src: ev ? draw(ev) : '', put: [] };
-      if (d.still === 'combo') f2b.beam = { at: st.b, dirs: ['h', 'v'] };
-      else f2b.put.push([el('i', 'idemo-ring big'), at]);
-      frames.push(f2b);
-    } else {
-      for (const st of steps) {
-        const res = eng.swap(st.a, st.b);
-        const evs = (res && res.events) || [];
-        if (chip) vals.push(d.chip.val(eng.stats));
-        const ev = (st.stillAt === 'clear' && evs.find(e => e.t === 'clear')) || evs[evs.length - 1];
-        const f = { src: ev ? draw(ev) : '', put: [] };
-        const mc = markCell(st, res);
-        if (mc) f.put.push([mkMark(st.mark.t, null), mc]);
-        if (st.stillBeam) f.beam = { at: st.b, dirs: [st.stillBeam] };   // 條紋掃過的那一排，空格上面疊一道光
+      else if (d.still === 'dino') {                             // 龍龍站上出口、還沒走的那一刻，圈出口
+        const i = evs.findIndex(e => e.t === 'exit');
+        if (i > 0) ev = evs[i - 1];
+        const q = i >= 0 && evs[i].cells && evs[i].cells[0];
+        if (q) at = { r: q.r, c: q.c };
+      } else if (d.still === 'belt') { ev = evs.find(e => e.t === 'belt') || ev; at = null; f.lane = true; }   // 帶子走完一格，那一排發亮
+      f.src = ev ? draw(ev) : '';
+      if (d.still === 'combo') f.beam = { at: st.b, dirs: ['h', 'v'] };
+      else if (at) f.put.push([el('i', 'idemo-ring big'), at]);
+      const mc = markCell(st, evs);
+      if (mc) f.put.push([mkMark(st.mark.t, null), mc]);
+      if (f.lane) f.lane = laneBox(d);
+      return f;
+    };
+    segs.forEach((d, si) => {
+      const ch = chips[si], steps = d.steps;
+      const eng = newEng(d, d.seeds[0]);
+      const snap0 = eng.snapshot();
+      const draw = ev => { R2.setBoard(ev ? { ...snap0, grid: ev.board, jelly: ev.jelly || snap0.jelly, lock: ev.lock || snap0.lock } : snap0); R2.layout(); return shot(); };
+      const v = ch ? [ch.c.val(eng.stats)] : [];
+      vals.push(v);
+      if (!multi && steps.length === 1) {
+        const st = steps[0];
+        const f = { src: draw(null), put: [] };
+        for (const c of [st.a, st.b]) f.put.push([el('i', 'idemo-ring'), c]);
+        f.put.push([el('i', 'idemo-finger on still'), st.a]);
         frames.push(f);
+        const res = eng.swap(st.a, st.b);
+        if (ch) v.push(ch.c.val(eng.stats));
+        frames.push(after(d, st, (res && res.events) || [], draw));
+      } else if (multi) {
+        // 每一段只放最後一步的結果
+        let res = null;
+        for (const st of steps) { res = eng.swap(st.a, st.b); if (ch) v.push(ch.c.val(eng.stats)); }
+        frames.push(after(d, steps[steps.length - 1], (res && res.events) || [], draw));
+      } else {
+        for (const st of steps) {
+          const res = eng.swap(st.a, st.b);
+          const evs = (res && res.events) || [];
+          if (ch) v.push(ch.c.val(eng.stats));
+          const ev = (st.stillAt === 'clear' && evs.find(e => e.t === 'clear')) || evs[evs.length - 1];
+          const f = { src: ev ? draw(ev) : '', put: [] };
+          const mc = markCell(st, evs);
+          if (mc) f.put.push([mkMark(st.mark.t, null), mc]);
+          if (st.stillBeam) f.beam = { at: st.b, dirs: [st.stillBeam] };   // 條紋掃過的那一排，空格上面疊一道光
+          frames.push(f);
+        }
       }
-    }
+    });
     // 位置要在盤面還在的時候量
     for (const f of frames) for (const it of f.put) it[2] = cellPct(it[1].r, it[1].c);
     for (const f of frames) if (f.beam) f.beam.p = cellPct(f.beam.at.r, f.beam.at.c);
@@ -772,6 +837,7 @@ function introDemo(kind, host) {
       const f = frames[i];
       if (!f) return;
       if (f.src) { const im = new Image(); im.alt = ''; im.draggable = false; im.src = f.src; fr.appendChild(im); }
+      if (f.lane) fr.appendChild(mkLane(f.lane)).classList.add('on');
       for (const [node, , p] of f.put) { putAt(node, p); fr.appendChild(node); }
       const b = f.beam && f.beam.p;
       if (!b) return;
@@ -784,10 +850,13 @@ function introDemo(kind, host) {
         fr.appendChild(ln);
       }
     });
-    if (chip) {
-      num.textContent = vals.map(chipTxt).join(' → ');
-      chip.classList.toggle('done', isDone(vals[vals.length - 1]));
-    }
+    chips.forEach((ch, si) => {
+      if (!ch) return;
+      const v = vals[si];
+      // 一段的寫成「3 → 0」；兩段的牌子放在各自那張下面，只寫結果
+      ch.num.textContent = multi ? chipTxt(ch, v[v.length - 1]) : v.map(x => chipTxt(ch, x)).join(' → ');
+      ch.node.classList.toggle('done', isDone(ch, v[v.length - 1]));
+    });
   }
 
   return {
@@ -833,7 +902,7 @@ async function openIntroCard(k, alive) {
   if (demo) demo.stop();
   closeModal('m-intro');
 }
-// 玩到一半點目標列的「特殊組合」「彩色炸彈」圖示：再看一次小卡。不動盤面、步數、分數，也不再記一次看過
+// 玩到一半點目標列有小卡的圖示：再看一次小卡。不動盤面、步數、分數，也不再記一次看過
 function reopenIntro(k) {
   if (state !== 'play' || moving || (R && R.busy) || document.querySelector('.modal.open')) return;
   const token = session;
@@ -1863,6 +1932,23 @@ function computeCenters() {
 }
 
 // ---------- HUD ----------
+// 目標的一個部分 → 哪一張教學小卡（工作單11）。巧克力收集：盤上有巧克力壺就看壺的那張
+function introOfPart(part) {
+  if (part.kind === 'order') return introOfOrder(part.what);
+  if (part.kind === 'chocoGot') return (level && (level.obstacles || []).join('').includes('P')) ? 'pot' : 'choco';
+  return INTRO[part.kind] ? part.kind : '';
+}
+// 目標列的圖示：有示意動畫小卡的，點一下再看一次（工作單4、工作單11；不動盤面、步數、分數，也不再記一次看過）
+function tapIntro(gi, ik) {
+  if (!gi || !ik || !INTRO[ik] || !INTRO[ik].demo) return;
+  gi.classList.add('tap');
+  gi.setAttribute('role', 'button');
+  gi.tabIndex = 0;
+  gi.title = '再看一次說明';
+  const go = e => { e.stopPropagation(); reopenIntro(ik); };
+  gi.addEventListener('click', go);
+  gi.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } });
+}
 function buildGoal() {
   const box = $('#hud-goal');
   box.innerHTML = '';
@@ -1896,7 +1982,7 @@ function buildGoal() {
       r.gi.setAttribute('aria-label', `${p.name} 還差 ${n}`);
     }
   } else if (g.type === 'jelly') {
-    mkItem(jellyIcon(), 'jelly');
+    tapIntro(mkItem(jellyIcon(), 'jelly').gi, 'jelly');
   } else if (PART_GOALS.includes(g.type)) {
     for (const part of goalPartsOf(level)) {
       if (part.kind === 'collect') {
@@ -1906,21 +1992,12 @@ function buildGoal() {
         r.k = kindOf(part.id); r.need = part.need;
         r.gi.classList.add('toy');
         setToyColors(r.gi, p.color);
-      } else if (part.kind === 'jelly') mkItem(jellyIcon(), 'jelly');
+      } else if (part.kind === 'jelly') tapIntro(mkItem(jellyIcon(), 'jelly').gi, 'jelly');
       else {
         const r = mkItem(partIcon(part), part.kind);
         r.need = part.need || 0; r.part = part;
         r.gi.setAttribute('aria-label', partName(part));
-        const ik = part.kind === 'order' ? introOfOrder(part.what) : '';
-        if (ik === 'combo' || ik === 'bomb') {      // 工作單4：點一下再看一次示意動畫（不動盤面、步數、分數）
-          r.gi.classList.add('tap');
-          r.gi.setAttribute('role', 'button');
-          r.gi.tabIndex = 0;
-          r.gi.title = '再看一次說明';
-          const go = e => { e.stopPropagation(); reopenIntro(ik); };
-          r.gi.addEventListener('click', go);
-          r.gi.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } });
-        }
+        tapIntro(r.gi, introOfPart(part));
       }
     }
   } else {
@@ -2864,7 +2941,36 @@ function openSettings() {
   syncToggles();
   renderAccount();
   renderVersion();
+  renderMechs(inGame && state === 'play');
   openModal('m-settings');
+}
+// 暫停選單的「這關的機關」（工作單11）：這關有哪些機關，點一下再看那張小卡；看完回到暫停選單。
+// 跟目標列一樣：不動盤面、步數、分數，也不再記一次看過。沒有機關的關卡整行不顯示
+function renderMechs(on) {
+  const box = $('#set-mechs'), list = $('#set-mechs-list');
+  if (!box || !list) return;
+  list.innerHTML = '';
+  const ks = on && level ? levelMechs(level) : [];
+  box.hidden = !ks.length;
+  for (const k of ks) {
+    const it = INTRO[k];
+    const b = el('button', 'sm-it');
+    b.type = 'button';
+    b.setAttribute('aria-label', '再看一次：' + it.name);
+    const ic = el('span', 'sm-ic');
+    ic.appendChild(it.icon());
+    b.appendChild(ic);
+    b.appendChild(el('small')).textContent = it.name;
+    b.addEventListener('click', () => reviewMech(k));
+    list.appendChild(b);
+  }
+}
+async function reviewMech(k) {
+  if (state !== 'play' || !isOpen('m-settings')) return;
+  const token = session;
+  closeModal('m-settings');
+  await openIntroCard(k, () => token === session);
+  if (token === session && state === 'play' && screen === 'game' && !document.querySelector('.modal.open')) openSettings();
 }
 // 設定最下面的小字：版本（大家都看得到）；?debug=1 時多顯示最後一次的錯誤和中斷紀錄
 function renderVersion() {

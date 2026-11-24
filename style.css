@@ -929,6 +929,26 @@ svg.on .hi { opacity: .9; }
 .sheet-actions { display: flex; flex-direction: column; gap: 14px; width: 100%; }
 .sheet-actions .btn { width: 100%; }
 .sheet:not(.in-game) #set-map, .sheet:not(.in-game) #set-restart { display: none; }
+/* 暫停選單「這關的機關」（工作單11）：點圖示再看一次那張小卡；只在遊戲中、這關有機關時出現 */
+.set-mechs {
+  width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 10px; border-radius: 20px;
+  border: 3px solid #fff; background: #fdf1e8; color: var(--ink);
+  box-shadow: 0 4px 0 #ecc9c0, 0 6px 12px rgba(112, 40, 64, .12);
+}
+.set-mechs[hidden], .sheet:not(.in-game) .set-mechs { display: none; }
+.set-mechs .sm-t { font-weight: 800; font-size: 15px; text-align: left; }
+.sm-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.sm-it {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 56px; padding: 5px 6px 4px;
+  border: 0; border-radius: 14px; background: #fff; color: var(--ink); font: inherit; cursor: pointer;
+  box-shadow: 0 2px 0 #ecc9c0; -webkit-tap-highlight-color: transparent; transition: transform .09s, box-shadow .09s;
+}
+.sm-it:active { transform: translateY(2px); box-shadow: none; }
+.sm-it:focus-visible { outline: 3px solid #ff4f9e; outline-offset: 2px; }
+.sm-ic { width: 34px; height: 34px; display: grid; place-items: center; }
+.sm-ic img { width: 34px; height: 34px; object-fit: contain; }
+.sm-ic .jelly-ic { width: 28px; height: 28px; border-radius: 8px; border-width: 2px; }
+.sm-it small { font-size: 11px; font-weight: 800; line-height: 1.2; white-space: nowrap; }
 
 /* 提示訊息 */
 .toast {
@@ -1086,6 +1106,8 @@ svg.on .hi { opacity: .9; }
   .sheet-card { width: min(100%, 660px); padding: 10px 20px calc(16px + var(--safe-b)); gap: 12px; }
   .sheet-card h2 { font-size: 22px; }
   .toggles { flex-direction: row; }
+  .set-mechs { flex-direction: row; align-items: center; gap: 12px; padding: 5px 12px; }
+  .set-mechs .sm-t { flex: none; }
   .sheet-actions { flex-direction: row; }
   .sheet-actions .btn { width: auto; flex: 1 1 0; min-height: 48px; padding-left: 10px; padding-right: 10px; font-size: 18px; }
 }
@@ -1813,7 +1835,28 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
 .idemo-beam { position: absolute; pointer-events: none; background: linear-gradient(90deg, rgba(255, 240, 200, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 240, 200, 0)); mix-blend-mode: screen; }
 .idemo-beam.h { left: 0; right: 0; height: var(--s); transform: translateY(-50%); background: linear-gradient(180deg, rgba(255, 220, 120, 0), rgba(255, 250, 225, .92) 30%, rgba(255, 250, 225, .92) 70%, rgba(255, 220, 120, 0)); }
 .idemo-beam.v { top: 0; bottom: 0; width: var(--s); transform: translateX(-50%); }
-@media (prefers-reduced-motion: reduce) { .idemo-board, .idemo-finger, .idemo-chip.pop, .idemo-mark { transition: none; animation: none; } }
+/* 工作單11：牌子上的冰果凍圖示（.intro-icon .jelly-ic 是 78px，牌子裡要小） */
+.intro-icon .idemo-chip .jelly-ic { width: 30px; height: 30px; border-radius: 8px; border-width: 2px; }
+/* 兩段的（特殊方塊訂單）減少動態：每張圖下面放自己的小牌子 */
+.idemo-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.idemo-chip.sm { gap: 4px; padding: 2px 8px 2px 3px; font-size: 12px; }
+.intro-icon .idemo-chip.sm img, .intro-icon .idemo-chip.sm .jelly-ic { width: 22px; height: 22px; }
+.idemo-chip.sm b { min-width: 1.8em; }
+/* 輸送帶：帶子那一排發亮＋箭頭（朝帶子前進的方向），配對前先亮，帶子走的那一下再閃一次 */
+.idemo-lane {
+  position: absolute; pointer-events: none; border-radius: 10px; display: grid; place-items: center;
+  background: rgba(255, 214, 120, .22);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .95), 0 0 0 4px rgba(255, 150, 30, .9), 0 0 12px 4px rgba(255, 214, 120, .85);
+  opacity: 0; transition: opacity .25s ease;
+}
+.idemo-lane.on { opacity: 1; }
+.idemo-lane.flash { animation: idemo-lane-flash .7s ease; }
+@keyframes idemo-lane-flash { 0%, 35% { opacity: 1; } 100% { opacity: 0; } }
+.idemo-lane svg {
+  width: 36%; height: 72%; transform: rotate(var(--rot, 0deg)); fill: none; stroke: #fff; stroke-width: 4.2; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 1px 1.5px rgba(160, 70, 0, .8));
+}
+@media (prefers-reduced-motion: reduce) { .idemo-board, .idemo-finger, .idemo-chip.pop, .idemo-mark, .idemo-lane { transition: none; animation: none; } }
 /* 手機橫放（高 520 以下）：直排會比畫面高（812×375 時多 19～46px），改成示意動畫在左、標題和說明在右 */
 @media (orientation: landscape) and (max-height: 520px) {
   .modal .card.intro-card.has-demo {
@@ -1827,7 +1870,7 @@ html.has-friends #scr-map .map-here { max-width: calc(100% - 186px); }   /* 上�
   .intro-card.has-demo .intro-tap { grid-area: tap; align-self: start; margin-top: 0; }
   .intro-card.has-demo .idemo-board:not(.sm) { width: min(200px, 46vh); }
 }
-/* 目標列的特殊組合、彩色炸彈圖示可以點，再看一次說明 */
+/* 目標列有小卡的圖示（冰果凍、龍龍、巧克力、訂單…）可以點，再看一次說明 */
 .gi.tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .gi.tap:active .ic { transform: scale(.92); }
 .gi.tap:focus-visible { outline: 3px solid #ff4f9e; outline-offset: 2px; border-radius: 12px; }
