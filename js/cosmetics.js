@@ -268,27 +268,57 @@ export const ACCESSORY_PLACE = {
 // ★ 微調設定檔：某隻玩偶戴某個配件時，位置 / 大小不對就改這裡 ★
 //   offsetX / offsetY：往右 / 往下挪多少（玩偶寬 / 高的比例，例如 0.05 = 挪 5%；負數 = 往左 / 往上）
 //   scale：大小（1 = 原本，1.2 = 大 20%）
+//   rot：轉幾度（順時針為正，負數往左轉；以配件正中間為中心，跟飾品對齊台一樣）
 export const ACCESSORY_TUNING = {
-  dog:     { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
-             bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: -0.04, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  sloth:   { crown: { offsetX: 0, offsetY: 0.02, scale: 1.2 }, chef: { offsetX: 0, offsetY: 0.02, scale: 1.15 }, halo: { offsetX: 0, offsetY: 0, scale: 1.2 },
-             bow: { offsetX: 0, offsetY: 0.03, scale: 1.15 }, shades: { offsetX: 0, offsetY: 0, scale: 1.1 }, blush: { offsetX: 0, offsetY: 0, scale: 1.2 } },
-  egg:     { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
-             bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  piggy:    { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
-             bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  nyanko:  { crown: { offsetX: 0, offsetY: 0.02, scale: 1 }, chef: { offsetX: 0, offsetY: 0.02, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
-             bow: { offsetX: 0, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  moodeng: { crown: { offsetX: 0, offsetY: 0.04, scale: 0.9 }, chef: { offsetX: 0, offsetY: 0.04, scale: 0.9 }, halo: { offsetX: 0, offsetY: 0, scale: 0.9 },
-             bow: { offsetX: 0.02, offsetY: 0.04, scale: 0.9 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
-  snoopy:  { crown: { offsetX: 0, offsetY: 0, scale: 1 }, chef: { offsetX: 0, offsetY: 0, scale: 1 }, halo: { offsetX: 0, offsetY: 0, scale: 1 },
-             bow: { offsetX: 0.04, offsetY: 0, scale: 1 }, shades: { offsetX: 0, offsetY: 0, scale: 1 }, blush: { offsetX: 0, offsetY: 0, scale: 1 } },
+  dog:     { crown: { offsetX: -0.198, offsetY: 0.116, scale: 0.9, rot: -5 },
+             chef: { offsetX: -0.205, offsetY: 0.143, scale: 0.82, rot: 0 },
+             halo: { offsetX: -0.16, offsetY: 0.093, scale: 1, rot: 0 },
+             bow: { offsetX: -0.477, offsetY: 0.2, scale: 1, rot: 0 },
+             shades: { offsetX: -0.221, offsetY: -0.017, scale: 0.88, rot: 0 },
+             blush: { offsetX: -0.247, offsetY: 0.055, scale: 1, rot: 0 } },
+  sloth:   { crown: { offsetX: -0.094, offsetY: -0.022, scale: 1.2, rot: -10 },
+             chef: { offsetX: -0.088, offsetY: 0.007, scale: 1.15, rot: -10 },
+             halo: { offsetX: -0.089, offsetY: 0.021, scale: 1.2, rot: -10 },
+             bow: { offsetX: -0.162, offsetY: 0.517, scale: 1.15, rot: -5 },
+             shades: { offsetX: -0.034, offsetY: -0.061, scale: 1.1, rot: -10 },
+             blush: { offsetX: -0.021, offsetY: -0.073, scale: 1.12, rot: -10 },
+             bunny: { offsetX: -0.058, offsetY: 0.034, scale: 1.2, rot: -5 } },
+  egg:     { crown: { offsetX: 0.019, offsetY: -0.032, scale: 1, rot: 0 },
+             chef: { offsetX: 0.021, offsetY: -0.037, scale: 0.88, rot: 0 },
+             halo: { offsetX: 0.025, offsetY: -0.01, scale: 1, rot: 0 },
+             bow: { offsetX: -0.272, offsetY: 0.511, scale: 1, rot: 0 },
+             shades: { offsetX: 0.015, offsetY: -0.091, scale: 0.8, rot: 0 },
+             blush: { offsetX: 0.008, offsetY: -0.099, scale: 1, rot: 0 } },
+  piggy:   { crown: { offsetX: -0.065, offsetY: -0.034, scale: 0.9, rot: -10 },
+             chef: { offsetX: -0.075, offsetY: -0.017, scale: 1, rot: -10 },
+             halo: { offsetX: -0.095, offsetY: 0.009, scale: 1, rot: -15 },
+             bow: { offsetX: -0.045, offsetY: 0.041, scale: 1, rot: 15 },
+             shades: { offsetX: -0.053, offsetY: -0.018, scale: 1, rot: -10 },
+             blush: { offsetX: -0.055, offsetY: -0.129, scale: 1, rot: -15 } },
+  nyanko:  { crown: { offsetX: -0.04, offsetY: -0.084, scale: 0.74, rot: 0 },
+             chef: { offsetX: -0.049, offsetY: -0.072, scale: 0.84, rot: 0 },
+             halo: { offsetX: -0.081, offsetY: -0.003, scale: 1, rot: 0 },
+             bow: { offsetX: -0.434, offsetY: 0.848, scale: 1, rot: 0 },
+             shades: { offsetX: -0.101, offsetY: 0.019, scale: 1, rot: 0 },
+             blush: { offsetX: -0.105, offsetY: 0.041, scale: 1, rot: 0 } },
+  moodeng: { crown: { offsetX: 0.025, offsetY: -0.106, scale: 0.72, rot: 0 },
+             chef: { offsetX: 0.031, offsetY: -0.115, scale: 0.68, rot: 0 },
+             halo: { offsetX: 0, offsetY: 0, scale: 0.9, rot: 0 },
+             bow: { offsetX: -0.304, offsetY: 0.984, scale: 0.9, rot: 0 },
+             shades: { offsetX: 0.012, offsetY: 0.038, scale: 0.88, rot: 0 },
+             blush: { offsetX: 0, offsetY: 0, scale: 1, rot: 0 } },
+  snoopy:  { crown: { offsetX: -0.037, offsetY: -0.017, scale: 0.94, rot: 0 },
+             chef: { offsetX: -0.046, offsetY: -0.048, scale: 0.92, rot: 0 },
+             halo: { offsetX: -0.031, offsetY: 0.042, scale: 1, rot: 0 },
+             bow: { offsetX: -0.047, offsetY: 0.056, scale: 1, rot: 0 },
+             shades: { offsetX: 0, offsetY: 0, scale: 1, rot: 0 },
+             blush: { offsetX: 0, offsetY: 0, scale: 1, rot: 0 } },
 };
 // 新配件沒有自己的微調時，照戴法最像的舊配件微調（例如貝雷帽跟皇冠一樣戴在頭頂）
 const TUNE_LIKE = { clip: 'bow', heartglasses: 'shades', bunny: 'crown', beret: 'crown', tophat: 'crown', flowers: 'crown', eggshell: 'chef', santa: 'chef' };
 export function accTune(toy, name) {
   const t = ACCESSORY_TUNING[toy] || {};
-  return Object.assign({ offsetX: 0, offsetY: 0, scale: 1 }, t[name] || t[TUNE_LIKE[name]]);
+  return Object.assign({ offsetX: 0, offsetY: 0, scale: 1, rot: 0 }, t[name] || t[TUNE_LIKE[name]]);
 }
 
 // ---------- 配件的圖（SVG，透明背景；renderer 先畫成小圖再疊到玩偶上）----------

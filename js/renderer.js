@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124zh';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124zh';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261124zi';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261124zi';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124zh';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261124zi';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -670,14 +670,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const id = pieceInfo(kind).id, face = TOY_FACE[id] || { x: 0.5, top: 0.05, eyes: 0.4, cheeks: 0.55, w: 0.7 };
     const place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 };
     const tune = accTune(id, name);
-    const b = toyBounds(toy), n = box * 2, c = makeCanvas(n, n), g = c.getContext('2d');
-    const bx0 = n / 2 - box / 2 + b.x0 * box, by0 = n / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
+    const b = toyBounds(toy), n0 = box * 2;
+    const bx0 = n0 / 2 - box / 2 + b.x0 * box, by0 = n0 / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
     const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * natH(img) / Math.max(1, natW(img));
     const ax = bx0 + face.x * bw + place.dx * fw + tune.offsetX * bw;
     const ay = by0 + (face[place.anchor] != null ? face[place.anchor] : face.top) * bh - place.ay * ah + tune.offsetY * bh;
+    // rot（工作單20）：以配件正中間 (ax, ay + ah/2) 為中心轉，順時針為正，跟飾品對齊台一樣
+    const rad = (tune.rot || 0) * Math.PI / 180, co = Math.abs(Math.cos(rad)), si = Math.abs(Math.sin(rad));
+    const hx = (aw * co + ah * si) / 2 + aw * 0.1, hy = (aw * si + ah * co) / 2 + aw * 0.1;
+    // 轉了或挪得比較遠時，配件可能超出 box × 2 的小圖：小圖往四邊加大（中心不變），不會被切掉
+    const off = Math.max(0, Math.ceil(Math.max(Math.abs(ax - n0 / 2) + hx, Math.abs(ay + ah / 2 - n0 / 2) + hy) - n0 / 2));
+    const n = n0 + off * 2, c = makeCanvas(n, n), g = c.getContext('2d');
     g.save();
     if (name !== 'blush' && name !== 'halo') { g.shadowColor = 'rgba(60,20,80,0.32)'; g.shadowBlur = aw * 0.05; g.shadowOffsetY = aw * 0.03; }
-    g.drawImage(img, ax - aw / 2, ay, aw, ah);
+    if (rad) {
+      g.translate(off + ax, off + ay + ah / 2);
+      g.rotate(rad);
+      g.drawImage(img, -aw / 2, -ah / 2, aw, ah);
+    } else {
+      g.drawImage(img, off + ax - aw / 2, off + ay, aw, ah);
+    }
     g.restore();
     if (accCache.size > 60) accCache.clear();
     const out = { c, n };

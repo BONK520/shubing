@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zh';
-import { SLOGANS } from './slogans.js?v=20261124zh';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zh';
-import { blockerCanvas } from './blockers.js?v=20261124zh';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zh';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124zh';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zh';
-import { STORY } from './story.js?v=20261124zh';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zi';
+import { SLOGANS } from './slogans.js?v=20261124zi';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zi';
+import { blockerCanvas } from './blockers.js?v=20261124zi';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zi';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124zi';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zi';
+import { STORY } from './story.js?v=20261124zi';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zh';
+const MOD_V = '?v=20261124zi';
 
 window.__plushBooted = true;
 
@@ -1406,6 +1406,8 @@ function avatarHat(name, who = 'sloth') {
   const img = svgImg(svg, 'av-hat');
   const pc = v => (v * 100).toFixed(2) + '%';
   img.style.left = pc(ax - aw / 2); img.style.top = pc(ay); img.style.width = pc(aw); img.style.height = pc(ah);
+  // rot（工作單20）：<img> 預設以自己正中間轉，剛好是 (ax, ay + ah/2)，跟盤面上一樣
+  if (tune.rot) img.style.transform = 'rotate(' + tune.rot + 'deg)';
   return img;
 }
 function avatarToy(outfit, hat, who = 'sloth') {
