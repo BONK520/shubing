@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124p';
-import { SLOGANS } from './slogans.js?v=20261124p';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124p';
-import { blockerCanvas } from './blockers.js?v=20261124p';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124p';
-import { getOpAlways, setOpAlways } from './opening.js?v=20261124p';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124p';
-import { STORY } from './story.js?v=20261124p';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124q';
+import { SLOGANS } from './slogans.js?v=20261124q';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars } from './cosmetics.js?v=20261124q';
+import { blockerCanvas } from './blockers.js?v=20261124q';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, coverArtHTML, islandMiniHTML, spotHTML } from './mapart.js?v=20261124q';
+import { getOpAlways, setOpAlways } from './opening.js?v=20261124q';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124q';
+import { STORY } from './story.js?v=20261124q';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124p';
+const MOD_V = '?v=20261124q';
 
 window.__plushBooted = true;
 
