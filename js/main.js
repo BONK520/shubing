@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zu';
-import { SLOGANS } from './slogans.js?v=20261124zu';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zu';
-import { blockerCanvas } from './blockers.js?v=20261124zu';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zu';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261124zu';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zu';
-import { STORY } from './story.js?v=20261124zu';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261124zv';
+import { SLOGANS } from './slogans.js?v=20261124zv';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261124zv';
+import { blockerCanvas } from './blockers.js?v=20261124zv';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261124zv';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261124zv';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261124zv';
+import { STORY } from './story.js?v=20261124zv';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261124zu';
+const MOD_V = '?v=20261124zv';
 
 window.__plushBooted = true;
 

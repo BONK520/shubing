@@ -499,7 +499,7 @@ export const OUTFIT_FIT = {
     per: {   // 造型對齊台（11/24）的數值；沒寫 body 的照上面的 body（往上 2）
       sailor: { head: { x: 8.5, y: -18, s: 0.66, r: 0 }, body: { x: 6, y: 0, s: 1, r: 0 } },
       night: { head: { x: 8, y: -13, s: 0.82, r: 0 } },
-      party: { head: { x: -5.5, y: -14.5, s: 0.62, r: -30 } },
+      party: { head: { x: -5.5, y: -14.5, s: 0.62, r: -30 }, body: { x: 6.5, y: -2, s: 1, r: 0 } },   // 蝴蝶結移到正中間（11/25 使用者選 A）
       berry: { head: { x: 8.5, y: -12.5, s: 0.7, r: 0 } },
       snow: { head: { x: 7, y: -14, s: 0.6, r: 0 }, body: { x: 8, y: -2, s: 1, r: 0 } },
       space: { head: { x: 7, y: -13.5, s: 0.7, r: 0, w: 1.7 }, body: { x: 6.5, y: 6.5, s: 1.1, r: 0 } },
