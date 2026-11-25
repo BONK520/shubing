@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261125a';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261125a';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261126a';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261126a';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261125a';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261126a';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -385,6 +385,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   let surpriseUsed = false;         // 照片驚喜口號每關最多一次（setBoard 重設）
   // 口號語音（2026-11：玩家覺得太吵、每段連鎖都講一句全部黏在一起）：學 Candy Crush 平常安靜，
   // 一步最多講一句，連到第 3 段以上（或組合技、照片驚喜）才講，兩句之間至少隔 VOICE_GAP 毫秒。字照樣每段都跳
+// 例外：驚喜口號（一關一次）不管間隔一定講
   const VOICE_GAP = 6000;
   let lastVoiceAt = -Infinity, moveVoiced = false;
   let banners = [];
@@ -3022,7 +3023,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (cascade >= 4 && !surpriseUsed && SLOGANS.surprise.length && Math.random() < 0.4) {
       surpriseUsed = true;
       const sl = SLOGANS.surprise[Math.floor(Math.random() * SLOGANS.surprise.length)];
-      showWord(sl.text, 5, sl, canSpeak(5));
+      showWord(sl.text, 5, sl, true);                          // 驚喜口號一定講（上一句會淡出），之後這一步不再講
     } else if (cascade >= 2) {
       const sl = cascadeSlogan(cascade);
       if (sl) showWord(sl.text, cascade, sl, canSpeak(cascade));

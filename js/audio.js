@@ -224,7 +224,7 @@ function rebuild() {
   song = null;                 // 舊 AudioContext 的音源跟著關掉；解碼好的曲子新的也能用
   const old = ctx;
   try { if (voiceSrc) voiceSrc.stop(); } catch (e) { /* ignore */ }
-  voiceSrc = null;
+  voiceSrc = null; voiceGain = null; voiceEnd = 0;
   crunchBufs = null;          // 新的 AudioContext 重算一次（makeContext 空閒時會算）
   const c = makeContext();
   if (!c) return;
@@ -969,7 +969,7 @@ function setScene(name, n) {
 // ---------- 稱讚語音（assets/voice/*.wav，tools/voice_fx.py 做的「魔性」男聲） ----------
 const VOICE_IDS = ['c2', 'c3', 'c4', 'c5', 'combo', 's1', 's2', 'start', 'sugar', 'win3'];
 const voiceBuf = Object.create(null);
-let voiceLoading = false, voiceSrc = null;
+let voiceLoading = false, voiceSrc = null, voiceGain = null, voiceEnd = 0;
 function loadVoices() {
   if (voiceLoading || !ctx) return;
   voiceLoading = true;
@@ -980,16 +980,27 @@ function loadVoices() {
       .catch(() => { /* 沒有語音檔就不講話 */ });
   }
 }
+const VOICE_FADE = 0.1;       // 上一句還在講：0.1 秒淡出再接下一句，不硬切
 SFX.voice = (t, o) => {
   const b = voiceBuf[o.id];
   if (!b) return;
-  try { if (voiceSrc) voiceSrc.stop(t); } catch (e) { /* 已經停了 */ }
+  let at = t;
+  if (voiceSrc && voiceGain) {
+    try {
+      const pg = voiceGain.gain;
+      pg.cancelScheduledValues(t);
+      pg.setValueAtTime(pg.value, t);
+      pg.linearRampToValueAtTime(0, t + VOICE_FADE);
+      voiceSrc.stop(t + VOICE_FADE + 0.02);
+      if (voiceEnd > t) at = t + VOICE_FADE * 0.6;    // 還在講才等一下，稍微疊一點比較順
+    } catch (e) { /* 已經停了 */ }
+  }
   const s = ctx.createBufferSource(), g = ctx.createGain();
   s.buffer = b;
   g.gain.value = 0.95;
   s.connect(g); g.connect(sfxBus);
-  s.start(t);
-  voiceSrc = s;
+  s.start(at);
+  voiceSrc = s; voiceGain = g; voiceEnd = at + b.duration;
 };
 
 export const audio = {
