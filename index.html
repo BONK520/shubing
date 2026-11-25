@@ -12,7 +12,7 @@
 <title>薯餅蛋蛋島</title>
 <link rel="icon" href="assets/sprites/sloth.png">
 <link rel="apple-touch-icon" href="assets/sprites/sloth.png">
-<link rel="stylesheet" href="style.css?v=20261124zt">
+<link rel="stylesheet" href="style.css?v=20261124zu">
 <!-- 開頭動畫要不要播（在畫任何東西之前決定，免得封面先閃一下）：?intro=1 一定播、?intro=0 不播；
      減少動態效果不播；一天播一次（localStorage 讀不到就當作還沒播） -->
 <style>html.op-pending::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: #8fd3ef; }</style>
@@ -109,7 +109,7 @@
       <!-- 還在載入時（html.is-loading）荷包蛋的位置先放載入條，載完才換成荷包蛋 -->
       <div class="cv-load">
         <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
-        <p class="load-text" id="load-text">毛絨玩具準備中…</p>
+        <p class="load-text" id="load-text">划船上島中…</p>
       </div>
       <button class="fried" id="btn-start" type="button" aria-label="開始遊戲" title="開始遊戲"><span class="yolk"><svg viewBox="0 0 24 24"><path d="M8 4.5 20 12 8 19.5Z"/></svg></span></button>
     </div>
@@ -472,7 +472,7 @@
   }, 9000);
 </script>
 <!-- ?v=：改版上線時換日期，手機才不會拿到快取的舊檔（js/ 裡互相 import 的字串也要一起換，見 main.js 的 MOD_V） -->
-<script type="module" src="js/opening.js?v=20261124zt"></script>
-<script type="module" src="js/main.js?v=20261124zt"></script>
+<script type="module" src="js/opening.js?v=20261124zu"></script>
+<script type="module" src="js/main.js?v=20261124zu"></script>
 </body>
 </html>
