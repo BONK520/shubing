@@ -55,7 +55,16 @@
       "id": "nyanko",
       "sprite": "assets/sprites/nyanko.png",
       "clean": "assets/sprites/nyanko_n.png",
-      "photo": true
+      "spin": "assets/sprites/nyanko_spin.webp",
+      "glb": "assets/models/nyanko.glb",
+      "usdz": "assets/models/nyanko.usdz",
+      "placeholder": false,
+      "spinScale": 1.0,
+      "sizeCm": [
+        3.5,
+        5.1,
+        3.8
+      ]
     },
     {
       "id": "moodeng",

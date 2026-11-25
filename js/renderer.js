@@ -105,7 +105,7 @@ export const BOARD_THEMES = {
     cellA: 'rgba(255,255,255,0.96)', cellB: 'rgba(255,240,240,0.96)',
     wallDark: 'rgba(160,90,60,0.26)', wallLit: 'rgba(255,255,255,0.95)', rimShadow: 'rgba(120,70,30,0.14)',
     shadow: [120, 60, 40],
-    pattern: 'gingham',
+    pattern: 'gingham', jelly: 'light',
     frame: { glow: 'rgba(255,238,205,0.85)', base: '#efd2a0', drop: 'rgba(110,60,20,0.3)', dropBase: '#b07a3c',
       side: ['#c99456', '#b07a3c', '#8a5a26'], ring: ['#fbe6c0', '#eac68a', '#d6a560'], ringShade: [140, 90, 40], innerEdge: 'rgba(150,90,40,0.45)' },
     deco: 'berries',
@@ -174,33 +174,60 @@ function lightTheme({ cellA, cellB, glass, ring, side, shadow, deco, sky }) {
     cellA: rgbaOf(hexRgb(cellA), 0.96), cellB: rgbaOf(hexRgb(cellB), 0.96),
     grid: rgbaOf(shadow, 0.08),
     wallDark: rgbaOf(shadow, 0.26), wallLit: 'rgba(255,255,255,0.95)', rimShadow: rgbaOf(shadow, 0.14),
-    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky, jelly: 'light',
   };
 }
 // 深色盤面：半透明的深色玻璃，淺色、深色的玩偶都跳得出來
-function darkTheme({ glassA, glassB, glow, ring, side, shadow, deco, sky }) {
+function darkTheme({ glassA, glassB, glow, ring, side, shadow, deco, sky, jelly = 'dark' }) {
   return {
     glass: [[0, rgbaOf(glassA, 0.92)], [1, rgbaOf(glassB, 0.95)]],
     glow: [rgbaOf(glow, 0.16), rgbaOf(glow, 0)],
     cellA: rgbaOf(mixc(glassA, glassB, 0.5), 0.72), cellB: rgbaOf(mixc(glassA, WHITE, 0.05), 0.72),
     grid: rgbaOf(glow, 0.13),
     wallDark: rgbaOf(shadow, 0.55), wallLit: rgbaOf(glow, 0.14), rimShadow: rgbaOf(shadow, 0.24),
-    shadow, frame: themeFrame(ring, side, shadow), deco, sky,
+    shadow, frame: themeFrame(ring, side, shadow), deco, sky, jelly,
   };
 }
 Object.assign(BOARD_THEMES, {
   dock: lightTheme({ cellA: '#ffffff', cellB: '#e3f4fb', ring: ['#d8f2fb', '#8fd3ef', '#5aaed8'], side: ['#4a9cc8', '#3f86b0', '#2c6a90'], shadow: [40, 90, 130], deco: 'eggs' }),
   park: lightTheme({ cellA: '#fff4f8', cellB: '#e3f4d8', ring: ['#ffd6e6', '#ff9cc4', '#e86aa0'], side: ['#d9558c', '#c04478', '#9a2e5c'], shadow: [130, 40, 80], deco: 'bulbs' }),
   snow: lightTheme({ cellA: '#ffffff', cellB: '#e8f1fa', glass: ['rgba(247,251,255,0.94)', 'rgba(228,238,247,0.95)'], ring: ['#ffffff', '#d8e8f6', '#a9c6e2'], side: ['#8fb0d0', '#7d9cc0', '#5f80a6'], shadow: [50, 80, 120], deco: 'flakes' }),
-  sea: darkTheme({ glassA: [40, 100, 160], glassB: [20, 60, 120], glow: [140, 220, 255], ring: ['#bfe8f7', '#86cbe9', '#5a98d2'], side: ['#4a86c0', '#3a70a8', '#2a5888'], shadow: [10, 30, 70], sky: 'bubbles' }),
+  sea: darkTheme({ glassA: [40, 100, 160], glassB: [20, 60, 120], glow: [140, 220, 255], ring: ['#bfe8f7', '#86cbe9', '#5a98d2'], side: ['#4a86c0', '#3a70a8', '#2a5888'], shadow: [10, 30, 70], sky: 'bubbles', jelly: 'blue' }),
   choco: darkTheme({ glassA: [92, 58, 40], glassB: [64, 38, 24], glow: [255, 210, 170], ring: ['#ffe3ee', '#ecd0ba', '#c99677'], side: ['#93644f', '#7a4e3a', '#5e3a28'], shadow: [40, 20, 10], deco: 'sprinkles' }),
   dream: lightTheme({ cellA: '#fff1f6', cellB: '#efe7ff', ring: ['#f3edff', '#d6c8fa', '#b8a3ef'], side: ['#9a85dc', '#8a6fd0', '#6c52b4'], shadow: [90, 60, 150], deco: 'hearts' }),
   bamboo: lightTheme({ cellA: '#eef8e8', cellB: '#d8edcc', ring: ['#d8efd0', '#9fd09a', '#6fae6a'], side: ['#4c8a48', '#3f763c', '#2f5e2c'], shadow: [30, 70, 30], deco: 'leaves' }),
   lantern: darkTheme({ glassA: [78, 66, 120], glassB: [52, 42, 90], glow: [255, 200, 140], ring: ['#ffb0a0', '#e0584a', '#b83a30'], side: ['#9a2a22', '#82221c', '#641814'], shadow: [20, 10, 40], deco: 'lanterns' }),
   icecream: lightTheme({ cellA: '#fff8f0', cellB: '#e6f6f0', ring: ['#ffe2b8', '#f0c48a', '#d9a060'], side: ['#c08848', '#a8702e', '#8a5a20'], shadow: [130, 80, 50], deco: 'scoops' }),
-  moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars' }),
+  moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars', jelly: 'blue' }),
   castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
 });
+// 半透明盤面（工作單17）：白色 30% 的毛玻璃底板、白色 12% / 26% 交錯的格子，外圈一條白邊和柔柔的落影。
+// 模糊和白邊、落影由盤面下面的 DOM（.board-under）負責；玩偶的影子用這一關那一站的深色（R.setScene）
+BOARD_THEMES.glass = { ...BOARD_THEMES.macaron, glassy: true, shadow: [60, 40, 110], jelly: 'light',
+  flat: { base: '#fff', baseAlpha: 0.3, cellA: 'rgba(255,255,255,0.12)', cellB: 'rgba(255,255,255,0.26)' } };
+// 果凍配色（工作單18）：每個盤面主題有 jelly 欄位，'light' 淺色格子、'dark' 深色玻璃、'blue' 藍色系深色盤面（海底、月亮島）。
+//   沒寫的當 'dark'。淺色盤面的果凍填色比較深、比較不透明，外面一圈深藍邊（最後才畫，白色反光蓋不到）；
+//   藍色系盤面填色照深色，但邊框改成白亮的，才不會和藍色格子混在一起
+const JELLY_TONES = {
+  dark: {
+    one: { top: 'rgba(170,238,255,0.62)', bot: 'rgba(70,190,240,0.58)', shine: 0.26, edge: 'rgba(225,250,255,0.9)', ew: 0.035 },
+    two: { top: 'rgba(110,200,255,0.9)', bot: 'rgba(24,104,210,0.92)', shine: 0.32, edge: 'rgba(200,240,255,0.95)', ew: 0.05, ring: 'rgba(190,235,255,0.75)' },
+    rim1: [120, 225, 255], rim2: [40, 150, 255], rimLine: 'rgba(255,255,255,0.85)',
+    ice: ['rgba(235,252,255,0.98)', 'rgba(90,200,255,0.9)', 'rgba(40,140,220,0.9)'],
+  },
+  light: {
+    one: { top: 'rgba(118,196,250,0.8)', bot: 'rgba(58,148,232,0.82)', shine: 0.24, edge: '#2f7fd0', ew: 0.05 },
+    two: { top: 'rgba(54,142,234,0.9)', bot: 'rgba(22,88,190,0.93)', shine: 0.26, edge: '#164f9e', ew: 0.065, ring: 'rgba(205,236,255,0.85)' },
+    rim1: [47, 127, 208], rim2: [18, 74, 160], rimLine: 'rgba(255,255,255,0.9)', rimIn: true,
+    ice: ['rgba(205,236,255,0.98)', 'rgba(47,127,208,0.95)', 'rgba(20,80,160,0.95)'],
+  },
+  blue: {
+    one: { top: 'rgba(170,238,255,0.66)', bot: 'rgba(70,190,240,0.62)', shine: 0.26, edge: 'rgba(255,255,255,0.97)', ew: 0.045 },
+    two: { top: 'rgba(120,206,255,0.92)', bot: 'rgba(24,104,210,0.94)', shine: 0.32, edge: 'rgba(255,255,255,0.98)', ew: 0.06, ring: 'rgba(225,246,255,0.85)' },
+    rim1: [200, 246, 255], rim2: [40, 140, 255], rimLine: 'rgba(255,255,255,0.95)', rimWhite: true,
+    ice: ['rgba(245,254,255,0.98)', 'rgba(120,215,255,0.92)', 'rgba(255,255,255,0.95)'],
+  },
+};
 function saturate(c, amt) {
   const g = (c[0] + c[1] + c[2]) / 3;
   return c.map(v => clamp(Math.round(g + (v - g) * (1 + amt)), 0, 255));
@@ -290,6 +317,35 @@ function candyPath(g, shape, cx, cy, R) {
       g.closePath();
       break;
     }
+    // ---- 工作單16「七種新形狀」（衣櫃 frame.shape7）：照關卡樣張v2 的形狀，原點改成 (cx, cy) ----
+    case 'star': {
+      const pts = [];
+      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, r = k % 2 ? R * 0.58 : R * 1.12; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r + R * 0.06]); }
+      roundedPoly(g, pts, R * 0.14);
+      break;
+    }
+    case 'diamond': roundedPoly(g, [[cx, cy - R * 1.1], [cx + R * 0.96, cy], [cx, cy + R * 1.1], [cx - R * 0.96, cy]], R * 0.26); break;
+    case 'tri': roundedPoly(g, [[cx, cy - R * 1.08], [cx + R * 1.12, cy + R * 0.78], [cx - R * 1.12, cy + R * 0.78]], R * 0.3); break;
+    case 'drop':
+      g.moveTo(cx, cy - R * 1.12);
+      g.bezierCurveTo(cx + R * 0.25, cy - R * 0.66, cx + R * 0.92, cy - R * 0.15, cx + R * 0.92, cy + R * 0.3);
+      g.bezierCurveTo(cx + R * 0.92, cy + R * 0.8, cx + R * 0.5, cy + R, cx, cy + R);
+      g.bezierCurveTo(cx - R * 0.5, cy + R, cx - R * 0.92, cy + R * 0.8, cx - R * 0.92, cy + R * 0.3);
+      g.bezierCurveTo(cx - R * 0.92, cy - R * 0.15, cx - R * 0.25, cy - R * 0.66, cx, cy - R * 1.12);
+      g.closePath();
+      break;
+    // 幸運草和雲是幾個圓疊起來：每個圓都同一個方向（逆時針 false），配 nonzero 填色／裁切，重疊處不會鏤空
+    case 'clover': {
+      for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2, x = cx + Math.cos(a) * R * 0.5, y = cy + Math.sin(a) * R * 0.5; g.moveTo(x + R * 0.52, y); g.arc(x, y, R * 0.52, 0, Math.PI * 2); }
+      g.moveTo(cx + R * 0.5, cy); g.arc(cx, cy, R * 0.5, 0, Math.PI * 2);
+      break;
+    }
+    case 'cloud': {
+      const c = (x, y, r) => { g.moveTo(cx + x * R + r * R, cy + y * R); g.arc(cx + x * R, cy + y * R, r * R, 0, Math.PI * 2); };
+      c(-0.5, 0.2, 0.48); c(0.5, 0.2, 0.48); c(0, -0.22, 0.62); c(0, 0.32, 0.52);
+      break;
+    }
+    case 'pill': rrSub(g, cx - R * 1.05, cy - R * 0.68, R * 2.1, R * 1.36, R * 0.68); break;
     default: g.arc(cx, cy, R, 0, Math.PI * 2);
   }
 }
@@ -362,6 +418,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   function themeGeom() { MARGIN = BOARD_THEME.flat ? MARGIN_FLAT : MARGIN_RIM; FRAME_B = BOARD_THEME.flat ? 0 : FRAME_B_RIM; }
   // 衣櫃的外觀（R.setLook）：hat 配件、frame 方塊底座、theme 盤面主題；消除特效在 particleSkin
   let look = { hat: 'none', fx: 'default', frame: 'jelly', theme: 'macaron' };
+  // 這一關的場景（R.setScene）：半透明盤面時，玩偶和底座的影子用這一站的深色
+  let sceneShade = null;
+  const themeShadow = () => (BOARD_THEME.glassy && sceneShade) || BOARD_THEME.shadow || [110, 60, 140];
+  // 半透明盤面下面的 DOM：模糊背景（backdrop-filter）＋白邊＋落影，只在盤面大小改變時重建，不會每一幀重算
+  let under = null, underKey = '';
+  const uid = 'bu' + Math.random().toString(36).slice(2, 7);
 
   // ================= 素材 =================
   function pieceInfo(kind) { return pieces[kind] || { id: '?', name: '?', color: '#cccccc' }; }
@@ -487,7 +549,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     return c;
   }
   function embeddedToy(kind, im, box) {
-    const key = kind + '|' + box;
+    // 工作單16：「七種新形狀」和「不要底座」的玩偶沒有白邊、沒有糖果色柔光；不要底座的落影改成很淡的主題色
+    const mode = look.frame === 'shape7' || look.frame === 'none' ? look.frame : '';
+    const key = kind + '|' + box + '|' + mode;
     let c = toyCache.get(key);
     if (c) return c;
     let src = vivid(scaled(im, box));
@@ -499,7 +563,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const glow = silhouette(src, css(mixc(saturate(col, 0.35), WHITE, 0.4)));
     // 愛心上的玩具（白色的史努比）：柔光幾乎不要 —— 白光疊在白毛外面，愛心的顏色會被洗掉、邊緣毛毛碎碎的；改靠下面更柔的落影陷進去
     const heart = shapeOf(kind) === 'heart';
-    for (const [rr2, a] of heart ? [[box * 0.03, 0.02]] : [[box * 0.045, 0.05], [box * 0.024, 0.1]]) {
+    for (const [rr2, a] of mode ? [] : heart ? [[box * 0.03, 0.02]] : [[box * 0.045, 0.05], [box * 0.024, 0.1]]) {
       g.globalAlpha = a;
       for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; g.drawImage(glow, pad + Math.cos(t) * rr2, pad + Math.sin(t) * rr2); }
     }
@@ -508,22 +572,28 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     // 做法：白色剪影往 16 個方向各偏一點疊起來（外圈再一層更淡的），落影也照「含白邊」的形狀算
     const sticker = makeCanvas(W, W), sq = sticker.getContext('2d'), white = silhouette(src, '#fff');
     const ow = Math.min(1.5 * dpr, Math.max(1, box * 0.02));     // 約 1.5px 的柔和白邊
-    for (const [r2, a] of [[ow, 0.85], [ow * 0.5, 1]]) {
-      sq.globalAlpha = a;
-      for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; sq.drawImage(white, pad + Math.cos(t) * r2, pad + Math.sin(t) * r2); }
+    if (mode) sq.drawImage(src, pad, pad);   // 沒有白邊：落影照玩偶本身的形狀算
+    else {
+      for (const [r2, a] of [[ow, 0.85], [ow * 0.5, 1]]) {
+        sq.globalAlpha = a;
+        for (let k = 0; k < 16; k++) { const t = k / 16 * Math.PI * 2; sq.drawImage(white, pad + Math.cos(t) * r2, pad + Math.sin(t) * r2); }
+      }
+      sq.globalAlpha = 1;
     }
-    sq.globalAlpha = 1;
     // 落影：糖果色的深色版，往右下偏（光從左上來）。兩層：範圍大、很柔的影子（玩具像陷進糖果的凹槽裡）+ 貼著底部的接觸影
     // 柔邊用 shadowBlur（不用 ctx.filter，Safari 也一樣）：白邊圖畫在原位、影子往右下偏
-    const shc = mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
-    const shadows = heart ? [[0.03, 0.085, 0.15, 0.62], [0.014, 0.04, 0.05, 0.4]] : [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]];
+    // 不要底座：玩偶直接放在盤面上，只留很淡、往右下的落影（看得出貼在盤面上，但不像有底座），顏色跟著盤面主題
+    const shc = mode === 'none' ? themeShadow() : mixc(saturate(col, 0.5), [34, 16, 84], 0.74);
+    const shadows = mode === 'none' ? NONE_SHADOW
+      : heart ? [[0.03, 0.085, 0.15, 0.62], [0.014, 0.04, 0.05, 0.4]] : [[0.022, 0.075, 0.1, 0.55], [0.012, 0.034, 0.032, 0.42]];
+    const far = W * 3;   // 影子用「畫在畫面外、只讓影子落回來」的做法，玩偶本身不會被畫兩次
     for (const [ox2, oy2, blur, a] of shadows) {
       g.save();
-      g.shadowColor = css(shc, a); g.shadowBlur = box * blur; g.shadowOffsetX = box * ox2; g.shadowOffsetY = box * oy2;
-      g.drawImage(sticker, 0, 0);
+      g.shadowColor = css(shc, a); g.shadowBlur = box * blur; g.shadowOffsetX = box * ox2 + (mode ? far : 0); g.shadowOffsetY = box * oy2;
+      g.drawImage(sticker, mode ? -far : 0, 0);
       g.restore();
     }
-    g.drawImage(sticker, 0, 0);
+    if (!mode) g.drawImage(sticker, 0, 0);
     // 玩具本身
     const lit = makeCanvas(src.width, src.height), lg = lit.getContext('2d');
     lg.drawImage(src, 0, 0);
@@ -538,10 +608,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       lg.putImageData(d, 0, 0);
     } catch (e) { /* 讀不到像素就不調 */ }
     // 下半部反射一點糖果的顏色（像坐在發光的糖果上）
-    lg.globalCompositeOperation = 'source-atop';
-    const bg2 = lg.createLinearGradient(0, src.height * 0.5, 0, src.height);
-    bg2.addColorStop(0, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0)); bg2.addColorStop(1, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0.24));
-    lg.fillStyle = bg2; lg.fillRect(0, 0, src.width, src.height);
+    if (mode !== 'none') {   // 不要底座：下面沒有發光的糖果，不反射
+      lg.globalCompositeOperation = 'source-atop';
+      const bg2 = lg.createLinearGradient(0, src.height * 0.5, 0, src.height);
+      bg2.addColorStop(0, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0)); bg2.addColorStop(1, css(mixc(saturate(col, 0.5), WHITE, 0.3), 0.24));
+      lg.fillStyle = bg2; lg.fillRect(0, 0, src.width, src.height);
+    }
     g.drawImage(lit, pad, pad);     // 邊緣光、光澤已經做在圖裡（tools/postprocess.py 的 toyify）
     if (toyCache.size > 80) toyCache.clear();
     toyCache.set(key, c);
@@ -598,14 +670,26 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     const id = pieceInfo(kind).id, face = TOY_FACE[id] || { x: 0.5, top: 0.05, eyes: 0.4, cheeks: 0.55, w: 0.7 };
     const place = ACCESSORY_PLACE[name] || { anchor: 'top', size: 0.6, ay: 0.8, dx: 0 };
     const tune = accTune(id, name);
-    const b = toyBounds(toy), n = box * 2, c = makeCanvas(n, n), g = c.getContext('2d');
-    const bx0 = n / 2 - box / 2 + b.x0 * box, by0 = n / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
+    const b = toyBounds(toy), n0 = box * 2;
+    const bx0 = n0 / 2 - box / 2 + b.x0 * box, by0 = n0 / 2 - box / 2 + b.y0 * box, bw = (b.x1 - b.x0) * box, bh = (b.y1 - b.y0) * box;
     const fw = face.w * bw, aw = place.size * fw * tune.scale, ah = aw * natH(img) / Math.max(1, natW(img));
     const ax = bx0 + face.x * bw + place.dx * fw + tune.offsetX * bw;
     const ay = by0 + (face[place.anchor] != null ? face[place.anchor] : face.top) * bh - place.ay * ah + tune.offsetY * bh;
+    // rot（工作單20）：以配件正中間 (ax, ay + ah/2) 為中心轉，順時針為正，跟飾品對齊台一樣
+    const rad = (tune.rot || 0) * Math.PI / 180, co = Math.abs(Math.cos(rad)), si = Math.abs(Math.sin(rad));
+    const hx = (aw * co + ah * si) / 2 + aw * 0.1, hy = (aw * si + ah * co) / 2 + aw * 0.1;
+    // 轉了或挪得比較遠時，配件可能超出 box × 2 的小圖：小圖往四邊加大（中心不變），不會被切掉
+    const off = Math.max(0, Math.ceil(Math.max(Math.abs(ax - n0 / 2) + hx, Math.abs(ay + ah / 2 - n0 / 2) + hy) - n0 / 2));
+    const n = n0 + off * 2, c = makeCanvas(n, n), g = c.getContext('2d');
     g.save();
     if (name !== 'blush' && name !== 'halo') { g.shadowColor = 'rgba(60,20,80,0.32)'; g.shadowBlur = aw * 0.05; g.shadowOffsetY = aw * 0.03; }
-    g.drawImage(img, ax - aw / 2, ay, aw, ah);
+    if (rad) {
+      g.translate(off + ax, off + ay + ah / 2);
+      g.rotate(rad);
+      g.drawImage(img, -aw / 2, -ah / 2, aw, ah);
+    } else {
+      g.drawImage(img, off + ax - aw / 2, off + ay, aw, ah);
+    }
     g.restore();
     if (accCache.size > 60) accCache.clear();
     const out = { c, n };
@@ -657,7 +741,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   function toyFit(kind, im) {
     let f = fitCache.get(kind);
     if (f && f.im === im) return f;
-    const b = toyBounds(im), span = Math.max(0.05, b.x1 - b.x0, b.y1 - b.y0), box = TOY_CELL / span;
+    const b = toyBounds(im), span = Math.max(0.05, b.x1 - b.x0, b.y1 - b.y0), box = toyCell() / span;
     const lift = shapeOf(kind) === 'heart' ? -0.05 : 0;
     f = { im, box, dx: (0.5 - (b.x0 + b.x1) / 2) * box, dy: (0.5 - (b.y0 + b.y1) / 2) * box + lift };
     fitCache.set(kind, f);
@@ -671,11 +755,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     return { box: Math.round(S * f.box * k), dx: f.dx * S * k, dy: f.dy * S * k };
   }
   // 條紋糖果：玩具身上也印淡淡的條紋（只印在玩具上，不印在影子上）
-  function paintToyStripes(g, kind, tx, ty, box, x, y, T, dir) {
+  function paintToyStripes(g, kind, tx, ty, box, x, y, T, dir, alpha = 0.42) {
     const im = toyImage(kind);
     if (!im) return;
     const c = makeCanvas(box, box), q = c.getContext('2d');
-    q.fillStyle = 'rgba(255,255,255,0.42)';   // 改版 2026-11：0.32 → 0.42，蛋形這種窄的方塊直條紋才看得出來
+    q.fillStyle = `rgba(255,255,255,${alpha})`;   // 改版 2026-11：0.32 → 0.42，蛋形這種窄的方塊直條紋才看得出來（不要底座 0.6：條紋只能印在玩偶上）
     q.translate(box / 2 - tx, box / 2 - ty);
     paintStripes(q, x, y, T, dir);
     q.setTransform(1, 0, 0, 1, 0, 0);
@@ -693,9 +777,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   }
   const SHAPE_OF = { dog: 'ball', sloth: 'square', egg: 'egg', piggy: 'flower', nyanko: 'hex', moodeng: 'bean', snoopy: 'heart' };   // 顏色在 pieces.js
   const SHAPE_CYCLE = ['ball', 'square', 'egg', 'flower', 'hex', 'bean', 'heart'];
-  function shapeOf(kind) { const id = pieceInfo(kind).id; return SHAPE_OF[id] || SHAPE_CYCLE[((kind % 7) + 7) % 7]; }
+  // 工作單16「七種新形狀」（衣櫃 frame.shape7）：同樣的果凍質感，每隻玩偶換一個新形狀
+  const SHAPE7_OF = { dog: 'star', sloth: 'diamond', egg: 'drop', piggy: 'clover', nyanko: 'cloud', moodeng: 'pill', snoopy: 'tri' };
+  const SHAPE7_CYCLE = ['star', 'diamond', 'drop', 'clover', 'cloud', 'pill', 'tri'];
+  function shapeOf(kind) {
+    const id = pieceInfo(kind).id, i = ((kind % 7) + 7) % 7;
+    return look.frame === 'shape7' ? (SHAPE7_OF[id] || SHAPE7_CYCLE[i]) : (SHAPE_OF[id] || SHAPE_CYCLE[i]);
+  }
   const CANDY_R = 0.42;     // 糖果半徑 / 格（改版 2026-11：底座約一格的 84%，格子的深淺交錯露得出來）
-  const TOY_CELL = 0.66;    // 玩偶（照片裡不透明的部分）最長的那邊 = 一格的 66%
+  // 玩偶（照片裡不透明的部分）最長的那邊 = 一格的 66%；「七種新形狀」和「不要底座」放大到 80%（工作單16）
+  const toyCell = () => look.frame === 'shape7' || look.frame === 'none' ? 0.8 : 0.66;
+  // 不要底座的玩偶落影：[往右, 往下, 模糊, 濃度]（以玩偶大小為單位）。很淡，只是讓玩偶看起來貼在盤面上
+  const NONE_SHADOW = [[0.025, 0.06, 0.09, 0.2], [0.01, 0.025, 0.03, 0.16]];
   // 立體糖果（像 Candy Crush）：光從左上來 → 左上亮、右下暗；壓在盤面上的落影；玩具在裡面，上面再蓋反光
   function paintCandy(g, kind, cx, cy, S, col, special) {
     const shape = shapeOf(kind), R = S * CANDY_R;
@@ -705,7 +798,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     //   1. 範圍大、很柔的落影，壓在格子的凹槽裡   2. 貼著底部的接觸陰影（糖果的重量）
     //   3. 四周一圈很窄的暗（環境光遮蔽）：糖果像重重地壓進格子裡，不是平平地懸空貼在上面
     // （淺色毛玻璃盤面：影子用主題的淡紫玫瑰色、淡一點，不會在白底上變成髒髒的黑圈）
-    const shc = BOARD_THEME.shadow || [110, 60, 140];
+    const shc = themeShadow();
     g.save();
     g.shadowColor = css(shc, 0.42); g.shadowBlur = S * 0.11; g.shadowOffsetX = S * 0.05; g.shadowOffsetY = S * 0.09;
     candyPath(g, shape, cx, cy, R * 1.04); g.fillStyle = css(deep); g.fill();
@@ -1162,9 +1255,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   };
   // ---- 方塊底座（衣櫃）：果凍（預設，paintCandy）/ 透明扭蛋球 / 酥脆餅乾 / 花瓣 / 上面那六種 ----
   // 底座的外形（條紋的亮帶、包裝的白點圈要沿著它走）
+  const KNOWN_FRAMES = new Set(['jelly', 'shape7', 'none', 'cookie', 'capsule', 'petal', ...Object.keys(NEW_FRAME_PATH)]);
+  // 果凍質感的兩種：原本的果凍底座、工作單16「七種新形狀」（只差在形狀）
+  const jellyLike = () => !look.frame || look.frame === 'jelly' || look.frame === 'shape7';
   function bodyPath(g, kind, cx, cy, R) {
     const f = look.frame;
-    if (!f || f === 'jelly') { candyPath(g, shapeOf(kind), cx, cy, R); return; }
+    if (jellyLike()) { candyPath(g, shapeOf(kind), cx, cy, R); return; }
     g.beginPath();
     if (NEW_FRAME_PATH[f]) { NEW_FRAME_PATH[f](g, cx, cy, R); return; }
     if (f === 'cookie') {
@@ -1185,7 +1281,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
   }
   function paintAltBase(g, kind, cx, cy, S, col, special) {
-    const f = look.frame, R = S * CANDY_R * 1.02, shc = BOARD_THEME.shadow || [110, 60, 140];
+    const f = look.frame, R = S * CANDY_R * 1.02, shc = themeShadow();
     const sat = saturate(col, 0.25), dark = saturate(col, 0.4), deep = mixc(dark, BLACK, 0.5);
     // 落影（主題的顏色）
     g.save();
@@ -1248,6 +1344,29 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
     if (special === 'wrap') paintWrapFrame(g, k => { g.beginPath(); g.arc(cx, cy, R * k, 0, Math.PI * 2); }, R);
   }
+  // 工作單16「不要底座」：沒有底座可以畫特殊記號，改畫在玩偶外面（玩偶後面一圈光、包裝的白框；箭頭和條紋另外畫）
+  function paintBareMark(g, kind, cx, cy, S, col, special) {
+    if (special === 'wrap') {
+      const R = S * CANDY_R * 1.02;
+      paintWrapFrame(g, k => { g.beginPath(); g.arc(cx, cy, R * k, 0, Math.PI * 2); }, R);
+      return;
+    }
+    if (special !== 'h' && special !== 'v') return;
+    // 直線（條紋）：玩偶後面一圈白光 + 外面淡淡的金光，跟果凍底座上的白條紋一樣一眼看得出來
+    const im = toyImage(kind);
+    if (!im) return;
+    const L = toyLayout(kind, special, S), box = L.box, src = scaled(im, box);
+    const x = cx + L.dx - box / 2, y = cy + L.dy - box / 2, far = S * 4;
+    const glow = (color, blur, n) => {
+      const sil = silhouette(src, '#fff');
+      g.save();
+      g.shadowColor = color; g.shadowBlur = blur; g.shadowOffsetX = far;
+      for (let i = 0; i < n; i++) g.drawImage(sil, x - far, y);
+      g.restore();
+    };
+    glow('rgba(255,196,60,0.75)', S * 0.11, 2);
+    glow('rgba(255,255,255,0.95)', S * 0.045, 3);
+  }
   // 蓋在玩偶上面的反光
   function paintAltGloss(g, kind, cx, cy, S) {
     const f = look.frame, R = S * CANDY_R * 1.02;
@@ -1285,8 +1404,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   function buildTile(kind, special, S) {
     const P = Math.ceil(S * PAD), cx = P / 2, cy = P / 2, col = kindColor(kind);
     const base = makeCanvas(P, P), bg = base.getContext('2d');
+    const bare = look.frame === 'none';
     if (special === 'wrap') paintWrapEnds(bg, cx, cy, S, col);
-    if (look.frame === 'jelly' || !look.frame) paintCandy(bg, kind, cx, cy, S, col, special);
+    if (bare) paintBareMark(bg, kind, cx, cy, S, col, special);
+    else if (jellyLike()) paintCandy(bg, kind, cx, cy, S, col, special);
     else paintAltBase(bg, kind, cx, cy, S, col, special);
     let top = null;
     if (special === 'h' || special === 'v' || special === 'wrap') {
@@ -1312,11 +1433,12 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
     if (special === 'h' || special === 'v') {
       const R = S * CANDY_R;
-      paintToyStripes(fg, kind, tx, ty, L.box, cx - R, cy - R, R * 2, special);
+      paintToyStripes(fg, kind, tx, ty, L.box, cx - R, cy - R, R * 2, special, bare ? 0.6 : 0.42);
     }
-    // 玻璃反光蓋在玩具上面；選取時（轉圈 / 彈跳）也要蓋，所以合併進 top
+    // 玻璃反光蓋在玩具上面；選取時（轉圈 / 彈跳）也要蓋，所以合併進 top（不要底座：沒有反光）
     const gloss = makeCanvas(P, P);
-    if (look.frame === 'jelly' || !look.frame) paintCandyGloss(gloss.getContext('2d'), kind, cx, cy, S);
+    if (bare) { /* 不畫 */ }
+    else if (jellyLike()) paintCandyGloss(gloss.getContext('2d'), kind, cx, cy, S);
     else paintAltGloss(gloss.getContext('2d'), kind, cx, cy, S);
     if (top) top.getContext('2d').drawImage(gloss, 0, 0);
     else top = gloss;
@@ -1536,14 +1658,14 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (jellyCache[level]) return jellyCache[level];
     const S = Math.max(4, Math.round(cs * dpr)), c = makeCanvas(S, S), g = c.getContext('2d');
     const two = level >= 2, i = S * 0.03, w = S - 2 * i, rad = S * 0.16;
+    const tone = JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark, P = two ? tone.two : tone.one;
     const gr = g.createLinearGradient(0, i, 0, i + w);
-    if (two) { gr.addColorStop(0, 'rgba(110,200,255,0.9)'); gr.addColorStop(1, 'rgba(24,104,210,0.92)'); }
-    else { gr.addColorStop(0, 'rgba(170,238,255,0.62)'); gr.addColorStop(1, 'rgba(70,190,240,0.58)'); }
+    gr.addColorStop(0, P.top); gr.addColorStop(1, P.bot);
     rr(g, i, i, w, w, rad); g.fillStyle = gr; g.fill();
     // 斜斜的結晶反光（兩道），只在格子裡面
     g.save();
     rr(g, i, i, w, w, rad); g.clip();
-    g.fillStyle = two ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.26)';
+    g.fillStyle = `rgba(255,255,255,${P.shine})`;
     for (const [x0, wd] of two ? [[0.08, 0.14], [0.34, 0.07], [0.62, 0.05]] : [[0.12, 0.12], [0.44, 0.06]]) {
       g.beginPath(); g.moveTo(i + w * x0, i + w); g.lineTo(i + w * (x0 + wd), i + w); g.lineTo(i + w * (x0 + wd + 0.5), i); g.lineTo(i + w * (x0 + 0.5), i); g.closePath(); g.fill();
     }
@@ -1552,9 +1674,10 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     rr(g, i + w * 0.08, i + w * 0.05, w * 0.84, w * 0.12, w * 0.06); g.fill();
     if (two) { g.fillStyle = 'rgba(255,255,255,0.28)'; rr(g, i + w * 0.12, i + w * 0.22, w * 0.76, w * 0.07, w * 0.035); g.fill(); }
     g.restore();
+    // 雙層的內圈先畫，外圈的邊最後畫：反光和內圈都不會蓋到外邊
+    if (two) { rr(g, i + S * 0.07, i + S * 0.07, w - S * 0.14, w - S * 0.14, rad * 0.7); g.lineWidth = S * 0.022; g.strokeStyle = P.ring; g.stroke(); }
     rr(g, i, i, w, w, rad);
-    g.lineWidth = S * (two ? 0.05 : 0.035); g.strokeStyle = two ? 'rgba(200,240,255,0.95)' : 'rgba(225,250,255,0.9)'; g.stroke();
-    if (two) { rr(g, i + S * 0.07, i + S * 0.07, w - S * 0.14, w - S * 0.14, rad * 0.7); g.lineWidth = S * 0.022; g.strokeStyle = 'rgba(190,235,255,0.75)'; g.stroke(); }
+    g.lineWidth = S * P.ew; g.strokeStyle = P.edge; g.stroke();
     jellyCache[level] = c;
     return c;
   }
@@ -1563,14 +1686,24 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (rimCache[level]) return rimCache[level];
     const S = Math.max(4, Math.round(cs * dpr)), c = makeCanvas(S, S), g = c.getContext('2d');
     const two = level >= 2, inset = S * 0.05, w = S - 2 * inset, rad = S * 0.2;
-    const col = two ? [40, 150, 255] : [120, 225, 255];
+    const tone = JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark;
+    const col = two ? tone.rim2 : tone.rim1, lw = S * (two ? 0.07 : 0.05);
     g.save();
-    g.shadowColor = css(col, 0.9); g.shadowBlur = S * 0.06;
+    g.shadowColor = css(col, tone.rimIn ? 0.55 : 0.9); g.shadowBlur = S * (tone.rimIn ? 0.035 : 0.06);
     rr(g, inset, inset, w, w, rad);
-    g.lineWidth = S * (two ? 0.07 : 0.05); g.strokeStyle = css(col, 0.95); g.stroke();
+    g.lineWidth = lw; g.strokeStyle = css(col, 0.95); g.stroke();
     g.restore();
-    rr(g, inset, inset, w, w, rad);
-    g.lineWidth = S * 0.018; g.strokeStyle = 'rgba(255,255,255,0.85)'; g.stroke();
+    if (tone.rimIn) {
+      // 淺色盤面：白色細線放在深藍邊的內側，不壓在邊上
+      const d = lw / 2 + S * 0.009;
+      rr(g, inset + d, inset + d, w - 2 * d, w - 2 * d, rad - d);
+    } else rr(g, inset, inset, w, w, rad);
+    g.lineWidth = S * 0.018; g.strokeStyle = tone.rimLine; g.stroke();
+    if (tone.rimWhite) {
+      // 藍色系盤面：外面再一圈白，和藍色格子分得開
+      rr(g, inset - lw / 2, inset - lw / 2, w + lw, w + lw, rad + lw / 2);
+      g.lineWidth = S * 0.014; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.stroke();
+    }
     if (two) {
       const i2 = S * 0.11;
       rr(g, i2, i2, S - 2 * i2, S - 2 * i2, rad * 0.75);
@@ -1588,9 +1721,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (iceImg) return iceImg;
     const n = 32, c = makeCanvas(n, n), g = c.getContext('2d');
     g.beginPath(); g.moveTo(n * 0.5, n * 0.05); g.lineTo(n * 0.9, n * 0.45); g.lineTo(n * 0.55, n * 0.95); g.lineTo(n * 0.12, n * 0.6); g.closePath();
-    const gr = g.createLinearGradient(0, 0, n, n);
-    gr.addColorStop(0, 'rgba(235,252,255,0.98)'); gr.addColorStop(1, 'rgba(90,200,255,0.9)');
-    g.fillStyle = gr; g.fill(); g.lineWidth = 1.5; g.strokeStyle = 'rgba(40,140,220,0.9)'; g.stroke();
+    const gr = g.createLinearGradient(0, 0, n, n), ice = (JELLY_TONES[BOARD_THEME.jelly] || JELLY_TONES.dark).ice;
+    gr.addColorStop(0, ice[0]); gr.addColorStop(1, ice[1]);
+    g.fillStyle = gr; g.fill(); g.lineWidth = 1.5; g.strokeStyle = ice[2]; g.stroke();
     g.beginPath(); g.moveTo(n * 0.5, n * 0.05); g.lineTo(n * 0.55, n * 0.95); g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1; g.stroke();
     iceImg = c;
     return c;
@@ -1637,7 +1770,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       bq.fill();
     }
     const c = makeCanvas(Wd, Hd), g = c.getContext('2d');
-    g.drawImage(base, 0, 0);
+    // 半透明的底板：先畫不透明的形狀再整張調淡，格子重疊的地方才不會變深
+    g.globalAlpha = fl.baseAlpha ?? 1; g.drawImage(base, 0, 0); g.globalAlpha = 1;
     for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) {
       if (!mask[r][c2]) continue;
       rr4(g, m + c2 * S, m + r * S, S, S, ...corners(r, c2, crad));
@@ -1655,10 +1789,53 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
     clipPath = p;
   }
+  // 半透明盤面下面的 DOM：P＝每一格往外擴 m 的圓角方框（重疊的地方合起來就是盤面的外形，CSS px、畫布座標）
+  //   .bu-blur：clip-path 剪成盤面的形狀，backdrop-filter 模糊後面的關卡背景
+  //   svg：落影（往下偏、站的深色）＋白邊（stroke 10px，用遮罩只留外面那一半＝約 5px）；遮罩挖掉盤面裡面，影子不會透進半透明的盤子
+  function updateUnder() {
+    const on = !!(BOARD_THEME.glassy && rows && cols && W && canvas.parentNode);
+    if (!on) { if (under) under.hidden = true; return; }
+    if (!under) {
+      under = document.createElement('div');
+      under.className = 'board-under';
+      under.setAttribute('aria-hidden', 'true');
+      under.style.cssText = 'position:absolute;z-index:0;pointer-events:none;';
+      if (getComputedStyle(canvas).position === 'static') canvas.style.position = 'relative';
+    }
+    if (under.parentNode !== canvas.parentNode) canvas.parentNode.insertBefore(under, canvas);
+    under.hidden = false;
+    const L = canvas.offsetLeft + 'px', T = canvas.offsetTop + 'px';
+    if (under.style.left !== L) under.style.left = L;
+    if (under.style.top !== T) under.style.top = T;
+    const shc = sceneShade || BOARD_THEME.shadow;
+    const key = [W, H, cs, ox, oy, rows, cols, mask.map(r => r.map(v => (v ? 1 : 0)).join('')).join('/'), shc.join()].join('|');
+    if (key === underKey) return;
+    underKey = key;
+    const m = MARGIN * cs, rad = cs * 0.28, f = v => +v.toFixed(2);
+    const onc = (r, c) => r >= 0 && c >= 0 && r < rows && c < cols && mask[r][c];
+    let P = '';
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (!mask[r][c]) continue;
+      const u = onc(r - 1, c), d = onc(r + 1, c), l = onc(r, c - 1), ri = onc(r, c + 1);
+      const [tl, tr, br, bl] = [!u && !l ? rad : 0, !u && !ri ? rad : 0, !d && !ri ? rad : 0, !d && !l ? rad : 0];
+      const x = ox + c * cs - m, y = oy + r * cs - m, w = cs + 2 * m;
+      P += `M${f(x + tl)} ${f(y)}H${f(x + w - tr)}${tr ? `A${f(tr)} ${f(tr)} 0 0 1 ${f(x + w)} ${f(y + tr)}` : ''}V${f(y + w - br)}${br ? `A${f(br)} ${f(br)} 0 0 1 ${f(x + w - br)} ${f(y + w)}` : ''}`
+        + `H${f(x + bl)}${bl ? `A${f(bl)} ${f(bl)} 0 0 1 ${f(x)} ${f(y + w - bl)}` : ''}V${f(y + tl)}${tl ? `A${f(tl)} ${f(tl)} 0 0 1 ${f(x + tl)} ${f(y)}` : ''}Z`;
+    }
+    const big = `x="-60" y="-60" width="${W + 120}" height="${H + 120}"`;
+    under.style.width = W + 'px'; under.style.height = H + 'px';
+    under.innerHTML = `<div style="position:absolute;inset:0;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);-webkit-clip-path:path('${P}');clip-path:path('${P}')"></div>`
+      + `<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0;overflow:visible" aria-hidden="true" focusable="false"><defs>`
+      + `<mask id="${uid}m" maskUnits="userSpaceOnUse" ${big}><rect ${big} fill="#fff"/><path d="${P}" fill="#000"/></mask>`
+      + `<filter id="${uid}f" filterUnits="userSpaceOnUse" ${big}><feGaussianBlur stdDeviation="${f(Math.max(4, cs * 0.2))}"/></filter></defs>`
+      + `<g mask="url(#${uid}m)"><path d="${P}" fill="${css(shc, 0.34)}" filter="url(#${uid}f)" transform="translate(0 ${f(Math.max(3, cs * 0.16))})"/>`
+      + `<path d="${P}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="10" stroke-linejoin="round"/></g></svg>`;
+  }
   function buildBg() {
     bgCache = null; clipPath = null;
     if (!rows || !cols || !W) return;
-    if (BOARD_THEME.flat) { buildFlatBg(); return; }
+    if (BOARD_THEME.flat) { buildFlatBg(); updateUnder(); return; }
+    updateUnder();
     const S = cs * dpr, m = MARGIN * S;
     // 快取畫布比盤面大一點：左右留給投影、下面留給盤子的厚度和投影
     const sideX = Math.round(S * 0.14), below = Math.round(S * FRAME_B);
@@ -1903,7 +2080,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
 
   // ================= 版面 =================
   function geom() {
-    if (!rows || !cols || !W) return;
+    if (!rows || !cols || !W) { updateUnder(); return; }
     let size = Math.min(W / (cols + 2 * MARGIN), H / (rows + 2 * MARGIN + FRAME_B));
     cs = Math.max(4, Math.floor(size * dpr) / dpr);
     let r0 = rows, r1 = -1, c0 = cols, c1 = -1;
@@ -1933,6 +2110,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     if (canvas.height !== ph) canvas.height = ph;
     W = w; H = h; dpr = d;
     if (changed || !bgCache) { geom(); if (changed && rows) prewarm(); }
+    else updateUnder();                      // 畫布大小沒變、位置可能變了：白邊和模糊跟著畫布移
     draw(now());
     requestDraw();
   }
@@ -2104,7 +2282,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     sched = []; ghosts = []; fx = []; parts = []; texts = []; praises = []; word = null; shakes = []; surpriseUsed = false;
     jellyFx.clear(); selected = null; hintPair = null; dragState = null;
     locks = []; exitCells = []; portalList = []; beltList = [];
-    if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; requestDraw(); return; }
+    if (!snap || !snap.grid) { rows = 0; cols = 0; visuals = new Map(); cellMap = []; bgCache = null; updateUnder(); requestDraw(); return; }
     const R = snap.rows || snap.grid.length, C = snap.cols || (snap.grid[0] || []).length;
     rows = R; cols = C;
     mask = readMask(snap.mask, R, C);
@@ -3935,14 +4113,16 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       const R = cs * CANDY_R * s, hz = special === 'h';
       // 1. 持續流動的亮帶：沿著條紋的方向一道白光掃過（只在糖果裡面）
       const u = ((t / 820 + phase * 0.3) % 1 + 1) % 1, pos = (u * 2 - 1) * R * 1.5;
-      ctx.save();
-      bodyPath(ctx, kind, cx, cy + dy, R * 1.02); ctx.clip();
-      ctx.globalAlpha = ga * 0.75;
-      const sh = getSheen(), bw = R * 0.9;
-      if (hz) { ctx.translate(cx + pos, cy + dy); ctx.rotate(0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
-      else { ctx.translate(cx, cy + dy + pos); ctx.rotate(Math.PI / 2 + 0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
-      ctx.restore();
-      ctx.globalAlpha = ga;
+      if (look.frame !== 'none') {   // 不要底座：沒有糖果可以讓亮帶掃過（掃在空格上會像一個圓盤），靠箭頭的光和玩偶後面的光
+        ctx.save();
+        bodyPath(ctx, kind, cx, cy + dy, R * 1.02); ctx.clip();
+        ctx.globalAlpha = ga * 0.75;
+        const sh = getSheen(), bw = R * 0.9;
+        if (hz) { ctx.translate(cx + pos, cy + dy); ctx.rotate(0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
+        else { ctx.translate(cx, cy + dy + pos); ctx.rotate(Math.PI / 2 + 0.35); ctx.drawImage(sh, -bw / 2, -R * 1.4, bw, R * 2.8); }
+        ctx.restore();
+        ctx.globalAlpha = ga;
+      }
       // 2. 金色箭頭的光一明一暗
       const k = 0.5 + 0.5 * Math.sin(t / 260 + phase), gl = getGlowCol(GOLD), z = cs * 0.5 * s, off = cs * 0.38 * s;
       ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = ga * (0.18 + 0.32 * k);
@@ -4977,12 +5157,27 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     for (const b of banners) { clearTimeout(b.timer); b.res(); }
     banners = []; ghosts = []; fx = []; parts = []; texts = []; sched = [];
     tileCache.clear(); fanCache.clear(); fluffCache.clear(); starColCache.clear(); glowColCache.clear(); beamCache.clear(); blockCache.clear(); crumbCache.clear();
+    if (under) { under.remove(); under = null; }
+  }
+  // 這一關的場景：{ shade:[r,g,b] } 這一站的深色（半透明盤面的影子用）；null 回到主題預設
+  function setScene(sc) {
+    if (destroyed) return;
+    const next = sc && Array.isArray(sc.shade) ? sc.shade.slice(0, 3) : null;
+    if (String(next) === String(sceneShade)) return;
+    sceneShade = next;
+    if (!BOARD_THEME.glassy) return;
+    tileCache.clear(); toyCache.clear();
+    if (rows) prewarm();
+    updateUnder();
+    requestDraw();
   }
 
   // 衣櫃的外觀：{ hat, fx, frame, theme }（沒給的不變）。換了就把方塊圖、盤面重畫
   function setLook(l) {
     if (!l || destroyed) return;
     const next = { ...look, ...l };
+    // 不認得的底座（例如新版存的 id、舊快取或打錯字）一律照果凍底座畫，不會空白或壞掉
+    if (!KNOWN_FRAMES.has(next.frame)) next.frame = 'jelly';
     const tiles = next.hat !== look.hat || next.frame !== look.frame || next.theme !== look.theme;
     const theme = next.theme !== look.theme;
     look = next;
@@ -4990,8 +5185,9 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     BOARD_THEME = BOARD_THEMES[look.theme] || BOARD_THEMES.macaron;
     themeGeom();
     if (look.hat && look.hat !== 'none') accImg(look.hat);
-    if (tiles) { tileCache.clear(); accCache.clear(); }
-    if (theme) geom();
+    if (tiles) { tileCache.clear(); accCache.clear(); toyCache.clear(); fitCache.clear(); }
+    // 果凍、果凍外框、碎冰的顏色跟著盤面主題（工作單18）：換主題就重畫
+    if (theme) { jellyCache = []; rimCache = []; iceImg = null; geom(); }
     if (tiles && rows) prewarm();
     requestDraw();
   }
@@ -5014,7 +5210,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     return { x: rect.left + (ox + (c + 0.5) * cs) * k, y: rect.top + (oy + (r + 0.5) * cs) * k, size: cs * k };
   }
   const R = {
-    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect, setLook, demoBurst,
+    setBoard, layout, cellAt, select, drag, hint, play, banner, destroy, pause, resume, cellRect, setLook, setScene, demoBurst,
     get busy() { return busyCount > 0; },
     get paused() { return paused; },
   };

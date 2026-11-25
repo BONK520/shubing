@@ -1,5 +1,5 @@
 {
- "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
+ "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。aim 是相機對準的高度，佔模型高度的比例（不寫 = 看包圍盒中心，等於 0.5）；fill 大於 1 就是拉近裁切。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
  "sprite": {
   "size": 256,
   "render": 1024
@@ -187,158 +187,25 @@
   },
   {
    "id": "nyanko",
-   "source": "photo",
-   "photo": "p5_nyanko.jpg",
-   "cut": {
-    "rect": [
-     110,
-     30,
-     1000,
-     1080
-    ],
-    "fg": [
-     [
-      540,
-      450,
-      260
-     ],
-     [
-      880,
-      450,
-      60
-     ],
-     [
-      860,
-      680,
-      40
-     ],
-     [
-      935,
-      820,
-      35
-     ],
-     [
-      170,
-      950,
-      50
-     ],
-     [
-      480,
-      880,
-      60
-     ],
-     [
-      300,
-      200,
-      60
-     ],
-     [
-      820,
-      180,
-      50
-     ],
-     [
-      420,
-      950,
-      40
-     ],
-     [
-      700,
-      990,
-      30
-     ]
-    ],
-    "bg": [
-     [
-      40,
-      540,
-      40
-     ],
-     [
-      1065,
-      500,
-      25
-     ],
-     [
-      1050,
-      150,
-      40
-     ],
-     [
-      420,
-      15,
-      30
-     ],
-     [
-      520,
-      18,
-      22
-     ],
-     [
-      550,
-      20,
-      10
-     ],
-     [
-      985,
-      880,
-      25
-     ],
-     [
-      960,
-      1000,
-      40
-     ],
-     [
-      950,
-      700,
-      12
-     ],
-     [
-      975,
-      640,
-      15
-     ],
-     [
-      548,
-      40,
-      7
-     ]
-    ],
-    "bgRect": [
-     [
-      900,
-      960,
-      1080,
-      1080
-     ]
-    ],
-    "inpaint": [
-     [
-      850,
-      975,
-      900,
-      1030
-     ]
-    ],
-    "crop": [
-     110,
-     20,
-     1000,
-     1035
-    ],
-    "shrink": 3,
-    "defringe": 4
+   "source": "scan",
+   "view": {
+    "yaw": -2,
+    "pitch": 36,
+    "fill": 1.37,
+    "aim": 0.53,
+    "exposure": 0.92,
+    "tone": "aces",
+    "fillLight": 0.4,
+    "rim": 1.0
    },
-   "grade": {
-    "gain": 1.18,
-    "gamma": 0.92,
-    "tint": [
-     0.97,
-     1.0,
-     1.05
-    ],
-    "vibrance": 0.25
+   "toy": {
+    "toonify": false,
+    "smooth": 2.0,
+    "detail": 0.7,
+    "black": 0.05,
+    "contrast": 0.4,
+    "sat": 1.05,
+    "vib": 0.1
    }
   },
   {

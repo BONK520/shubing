@@ -18,8 +18,10 @@
   "assets/sprites/egg_spin_n.webp": "e7228dea2476a29db20fba81f247311be9b1bd82",
   "assets/sprites/moodeng.png": "f0003645549e5514e6677cf9b813f8ec65e6c202",
   "assets/sprites/moodeng_n.png": "465de47a56d0704500a7288703af49b40d4de9be",
-  "assets/sprites/nyanko.png": "1f1d21269d08aaed03459387d5be03b0ac137a7e",
-  "assets/sprites/nyanko_n.png": "a0708d21eafe275c36a5b7c78d848ee4abdf3048",
+  "assets/sprites/nyanko.png": "295bd2a43fc521c2a2706902f0330c8eca538d45",
+  "assets/sprites/nyanko_n.png": "5c41d2b7594b2c113f5f2c9dc0ee80f9e1d70df5",
+  "assets/sprites/nyanko_spin.webp": "bbba4b9b33d3a15c22719ff9f7cd1a8528fcfbdd",
+  "assets/sprites/nyanko_spin_n.webp": "ed284ad341d9777b0739e2ea12065d62b847db74",
   "assets/sprites/sloth.png": "a3645b8b5c5402a0ef5d23c883b3655e2b207515",
   "assets/sprites/sloth_n.png": "3b193874b9267b9102374241737b70af45e16329",
   "assets/sprites/sloth_spin.webp": "76a8b2df390e8111c6f8250a3f4ef2e1a36a1e7c",
@@ -181,13 +183,13 @@
   },
   "nyanko": {
    "gain": [
-    1.08,
-    0.9722,
-    0.9208
+    1.0335,
+    0.9963,
+    0.9381
    ],
-   "k": 1.1049,
-   "lo": 0.1973,
-   "lo_t": 0.1149,
+   "k": 1.1198,
+   "lo": 0.2144,
+   "lo_t": 0.1217,
    "shadow": [
     0.0,
     0.0,

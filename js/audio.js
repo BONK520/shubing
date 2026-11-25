@@ -805,8 +805,9 @@ let songWant = '';                        // 正在載入或正在播的曲名
 let songSeq = 0;
 const songPos = Object.create(null);      // 暫停時播到哪（秒），回來接著播
 const trackRaw = Object.create(null);     // 曲名 -> Promise<ArrayBuffer>（壓縮檔，整頁只抓一次）
-const trackBuf = Object.create(null);     // 曲名 -> 解碼好的 AudioBuffer（只留現在這個場景用得到的，省手機記憶體）
+const trackBuf = Object.create(null);     // 曲名 -> 解碼好的 AudioBuffer（只留現在這個場景用得到的、和 3 分鐘內才離開的那個場景，省手機記憶體）
 const trackFail = Object.create(null);    // 曲名 -> true：抓不到或解不開，這次就不再試
+const trackLeft = Object.create(null);    // 曲名 -> 最後一次停掉的時間（Date.now()），dropUnused 用
 
 function fetchRaw(name) {
   if (!trackRaw[name]) {
@@ -849,6 +850,7 @@ function endSong(sec, keep) {
   song = null;
   if (!s) return;
   s.done = true;
+  trackLeft[s.name] = Date.now();
   try {
     if (s.c === ctx && ctx && ctx.state !== 'closed') {
       const now = ctx.currentTime;
@@ -884,10 +886,18 @@ function startSong(name, buf, delay) {
   };
   song = s;
 }
-// 不在這個場景的曲子：解碼好的資料丟掉（一首解開來有二、三十 MB）
+// 不在這個場景的曲子：解碼好的資料丟掉（一首解開來有二、三十 MB）。
+// 工作單27：離開那個場景 3 分鐘以後才丟。以前換場景 1 秒就丟，地圖⇄關卡來回一次就要把整首 mp3 重新解碼一次（手機發燙的原因之一）；
+// 換場景時兩首本來就會同時在記憶體裡（舊的淡出、新的解碼），最高用量沒有變，只是留久一點
+const DROP_AFTER = 180;
 function dropUnused() {
   const keep = SCENES[scene];
-  for (const n in trackBuf) if (!keep.includes(n) && !(song && song.name === n)) delete trackBuf[n];
+  const now = Date.now();
+  for (const n in trackBuf) {
+    if (keep.includes(n) || (song && song.name === n)) continue;
+    if (now - (trackLeft[n] || 0) < DROP_AFTER * 1000 - 500) continue;   // 剛離開不久（來回切換時）先留著
+    delete trackBuf[n];
+  }
 }
 function playScene(name) {
   if (songWant === name) return;
@@ -898,7 +908,7 @@ function playScene(name) {
   getBuffer(name).then(buf => {
     if (my !== songSeq || !ctx || !musicLive) return;
     startSong(name, buf, had ? FADE_OUT - 0.1 : 0);
-    setTimeout(dropUnused, (FADE_OUT + 0.5) * 1000);
+    setTimeout(dropUnused, DROP_AFTER * 1000);
     // 關卡有第二首時先抓好、解好（11/23 起關卡只剩一首，這段不會多抓）
     if (scene === 'level') {
       const next = SCENES.level.find(n => n !== name && !trackFail[n]);
