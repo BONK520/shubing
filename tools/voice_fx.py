@@ -2,6 +2,9 @@
 # 用法（在專案根目錄）:
 #   powershell -ExecutionPolicy Bypass -File tools\voice_tts.ps1 -OutDir tools\out\voice    # 產生原始語音（台灣華語男聲 Zhiwei）
 #   python tools/voice_fx.py tools/out/voice assets/voice                                    # 加效果，輸出遊戲用的 wav
+# 只改一句（例如 s2）：其他句子不用重做，產生到一個新的資料夾再加效果
+#   powershell -ExecutionPolicy Bypass -File tools\voice_tts.ps1 -OutDir tools\out\voice_s2 -Only s2
+#   python tools/voice_fx.py tools/out/voice_s2 assets/voice
 # 效果：降 3 個半音（變慢、變低沉）、加一層稍微錯開的和聲（厚度）、殘響、壓縮、音量標準化
 import os, sys, wave
 import numpy as np

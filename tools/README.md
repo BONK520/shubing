@@ -50,7 +50,7 @@ python tools/build_assets.py --force   # 全部重做
 | `dog` | 皮蛋 | Object Capture 掃描（會轉圈） |
 | `sloth` | 薯餅 | Object Capture 掃描 |
 | `egg` | 蛋黃哥 | Object Capture 掃描 |
-| `piggy` | 存錢豬 | 照片去背（選到會彈跳；2026-11 取代 `dino` 龍龍當方塊；`assets/sprites/dino*.png` 現在是「救出龍龍」關卡的龍龍） |
+| `piggy` | 火腿（存錢豬） | 照片去背（選到會彈跳；2026-11 取代 `dino` 龍龍當方塊；`assets/sprites/dino*.png` 現在是「救出龍龍」關卡的龍龍） |
 | `nyanko` | 貓咪老師 | 照片去背 |
 | `moodeng` | 彈跳豬（Moo Deng） | 照片去背 |
 | `snoopy` | 史努比 | 照片去背 |
@@ -84,7 +84,7 @@ python tools/build_assets.py --force   # 全部重做
 | 貼紙 | 照片 | 用在 |
 |---|---|---|
 | `snoopy_sloth` | `pp08_snoopy_sloth.jpg`（史努比坐在薯餅頭上） | 標題右上、地圖、過關卡 |
-| `sloth_pig` | `pp07_sloth_pig.jpg`（小豬趴在薯餅頭上） | 地圖、過關卡、口號「小豬搭便車！」 |
+| `sloth_pig` | `pp07_sloth_pig.jpg`（火腿趴在薯餅頭上） | 地圖、過關卡、口號「火腿搭便車！」 |
 | `sloth_bed` | `pp03_stack.jpg`（薯餅趴在最上面） | 地圖、失敗卡「薯餅趴趴睡」 |
 | `pig` | `pp12_pig.jpg` | 標題左上、地圖 |
 | `group` | `pp10_snoopy_group.jpg` | 過關卡 |

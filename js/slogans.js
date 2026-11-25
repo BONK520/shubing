@@ -4,7 +4,7 @@
 export const SLOGANS = {
   cascade: { 2: { text: '薯餅衝刺！', toy: 'sloth', voice: 'c2' }, 3: { text: '皮蛋出動！', toy: 'dog', voice: 'c3' }, 4: { text: '蛋黃哥醒了！', toy: 'egg', voice: 'c4' }, 5: { text: '三寶合體！', toy: 'trio', voice: 'c5' } },  // 5 = 5 or more
   combo:    { text: '蛋黃哥不躺了！', toy: 'egg', voice: 'combo' },                        // special+special combos, colour bomb blasts
-  surprise: [ { text: '薯餅頂橘子！', img: 'assets/deco/sloth_orange.webp', voice: 's1' }, { text: '小豬搭便車！', img: 'assets/deco/sloth_pig.webp', voice: 's2' } ],  // occasional on very big moves
+  surprise: [ { text: '薯餅頂橘子！', img: 'assets/deco/sloth_orange.webp', voice: 's1' }, { text: '火腿搭便車！', img: 'assets/deco/sloth_pig.webp', voice: 's2' } ],  // occasional on very big moves
   start:    { text: '薯餅準備好了！', toy: 'sloth', voice: 'start' },
   sugar:    { text: '薯餅狂歡時間！', toy: 'sloth', voice: 'sugar' },                      // end-of-level bonus banner
   shuffle:  { text: '洗牌！', sub: '沒有可以消的了～蛋黃哥幫你重新洗一洗', toy: 'egg' },   // renderer 洗牌前的橫幅

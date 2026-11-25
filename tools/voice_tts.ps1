@@ -1,4 +1,4 @@
-﻿param([string]$OutDir)
+﻿param([string]$OutDir, [string[]]$Only)   # -Only s2（或 -Only s1,s2）：只重做這幾句，其他句子的語音不動
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $null = [Windows.Media.SpeechSynthesis.SpeechSynthesizer, Windows.Media.SpeechSynthesis, ContentType = WindowsRuntime]
 $null = [Windows.Storage.Streams.DataReader, Windows.Storage.Streams, ContentType = WindowsRuntime]
@@ -12,9 +12,11 @@ if (-not $v) { $v = $voices | Where-Object { $_.Language -eq 'zh-TW' } | Select-
 $synth.Voice = $v
 $lines = [ordered]@{
   c2 = '薯餅衝刺！'; c3 = '皮蛋出動！'; c4 = '蛋黃哥醒了！'; c5 = '三寶合體！'; combo = '蛋黃哥不躺了！';
-  sugar = '薯餅狂歡時間！'; s1 = '薯餅頂橘子！'; s2 = '小豬搭便車！'; win3 = '三寶都愛你！'; start = '薯餅準備好了！'
+  sugar = '薯餅狂歡時間！'; s1 = '薯餅頂橘子！'; s2 = '火腿搭便車！'; win3 = '三寶都愛你！'; start = '薯餅準備好了！'
 }
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 foreach ($k in $lines.Keys) {
+  if ($Only -and ($Only -notcontains $k)) { continue }
   $text = $lines[$k]
   $ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-TW'><prosody rate='0.92' pitch='+0%' volume='x-loud'>$text</prosody></speak>"
   $stream = Await ($synth.SynthesizeSsmlToStreamAsync($ssml)) ([Windows.Media.SpeechSynthesis.SpeechSynthesisStream])
