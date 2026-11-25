@@ -6,7 +6,7 @@
 // 減暈（工作單13、23）：捲動最快每秒 0.37 個螢幕高（不比工作單13那版快），底色每次換色至少 1 秒，同一時間只有一種縮放，雲不往外爆開。
 // 要不要播是 index.html <head> 裡的小程式決定的（window.__opPlay；減少動態效果不播）；這裡只負責畫和播，跟主程式的載入同時進行。
 // 不放聲音；點一下或按任何鍵就跳過。只用 transform / opacity / 背景色動畫，地圖只畫前 22 關（3 站）。
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124zo';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261124zp';
 
 const KEY = 'shubing-op';
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
@@ -51,7 +51,8 @@ const PEAK = (() => { let m = 0; for (let k = 0; k < 400; k++) { const s0 = k / 
 const MAXV = .37;                                 // 最快每秒幾個螢幕高（工作單23 上限 0.38，留一點餘裕）
 const MIX = 1000;                                 // 底色換色至少花多久（毫秒；工作單23 下限 800）
 
-const T2 = 1800, T4 = 1800;                       // 第 2 段（拉遠）、第 4 段（雲蓋滿＋啵掉）
+const T2 = 1800, T4 = 1800;                       // 第 2 段（拉遠，最短）、第 4 段（雲蓋滿＋啵掉）
+const HOLD = 1200;                                // 島完全出現後至少停多久才接標題（工作單30）
 const t0 = 120;                                   // 第 3 段裡，雲出現的時間
 // 第 3 段：五顆蛋孵完（最後一顆的字 t0+200+4*110+720 開始跳、360ms 跳完）三隻才出場，各自表演完再接第 4 段
 const HATCH_END = t0 + 200 + 4 * 110 + 720 + 360;
@@ -114,7 +115,8 @@ function seaLife(vw, vh, S2, pull, island) {
   // 小島整張縮成 .84、四周空出海面：拿掉鋪滿的海色，讓底下的海景透出來；overflow 打開，3D 雲才不會被切平
   const bgRect = svg && [...svg.children].find(n => n.tagName === 'rect' && n.getAttribute('fill') === SEA);
   if (bgRect) bgRect.remove();
-  if (svg) { svg.style.transform = 'scale(.84)'; svg.style.overflow = 'visible'; }
+  // 橫向螢幕高度不夠、44 站的色帶會太細，就不縮（左右本來就空很多，海上的小東西碰不到島）
+  if (svg) { svg.style.transform = vw > vh ? 'none' : 'scale(.84)'; svg.style.overflow = 'visible'; }
   const sea = root.querySelector('.op-sea'), over = root.querySelector('.op-seaover');
   anim(sea, [{ opacity: 0 }, { opacity: 1 }], { delay: S2 + (pull ? 0 : 150), duration: 700, easing: 'ease-out' });
   anim(over, [{ opacity: 0 }, { opacity: 1 }], { delay: S2 + 250, duration: 600, easing: 'ease-out' });
@@ -172,10 +174,10 @@ function start() {
   const W = Math.round((app && app.clientWidth) || Math.min(vw, 520));
   const H = TOP + (N - 1) * GAP + BOT;
   const st = mapStations(N, H);
-  // 第 1 段：從最底下的碼頭捲到最上面一站；時間由距離和速度上限倒算（375×812 約 9 秒）
-  const D = Math.max(0, H - vh);
+  // 第 1 段：從最底下的碼頭往上捲，最多 0.8 個螢幕高（約五、六顆關卡）；時間由距離和速度上限倒算（約 3 秒）
+  const D = Math.min(Math.max(0, H - vh), Math.round(vh * .8));
   const T1 = Math.max(3000, Math.round(PEAK * D / (MAXV * vh) * 1000));
-  const S2 = T1, S3 = T1 + T2, S4 = S3 + T3, END = S4 + T4;
+  const S2 = T1;
 
   root = document.createElement('div');
   root.className = 'op';
@@ -191,7 +193,7 @@ function start() {
     + `<div class="map-art">${prefixIds(mapArtHTML(W, N, H), 'op-')}</div>`
     + `<svg class="map-path" viewBox="0 0 100 ${H}" preserveAspectRatio="none" style="height:${H}px">${paths}</svg>`
     + mapSignsHTML(N, H, N + 1) + nodes + `</div></div>`
-    + `<div class="op-island">${islandMiniHTML(vw, vh, 'oi-', N)}</div>`
+    + `<div class="op-island">${islandMiniHTML(vw, vh, 'oi-')}</div>`
     + `<div class="op-seaover"></div>`
     + `<div class="op-fx"></div><div class="op-title"></div><div class="op-white"></div><div class="op-burst"></div>`
     + `<span class="op-skip">略過</span>`;
@@ -246,28 +248,39 @@ function start() {
   if (PULL) anim(island, [{ opacity: 0 }, { opacity: 1 }], { delay: S2 + 300, duration: 700, easing: 'ease-out' });
   else anim(island, [{ opacity: 0 }, { opacity: 1 }], { delay: S2 + 100, duration: 400, easing: 'ease-out' });
   // 島上的角色和小屋（SVG 裡 scale(0.42) 的那些）從下往上一個個從底部長出來，白色圓點跟著冒出來，小船上下浮
+  // shown＝島完全出現的時間（淡入完、物件和圓點都長完）；停 HOLD 毫秒才接標題
+  let shown = S2 + (PULL ? 1000 : 500);
   const svg = island.querySelector('svg');
   if (svg) {
     const wrap = g => { const w = document.createElementNS(SVGNS, 'g'); g.parentNode.insertBefore(w, g); w.appendChild(g); return w; };
     const spots = [...svg.querySelectorAll('g')].filter(g => /scale\(0\.42\)/.test(g.getAttribute('transform') || ''));
     const yOf = g => { const m = /translate\(([\d.]+)[ ,]([\d.]+)\)/.exec(g.getAttribute('transform')); return m ? +m[2] : 0; };
+    // 全島有 44 站，一個接一個長的話要好幾秒；改成整排在 GROW 毫秒內由下往上長完
+    const GROW = 700, gap = (n, max) => n > 1 ? Math.min(max, GROW / (n - 1)) : 0;
+    const dg = gap(spots.length, 140);
     spots.sort((a, b) => yOf(b) - yOf(a)).forEach((g, k) => {
       const w = wrap(g); w.style.transformBox = 'fill-box'; w.style.transformOrigin = '50% 100%';
-      anim(w, [{ transform: 'scale(0)' }, { transform: 'scale(1.15)', offset: .6 }, { transform: 'scale(1)' }], { delay: S2 + PD + 300 + k * 140, duration: 420, easing: 'ease-out' });
+      const at = S2 + PD + 300 + k * dg;
+      anim(w, [{ transform: 'scale(0)' }, { transform: 'scale(1.15)', offset: .6 }, { transform: 'scale(1)' }], { delay: at, duration: 420, easing: 'ease-out' });
+      shown = Math.max(shown, at + 420);
     });
-    [...svg.querySelectorAll('circle[stroke="#fff"]')].sort((a, b) => b.getAttribute('cy') - a.getAttribute('cy')).forEach((c, k) => {
+    const dots = [...svg.querySelectorAll('circle[stroke="#fff"]')], dc = gap(dots.length, 120);
+    dots.sort((a, b) => b.getAttribute('cy') - a.getAttribute('cy')).forEach((c, k) => {
       c.style.transformBox = 'fill-box'; c.style.transformOrigin = '50% 50%';
-      anim(c, [{ transform: 'scale(0)' }, { transform: 'scale(1.6)', offset: .6 }, { transform: 'scale(1)' }], { delay: S2 + PD + 860 + k * 120, duration: 360, easing: 'ease-out' });
+      const at = S2 + PD + 600 + k * dc;
+      anim(c, [{ transform: 'scale(0)' }, { transform: 'scale(1.6)', offset: .6 }, { transform: 'scale(1)' }], { delay: at, duration: 360, easing: 'ease-out' });
+      shown = Math.max(shown, at + 360);
     });
     const boat = [...svg.querySelectorAll('g')].find(g => /scale\(0\.5\)/.test(g.getAttribute('transform') || ''));
     if (boat) anim(wrap(boat), [{ transform: 'translateY(-3px)' }, { transform: 'translateY(3px)' }], { duration: 1100, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
   }
 
+  const S3 = Math.max(S2 + T2, shown + HOLD), S4 = S3 + T3, END = S4 + T4, T2r = S3 - S2;
   later(S3 - 120, () => titleSeg(vw, vh, S3, S4));
   later(END, () => finish(false));
   window.addEventListener('pointerdown', onSkip, true);
   window.addEventListener('keydown', onSkip, true);
-  window.__opTimes = { T1, T2, T3, T4, S2, S3, S4, END, D };   // 量測用
+  window.__opTimes = { T1, T2: T2r, T3, T4, S2, S3, S4, END, D, shown };   // 量測用
 }
 
 export function star4(size) {
