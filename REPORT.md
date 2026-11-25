@@ -159,13 +159,9 @@
   連鎖每一段之間停一拍（`renderer.js` 的 `LAND_HOLD` 230ms），整體比之前慢約兩成。
 - **口號**：連鎖時跳出「薯餅衝刺！」「皮蛋出動！」「蛋黃哥醒了！」「三寶合體！」，旁邊是那隻玩具（每次不同角度）；
   組合技「蛋黃哥不躺了！」；偶爾有照片驚喜「薯餅頂橘子！」「火腿搭便車！」。每一句都有低沉的「魔性」稱讚語音（`assets/voice/`，
-  用 `tools/voice_tts.ps1` + `tools/voice_fx.py` 產生）。文字在 `js/slogans.js`，改了字要重新產生語音。
+  用 `tools/voice_tts.ps1` + `tools/voice_fx.py` 產生）。文字在 `js/slogans.js`，改了字要重新產生語音（只改一句用 `-Only`，見 `voice_fx.py` 開頭；2026-11-25 s2 重做成「火腿搭便車！」）。
   2026-11 語音變少：字照樣每段都跳，但語音一步最多一句、連到第 3 段以上才講、兩句至少隔 6 秒；
   「三寶都愛你！」只在第一次拿到那關三星、而且至少隔兩次過關才講。
-  **待辦（2026-11-25）**：存錢豬改名「火腿」，口號字已經改成「火腿搭便車！」，但 `assets/voice/s2.wav` 還是舊的「小豬搭便車」。
-  語音要用同一個 Windows 台灣華語男聲（Zhiwei）重做才會是原本的口音：在 Windows 的專案根目錄跑
-  `powershell -ExecutionPolicy Bypass -File tools\voice_tts.ps1 -OutDir tools\out\voice_s2 -Only s2`，
-  再跑 `python tools/voice_fx.py tools/out/voice_s2 assets/voice`（只會換掉 s2.wav），然後刪掉這段待辦。
 - **過關**：橫幅跳出時放煙花（`main.js` 的 `fireworks`，3~4 秒，有音效）；剩下的步數一步一步變特效（每步 0.42 秒、一聲往上爬的「叮」）。
 - **劇情**：碼頭漂來一箱龍龍的蛋，蛋跑到島上的每個地方，三寶一站一站把龍寶寶找回來。每一站第一次在地圖上點那一站的第一關，
   先跳這一站的小故事卡（三寶左右交錯說話），看完再開關卡卡片。文字在 `js/story.js`；用到字型裡沒有的新字要跑 `tools/font_subset.py`。
