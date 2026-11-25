@@ -35,7 +35,8 @@ async function get(url) {
   return cache[url];
 }
 // items: [{url, x, z, yaw, scale, albedo}]
-// view:  {yaw, pitch, fill, exposure, key, fillLight, rim, env, tone, lockFrame, w, h}
+// view:  {yaw, pitch, fill, aim, exposure, key, fillLight, rim, env, tone, lockFrame, w, h}
+//        aim：相機對準的高度，佔模型高度的比例（不寫＝看包圍盒中心，等於 0.5）
 window.shot = async (items, v) => {
   r.setSize(v.w, v.h); cam.aspect = v.w / v.h; cam.updateProjectionMatrix();
   r.toneMapping = TONE[v.tone || 'aces']; r.toneMappingExposure = v.exposure ?? 1.1;
@@ -57,6 +58,9 @@ window.shot = async (items, v) => {
   if (v.lockFrame && items.length === 1) {   // 用模型本身尺寸決定構圖，轉一圈大小不會跳
     const o = root.children[0], sz = o.userData.size.clone().multiplyScalar(o.scale.x);
     c.set(o.position.x, sz.y / 2, o.position.z); sph.radius = Math.hypot(Math.hypot(sz.x, sz.z) / 2, sz.y / 2);
+    if (v.aim != null) c.y = sz.y * v.aim;   // 模型底部在 y=0
+  } else if (v.aim != null) {
+    c.y = box.min.y + (box.max.y - box.min.y) * v.aim;
   }
   const fov = THREE.MathUtils.degToRad(cam.fov / 2); const fovx = Math.atan(Math.tan(fov) * cam.aspect);
   const d = sph.radius / Math.sin(Math.min(fov, fovx)) / (v.fill ?? 0.95);

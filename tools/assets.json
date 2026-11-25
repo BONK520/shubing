@@ -1,5 +1,5 @@
 {
- "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
+ "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。aim 是相機對準的高度，佔模型高度的比例（不寫 = 看包圍盒中心，等於 0.5）；fill 大於 1 就是拉近裁切。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
  "sprite": {
   "size": 256,
   "render": 1024
@@ -189,9 +189,11 @@
    "id": "nyanko",
    "source": "scan",
    "view": {
-    "yaw": -5,
-    "pitch": 12,
-    "exposure": 1.05,
+    "yaw": -2,
+    "pitch": 36,
+    "fill": 1.37,
+    "aim": 0.53,
+    "exposure": 0.92,
     "tone": "aces",
     "fillLight": 0.4,
     "rim": 1.0

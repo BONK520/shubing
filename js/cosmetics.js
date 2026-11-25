@@ -243,7 +243,7 @@ export const TOY_FACE = {
   sloth:   { x: 0.5,  top: 0.02, eyes: 0.33, cheeks: 0.44, w: 0.4 },
   egg:     { x: 0.5,  top: 0.02, eyes: 0.27, cheeks: 0.37, w: 0.72 },
   piggy:   { x: 0.3,  top: 0.26, eyes: 0.4,  cheeks: 0.6,  w: 0.5 },   // 存錢豬：頭在照片左邊
-  nyanko:  { x: 0.5,  top: 0.08, eyes: 0.32, cheeks: 0.42, w: 0.8 },   // 3D 掃描（11/25）：全身，耳朵到底部
+  nyanko:  { x: 0.48, top: 0.08, eyes: 0.53, cheeks: 0.62, w: 0.8 },   // 3D 掃描，使用者取景（11/25 工作單32）：俯角 36°、拉近，臉在中間偏下
   moodeng: { x: 0.5,  top: 0.05, eyes: 0.3,  cheeks: 0.62, w: 0.86 },
   snoopy:  { x: 0.46, top: 0.04, eyes: 0.5,  cheeks: 0.64, w: 0.72 },
 };
@@ -315,17 +315,17 @@ export const ACCESSORY_TUNING = {
   nyanko:  { crown: { offsetX: 0, offsetY: 0.015, scale: 0.75, rot: 0 },
              chef: { offsetX: 0, offsetY: 0.01, scale: 0.75, rot: 0 },
              halo: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 },
-             bow: { offsetX: -0.438, offsetY: 0.481, scale: 0.8, rot: 0 },
+             bow: { offsetX: -0.518, offsetY: 0.6, scale: 0.6, rot: 0 },
              shades: { offsetX: 0, offsetY: 0, scale: 0.85, rot: 0 },
              blush: { offsetX: 0, offsetY: 0, scale: 0.85, rot: 0 },
-             clip: { offsetX: 0, offsetY: 0, scale: 1, rot: 0 },
+             clip: { offsetX: -0.03, offsetY: 0.04, scale: 1, rot: 0 },
              bunny: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 },
              beret: { offsetX: 0.02, offsetY: 0.005, scale: 0.75, rot: 0 },
              heartglasses: { offsetX: 0.01, offsetY: 0, scale: 0.85, rot: 0 },
              tophat: { offsetX: 0, offsetY: 0, scale: 0.75, rot: 0 },
              flowers: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 },
              eggshell: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 },
-             santa: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 } },   // 3D 掃描（11/25）重調；bow 照舊戴在項圈左邊
+             santa: { offsetX: 0, offsetY: 0, scale: 0.8, rot: 0 } },   // 使用者取景（11/25 工作單32）重調；bow 照舊戴在項圈左邊
   moodeng: { crown: { offsetX: 0.025, offsetY: -0.106, scale: 0.72, rot: 0 },
              chef: { offsetX: 0.031, offsetY: -0.115, scale: 0.68, rot: 0 },
              halo: { offsetX: 0, offsetY: 0, scale: 0.9, rot: 0 },
