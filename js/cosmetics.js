@@ -242,7 +242,7 @@ export const TOY_FACE = {
   dog:     { x: 0.5,  top: 0.03, eyes: 0.55, cheeks: 0.7,  w: 0.72 },
   sloth:   { x: 0.5,  top: 0.02, eyes: 0.33, cheeks: 0.44, w: 0.4 },
   egg:     { x: 0.5,  top: 0.02, eyes: 0.27, cheeks: 0.37, w: 0.72 },
-  piggy:   { x: 0.3,  top: 0.26, eyes: 0.4,  cheeks: 0.6,  w: 0.5 },   // 存錢豬：頭在照片左邊
+  piggy:   { x: 0.3,  top: 0.26, eyes: 0.4,  cheeks: 0.6,  w: 0.5 },   // 火腿（存錢豬）：頭在照片左邊
   nyanko:  { x: 0.48, top: 0.08, eyes: 0.53, cheeks: 0.62, w: 0.8 },   // 3D 掃描，使用者取景（11/25 工作單32）：俯角 36°、拉近，臉在中間偏下
   moodeng: { x: 0.5,  top: 0.05, eyes: 0.3,  cheeks: 0.62, w: 0.86 },
   snoopy:  { x: 0.46, top: 0.04, eyes: 0.5,  cheeks: 0.64, w: 0.72 },
