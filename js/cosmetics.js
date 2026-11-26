@@ -677,12 +677,16 @@ export function createCloset() {
       if (wal) return Math.max(0, wal.coins + Math.max(0, api.coinsEarned(stars) - wal.e) - Math.max(0, api.coinsSpent() - wal.p));
       return Math.max(0, api.coinsEarned(stars) - api.coinsSpent());
     },
-    setWallet(w) { wal = w && Number.isInteger(w.coins) ? { coins: w.coins, e: w.e | 0, p: w.p | 0 } : null; },
+    setWallet(w) { wal = w && Number.isInteger(w.coins) ? { coins: w.coins, e: w.e | 0, p: w.p | 0, looks: new Set(Array.isArray(w.looks) ? w.looks : []) } : null; },
+    // 這邊擁有的帽子和衣服（放進錢包跟小窩共用）。不戴、原本的樣子不算
+    myLooks(stars) { return ITEMS.filter(it => (it.cat === 'hat' || it.cat === 'outfit') && it.unlock && api.isUnlocked(it, stars)).map(it => it.id); },
     get wallet() { return wal; },
     isUnlocked(item, stars) {
       if (typeof item === 'string') item = itemById(item);
       if (!item) return false;
       if (DEBUG_UNLOCK_ALL_COSMETICS || !item.unlock) return true;
+      // 帽子和衣服：薯餅小窩那邊買了、夾到的也算有（錢包的 looks，docs/WALLET.md）
+      if (wal && wal.looks.has(item.id) && (item.cat === 'hat' || item.cat === 'outfit')) return true;
       const u = item.unlock;
       if (u.coins) return st.owned.includes(item.id);
       if (u.stars) return totalStars(stars) >= u.stars;

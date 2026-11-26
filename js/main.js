@@ -225,11 +225,15 @@ async function walletSync() {
   const uid = account.uid;
   walletBusy = true;
   try {
-    const w = await cloud.walletEgg(closet.coinsEarned(save.stars), closet.coinsSpent(), uid);
+    const w = await cloud.walletEgg(closet.coinsEarned(save.stars), closet.coinsSpent(), uid, closet.myLooks(save.stars));
     if (!account || account.uid !== uid) return;
-    const v = { coins: w.coins, e: w.egg.e, p: w.egg.p };
+    const v = { coins: w.coins, e: w.egg.e, p: w.egg.p, looks: w.looks };
     try { localStorage.setItem(walletKey(), JSON.stringify(v)); } catch (e) { /* ignore */ }
+    const had = new Set(closet.myLooks(save.stars));
     walletShow(v);
+    // 小窩那邊買了、夾到的帽子和衣服，這邊也有了（衣櫃裡會標「新」）
+    const got = closet.myLooks(save.stars).filter(id => !had.has(id)).length;
+    if (got && closet.wallet) toast(`從薯餅小窩帶來 ${got} 件衣服和配件`, 2200);
   } catch (e) {
     if (e && e.code === 'permission-denied') walletDenied = true;
     console.info('[wallet] 錢包沒有對上', e && (e.code || e.message));

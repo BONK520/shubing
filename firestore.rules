@@ -63,7 +63,7 @@ service cloud.firestore {
 
     // 跟薯餅小窩共用的錢包（2026-11-26 加，docs/WALLET.md）：wallets/{登入帳號的 uid}
     //   coins 兩個遊戲共用的幣；egg = {e, p} 蛋蛋島已經算進錢包的造型幣（賺到的、兌換掉的總數）；
-    //   nest = {小窩的帳號 id: 1} 哪些小窩帳號已經把原本的幣放進來過；t 最後一次改的時間
+    //   nest = {小窩的帳號 id: 1} 哪些小窩帳號已經把原本的幣放進來過；looks 兩邊擁有的帽子和衣服（id 清單）；t 最後一次改的時間
     //   只有本人能讀寫（蛋蛋島自己登入的，或小窩用同一組名字和密碼登入蛋蛋島的帳號）；檢查欄位和大小；不能刪
     function okWalletNum(x) {
       return x is int && x >= 0 && x <= 10000000;
@@ -71,7 +71,7 @@ service cloud.firestore {
     match /wallets/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['coins', 'egg', 'nest', 't'])
+        && request.resource.data.keys().hasOnly(['coins', 'egg', 'nest', 'looks', 't'])
         && okWalletNum(request.resource.data.coins)
         && (!('egg' in request.resource.data)
             || (request.resource.data.egg is map
@@ -79,6 +79,8 @@ service cloud.firestore {
                 && okWalletNum(request.resource.data.egg.e) && okWalletNum(request.resource.data.egg.p)))
         && (!('nest' in request.resource.data)
             || (request.resource.data.nest is map && request.resource.data.nest.size() <= 20))
+        && (!('looks' in request.resource.data)
+            || (request.resource.data.looks is list && request.resource.data.looks.size() <= 100))
         && (!('t' in request.resource.data) || request.resource.data.t is int);
     }
 
