@@ -547,7 +547,7 @@ button.map-here:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(10
 @media (prefers-reduced-motion: reduce) { .map-spot.ph img, .map-spot.pk img { animation: none; } .map-art .ma-drift { animation: none; transform: translateX(var(--x)); } }
 
 @keyframes peek { 0%, 100% { translate: 0 6px; rotate: -4deg; } 50% { translate: 0 -2px; rotate: 4deg; } }
-/* 畫面外的地圖動畫停掉（main.js 的 watchMapAnim 標 .vis）：225 站的動畫一起跑，手機捲地圖每一幀都要重新分層、會卡。
+/* 畫面外的地圖動畫停掉（main.js 的 watchMapAnim 標 .vis）：230 關的動畫一起跑，手機捲地圖每一幀都要重新分層、會卡。
    只暫停（animation-play-state）沒有用，要 animation: none 才不會一直佔圖層；離開畫面半個畫面以上才停，看起來一樣 */
 #map-inner.io .map-spot:not(.vis) img, #map-inner.io .node-ring:not(.vis) { animation: none; }
 #map-inner.io .ma-drift:not(.vis) { animation: none; transform: translateX(var(--x)); }   /* 停的時候放回地圖裡（不然在畫面左邊外面，永遠不會被看到、也就不會再動） */

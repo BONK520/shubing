@@ -1988,7 +1988,7 @@ function buildMap(popIndex = -1) {
   watchMapAnim(inner);
   return pts;
 }
-// 地圖很長（225 站），畫面外的插圖動畫也在跑時，手機每一幀都要把整張地圖重新分層，捲動會卡。
+// 地圖很長（230 關），畫面外的插圖動畫也在跑時，手機每一幀都要把整張地圖重新分層，捲動會卡。
 // 只讓畫面上下各半個畫面內的在動，其他的停掉（style.css 的 #map-inner.io）；離得遠才停，捲回來之前就已經在動了
 let mapIO = null;
 function watchMapAnim(inner) {
