@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261126w';
-import { SLOGANS } from './slogans.js?v=20261126w';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261126w';
-import { blockerCanvas } from './blockers.js?v=20261126w';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261126w';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261126w';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261126w';
-import { STORY } from './story.js?v=20261126w';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261127a';
+import { SLOGANS } from './slogans.js?v=20261127a';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261127a';
+import { blockerCanvas } from './blockers.js?v=20261127a';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261127a';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261127a';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261127a';
+import { STORY } from './story.js?v=20261127a';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261126w';
+const MOD_V = '?v=20261127a';
 
 window.__plushBooted = true;
 
@@ -750,7 +750,7 @@ function renderCardFriends(i) {
 
 // ---------- 模組 ----------
 let createEngine, createRenderer, LEVELS, audio, levMod = {};
-const silentAudio = { unlock() {}, play() {}, setMuted() {}, setMusic() {}, setScene() {}, get muted() { return true; }, get music() { return false; } };
+const silentAudio = { unlock() {}, play() {}, hush() {}, setMuted() {}, setMusic() {}, setScene() {}, get muted() { return true; }, get music() { return false; } };
 
 async function loadModules() {
   const names = ['engine', 'renderer', 'levels', 'audio'];
@@ -3572,7 +3572,7 @@ async function endScoreLevel() {
     const res = engine.sugarCrush(0);
     if (res && res.events && res.events.length) {
       sugarMode = true;
-      await R.play(res.events, { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
+      await R.play(res.events, { noVoice: true, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
       sugarMode = false;
     }
   } catch (e) { console.error(e); sugarMode = false; }
@@ -3618,21 +3618,41 @@ async function winFlow() {
   buddyParty();
   const left = movesLeft;
   sugarBonus = left * 3000;
-  if (left > 0 && SLOGANS.sugar.voice) audio.play('voice', { id: SLOGANS.sugar.voice, delay: 150 });
-  await R.banner(left > 0 ? SLOGANS.sugar.text : SLOGANS.win.text,
-    left > 0 ? { sub: `剩下 ${left} 步 × 3,000 分！`, duration: 1700 } : { duration: 1300 });
-  if (token !== session) return;
-  if (left > 0) {
-    sugarMode = true; sugarStepN = 0;
-    audio.play('sugar');                    // 小號只在開頭吹一次
-    try {
-      const res = engine.sugarCrush(left);
-      // 剩下的步數一步一步慢慢變成特效（sugarStep：每步至少停 420ms；以前 220ms，一下子就全變完看不清楚）；
-      // 之後的連爆照原本的快節奏（landHold 80、掉落 slowFall 0.82 ≈ 改版前的速度），整段才不會拖太久
-      await R.play((res && res.events) || [], { sugarStep: 420, landHold: 80, slowFall: 0.82, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
-    } catch (e) { console.error(e); }
-    sugarMode = false;
+  // 工作單38：剩步數才有薯餅狂歡，這時候點畫面任何地方就跳過（0 步直接結算，不顯示提示）
+  const skip = left > 0 ? armSugarSkip(token) : null;
+  try {
+    if (left > 0 && SLOGANS.sugar.voice) audio.play('voice', { id: SLOGANS.sugar.voice, delay: 150 });
+    const ban = R.banner(left > 0 ? SLOGANS.sugar.text : SLOGANS.win.text,
+      left > 0 ? { sub: `剩下 ${left} 步 × 3,000 分！`, duration: 1700 } : { duration: 1300 });
+    await (skip ? Promise.race([ban, skip.p]) : ban);
     if (token !== session) return;
+    if (left > 0) {
+      sugarMode = true; sugarStepN = 0;
+      if (!skip.hit) audio.play('sugar');     // 小號只在開頭吹一次
+      try {
+        // 分數一定在這裡一次算完：跳過只是不看動畫，分數、星星、獎勵和看完一樣
+        const res = engine.sugarCrush(left);
+        if (!skip.hit) {
+          // 剩下的步數一步一步慢慢變成特效（sugarStep：每步至少停 420ms；以前 220ms，一下子就全變完看不清楚）；
+          // 之後的連爆照原本的快節奏（landHold 80、掉落 slowFall 0.82 ≈ 改版前的速度），整段才不會拖太久
+          // noVoice：狂歡裡只講開頭「薯餅狂歡時間！」，連鎖和組合技只跳字（工作單38）
+          await Promise.race([
+            R.play((res && res.events) || [], { sugarStep: 420, landHold: 80, slowFall: 0.82, noVoice: true, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) }),
+            skip.p,
+          ]);
+        }
+      } catch (e) { console.error(e); }
+      sugarMode = false;
+      if (token !== session) return;
+      if (skip.hit) {
+        // 跳過：橫幅收掉、動畫停在最後的盤面、音效和語音很快淡出（不硬切）
+        R.skipBanners();
+        R.setBoard(engine.snapshot());
+        audio.hush();
+      }
+    }
+  } finally {
+    if (skip) skip.disarm();
   }
   movesLeft = dispMoves = 0;
   renderMoves();
@@ -3643,9 +3663,54 @@ async function winFlow() {
   renderBoosters();
   const newBest = score > prevBest;
   state = 'won';
-  await sleep(450);
+  await sleep(skip && skip.hit ? 200 : 450);
   if (token !== session) return;
   showWin(stars, score, newBest && prevBest > 0, prevBest, firstClear, stars === 3 && prevStars < 3);
+}
+
+// 工作單38：薯餅狂歡點一下跳過。從「薯餅狂歡時間！」橫幅到結算畫面前，點畫面任何地方都算。
+// 用 capture 階段攔 pointerdown，跳過後 700ms 內的 pointerup / click 也吃掉，結算畫面的按鈕才不會被同一下點到
+function armSugarSkip(token) {
+  let res, swallowUntil = 0, armed = true;
+  const s = { hit: false, p: new Promise(r => { res = r; }) };
+  const hint = document.createElement('div');
+  hint.className = 'skip-hint';
+  hint.textContent = '點一下跳過';
+  hint.setAttribute('aria-hidden', 'true');
+  const host = $('#scr-game') || document.body;
+  host.appendChild(hint);
+  // 放在盤面和道具列中間的空白；螢幕矮、空白不夠時貼在道具列上緣，不壓到道具的字
+  try {
+    const b = $('#board').getBoundingClientRect(), t = $('#boosters').getBoundingClientRect(), h = host.getBoundingClientRect();
+    const gap = t.top - b.bottom;
+    hint.style.top = Math.round((gap >= 20 ? (b.bottom + t.top) / 2 - 8 : t.top - 16) - h.top) + 'px';
+  } catch (e) { hint.style.bottom = '4px'; }
+  requestAnimationFrame(() => hint.classList.add('on'));
+  const down = e => {
+    if (!armed || s.hit || token !== session) return;
+    if (document.querySelector('.modal.open')) return;
+    e.preventDefault(); e.stopPropagation();
+    s.hit = true;
+    swallowUntil = performance.now() + 700;
+    res();
+  };
+  const swallow = e => {
+    if (performance.now() < swallowUntil) { e.preventDefault(); e.stopPropagation(); }
+  };
+  document.addEventListener('pointerdown', down, true);
+  document.addEventListener('pointerup', swallow, true);
+  document.addEventListener('click', swallow, true);
+  s.disarm = () => {
+    if (!armed) return;
+    armed = false;
+    document.removeEventListener('pointerdown', down, true);
+    hint.remove();
+    setTimeout(() => {
+      document.removeEventListener('pointerup', swallow, true);
+      document.removeEventListener('click', swallow, true);
+    }, Math.max(0, swallowUntil - performance.now()) + 50);
+  };
+  return s;
 }
 
 let winTimers = [];

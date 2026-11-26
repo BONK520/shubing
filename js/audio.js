@@ -271,10 +271,13 @@ function hookGestures() {
 }
 
 // ---------- 合成小積木 ----------
+const liveSrc = new Set();      // 還在播（或排好要播）的音效，hush() 用
 function track(src, cleanup) {
   voices++;
+  liveSrc.add(src);
   src.onended = () => {
     voices--;
+    liveSrc.delete(src);
     try { cleanup.forEach(n => n.disconnect()); } catch (e) { /* ignore */ }
   };
 }
@@ -1038,6 +1041,25 @@ export const audio = {
       list.push(at);
       if (list.length > 10) list.shift();
       fn(at, o);
+    } catch (e) { /* ignore */ }
+  },
+
+  // 跳過動畫用（工作單38）：已經排好、還沒播完的音效和語音短淡出後全部停掉，音樂不動
+  hush(fade = 0.06) {
+    try {
+      if (!ctx || !sfxBus) return;
+      const t = ctx.currentTime, end = t + Math.max(0.02, fade);
+      for (const bus of [sfxBus, crispBus]) {
+        if (!bus) continue;
+        bus.gain.cancelScheduledValues(t);
+        bus.gain.setValueAtTime(bus.gain.value, t);
+        bus.gain.linearRampToValueAtTime(0, end);
+        bus.gain.setValueAtTime(muted ? 0 : SFX_VOL, end + 0.03);
+      }
+      for (const src of liveSrc) { try { src.stop(end + 0.01); } catch (e) { /* 已經停了 */ } }
+      liveSrc.clear();
+      if (voiceSrc) { try { voiceSrc.stop(end + 0.01); } catch (e) { /* 已經停了 */ } }
+      voiceSrc = null; voiceGain = null; voiceEnd = 0;
     } catch (e) { /* ignore */ }
   },
 

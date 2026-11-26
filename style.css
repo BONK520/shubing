@@ -792,6 +792,14 @@ svg.on .hi { opacity: .9; }
   cursor: pointer;
 }
 
+/* 工作單38：薯餅狂歡「點一下跳過」：淡淡的小字，不閃、不做按鈕框，點畫面任何地方都算 */
+.skip-hint {
+  position: absolute; left: 0; right: 0; z-index: 5; line-height: 16px;
+  text-align: center; font-size: 12px; letter-spacing: .08em; color: rgba(90, 50, 110, .6);
+  text-shadow: 0 0 4px rgba(255, 255, 255, .9);
+  pointer-events: none; opacity: 0; transition: opacity .5s ease;
+}
+.skip-hint.on { opacity: 1; }
 .cheer {
   flex: none; height: clamp(70px, 11vh, 108px); display: flex; justify-content: center; align-items: flex-end; gap: 4%;
   position: relative; pointer-events: none;
