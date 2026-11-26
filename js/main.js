@@ -155,7 +155,6 @@ async function switchAccountNow(u) {
     if (wasUser) clearInProgress(prevKey);   // 換帳號：上一個帳號玩到一半的關不留（登入過期就留著，下次登入還在）
     writeLastUid(null);
     account = null; saveKey = SAVE_KEY; lastPushed = '';
-    closet.setWallet(null);
     initFriends(null);
     const guest = loadSave(SAVE_KEY), seen = unionSeen(save.seen, guest && guest.seen);
     applySave(guest);
@@ -168,7 +167,6 @@ async function switchAccountNow(u) {
   writeLastUid(uid);
   closetBusy = true;
   closet.load(closetKey());                // 衣櫃馬上換成這個帳號的那份，不等雲端（等雲端回來 refreshAfterSwitch 再完整讀一次）
-  walletLoadLocal();                       // 錢包也先用這台記的那份
   if (isOpen('m-closet')) { tryOn = {}; renderCloset(); applyLook(); }
   initFriends(null);                       // 上一個人的好友排行榜先收起來，讀完存檔再換這個人的
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
@@ -199,47 +197,10 @@ async function switchAccountNow(u) {
   // 雲端帶來的品項整排亮「新」（工作單6）
   if (CLOSET_CLOUD && online) { closet.load(closetKey()); if (remoteCloset) closet.mergeCloud(remoteCloset); if (closet.initSeen(save.stars)) closetExtra = true; closetFresh = uid; }
   refreshAfterSwitch();
-  if (online) { pushCloud(); initFriends(uid); walletSync(); } else setSync('offline');
+  if (online) { pushCloud(); initFriends(uid); } else setSync('offline');
   if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
 }
-// ---------- 跟薯餅小窩共用的錢包（docs/WALLET.md） ----------
-// 登入的人：造型幣跟小窩的幣是同一個錢包（plush-crush 的 wallets/{uid}，1 比 1）。新拿的三星、新兌換的，等 2 秒合成一次算進錢包；
-// 回到這個分頁時再讀一次（小窩那邊可能賺了或花了）。這台記一份最後的錢包，離線時也照那個數字顯示。
-// 規則還沒在 Firebase 主控台發布時會被擋：這次開著的時候不再試，造型幣照舊用星星算。
-let walletDenied = false, walletBusy = false, walletTimer = 0;
-function walletKey() { return saveKey + '.wallet'; }
-function walletShow(w) {
-  closet.setWallet(w);
-  renderClosetBtn();
-  if (isOpen('m-closet')) renderCloset();
-}
-// 這個帳號在這台裝置上最後的錢包（訪客沒有）。開機、換帳號時跟衣櫃一起讀（loadCloset）
-function walletLoadLocal() {
-  let w = null;
-  if (saveKey !== SAVE_KEY) { try { w = JSON.parse(localStorage.getItem(walletKey()) || 'null'); } catch (e) { w = null; } }
-  closet.setWallet(w);
-}
-async function walletSync() {
-  clearTimeout(walletTimer); walletTimer = 0;
-  if (!cloud || !account || walletDenied || walletBusy || !cloud.walletEgg) return;
-  const uid = account.uid;
-  walletBusy = true;
-  try {
-    const w = await cloud.walletEgg(closet.coinsEarned(save.stars), closet.coinsSpent(), uid);
-    if (!account || account.uid !== uid) return;
-    const v = { coins: w.coins, e: w.egg.e, p: w.egg.p };
-    try { localStorage.setItem(walletKey(), JSON.stringify(v)); } catch (e) { /* ignore */ }
-    walletShow(v);
-  } catch (e) {
-    if (e && e.code === 'permission-denied') walletDenied = true;
-    console.info('[wallet] 錢包沒有對上', e && (e.code || e.message));
-  } finally { walletBusy = false; }
-}
-function walletSoon() { if (!account || walletDenied) return; clearTimeout(walletTimer); walletTimer = setTimeout(walletSync, 2000); }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && account) walletSync(); });
-
 function schedulePush() {
-  walletSoon();
   clearTimeout(pushTimer);
   pushTimer = setTimeout(pushCloud, 1500);      // 連續好幾個變動（過關：星星、最高分、道具）合成一次
   if (syncState !== 'offline') setSync('syncing');
@@ -1410,7 +1371,6 @@ const meWho = () => lookWho(closet.avatar());
 let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
 function loadCloset() {
   closet.load(closetKey());
-  walletLoadLocal();
   if (closet.initSeen(save.stars)) closetExtra = true;
 }
 const AVA_CATS = ['outfit', 'ring'];   // 這兩類穿在薯餅頭像上，預覽改成放大的頭像
@@ -1645,8 +1605,6 @@ function renderCloset() {
   $('#m-closet').classList.toggle('busy', closetBusy);
   $('#cl-busy').hidden = !closetBusy;
   setNum($('#cl-coins'), coins);
-  const coinLabel = $('#cl-coins') && $('#cl-coins').nextElementSibling;
-  if (coinLabel) coinLabel.textContent = closet.wallet ? '幣（跟小窩共用）' : '三星造型幣';
   setNum($('#cl-stars'), totalStars(stars));
   $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
   // 打開的這個分頁：這一類的新東西這次照樣標「新」，但已經記成看過，切走再回來就沒有（讀取中打開也照記）
@@ -1747,7 +1705,7 @@ function onClosetItem(it) {
   if (clR) clR.setLook(previewLook());
   if (it.cat === 'fx') setTimeout(closetDemo, 120);
   const need = u.coins ? u.coins - closet.coins(stars) : 0;
-  if (u.coins) toast(need > 0 ? (closet.wallet ? `試穿中～還差 ${need} 枚幣，拿三星或去薯餅小窩賺都可以！` : `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！`) : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
+  if (u.coins) toast(need > 0 ? `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！` : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
   else if (u.stars) toast(`試穿中～星星總數到 ${u.stars} 顆就會解鎖（現在 ${totalStars(stars)} 顆）`, 2000);
   else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
   else if (u.station) toast(`試穿中～走到第 ${u.station} 關就送`, 2000);
@@ -2293,7 +2251,8 @@ function goalText(lvl) {
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
 const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
-  '龍龍', '鐵籠子', '糖霜', '巧克力', '打光', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關'];
+  '龍龍', '鐵籠子', '糖霜', '巧克力', '打光', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關',
+  '保鮮膜', '龍寶寶', '驚喜蛋', '熱氣球', '巧克力壺', '旋轉木馬', '撞撞看'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -2987,7 +2946,17 @@ function cheer() {
 // 平常：呼吸＋輕輕晃；剩5步以下（跟步數框的 .low 同一個判斷）：發抖、冒汗、雲變灰下小雨；
 // 過關：跳、扭、雲發金光、每1.45秒噴一次彩紙。輸了回到平常（不再加重難過，失敗卡片已經夠清楚）。
 // 點角色只會彈一下，不在畫布上，不影響盤面、不扣步數
-const BUDDIES = [{ toy: 'sloth', name: '薯餅' }, { toy: 'egg', name: '蛋黃哥' }];
+// say：泡泡講的話，照各自的個性（3 = 剩3步、1 = 剩1步、win = 過關），每次從兩句裡隨便挑一句。
+// 薯餅很睏、慢半拍，不用驚嘆號；蛋黃哥懶、能少講一個字就少講一個字。
+// 泡泡不換行：手機橫放（844 寬）時泡泡在角色上方、往左長，最多 5 格中文＋1 個數字，再長會碰到「第N關」
+const BUDDIES = [
+  { toy: 'sloth', name: '薯餅', say: { 3: ['還有3步喔', '欸，剩3步了'], 1: ['最後1步了喔', '剩1步，不急'], win: ['耶，過關了', '好像過關了'] } },
+  { toy: 'egg', name: '蛋黃哥', say: { 3: ['蛤，剩3步', '剩3步。好累'], 1: ['剩1步。加油', '最後1步了'], win: ['過了。好累', '喔，過關了'] } },
+];
+const buddyLine = k => {
+  const a = (BUDDIES.find(w => w.toy === buddy.toy) || BUDDIES[0]).say[k];
+  return a[Math.floor(Math.random() * a.length)];
+};
 const buddy = { toy: 'sloth', said: new Set(), calmAt: 6, timers: [], confetti: 0, bubbleT: 0 };
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 function buddyStop() {
@@ -3036,7 +3005,7 @@ function buddyMoves() {
   b.classList.toggle('worry', worry && !b.classList.contains('party'));
   if (worry && (dispMoves === 3 || dispMoves === 1) && !buddy.said.has(dispMoves)) {
     buddy.said.add(dispMoves);
-    buddySay(`剩${dispMoves}步…`);
+    buddySay(buddyLine(dispMoves));
   }
 }
 function buddyConfetti() {
@@ -3070,7 +3039,7 @@ function buddyParty() {
   if (!b || b.hidden) return;
   b.classList.remove('worry');
   b.classList.add('party');
-  buddySay('耶！', 2200);
+  buddySay(buddyLine('win'), 2200);
   buddyConfetti();
   clearInterval(buddy.confetti);
   buddy.confetti = setInterval(() => {
