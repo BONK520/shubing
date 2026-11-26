@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261126a';
-import { SLOGANS } from './slogans.js?v=20261126a';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261126a';
-import { blockerCanvas } from './blockers.js?v=20261126a';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261126a';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261126a';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261126a';
-import { STORY } from './story.js?v=20261126a';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261126w';
+import { SLOGANS } from './slogans.js?v=20261126w';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261126w';
+import { blockerCanvas } from './blockers.js?v=20261126w';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261126w';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261126w';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261126w';
+import { STORY } from './story.js?v=20261126w';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261126a';
+const MOD_V = '?v=20261126w';
 
 window.__plushBooted = true;
 
@@ -155,6 +155,7 @@ async function switchAccountNow(u) {
     if (wasUser) clearInProgress(prevKey);   // 換帳號：上一個帳號玩到一半的關不留（登入過期就留著，下次登入還在）
     writeLastUid(null);
     account = null; saveKey = SAVE_KEY; lastPushed = '';
+    closet.setWallet(null);
     initFriends(null);
     const guest = loadSave(SAVE_KEY), seen = unionSeen(save.seen, guest && guest.seen);
     applySave(guest);
@@ -167,6 +168,7 @@ async function switchAccountNow(u) {
   writeLastUid(uid);
   closetBusy = true;
   closet.load(closetKey());                // 衣櫃馬上換成這個帳號的那份，不等雲端（等雲端回來 refreshAfterSwitch 再完整讀一次）
+  walletLoadLocal();                       // 錢包也先用這台記的那份
   if (isOpen('m-closet')) { tryOn = {}; renderCloset(); applyLook(); }
   initFriends(null);                       // 上一個人的好友排行榜先收起來，讀完存檔再換這個人的
   const explicit = askGuestMerge;          // 剛按了「登入」（不是重新整理後自動恢復登入）
@@ -197,10 +199,47 @@ async function switchAccountNow(u) {
   // 雲端帶來的品項整排亮「新」（工作單6）
   if (CLOSET_CLOUD && online) { closet.load(closetKey()); if (remoteCloset) closet.mergeCloud(remoteCloset); if (closet.initSeen(save.stars)) closetExtra = true; closetFresh = uid; }
   refreshAfterSwitch();
-  if (online) { pushCloud(); initFriends(uid); } else setSync('offline');
+  if (online) { pushCloud(); initFriends(uid); walletSync(); } else setSync('offline');
   if (explicit) toast(online ? `歡迎，${u.name}！進度會存到雲端` : `歡迎，${u.name}！現在離線，連上網路會自動存到雲端`, 2200);
 }
+// ---------- 跟薯餅小窩共用的錢包（docs/WALLET.md） ----------
+// 登入的人：造型幣跟小窩的幣是同一個錢包（plush-crush 的 wallets/{uid}，1 比 1）。新拿的三星、新兌換的，等 2 秒合成一次算進錢包；
+// 回到這個分頁時再讀一次（小窩那邊可能賺了或花了）。這台記一份最後的錢包，離線時也照那個數字顯示。
+// 規則還沒在 Firebase 主控台發布時會被擋：這次開著的時候不再試，造型幣照舊用星星算。
+let walletDenied = false, walletBusy = false, walletTimer = 0;
+function walletKey() { return saveKey + '.wallet'; }
+function walletShow(w) {
+  closet.setWallet(w);
+  renderClosetBtn();
+  if (isOpen('m-closet')) renderCloset();
+}
+// 這個帳號在這台裝置上最後的錢包（訪客沒有）。開機、換帳號時跟衣櫃一起讀（loadCloset）
+function walletLoadLocal() {
+  let w = null;
+  if (saveKey !== SAVE_KEY) { try { w = JSON.parse(localStorage.getItem(walletKey()) || 'null'); } catch (e) { w = null; } }
+  closet.setWallet(w);
+}
+async function walletSync() {
+  clearTimeout(walletTimer); walletTimer = 0;
+  if (!cloud || !account || walletDenied || walletBusy || !cloud.walletEgg) return;
+  const uid = account.uid;
+  walletBusy = true;
+  try {
+    const w = await cloud.walletEgg(closet.coinsEarned(save.stars), closet.coinsSpent(), uid);
+    if (!account || account.uid !== uid) return;
+    const v = { coins: w.coins, e: w.egg.e, p: w.egg.p };
+    try { localStorage.setItem(walletKey(), JSON.stringify(v)); } catch (e) { /* ignore */ }
+    walletShow(v);
+  } catch (e) {
+    if (e && e.code === 'permission-denied') walletDenied = true;
+    console.info('[wallet] 錢包沒有對上', e && (e.code || e.message));
+  } finally { walletBusy = false; }
+}
+function walletSoon() { if (!account || walletDenied) return; clearTimeout(walletTimer); walletTimer = setTimeout(walletSync, 2000); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && account) walletSync(); });
+
 function schedulePush() {
+  walletSoon();
   clearTimeout(pushTimer);
   pushTimer = setTimeout(pushCloud, 1500);      // 連續好幾個變動（過關：星星、最高分、道具）合成一次
   if (syncState !== 'offline') setSync('syncing');
@@ -1371,6 +1410,7 @@ const meWho = () => lookWho(closet.avatar());
 let closetExtra = false;   // 以前開過的寶箱這次多了東西：下次打開衣櫃跳一次提示
 function loadCloset() {
   closet.load(closetKey());
+  walletLoadLocal();
   if (closet.initSeen(save.stars)) closetExtra = true;
 }
 const AVA_CATS = ['outfit', 'ring'];   // 這兩類穿在薯餅頭像上，預覽改成放大的頭像
@@ -1605,6 +1645,8 @@ function renderCloset() {
   $('#m-closet').classList.toggle('busy', closetBusy);
   $('#cl-busy').hidden = !closetBusy;
   setNum($('#cl-coins'), coins);
+  const coinLabel = $('#cl-coins') && $('#cl-coins').nextElementSibling;
+  if (coinLabel) coinLabel.textContent = closet.wallet ? '幣（跟小窩共用）' : '三星造型幣';
   setNum($('#cl-stars'), totalStars(stars));
   $('#cl-stars-max').textContent = '/ ' + (LEVELS ? LEVELS.length * 3 : 0);
   // 打開的這個分頁：這一類的新東西這次照樣標「新」，但已經記成看過，切走再回來就沒有（讀取中打開也照記）
@@ -1705,7 +1747,7 @@ function onClosetItem(it) {
   if (clR) clR.setLook(previewLook());
   if (it.cat === 'fx') setTimeout(closetDemo, 120);
   const need = u.coins ? u.coins - closet.coins(stars) : 0;
-  if (u.coins) toast(need > 0 ? `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！` : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
+  if (u.coins) toast(need > 0 ? (closet.wallet ? `試穿中～還差 ${need} 枚幣，拿三星或去薯餅小窩賺都可以！` : `試穿中～還差 ${need} 枚三星造型幣，去拿三星吧！`) : `試穿中～再點一下，用 ${u.coins} 枚造型幣兌換`, 2000);
   else if (u.stars) toast(`試穿中～星星總數到 ${u.stars} 顆就會解鎖（現在 ${totalStars(stars)} 顆）`, 2000);
   else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
   else if (u.station) toast(`試穿中～走到第 ${u.station} 關就送`, 2000);

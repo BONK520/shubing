@@ -74,6 +74,25 @@ export function friendCode(uid) {
   return s;
 }
 
+// ---------- 跟薯餅小窩共用的錢包（2026-11-26，docs/WALLET.md） ----------
+// wallets/{uid} = { coins：兩個遊戲共用的幣（1 比 1）, egg：{e, p} 蛋蛋島已經算進錢包的造型幣（e 賺到的總數、p 兌換掉的總數，只會變多）,
+//                   nest：{小窩的 uid: 1} 哪些小窩帳號已經把原本的幣放進來過, t }
+// 蛋蛋島的造型幣照舊用「三星＋寶箱 − 兌換掉的」算；跟錢包記的 e、p 比，多出來的部分（新拿的三星、新兌換的）加減進 coins。
+// e、p 只看比錢包記的多的部分：舊裝置的存檔比較少，也不會把錢包扣回去。小窩那邊的寫法在小窩 repo 的 js/wallet.js
+const WALLET_MAX = 10000000;
+export function normWallet(d) {
+  const n = (x) => (Number.isInteger(x) ? Math.max(0, Math.min(WALLET_MAX, x)) : 0);
+  const w = d && typeof d === 'object' ? d : {};
+  const egg = w.egg && typeof w.egg === 'object' ? w.egg : {};
+  const nest = {};
+  if (w.nest && typeof w.nest === 'object') Object.keys(w.nest).slice(0, 20).forEach(k => { nest[k] = 1; });
+  return { coins: n(w.coins), egg: { e: n(egg.e), p: n(egg.p) }, nest, t: Number.isInteger(w.t) ? w.t : 0 };
+}
+export function eggStep(w, earned, spent) {
+  const de = Math.max(0, earned - w.egg.e), dp = Math.max(0, spent - w.egg.p);
+  return { ...w, coins: Math.max(0, Math.min(WALLET_MAX, w.coins + de - dp)), egg: { e: Math.max(earned, w.egg.e), p: Math.max(spent, w.egg.p) } };
+}
+
 export function createCloud(config, { emulator = false } = {}) {
   let A = null, F = null, auth = null, db = null, user = null, isReady = false;
   const subs = new Set();
@@ -145,6 +164,19 @@ export function createCloud(config, { emulator = false } = {}) {
       await ready;
       if (uid && (!user || user.uid !== uid)) throw Object.assign(new Error('account changed'), { code: 'cloud/account-changed' });
       await F.setDoc(ref(), data);
+    },
+    // ---------- 跟薯餅小窩共用的錢包（規則發布前會被擋 permission-denied，main.js 接住，造型幣照舊自己算） ----------
+    // earned / spent：這台算出來的造型幣賺到的總數、兌換掉的總數（衣櫃的 coinsEarned / coinsSpent）。回傳寫好的錢包
+    async walletEgg(earned, spent, uid) {
+      await ready;
+      if (!user || (uid && user.uid !== uid)) throw Object.assign(new Error('account changed'), { code: 'cloud/account-changed' });
+      const ref = F.doc(db, 'wallets', user.uid);
+      return F.runTransaction(db, async tx => {
+        const s = await tx.get(ref);
+        const w = { ...eggStep(normWallet(s.exists() ? s.data() : null), earned | 0, spent | 0), t: Date.now() };
+        tx.set(ref, w);
+        return w;
+      });
     },
     // ---------- 好友排行榜 ----------
     friendCode,

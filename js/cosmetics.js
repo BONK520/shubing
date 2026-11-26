@@ -629,6 +629,7 @@ export function createCloset() {
     try { localStorage.setItem(key, JSON.stringify(st)); } catch (e) { /* 無痕模式：照玩 */ }
     if (sync && typeof api.onChange === 'function') { try { api.onChange(); } catch (e) { /* ignore */ } }
   }
+  let wal = null;   // 跟薯餅小窩共用的錢包 {coins, e, p}（main.js walletSync 給的），null = 沒有
   const api = {
     // 換帳號 / 開機時：讀這個帳號在這台裝置上的衣櫃
     load(k) {
@@ -670,7 +671,14 @@ export function createCloset() {
       return n;
     },
     coinsSpent() { return st.owned.reduce((s, id) => { const it = itemById(id); return s + (it && it.unlock && it.unlock.coins ? it.unlock.coins : 0); }, 0); },
-    coins(stars) { return Math.max(0, api.coinsEarned(stars) - api.coinsSpent()); },
+    // 跟薯餅小窩共用的錢包（docs/WALLET.md）：有錢包時，造型幣 = 錢包的數字 + 這台還沒算進錢包的（新拿的三星減新兌換的）。
+    // 沒登入、規則還沒發布、還沒對過帳：照舊用星星算
+    coins(stars) {
+      if (wal) return Math.max(0, wal.coins + Math.max(0, api.coinsEarned(stars) - wal.e) - Math.max(0, api.coinsSpent() - wal.p));
+      return Math.max(0, api.coinsEarned(stars) - api.coinsSpent());
+    },
+    setWallet(w) { wal = w && Number.isInteger(w.coins) ? { coins: w.coins, e: w.e | 0, p: w.p | 0 } : null; },
+    get wallet() { return wal; },
     isUnlocked(item, stars) {
       if (typeof item === 'string') item = itemById(item);
       if (!item) return false;
