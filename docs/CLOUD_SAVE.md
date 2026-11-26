@@ -136,3 +136,9 @@ npx firebase emulators:exec --only auth,firestore --project demo-plush "node tes
 
 程式：`js/cloud-config.js`（設定）、`js/cloud.js`（登入、讀寫雲端，SDK 從 gstatic 載，版本 13.2.0）、
 `js/main.js` 的「存檔」「雲端存檔（帳號）」兩段（每個帳號一份存檔、合併、同步）。
+
+---
+
+## 跟薯餅小窩共用的錢包（2026-11-26）
+
+造型幣跟薯餅小窩的幣變成同一個錢包，規則多一段 `wallets`。發布步驟和說明在 `docs/WALLET.md`。
