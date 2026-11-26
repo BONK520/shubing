@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261126a';
-import { SLOGANS } from './slogans.js?v=20261126a';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261126a';
-import { blockerCanvas } from './blockers.js?v=20261126a';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261126a';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261126a';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261126a';
-import { STORY } from './story.js?v=20261126a';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261126b';
+import { SLOGANS } from './slogans.js?v=20261126b';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261126b';
+import { blockerCanvas } from './blockers.js?v=20261126b';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261126b';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261126b';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261126b';
+import { STORY } from './story.js?v=20261126b';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261126a';
+const MOD_V = '?v=20261126b';
 
 window.__plushBooted = true;
 
@@ -2251,7 +2251,8 @@ function goalText(lvl) {
 // 提示泡泡是 keep-all（中文只在標點後換行），可是一句話最後一段太長時，句尾的「～」「！」會自己掉到下一行。
 // 用 Intl.Segmenter 斷詞，在詞跟詞之間放零寬空格（可以換行的地方）；角色名字和遊戲用語不拆開，句尾標點黏住前一個字。
 const KEEP_WORDS = ['毛絨', '果凍', '甜甜圈', '包裝糖', '彩色炸彈', '條紋方塊', '變出', '正中間', '飛天玩偶', '長翅膀',
-  '龍龍', '鐵籠子', '糖霜', '巧克力', '打光', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關'];
+  '龍龍', '鐵籠子', '糖霜', '巧克力', '打光', '甘草糖', '漩渦糖', '傳送門', '出口', '特殊方塊', '特殊組合', '訂單', '王關',
+  '保鮮膜', '龍寶寶', '驚喜蛋', '熱氣球', '巧克力壺', '旋轉木馬', '撞撞看'];
 const NO_LINE_START = /^[，、。！？～：；）」』…]/;
 const zhSeg = (() => {
   try {
@@ -2945,7 +2946,17 @@ function cheer() {
 // 平常：呼吸＋輕輕晃；剩5步以下（跟步數框的 .low 同一個判斷）：發抖、冒汗、雲變灰下小雨；
 // 過關：跳、扭、雲發金光、每1.45秒噴一次彩紙。輸了回到平常（不再加重難過，失敗卡片已經夠清楚）。
 // 點角色只會彈一下，不在畫布上，不影響盤面、不扣步數
-const BUDDIES = [{ toy: 'sloth', name: '薯餅' }, { toy: 'egg', name: '蛋黃哥' }];
+// say：泡泡講的話，照各自的個性（3 = 剩3步、1 = 剩1步、win = 過關），每次從兩句裡隨便挑一句。
+// 薯餅很睏、慢半拍，不用驚嘆號；蛋黃哥懶、能少講一個字就少講一個字。
+// 泡泡不換行：手機橫放（844 寬）時泡泡在角色上方、往左長，最多 5 格中文＋1 個數字，再長會碰到「第N關」
+const BUDDIES = [
+  { toy: 'sloth', name: '薯餅', say: { 3: ['還有3步喔', '欸，剩3步了'], 1: ['最後1步了喔', '剩1步，不急'], win: ['耶，過關了', '好像過關了'] } },
+  { toy: 'egg', name: '蛋黃哥', say: { 3: ['蛤，剩3步', '剩3步。好累'], 1: ['剩1步。加油', '最後1步了'], win: ['過了。好累', '喔，過關了'] } },
+];
+const buddyLine = k => {
+  const a = (BUDDIES.find(w => w.toy === buddy.toy) || BUDDIES[0]).say[k];
+  return a[Math.floor(Math.random() * a.length)];
+};
 const buddy = { toy: 'sloth', said: new Set(), calmAt: 6, timers: [], confetti: 0, bubbleT: 0 };
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 function buddyStop() {
@@ -2994,7 +3005,7 @@ function buddyMoves() {
   b.classList.toggle('worry', worry && !b.classList.contains('party'));
   if (worry && (dispMoves === 3 || dispMoves === 1) && !buddy.said.has(dispMoves)) {
     buddy.said.add(dispMoves);
-    buddySay(`剩${dispMoves}步…`);
+    buddySay(buddyLine(dispMoves));
   }
 }
 function buddyConfetti() {
@@ -3028,7 +3039,7 @@ function buddyParty() {
   if (!b || b.hidden) return;
   b.classList.remove('worry');
   b.classList.add('party');
-  buddySay('耶！', 2200);
+  buddySay(buddyLine('win'), 2200);
   buddyConfetti();
   clearInterval(buddy.confetti);
   buddy.confetti = setInterval(() => {
