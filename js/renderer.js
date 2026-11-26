@@ -385,11 +385,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
   let surpriseUsed = false;         // 照片驚喜口號每關最多一次（setBoard 重設）
   // 口號語音（2026-11：玩家覺得太吵、每段連鎖都講一句全部黏在一起）：學 Candy Crush 平常安靜，
   // 一步最多講一句，連到第 3 段以上（或組合技、照片驚喜）才講，兩句之間至少隔 VOICE_GAP 毫秒。字照樣每段都跳
-  // 例外：驚喜口號（一關一次）不管間隔一定講
-  // 工作單38 使用者覺得太吵：間隔 6→12 秒、驚喜口號 40%→25%、薯餅狂歡（play 的 noVoice）裡只講開頭那句，驚喜口號也不在狂歡裡出。以後要再調只改這三個數
-  const VOICE_GAP = 12000;
-  const SURPRISE_P = 0.25;          // 一步連到第 4 段以上時，跳驚喜口號的機率（每關最多一次）
-  const SURPRISE_MIN = 4;
+// 例外：驚喜口號（一關一次）不管間隔一定講
+  const VOICE_GAP = 6000;
   let lastVoiceAt = -Infinity, moveVoiced = false;
   let banners = [];
   let shakes = [];
@@ -3022,9 +3019,8 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     // 口號（js/slogans.js）：連鎖第 2/3/4/5+ 步；組合技；很大的一步偶爾來一張照片驚喜（每關最多一次）
     const isCombo = removed.some(it => it.cause === 'combo') || effects.some(e => e.fx === 'board');
     if (cascade <= 1) moveVoiced = false;                       // 新的一步
-    const hush = !!(curOpts && curOpts.noVoice);               // 薯餅狂歡：字照跳，不講話
-    const canSpeak = lvl => !hush && lvl >= 3 && !moveVoiced && now() - lastVoiceAt >= VOICE_GAP;
-    if (!hush && cascade >= SURPRISE_MIN && !surpriseUsed && SLOGANS.surprise.length && Math.random() < SURPRISE_P) {
+    const canSpeak = lvl => lvl >= 3 && !moveVoiced && now() - lastVoiceAt >= VOICE_GAP;
+    if (cascade >= 4 && !surpriseUsed && SLOGANS.surprise.length && Math.random() < 0.4) {
       surpriseUsed = true;
       const sl = SLOGANS.surprise[Math.floor(Math.random() * SLOGANS.surprise.length)];
       showWord(sl.text, 5, sl, true);                          // 驚喜口號一定講（上一句會淡出），之後這一步不再講

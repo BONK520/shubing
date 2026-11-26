@@ -3572,7 +3572,7 @@ async function endScoreLevel() {
     const res = engine.sugarCrush(0);
     if (res && res.events && res.events.length) {
       sugarMode = true;
-      await R.play(res.events, { noVoice: true, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
+      await R.play(res.events, { onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) });
       sugarMode = false;
     }
   } catch (e) { console.error(e); sugarMode = false; }
@@ -3635,9 +3635,8 @@ async function winFlow() {
         if (!skip.hit) {
           // 剩下的步數一步一步慢慢變成特效（sugarStep：每步至少停 420ms；以前 220ms，一下子就全變完看不清楚）；
           // 之後的連爆照原本的快節奏（landHold 80、掉落 slowFall 0.82 ≈ 改版前的速度），整段才不會拖太久
-          // noVoice：狂歡裡只講開頭「薯餅狂歡時間！」，連鎖和組合技只跳字（工作單38）
           await Promise.race([
-            R.play((res && res.events) || [], { sugarStep: 420, landHold: 80, slowFall: 0.82, noVoice: true, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) }),
+            R.play((res && res.events) || [], { sugarStep: 420, landHold: 80, slowFall: 0.82, onEvent: ev => onEvent(ev, token), onCue: (n, d) => onCue(n, d, token) }),
             skip.p,
           ]);
         }
