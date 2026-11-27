@@ -6,7 +6,7 @@ export const DEBUG_UNLOCK_ALL_COSMETICS = false;
 // 怎麼拿到外觀：
 //   * 三星造型幣：每一關「第一次」拿到三星送 1 枚（照存檔裡每關的星星算，所以以前拿過的三星也算數、換手機登入也還在）。
 //     用造型幣在衣櫃裡兌換有標價的外觀。
-//   * 三星豪華寶箱：星星總數到達里程碑（3、9、15、24、36…一直到 675）就能開一個寶箱，直接解鎖稀有主題、限定全套裝扮，或多送造型幣。
+//   * 三星豪華寶箱：星星總數到達里程碑（3、9、15、24、36…一直到 690）就能開一個寶箱，直接解鎖稀有主題、限定全套裝扮，或多送造型幣。
 //   * 累積星星：有些外觀是星星總數到了就自動解鎖。
 //   * 走到那一站就送：那一關的前一關有星星就解鎖；金色外圈要全部關卡都過關。
 // 衣櫃的狀態（兌換過的、開過的寶箱、正在穿的）存在這台裝置的 localStorage（每個帳號一份，main.js 給 key）；
@@ -100,6 +100,7 @@ export const ITEMS = [
   { id: 'theme.icecream', cat: 'theme', name: '冰淇淋店',   unlock: { chest: 16 } },
   { id: 'theme.moon',     cat: 'theme', name: '月亮島',     unlock: { chest: 18 } },
   { id: 'theme.castle',   cat: 'theme', name: '雲上城堡',   unlock: { chest: 20 } },
+  { id: 'theme.kingdom',  cat: 'theme', name: '薯餅王國',   unlock: { chest: 21 } },
   // 分類 5：頭像外圈
   { id: 'ring.pink',    cat: 'ring', name: '粉紅',   unlock: null },
   { id: 'ring.cloud',   cat: 'ring', name: '雲朵',   unlock: { coins: 2 } },
@@ -179,6 +180,7 @@ export const CHESTS = [
   { stars: 570, coins: 6, name: '月亮島棋盤' },
   { stars: 620, coins: 7, name: '新月外圈' },
   { stars: 675, coins: 10, name: '雲上城堡棋盤' },   // 225 關全部三星
+  { stars: 690, coins: 10, name: '薯餅王國棋盤' },   // 230 關全部三星
 ];
 export const chestItems = i => ITEMS.filter(it => it.unlock && it.unlock.chest === i);
 
@@ -432,6 +434,8 @@ const NEW_ICON = {
   'theme.icecream': themeIcon('#ffc6d8', '#e0779c', '#fff8f0', '#e6f6f0', `${S('M23 30 L32 54 L41 30 Z', '#e8b878', '#a8682a', 2)}${L('M26 36 L36 46 M38 36 L29 46', '#a8682a', 1.2, 0.7)}${C(28, 26, 7, '#ffd0e6', '#f0468f', 2)}${C(36, 26, 7, '#d9ffc8', '#2f8a2a', 2)}${C(32, 19, 6.5, '#fff8c4', '#e48a00', 2)}`),
   'theme.moon': themeIcon('#4a5596', '#262b66', '#33397a', '#3d4488', `${S('M36 14 A15 15 0 1 0 46 40 A12 12 0 1 1 36 14 Z', 'url(#gY)', '#9a5200', 1.8)}${star(46, 20, 3.5, '#fff6a8')}${star(20, 46, 2.6, '#fff6a8')}`),
   'theme.castle': themeIcon('#d9cff5', '#8f7fc8', '#f5f0ff', '#fff4e6', `<g fill="#fff" stroke="#8f7fc8" stroke-width="2"><rect x="18" y="28" width="28" height="20"/><rect x="15" y="20" width="9" height="28"/><rect x="40" y="20" width="9" height="28"/></g>${S('M14 21 L19.5 12 L25 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M39 21 L44.5 12 L50 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M28 48 L28 40 Q32 35 36 40 L36 48 Z', '#9a5cf0', '#5b2bb0', 1.4)}${C(12, 52, 5, '#fff', '#d6cdef', 1.2)}${C(52, 52, 5, '#fff', '#d6cdef', 1.2)}`),
+  // 薯餅王國：奶油黃格子上一頂金色皇冠，下面是城門
+  'theme.kingdom': themeIcon('#ffe6a8', '#d9a050', '#fff4e6', '#ffefc4', `<rect x="20" y="36" width="24" height="16" rx="2" fill="#fff8ea" stroke="#c98f3a" stroke-width="2"/>${S('M28 52 L28 45 Q32 40 36 45 L36 52 Z', '#c98f6b', '#8a5a20', 1.4)}${S('M17 32 L17 17 L24.5 24 L32 12 L39.5 24 L47 17 L47 32 Z', 'url(#gY)', '#9a5200', 2)}<rect x="17" y="29" width="30" height="5" rx="1.5" fill="#f0b93a" stroke="#9a5200" stroke-width="1.4"/>${C(32, 12, 2.4, '#ff6b8a')}${C(17, 17, 2, '#5bb8ff')}${C(47, 17, 2, '#7fd6a6')}`),
   // 半透明：後面有彩色的色塊，上面蓋一層白色半透明的格子和白邊
   'theme.glass': svg64(`<rect x="6" y="6" width="52" height="52" rx="12" fill="#b9a6e6"/>${C(18, 20, 13, '#ff86bd')}${C(46, 22, 11, '#ffd23c')}${C(40, 46, 13, '#5b8ef0')}${C(16, 48, 9, '#63c94f')}<rect x="6" y="6" width="52" height="52" rx="12" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.95)" stroke-width="4"/><rect x="11" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="11" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="11" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="25" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="39" y="25" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="11" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/><rect x="25" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.26)"/><rect x="39" y="39" width="14" height="14" rx="3" fill="rgba(255,255,255,0.12)"/>${L('M14 16 Q18 11 26 10', '#fff', 2.6, 0.9)}`),
 };

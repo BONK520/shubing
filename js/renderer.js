@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261127a';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261127a';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261127b';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261127b';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261127a';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261127b';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -200,6 +200,8 @@ Object.assign(BOARD_THEMES, {
   icecream: lightTheme({ cellA: '#fff8f0', cellB: '#e6f6f0', ring: ['#ffe2b8', '#f0c48a', '#d9a060'], side: ['#c08848', '#a8702e', '#8a5a20'], shadow: [130, 80, 50], deco: 'scoops' }),
   moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars', jelly: 'blue' }),
   castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
+  // 薯餅王國（工作單40）：跟第44站地圖一樣的奶油黃，金色小星星
+  kingdom: lightTheme({ cellA: '#fffaf0', cellB: '#fff0cc', ring: ['#fff6dc', '#ffe2a0', '#f0c46a'], side: ['#dca24a', '#c48a36', '#a06c26'], shadow: [140, 90, 40], deco: 'goldstars' }),
 });
 // 半透明盤面（工作單17）：白色 30% 的毛玻璃底板、白色 12% / 26% 交錯的格子，外圈一條白邊和柔柔的落影。
 // 模糊和白邊、落影由盤面下面的 DOM（.board-under）負責；玩偶的影子用這一關那一站的深色（R.setScene）
