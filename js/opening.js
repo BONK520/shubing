@@ -6,7 +6,7 @@
 // 減暈（工作單13、23）：捲動最快每秒 0.37 個螢幕高（不比工作單13那版快），底色每次換色至少 1 秒，同一時間只有一種縮放，雲不往外爆開。
 // 要不要播是 index.html <head> 裡的小程式決定的（window.__opPlay；減少動態效果不播）；這裡只負責畫和播，跟主程式的載入同時進行。
 // 不放聲音；點一下或按任何鍵就跳過。只用 transform / opacity / 背景色動畫，地圖只畫前 22 關（3 站）。
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261127b';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, islandMiniHTML, prefixIds } from './mapart.js?v=20261128a';
 
 const KEY = 'shubing-op';
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };

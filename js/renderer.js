@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261127b';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261127b';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261128a';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261128a';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261127b';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261128a';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -3828,7 +3828,7 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     }
     return c;
   }
-  // 龍龍：原本那隻恐龍玩偶的實拍照片（main.js 載成 images 的 'dino'），細白邊
+  // 龍龍：恐龍玩偶的 3D 掃描渲染圖（tools/assets.json 的 rescue；main.js 載成 images 的 'dino'），細白邊
   function dinoSprite() {
     const S = Math.max(8, Math.round(cs * dpr));
     if (S !== blockS) { blockCache.clear(); blockS = S; }

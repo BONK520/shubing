@@ -6,6 +6,7 @@
 #   2. 黑白點：亮點（第 HIGH_PCT 百分位的亮度）不到 WHITE 的拉到 WHITE；暗點（第 LOW_PCT 百分位）往 BLACK 靠
 #      BLACK_PULL 的比例（本來就夠黑的不動），對比最多加到 MAX_STRETCH 倍。
 #   3. 暗部：低彩度的暗部往同一個暖的深色靠（SHADOW_TINT，深焦糖 / 深玫瑰，不偏藍紫），越暗越明顯。
+# assets.json 的 rescue 角色（救出龍龍的龍龍）一樣用 <id>_n.png 當參考圖，調 <id>_n.png 和 <id>.png。
 # 裝飾貼紙（assets/deco/）和三寶合照（trio.png）每張自己量自己調。
 #
 # 調過的檔案記在 tools/graded.json（調完的 sha1 + 參數），重跑只調新做出來的檔案，不會疊兩次。
@@ -121,6 +122,10 @@ def jobs(cfg):
     for p in cfg['pieces']:
         i = p['id']
         files = [(spr(f'{i}_n.png'), 0), (spr(f'{i}.png'), 0), (spr(f'{i}_spin.webp'), q), (spr(f'{i}_spin_n.webp'), q)]
+        out.append((i, spr(f'{i}_n.png'), [f for f in files if os.path.exists(os.path.join(ROOT, f[0]))]))
+    for p in cfg.get('rescue', []):                       # 關卡角色（救出龍龍）只有靜態圖
+        i = p['id']
+        files = [(spr(f'{i}_n.png'), 0), (spr(f'{i}.png'), 0)]
         out.append((i, spr(f'{i}_n.png'), [f for f in files if os.path.exists(os.path.join(ROOT, f[0]))]))
     out.append(('trio', spr('trio.png'), [(spr('trio.png'), 0)]))
     for e in cfg.get('deco', []):

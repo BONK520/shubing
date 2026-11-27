@@ -6,8 +6,8 @@
   "assets/deco/sloth_orange.webp": "19d2d54e0a5b171c0ee7018fb6388a7099d2fc1b",
   "assets/deco/sloth_pig.webp": "5027ea48cf3a1a7b509b98fbd5d8bbb8cf6c0b8b",
   "assets/deco/snoopy_sloth.webp": "260842e0342b9bc09791e729b58cf034bed708cb",
-  "assets/sprites/dino.png": "33b2b645b5fba4033be1ebdc9167142d2f061d34",
-  "assets/sprites/dino_n.png": "44b1de032da0551efb8fcf0ca6b5c07a82fad5c7",
+  "assets/sprites/dino.png": "57d4c20420ce0a1ca7168739f76d8e1a7dbaf968",
+  "assets/sprites/dino_n.png": "5cf435b0ea5dee82b3ac798a86f45ff59daed95d",
   "assets/sprites/dog.png": "712ddf6e27adb2315fb9d6636acc431a531cbba8",
   "assets/sprites/dog_n.png": "39f9d9b41ea035b0218fab12e008670b803a5044",
   "assets/sprites/dog_spin.webp": "57d9c97ea1ff9cdb6a3f5c707dc3c2c67baee492",
@@ -123,13 +123,13 @@
   },
   "dino": {
    "gain": [
-    1.0476,
-    0.9929,
-    0.932
+    1.08,
+    0.9418,
+    0.9413
    ],
-   "k": 1.0511,
-   "lo": 0.1335,
-   "lo_t": 0.0894,
+   "k": 1.12,
+   "lo": 0.5884,
+   "lo_t": 0.567,
    "shadow": [
     0.0,
     0.0,

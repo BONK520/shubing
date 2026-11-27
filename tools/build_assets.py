@@ -8,9 +8,11 @@
 #      原檔或工具的內容變了才重轉，紀錄在 tools/out/models/stamps.json），
 #      否則 source = placeholder 的用 make_placeholders.py 程式產生 GLB + USDZ
 #      （assets/models/<id>.glb 已經是掃描模型的話會沿用它並警告，不會被暫代玩具蓋掉）
-#   2. 渲染：靜態圖、24 格轉盤、三寶合照與標題圖的每一隻（tools/render，無頭 Chromium + three.js）
+#      rescue 裡的角色（不是方塊的關卡角色，例如「救出龍龍」的龍龍）只轉 GLB；沒有掃描原檔就沿用
+#      assets/models/<id>.glb，兩個都沒有就保留現成的 assets/sprites/<id>.png、<id>_n.png
+#   2. 渲染：靜態圖、24 格轉盤、三寶合照與標題圖的每一隻；rescue 角色只有靜態圖（tools/render，無頭 Chromium + three.js）
 #   3. 後製：貼紙白邊 + 陰影（postprocess.py）-> assets/sprites/；再統一色溫和黑白點（grade_toys.py）
-#   4. 複製模型到 assets/models/，寫 assets/manifest.json
+#   4. 複製模型到 assets/models/，寫 assets/manifest.json（rescue 角色只複製 GLB，不進 manifest，不會變成方塊）
 #   5. 總覽圖 tools/out/contact.png（contact_sheet.py）
 import argparse, hashlib, io, json, os, shutil, struct, sys, time
 
@@ -130,6 +132,21 @@ def build_models(cfg, force):
         if os.path.exists(au):
             copy_if_changed(au, usdz)
         kinds[i] = 'scan'
+    for p in cfg.get('rescue', []):
+        i = p['id']
+        src, glb, ag = os.path.join(SRC, i + '.usdz'), os.path.join(MODELS, i + '.glb'), os.path.join(A_MOD, i + '.glb')
+        if os.path.exists(src):
+            name, key = i + '.glb', sha1(src) + ':' + tool['usd_to_glb.py']
+            if force or stamps.get(name) != key or not os.path.exists(glb):
+                stamps.pop(name, None); save_stamps()
+                convert(src, glb)
+                stamps[name] = key; save_stamps()
+        else:
+            stamps.pop(i + '.glb', None)
+            if os.path.exists(ag):
+                copy_if_changed(ag, glb)
+            else:
+                print(f'  {i}: 沒有 tools/source/{i}.usdz 也沒有 assets/models/{i}.glb，沿用現成的 assets/sprites/{i}.png')
     save_stamps()
     if ph:
         mp.build(ph, MODELS)     # 很快而且結果固定（亂數有種子、zip 時間戳固定），每次都重做
@@ -146,6 +163,11 @@ def merged_view(cfg, piece, *extra):
     return v
 
 
+def rescue_pieces(cfg):
+    """rescue 裡有 GLB 可以渲染的（掃描原檔轉的，或沿用 assets/models 的）"""
+    return [p for p in cfg.get('rescue', []) if os.path.exists(os.path.join(MODELS, p['id'] + '.glb'))]
+
+
 def render_jobs(cfg):
     pieces = {p['id']: p for p in cfg['pieces']}
     S, F = cfg['sprite'], cfg['spin']
@@ -158,6 +180,8 @@ def render_jobs(cfg):
         sv = merged_view(cfg, p, p.get('spin', {}), {'w': F['render'], 'h': F['render']})
         for k in range(F['frames']):
             jobs.append((f"{p['id']}_s{k:02d}", [{'url': url, 'yaw': 360 * k / F['frames']}], sv))
+    for p in rescue_pieces(cfg):            # 關卡角色：只要靜態圖（貼紙 + 盤面版），不做轉盤
+        jobs.append((p['id'], [{'url': f"/out/models/{p['id']}.glb"}], merged_view(cfg, p, {'w': S['render'], 'h': S['render']})))
     for comp, res in (('trio', 1024), ('hero', 1400)):
         for L in cfg[comp]['layers']:
             p = pieces[L['id']]
@@ -232,6 +256,12 @@ def postprocess(cfg):
                      F.get('webpQuality', 85))
         info[i] = dict(spinScale=round(float(ratio), 3))
         print(f'  {i}: sprite + spin（第 0 格大小 = 靜態圖的 {ratio:.2f} 倍）')
+    for p in rescue_pieces(cfg):
+        i, g, toy = p['id'], p.get('grade'), p.get('toy')
+        static = rimg(i)
+        pp.save_png(pp.sprite(static, S['size'], K=3, g=g), os.path.join(A_SPR, i + '.png'))
+        pp.save_png(pp.sprite_clean(static, S['size'], K=3, g=g, toy=toy), os.path.join(A_SPR, i + '_n.png'))
+        print(f'  {i}: 關卡角色 sprite（貼紙 + 盤面版）')
     for e in cfg.get('deco', []):
         photo_deco(e)
     for comp in ('trio', 'hero'):
@@ -297,6 +327,8 @@ def finish(cfg, kinds, info):
                            glb=f'assets/models/{i}.glb', usdz=f'assets/models/{i}.usdz',
                            placeholder=kinds[i] == 'placeholder', spinScale=info[i]['spinScale'],
                            sizeCm=[round(float(v) * 100, 1) for v in ext]))
+    for p in rescue_pieces(cfg):            # 關卡角色的模型只留 GLB（重做 sprite 用），遊戲不會載入
+        copy_if_changed(os.path.join(MODELS, p['id'] + '.glb'), os.path.join(A_MOD, p['id'] + '.glb'))
     man = dict(pieces=pieces, trio='assets/sprites/trio.png', hero='assets/sprites/hero.png',
                spin=dict(frames=F['frames'], cols=F['cols'], rows=F['rows'], size=F['size']))
     with open(os.path.join(ROOT, 'assets', 'manifest.json'), 'w', encoding='utf-8') as f:

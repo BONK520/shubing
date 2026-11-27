@@ -50,7 +50,7 @@ python tools/build_assets.py --force   # 全部重做
 | `dog` | 皮蛋 | Object Capture 掃描（會轉圈） |
 | `sloth` | 薯餅 | Object Capture 掃描 |
 | `egg` | 蛋黃哥 | Object Capture 掃描 |
-| `piggy` | 火腿（存錢豬） | 照片去背（選到會彈跳；2026-11 取代 `dino` 龍龍當方塊；`assets/sprites/dino*.png` 現在是「救出龍龍」關卡的龍龍） |
+| `piggy` | 火腿（存錢豬） | 照片去背（選到會彈跳；2026-11 取代 `dino` 龍龍當方塊。`assets/sprites/dino*.png` 現在是「救出龍龍」關卡的龍龍，見下面「關卡角色」） |
 | `nyanko` | 貓咪老師 | Object Capture 掃描（2026-11-25 取代照片去背） |
 | `moodeng` | 彈跳豬（Moo Deng） | 照片去背 |
 | `snoopy` | 史努比 | 照片去背 |
@@ -113,6 +113,16 @@ python tools/build_assets.py --force   # 全部重做
 4. `js/pieces.js` 那一行拿掉 `photo: true`、改成 `scan: true`。
 
 **想用新的代號或多加一隻**：`tools/assets.json` 的 `pieces` 和 `js/pieces.js` 的 `PIECES` 各加一筆，再到 `js/levels.js` 把它加進想要的關卡（每關的種類數決定難度，換玩具不要改種類數）。改完跑 `python tests/run_tests.py --sim` 看平衡。
+
+## 關卡角色（救出龍龍的龍龍）
+
+不是方塊、只在關卡裡出現的角色放在 `tools/assets.json` 的 `rescue`，目前只有 `dino`。
+2026-11-28 起龍龍改用 3D 掃描（`tools/source/dino.usdz`，不進 git；轉好的 `assets/models/dino.glb` 有進 git，沒有原檔也能重建）。
+
+- 跑 `python tools/build_assets.py` 會轉 GLB、照 `view` 渲染一張靜態圖，輸出 `assets/sprites/dino.png`（白邊貼紙）和 `dino_n.png`（盤面用，沒有白邊）。
+- 不做轉盤，也不進 `manifest.json`，所以不會變成方塊。
+- `view` / `grade` / `toy` 的寫法和 `pieces` 一樣。現在用 `yaw 0`、`pitch 22`（正面、看得到頭上的橘色刺），顏色調成薄荷綠。
+- `grade_toys.py` 會用 `dino_n.png` 當參考圖一起調色。
 
 ## 字型（改了畫面上的中文字就要重跑）
 

@@ -1,14 +1,14 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
-import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261127b';
-import { SLOGANS } from './slogans.js?v=20261127b';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261127b';
-import { blockerCanvas } from './blockers.js?v=20261127b';
-import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261127b';
-import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261127b';
-import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261127b';
-import { STORY } from './story.js?v=20261127b';
+import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261128a';
+import { SLOGANS } from './slogans.js?v=20261128a';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261128a';
+import { blockerCanvas } from './blockers.js?v=20261128a';
+import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261128a';
+import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261128a';
+import { DEMO, demoEngine, demoSegs } from './demos.js?v=20261128a';
+import { STORY } from './story.js?v=20261128a';
 // 模組的版本參數：上面和 renderer.js 裡的 import 字串要跟這個一樣（同一個檔案用不同網址會被載成兩份）
-const MOD_V = '?v=20261127b';
+const MOD_V = '?v=20261128a';
 
 window.__plushBooted = true;
 
@@ -799,7 +799,7 @@ async function loadImages(onProgress) {
     jobs.push(track(loadImg(`assets/sprites/${p.id}_n.png`)).then(im => { entry.clean = im; }));
     if (!p.photo) jobs.push(track(loadImg(`assets/sprites/${p.id}_spin_n.webp`)).then(im => { entry.spinClean = im; }));
   }
-  // 龍龍（「救出龍龍」關卡的主角）：原本那隻恐龍玩偶的實拍照片
+  // 龍龍（「救出龍龍」關卡的主角）：恐龍玩偶的 3D 掃描渲染圖（tools/assets.json 的 rescue）
   const dino = { sprite: null, clean: null };
   images.set('dino', dino);
   jobs.push(track(loadImg('assets/sprites/dino.png')).then(im => { dino.sprite = im; }));

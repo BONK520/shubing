@@ -8,6 +8,7 @@ ROOT = os.path.dirname(TOOLS)
 # 和 js/pieces.js（SPEC §2.1）一樣的底色
 COLORS = {'dog': '#8fd3ff', 'sloth': '#9be8c8', 'egg': '#ffb3d1', 'dino': '#c9b6ff', 'nyanko': '#ffe08a', 'moodeng': '#ffc49b', 'snoopy': '#ff8a80'}
 NAMES = {'dog': '皮蛋', 'sloth': '薯餅', 'egg': '蛋黃哥', 'dino': '龍龍', 'nyanko': '貓咪老師', 'moodeng': '彈跳豬', 'snoopy': '史努比'}
+# dino 是舊的方塊（2026-11 換成 piggy），現在是「救出龍龍」的關卡角色（assets.json 的 rescue），不在 manifest，總覽圖不會畫到
 BOARD = (43, 22, 74)
 
 

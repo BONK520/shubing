@@ -337,7 +337,7 @@ Composable per level. Level fields (passed to the engine by `mechOpts(level)` in
   to it or an effect; stops striped beams), `D` dino, `E` dino exit, `.` nothing.
 - `portals: [[r1, c1, r2, c2], …]`: what falls out of the bottom of (r1, c1) comes in at the top of (r2, c2).
 - `licorice: { rate, max }`: new pieces are sometimes swirls. `dinos: { onBoard, rate }`: how dinos drop in.
-- Dinos (the old dino plush photo, `assets/sprites/dino_n.png`) fall, slide and can be swapped, but cannot be matched or
+- Dinos (the dino plush 3D scan, `assets/sprites/dino_n.png`, built from `tools/assets.json` `rescue`) fall, slide and can be swapped, but cannot be matched or
   destroyed; one standing on an exit leaves the board. With dinos and no `E`, every column's bottom cell (not a
   portal entrance) is an exit.
 

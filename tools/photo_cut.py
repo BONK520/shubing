@@ -1,6 +1,6 @@
 # 照片去背：把主人拍的照片做成貼紙（照片方塊 assets/sprites/<id>.png、裝飾貼紙 assets/deco/*.webp）
 # build_assets.py 會 import 這個檔；調參數時也可以單獨跑，看去背結果:
-#   python tools/photo_cut.py dino                 # assets.json 裡 id 或輸出檔名含這個字的那幾筆
+#   python tools/photo_cut.py piggy                # assets.json 裡 id 或輸出檔名含這個字的那幾筆
 #   python tools/photo_cut.py sloth_orange pig     # 一次看好幾筆
 #   python tools/photo_cut.py --all
 # 每筆會在 tools/out/pc/ 輸出 <名字>_hints.jpg（提示畫在原圖上：綠 = 一定是玩具、紅 = 一定是背景、

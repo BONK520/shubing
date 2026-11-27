@@ -1,5 +1,5 @@
 {
- "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。aim 是相機對準的高度，佔模型高度的比例（不寫 = 看包圍盒中心，等於 0.5）；fill 大於 1 就是拉近裁切。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。",
+ "_doc": "build_assets.py 的設定。view 欄位見 tools/render/render.html：yaw/pitch 是相機角度（度），exposure 曝光，key/fillLight/rim 主光/補光/背光強度，tone = aces|neutral|agx。grade 是只套在這隻身上的後製調色（gamma/gain/lift/contrast/sat/tint）；toy 是沒白邊版本的「遊戲光」參數（覆蓋 postprocess.py 的 TOY，\"toonify\": false = 不做 toonify，黑色的玩具用）。aim 是相機對準的高度，佔模型高度的比例（不寫 = 看包圍盒中心，等於 0.5）；fill 大於 1 就是拉近裁切。spin.pitch 可以讓轉盤用不同俯角（預設和靜態圖一樣，第 0 格 = 靜態圖）。 source = \"scan\"（tools/source/<id>.usdz 掃描檔，3D 渲染）或 \"photo\"（tools/source/photos/ 的照片去背，設定在 cut，見 tools/photo_cut.py 開頭；fill = 玩具連白邊佔方塊的比例）。 rescue = 不是方塊的關卡角色（例如「救出龍龍」的龍龍）：tools/source/<id>.usdz 或 assets/models/<id>.glb 渲染一張靜態圖，輸出 assets/sprites/<id>.png（白邊貼紙）和 <id>_n.png（盤面用），不做轉盤、不進 manifest；view/grade/toy 和 pieces 的寫法一樣。",
  "sprite": {
   "size": 256,
   "render": 1024
@@ -393,6 +393,36 @@
    }
   ]
  },
+ "rescue": [
+  {
+   "id": "dino",
+   "source": "scan",
+   "view": {
+    "yaw": 0,
+    "pitch": 22,
+    "exposure": 1.1,
+    "key": 1.2,
+    "fillLight": 1.2,
+    "env": 1.6
+   },
+   "grade": {
+    "gamma": 0.72,
+    "contrast": 0.72,
+    "sat": 1.35,
+    "tint": [
+     1.0,
+     1.0,
+     0.97
+    ]
+   },
+   "toy": {
+    "sat": 0.95,
+    "vib": 0.1,
+    "black": 0.25,
+    "gamma": 0.85
+   }
+  }
+ ],
  "deco": [
   {
    "out": "assets/deco/sloth_orange.webp",
