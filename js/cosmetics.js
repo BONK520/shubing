@@ -110,6 +110,19 @@ export const ITEMS = [
   { id: 'ring.balloon', cat: 'ring', name: '熱氣球', unlock: { station: 136 } },
   { id: 'ring.moon',    cat: 'ring', name: '新月',   unlock: { chest: 19 } },
 ];
+// ---------- 小窩聯名（Claude B，2026-11-28，草稿・待審）----------
+// 跟薯餅小窩（CharronYap/shubing-nest）聯名的第一批外觀，用蛋蛋島自己的畫法畫小窩：木頭地板、粉紅條紋牆、小房子。
+// 還沒核准（取得方式、上線時間都沒決定），所以平常完全看不到：網址加 ?collab=1 才會出現在衣櫃，而且只能試穿、不能兌換或穿上
+// （unlock: { collab } 不是任何一種已知的解鎖方式，isUnlocked 一律回 false；也不會亮「新」）。
+// 核准之後：把 unlock 換成決定好的方式（幣 / 星星 / 寶箱 / 跨遊戲獎勵），再把 COLLAB_PREVIEW 的判斷拿掉。
+// 注意：字型子集（assets/fonts）沒有「窩、聯」，上線前要在有原始字型的電腦跑一次 python tools/font_subset.py。
+export const COLLAB_PREVIEW = (() => { try { return new URLSearchParams(location.search).get('collab') === '1'; } catch (e) { return false; } })();
+export const COLLAB_ITEMS = [
+  { id: 'theme.nest', cat: 'theme', name: '薯餅的小窩', unlock: { collab: 'nest' } },
+  { id: 'fx.nest',    cat: 'fx',    name: '小屋愛心',   unlock: { collab: 'nest' } },
+  { id: 'ring.nest',  cat: 'ring',  name: '小窩',       unlock: { collab: 'nest' } },
+];
+if (COLLAB_PREVIEW) ITEMS.push(...COLLAB_ITEMS);
 export const DEFAULT_LOOK = { outfit: 'outfit.none', hat: 'hat.none', fx: 'fx.default', frame: 'frame.jelly', theme: 'theme.macaron', ring: 'ring.pink' };
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
 
@@ -403,6 +416,8 @@ function themeIcon(frame, edge, a, b, extra) {
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) cells += `<rect x="${(11 + c * 14).toFixed(1)}" y="${(11 + r * 14).toFixed(1)}" width="14" height="14" rx="3" fill="${(r + c) % 2 ? b : a}"/>`;
   return svg64(`<rect x="4" y="4" width="56" height="56" rx="12" fill="${frame}" stroke="${edge}" stroke-width="3"/><rect x="10" y="10" width="44" height="44" rx="6" fill="${a}"/>${cells}${extra}`);
 }
+// 小窩聯名的小房子（衣櫃圖示用）：x、y 是房子底部中間
+const nestHouse = (x, y, k, roof) => S(`M${x - 9 * k} ${y} V${y - 10 * k} L${x} ${y - 18 * k} L${x + 9 * k} ${y - 10 * k} V${y} Z`, '#fff4e6', '#b9773f', 2) + S(`M${x - 12 * k} ${y - 9 * k} L${x} ${y - 20 * k} L${x + 12 * k} ${y - 9 * k}`, 'none', roof, 3.2 * k) + `<rect x="${x - 2.6 * k}" y="${y - 7 * k}" width="${5.2 * k}" height="${7 * k}" rx="${1.4 * k}" fill="#ffd75e" stroke="#b9773f" stroke-width="1.2"/>`;
 const NEW_ICON = {
   'fx.confetti': svg64([[10, 12, 18, '#ff6f9f'], [36, 8, -24, '#ffc21a'], [48, 26, 30, '#5b8ef0'], [18, 34, -12, '#63c94f'], [40, 44, 16, '#9a5cf0'], [12, 50, 36, '#ff9a2e'], [28, 22, 60, '#ff86bd']]
     .map(([x, y, a, f]) => `<rect x="${x}" y="${y}" width="12" height="7" rx="2" fill="${f}" stroke="#fff" stroke-width="1.5" transform="rotate(${a} ${x + 6} ${y + 3.5})"/>`).join('')),
@@ -432,6 +447,9 @@ const NEW_ICON = {
   'theme.bamboo': themeIcon('#8fc48a', '#4c8a48', '#eef8e8', '#d8edcc', `<rect x="24" y="12" width="8" height="40" rx="3" fill="#63c94f" stroke="#2f8a2a" stroke-width="2"/>${L('M24 24 L32 24 M24 38 L32 38', '#2f8a2a', 2)}${S('M32 22 Q44 14 50 20 Q42 26 32 22 Z', '#63c94f', '#2f8a2a', 1.6)}${S('M32 36 Q42 32 46 38 Q40 42 32 36 Z', '#63c94f', '#2f8a2a', 1.6)}`),
   'theme.lantern': themeIcon('#5e4f80', '#2f2550', '#43386a', '#4e4278', `${L('M32 12 L32 18', '#ffd23c', 2)}<ellipse cx="32" cy="32" rx="12" ry="14" fill="url(#gR)" stroke="#8f1d1d" stroke-width="2"/>${L('M26 20 Q22 32 26 44 M38 20 Q42 32 38 44 M32 18 L32 46', '#8f1d1d', 1.2, 0.6)}<rect x="27" y="16" width="10" height="4" rx="1.5" fill="#ffd23c"/><rect x="27" y="44" width="10" height="4" rx="1.5" fill="#ffd23c"/>${L('M32 48 L32 54', '#ffd23c', 2)}`),
   'theme.icecream': themeIcon('#ffc6d8', '#e0779c', '#fff8f0', '#e6f6f0', `${S('M23 30 L32 54 L41 30 Z', '#e8b878', '#a8682a', 2)}${L('M26 36 L36 46 M38 36 L29 46', '#a8682a', 1.2, 0.7)}${C(28, 26, 7, '#ffd0e6', '#f0468f', 2)}${C(36, 26, 7, '#d9ffc8', '#2f8a2a', 2)}${C(32, 19, 6.5, '#fff8c4', '#e48a00', 2)}`),
+  // 小窩聯名（只在 ?collab=1 出現）
+  'theme.nest': themeIcon('#f6c38f', '#b9773f', '#fff7ee', '#ffe6ef', nestHouse(32, 44, 1.1, '#ff6fa8') + `<path d="M46 18 C46 15 50 15 50 18 C50 15 54 15 54 18 C54 21 50 23 50 24 C50 23 46 21 46 18 Z" fill="#ff6fa8" stroke="#fff" stroke-width="1.2"/>`),
+  'fx.nest': svg64(nestHouse(22, 34, 1, '#ff9cc8') + nestHouse(46, 56, 0.8, '#8fd3ef') + `<path d="M40 14 C40 10 45 10 45 14 C45 10 50 10 50 14 C50 18 45 21 45 22 C45 21 40 18 40 14 Z" fill="#ff6fa8" stroke="#fff" stroke-width="1.5"/>` + C(14, 52, 3, '#ffd75e', '#fff', 1.2)),
   'theme.moon': themeIcon('#4a5596', '#262b66', '#33397a', '#3d4488', `${S('M36 14 A15 15 0 1 0 46 40 A12 12 0 1 1 36 14 Z', 'url(#gY)', '#9a5200', 1.8)}${star(46, 20, 3.5, '#fff6a8')}${star(20, 46, 2.6, '#fff6a8')}`),
   'theme.castle': themeIcon('#d9cff5', '#8f7fc8', '#f5f0ff', '#fff4e6', `<g fill="#fff" stroke="#8f7fc8" stroke-width="2"><rect x="18" y="28" width="28" height="20"/><rect x="15" y="20" width="9" height="28"/><rect x="40" y="20" width="9" height="28"/></g>${S('M14 21 L19.5 12 L25 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M39 21 L44.5 12 L50 21 Z', '#ff86bd', '#b8155a', 1.4)}${S('M28 48 L28 40 Q32 35 36 40 L36 48 Z', '#9a5cf0', '#5b2bb0', 1.4)}${C(12, 52, 5, '#fff', '#d6cdef', 1.2)}${C(52, 52, 5, '#fff', '#d6cdef', 1.2)}`),
   // 薯餅王國：奶油黃格子上一頂金色皇冠，下面是城門
@@ -562,6 +580,8 @@ export const RINGS = {
   rainbow: { ring: 'conic-gradient(#ff6f9f,#ffc21a,#63c94f,#5b8ef0,#9a5cf0,#ff6f9f)', sh: '#7d4fb8', deco: '' },
   gold: { ring: 'linear-gradient(#fff8c4,#ffd23c 45%,#e48a00)', sh: '#9a5200', deco: S('M27 9 L25 0.5 L31 4.5 L36 -1 L41 4.5 L47 0.5 L45 9 Z', 'url(#gY)', '#9a5200', 1.2) },
   balloon: { ring: 'linear-gradient(#cdeefa,#8fd3ef 55%,#5aaed8)', sh: '#3f86b0', deco: L('M56.5 20.5 L58 25 M63.5 20.5 L62 25', '#7a4a1f', 0.9) + S('M60 1 C67 1 70 6 70 10.5 C70 16 65 20 60 22 C55 20 50 16 50 10.5 C50 6 53 1 60 1 Z', 'url(#gR)', '#8f1d1d', 1.2) + S('M60 1 C63.5 6 63.5 16 60 22 C56.5 16 56.5 6 60 1 Z', '#fff8c4', 'none', 0) + L('M53.5 6 Q55 3.5 57.5 3', '#fff', 1.2, 0.9) + S('M57 25 L63 25 L62.4 29.5 L57.6 29.5 Z', 'url(#gN)', '#5a3412', 0.9) + L('M10.5 63 Q12 66 10 70', '#8b86a6', 0.8) + `<ellipse cx="10.5" cy="58" rx="4.2" ry="5" fill="url(#gY)" stroke="#9a5200" stroke-width="1"/>` },
+  // 小窩聯名（只在 ?collab=1 出現）：粉紅條紋牆 → 木頭地板的顏色，右上角一間小房子、左下角一顆愛心
+  nest: { ring: 'linear-gradient(#ffe0ee,#ff9cc8 52%,#f2b880 53%,#d99a5e)', sh: '#9a6431', deco: S('M53 20 V11 L61 4 L69 11 V20 Z', '#fff4e6', '#9a6431', 1.4) + L('M51 12 L61 2.5 L71 12', '#ff6fa8', 2.6) + `<rect x="58.6" y="14" width="4.8" height="6" rx="1.2" fill="#ffd75e" stroke="#9a6431" stroke-width="1"/>` + S('M6 58 C6 54.5 10.5 54.5 10.5 58 C10.5 54.5 15 54.5 15 58 C15 61.5 10.5 64 10.5 65 C10.5 64 6 61.5 6 58 Z', '#ff6fa8', '#fff', 1.2) },
   moon: { ring: 'radial-gradient(#6b77c0,#3b4290)', sh: '#262b66', deco: S('M14 2.5 A10 10 0 1 0 21 19 A8 8 0 1 1 14 2.5 Z', 'url(#gY)', '#9a5200', 1.2) + star(62, 60, 4.2, '#fff6a8', '#9a5200', 0.8) + star(64.5, 13, 3, '#fff6a8', '#9a5200', 0.7) + star(21, 63, 2.4, '#fff6a8') },
 };
 const ringKey = id => String(id || '').replace(/^ring\./, '');
@@ -571,7 +591,7 @@ export function ringDecoSvg(id) {
   return r && r.deco ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">${GRAD}${r.deco}</svg>` : '';
 }
 // 外圈的小圖示：SVG 畫不出 CSS 的 conic 漸層，用相近的顏色代替
-const RING_STROKE = { pink: '#ff6fb0', cloud: '#e3dcf5', star: '#ffc21a', rainbow: 'url(#gRain)', gold: 'url(#gY)', balloon: '#8fd3ef', moon: '#4a5596' };
+const RING_STROKE = { pink: '#ff6fb0', cloud: '#e3dcf5', star: '#ffc21a', rainbow: 'url(#gRain)', gold: 'url(#gY)', balloon: '#8fd3ef', moon: '#4a5596', nest: '#ff9cc8' };
 function ringIcon(k) {
   const r = RINGS[k];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72">${GRAD}<circle cx="36" cy="36" r="23" fill="#fff5fb" stroke="${RING_STROKE[k]}" stroke-width="8"/><circle cx="36" cy="36" r="27.5" fill="none" stroke="${r.sh}" stroke-width="1.6" opacity=".7"/>${r.deco}</svg>`;

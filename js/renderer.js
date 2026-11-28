@@ -19,10 +19,10 @@
 //   R.resume()  恢復迴圈並立刻重畫一次（期間尺寸若有變也會重新排版）。兩者都可以重複呼叫。
 //   R.paused    目前是否暫停（唯讀）。
 
-import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261128a';
-import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261128a';
+import { SLOGANS, cascadeSlogan } from './slogans.js?v=20261128b';
+import { TOY_FACE, ACCESSORY_PLACE, accTune, ACCESSORY_SVG, svgUrl } from './cosmetics.js?v=20261128b';
 import { paintCage, paintFrost, paintChoco, paintSwirl, paintAlarm, paintShell, paintPot, paintWrap, paintExitArrow, PORTAL_COLORS, CRUMBS,
-  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261128a';
+  paintTicket, paintGate, paintBalloon, paintJar, paintSurprise, paintLantern, paintOven, LANTERN_COLORS } from './blockers.js?v=20261128b';
 
 // 數字用胖數字 PlushNum（只有數字和符號，style.css 的 unicode-range），其他字是源泉圓體
 const FONT = '"PlushNum", "GenSenRounded", "Baloo 2", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif';
@@ -201,6 +201,8 @@ Object.assign(BOARD_THEMES, {
   moon: darkTheme({ glassA: [60, 68, 140], glassB: [40, 46, 106], glow: [200, 190, 255], ring: ['#c8cdf2', '#8f97d8', '#6670bf'], side: ['#4a5596', '#3b4486', '#2f3370'], shadow: [10, 10, 50], sky: 'stars', deco: 'goldstars', jelly: 'blue' }),
   castle: lightTheme({ cellA: '#f5f0ff', cellB: '#fff4e6', ring: ['#ffffff', '#e8e0fa', '#c8b8ef'], side: ['#a898dc', '#8f7fc8', '#7262ae'], shadow: [80, 60, 140], deco: 'clouds' }),
   // 薯餅王國（工作單40）：跟第44站地圖一樣的奶油黃，金色小星星
+  // 小窩聯名（Claude B 草稿，衣櫃只在 ?collab=1 出現）：小窩臥室的粉紅條紋牆和木頭地板，粉紅小愛心
+  nest: lightTheme({ cellA: '#fff7ee', cellB: '#ffe6ef', ring: ['#fff1dc', '#f6c38f', '#d99a5e'], side: ['#b9773f', '#9a6431', '#7a4a22'], shadow: [120, 70, 40], deco: 'hearts' }),
   kingdom: lightTheme({ cellA: '#fffaf0', cellB: '#fff0cc', ring: ['#fff6dc', '#ffe2a0', '#f0c46a'], side: ['#dca24a', '#c48a36', '#a06c26'], shadow: [140, 90, 40], deco: 'goldstars' }),
 });
 // 半透明盤面（工作單17）：白色 30% 的毛玻璃底板、白色 12% / 26% 交錯的格子，外圈一條白邊和柔柔的落影。
@@ -2463,6 +2465,18 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
     path(); g.fillStyle = col; g.fill();
     g.strokeStyle = col; g.lineWidth = 3.4; g.beginPath(); g.moveTo(19, 29); g.lineTo(19, 6); g.lineTo(31, 11); g.stroke();
   });
+  // 小窩聯名的小房子（粉紅 / 藍 / 黃屋頂）：奶油色牆、黃色門、白邊
+  const nestImg = i => sprite('nest' + i, 40, (g, n) => {
+    const roof = ['#ff9cc8', '#8fd3ef', '#ffd75e'][i], roofD = ['#e0609d', '#3f97c4', '#d99a00'][i];
+    const body = () => { g.beginPath(); g.moveTo(9, 34); g.lineTo(9, 19); g.lineTo(20, 9); g.lineTo(31, 19); g.lineTo(31, 34); g.closePath(); };
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    body(); g.strokeStyle = '#fff'; g.lineWidth = 6; g.stroke();
+    g.beginPath(); g.moveTo(5, 20); g.lineTo(20, 6); g.lineTo(35, 20); g.lineWidth = 9; g.stroke();
+    body(); g.fillStyle = '#fff4e6'; g.fill(); g.strokeStyle = '#b9773f'; g.lineWidth = 2; g.stroke();
+    g.beginPath(); g.moveTo(5, 20); g.lineTo(20, 6); g.lineTo(35, 20); g.strokeStyle = roof; g.lineWidth = 5; g.stroke();
+    g.beginPath(); g.moveTo(7, 20.5); g.lineTo(20, 8.5); g.strokeStyle = roofD; g.lineWidth = 1.2; g.stroke();
+    g.fillStyle = '#ffd75e'; g.fillRect(17, 25, 6, 9); g.strokeStyle = '#b9773f'; g.lineWidth = 1.4; g.strokeRect(17, 25, 6, 9);
+  });
   const fishImg = i => sprite('fish' + i, 40, (g, n) => {
     const [a, b] = [['#ffd0a0', '#ff8a2e'], ['#cfe6ff', '#5b8ef0'], ['#ffd6ea', '#ff6fa8']][i];
     g.beginPath(); g.moveTo(4, 20); g.quadraticCurveTo(14, 7, 26, 15); g.lineTo(36, 9); g.quadraticCurveTo(33, 20, 36, 31); g.lineTo(26, 25); g.quadraticCurveTo(14, 33, 4, 20); g.closePath();
@@ -2597,6 +2611,11 @@ export function createRenderer(canvas, { pieces = [], images = new Map(), quiet 
       spray(x, y, t, stars, { img: () => getStarCol(SPARK_GOLD), speed, vmin: 0.35, vvar: 0.6, up: 0.5, g: 2.5, drag: 2.8, life: 420, lifeVar: 280, size: 0.3, sizeVar: 0.2 });
     },
     // 雨滴：水滴往下落，落地前濺出小水花
+    // 小窩聯名「小屋愛心」：三色小房子往上飄、慢慢轉，加幾顆粉紅棉花
+    nest(x, y, col, n, t, speed) {
+      spray(x, y, t, Math.max(3, Math.ceil(n * 0.6)), { img: () => nestImg(Math.floor(Math.random() * 3)), speed, vmin: 0.35, vvar: 0.5, up: 1.2, g: -0.8, drag: 2.4, life: 760, lifeVar: 320, size: 0.26, sizeVar: 0.1, spin: 1.6 });
+      spray(x, y, t, Math.ceil(n / 3), { type: 0, img: () => getFluff([255, 190, 215]), speed, vmin: 0.4, vvar: 0.6, up: 0.6, g: 6, drag: 2.4, life: 360, lifeVar: 200, size: 0.12, sizeVar: 0.1 });
+    },
     rain(x, y, col, n, t, speed) {
       spray(x, y, t, n + 2, { img: () => dropImg(Math.random() < 0.5 ? 0 : 1), speed, vmin: 0.3, vvar: 0.7, up: 1.2, g: 10, drag: 2, life: 520, lifeVar: 260, size: 0.18, sizeVar: 0.1 });
       spray(x, y, t, Math.ceil(n / 2), { img: ringBubbleImg, speed, vmin: 0.6, vvar: 0.6, up: 0.4, g: 3, drag: 3, life: 360, lifeVar: 200, size: 0.1, sizeVar: 0.08, delay: 60 });
