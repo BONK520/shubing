@@ -30,6 +30,8 @@
     }
   } catch (e) { play = false; }
   h.classList.add('is-loading');
+  // 小窩聯名、品牌標語的預覽（Claude B 草稿）：網址加 ?collab=1 才看得到（.cb-only，style.css）
+  if (/[?&]collab=1(&|$)/.test(q)) h.classList.add('collab');
   if (play) {
     window.__opPlay = true; h.classList.add('op-pending');
     // 4 秒內動畫還沒開始（網路很慢）就不播了，直接給封面＋載入條
@@ -110,9 +112,13 @@
       <div class="cv-load">
         <div class="loadbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="載入進度"><div class="loadbar-fill" id="load-fill"></div></div>
         <p class="load-text" id="load-text">划船上島中…</p>
+        <!-- 品牌標語（PDF LINK-06：日常、載入畫面，原句不改） -->
+        <p class="load-text cb-only"><small>薯於你的小小幸福。</small></p>
       </div>
       <button class="fried" id="btn-start" type="button" aria-label="開始遊戲" title="開始遊戲"><span class="yolk"><svg viewBox="0 0 24 24"><path d="M8 4.5 20 12 8 19.5Z"/></svg></span></button>
     </div>
+    <!-- 系列品牌（PDF LINK-06「薯於我們的小宇宙。」系列品牌、共同入口）＋去薯餅小窩的入口（LINK-05「互相前往入口可選」） -->
+    <p class="cv-brand cb-only">薯於我們的小宇宙。<a href="https://charronyap.github.io/shubing-nest/" rel="noopener">去薯餅的小窩</a></p>
   </section>
 
   <!-- 關卡地圖 -->
@@ -408,6 +414,7 @@
   <div class="card friends-card">
     <button class="icon-btn close" data-close aria-label="關閉" type="button"><svg><use href="#i-close"/></svg></button>
     <div class="ribbon"><span id="fr-title">好友排行榜</span></div>
+    <p class="fr-slogan cb-only">一起創造薯於我們的回憶。</p>
     <ol class="fr-list" id="fr-list" aria-label="總星星數排名"></ol>
     <p class="fr-empty" id="fr-empty">還沒有好友。把好友碼傳給朋友，或輸入朋友的好友碼，就能比星星</p>
     <div class="fr-code">
