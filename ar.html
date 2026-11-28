@@ -115,6 +115,8 @@
 
 <script type="module">
 import { PIECES, spritePath, glbPath } from './js/pieces.js';
+// 這頁的清單：盤面的毛絨，再加上救出關卡的龍龍（龍龍不是盤面方塊，只加在這頁，不動 PIECES）
+const TOYS = [...PIECES, { id: 'dino', name: '龍龍', color: '#0ea5e9', scan: true }];
 
 const $ = id => document.getElementById(id);
 const mv = $('mv');
@@ -133,7 +135,7 @@ const viewerBroken = () => viewer === 'net' || viewer === 'js';
 // 依檢視器狀態畫舞台：打不開就一直顯示說明（切換毛絨也一樣），不然就照 loading 顯示載入中
 function paintStage(loading) {
   let isPhoto = false;   // 照片方塊不用 3D 檢視器（current 在下面才宣告，太早被呼叫時當作不是）
-  try { isPhoto = !!(PIECES[current] && PIECES[current].photo); } catch (e) { /* 還沒宣告 */ }
+  try { isPhoto = !!(TOYS[current] && TOYS[current].photo); } catch (e) { /* 還沒宣告 */ }
   const broken = viewerBroken() && !isPhoto;
   $('stage').classList.toggle('is-loading', !!loading && !broken && !isPhoto);
   $('fail').hidden = !broken;
@@ -166,6 +168,7 @@ const VIEW = {
   egg:     { yaw: 10,  pitch: 12, exposure: 1.0 },
   nyanko:  { yaw: -5,  pitch: 12, exposure: 1.05 },  // 正面：三角眼、鼻子、項圈鈴鐺
   moodeng: { yaw: 30,  pitch: 14 },                  // 斜前方：看得到張開的嘴和圓滾滾的身體
+  dino:    { yaw: 70,  pitch: 18, exposure: 1.2 },   // 正面偏一點：看得到眼睛、牙齒和背上的橘色尖角
 };
 const manifestViews = {};
 fetch('assets/manifest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(m => {
@@ -195,7 +198,7 @@ function face(p, cls = '') {
 
 // 選單
 const picker = $('picker');
-const cards = PIECES.map((p, i) => {
+const cards = TOYS.map((p, i) => {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'toy';
@@ -226,10 +229,10 @@ function setFaces(p) {
 }
 
 function select(i, user) {
-  i = (i + PIECES.length) % PIECES.length;
+  i = (i + TOYS.length) % TOYS.length;
   if (i === current) return;
   current = i;
-  const p = PIECES[i];
+  const p = TOYS[i];
   cards.forEach((c, k) => {
     c.classList.toggle('on', k === i);
     c.setAttribute('aria-selected', k === i ? 'true' : 'false');
@@ -284,7 +287,7 @@ const PHOTOS = { moodeng: ['assets/photos/moodeng_1.webp', 'assets/photos/mooden
 function fmt(m) { return Math.max(1, Math.round(m * 100)); }
 
 mv.addEventListener('load', () => {
-  if (PIECES[current] && PIECES[current].photo) return;   // 已經切到照片方塊：舊模型晚到就不管它
+  if (TOYS[current] && TOYS[current].photo) return;   // 已經切到照片方塊：舊模型晚到就不管它
   $('stage').classList.remove('is-loading');
   $('fail').hidden = true;
   try {
@@ -293,7 +296,7 @@ mv.addEventListener('load', () => {
   } catch (e) { $('size').textContent = ''; }
   // 新模型載入後才設定視角（載入前設定會被忽略）；對準模型中心
   try {
-    const p = PIECES[current];
+    const p = TOYS[current];
     mv.cameraOrbit = orbitOf(viewOf(p.id));
     const c = mv.getBoundingBoxCenter();
     mv.cameraTarget = `${c.x}m ${c.y}m ${c.z}m`;
@@ -326,7 +329,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') select(current + 1, true);
 });
 window.addEventListener('hashchange', () => {
-  const k = PIECES.findIndex(p => p.id === location.hash.slice(1));
+  const k = TOYS.findIndex(p => p.id === location.hash.slice(1));
   if (k >= 0) select(k, false);
 });
 
@@ -342,7 +345,7 @@ customElements.whenDefined('model-viewer').then(() => {
   html.classList.add('mv-ready');
 });
 
-const start = Math.max(0, PIECES.findIndex(p => p.id === location.hash.slice(1)));
+const start = Math.max(0, TOYS.findIndex(p => p.id === location.hash.slice(1)));
 select(start, false);
 </script>
 </body>

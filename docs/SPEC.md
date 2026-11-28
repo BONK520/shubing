@@ -316,6 +316,8 @@ Look and feel (Candy Crush-like, adapted to plush toys):
 - `<model-viewer>` (pinned jsDelivr version) showing one toy at a time, tabs/thumbnails to switch between all six.
 - `ar` with `ar-modes="webxr scene-viewer quick-look"`, `src` = GLB, `ios-src` = USDZ, camera-controls, auto-rotate,
   soft shadow. Shows 「這是暫代模型」 for placeholders. Back link to `index.html`. zh-TW labels.
+- The list is `PIECES` plus 龍龍 (`dino`, `assets/models/dino.glb`), added only in `ar.html` (`TOYS`); the dino is not a board
+  piece and stays out of `PIECES` and the manifest.
 
 ## 8a. Gravity, refill and combos (2026-11)
 
