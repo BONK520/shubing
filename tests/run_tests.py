@@ -4,6 +4,7 @@
 #   python tests/run_tests.py --only combo    # 只跑名稱含 combo 的測試
 #   python tests/run_tests.py --sim           # 平衡模擬表（tests/sim.html）
 #   python tests/run_tests.py --sim --games 80 --moves 25
+#   python tests/run_tests.py --sim --collab --only 231,232,233,234,235   # 小窩聯名第 47 章（?collab=1 才有）
 #   python tests/run_tests.py --shot tools/out/tests/t.png   # 另存結果頁截圖
 import argparse, functools, http.server, os, sys, threading, time, urllib.parse
 from playwright.sync_api import sync_playwright
@@ -38,6 +39,7 @@ def main():
     ap.add_argument('--games', type=int)
     ap.add_argument('--moves', type=int)
     ap.add_argument('--shot')
+    ap.add_argument('--collab', action='store_true', help='--sim 時加上 ?collab=1（小窩聯名第 47 章 231–235 也算進來）')
     ap.add_argument('--timeout', type=int, default=600)
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):
@@ -48,6 +50,8 @@ def main():
         page, var = '/tests/sim.html', '__sim'
         if a.games: q['games'] = a.games
         if a.moves: q['moves'] = a.moves
+        if a.only: q['only'] = a.only
+        if a.collab: q['collab'] = 1
     else:
         page, var = '/tests/engine.test.html', '__results'
         if a.fuzz: q['fuzz'] = a.fuzz

@@ -3,6 +3,7 @@
 #   python tests/tune_levels.py 16 17 30         # 只調這幾關
 #   python tests/tune_levels.py --games 600      # 每次模擬的局數（越多越穩，預設 400）
 #   python tests/tune_levels.py --keep-moves-upto 30 --json out.json   # 舊關卡不減步數；結果另存 JSON
+#   python tests/tune_levels.py --collab 231 232 233 234 235   # 小窩聯名第 47 章（?collab=1 才有）
 # 做法（目標 = tests/sim.js 的 targetsFor，兩組盤面「各種盤面 / 第 0 個盤面」都要達到）：
 #   1. 步數：找「casual 和 decent 的過關率都比目標高 MARGIN」的最少步數（步數越少越難）
 #   2. 種子：試 level.seed、+1、+2 …，挑第 0 個盤面（第一次玩一定是它）最像平常盤面、又達標的那個
@@ -75,6 +76,7 @@ def main():
     ap.add_argument('--seeds', type=int, default=12, help='每關試幾個種子（level.seed, +1, +2 …）')
     ap.add_argument('--keep-moves-upto', type=int, default=0, help='第 1–N 關的步數至少維持現在的值（只調星星和種子、必要時加步數）')
     ap.add_argument('--min-moves', type=int, default=10, help='步數至少這麼多（連消很多時關卡太短不好玩）')
+    ap.add_argument('--collab', action='store_true', help='加上 ?collab=1：小窩聯名第 47 章（231–235）也算進來')
     ap.add_argument('--json', help='另外把建議值存成 JSON（[{id, moves, seed, stars, …}]），給腳本套用到 js/levels.js')
     a = ap.parse_args()
     if hasattr(sys.stdout, 'reconfigure'):
@@ -87,7 +89,7 @@ def main():
         pg = b.new_page()
         errors = []
         pg.on('pageerror', lambda e: errors.append(str(e)))
-        pg.goto(f'http://127.0.0.1:{srv.server_port}/tests/sim.html?mode=api')
+        pg.goto(f'http://127.0.0.1:{srv.server_port}/tests/sim.html?mode=api' + ('&collab=1' if a.collab else ''))
         pg.wait_for_function('() => window.__simReady === true', timeout=60000)
         problems = pg.evaluate('() => window.validateLevels()')
         print('validateLevels:', '; '.join(problems) if problems else 'OK')

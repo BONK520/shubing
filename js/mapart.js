@@ -131,6 +131,10 @@ const PR = {
   pennant: r => sh(8) + `<path d="M0 0V-52" stroke="#a5657f" stroke-width="3" stroke-linecap="round"/><path d="M1-52Q14-50 24-44Q14-40 1-38Z" fill="${pick(r, ['#ff6b8a', '#ffd45c', '#8fc9ff', '#b99bff'])}"/><circle cx="0" cy="-54" r="3" fill="#ffd45c"/>`,
   crown: r => sh(18) + `<path d="M-18 0V-10L-20-30L-9-18L0-34L9-18L20-30L18-10V0Z" fill="#ffd45c" stroke="#f0b93a" stroke-width="3" stroke-linejoin="round"/><rect x="-18" y="-10" width="36" height="10" rx="2" fill="#f0b93a"/>${[[-20, -30, '#ff6b8a'], [0, -34, '#5bb8ff'], [20, -30, '#7fd6a6']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.6" fill="${c}"/>`).join('')}<circle cx="0" cy="-5" r="3" fill="#ff6b8a"/><circle cx="-10" cy="-5" r="2.2" fill="#fff"/><circle cx="10" cy="-5" r="2.2" fill="#fff"/>`,
   citygate: r => sh(32) + `<rect x="-32" y="-46" width="20" height="46" rx="3" fill="#f6ead6"/><rect x="12" y="-46" width="20" height="46" rx="3" fill="#f6ead6"/><path d="M-12-40H12V0H6V-18A6 6 0 0 0-6-18V0H-12Z" fill="#efdcc0"/>${[-32, -24, -18, 12, 18, 26].map(x => `<rect x="${x}" y="-52" width="6" height="7" fill="#f6ead6"/>`).join('')}<path d="M-6 0V-18A6 6 0 0 1 6-18V0Z" fill="#c98f6b"/><path d="M-22-46V-60M22-46V-60" stroke="#a5657f" stroke-width="2"/><path d="M-22-60L-10-56L-22-52ZM22-60L34-56L22-52Z" fill="#ff8fb8"/><circle cx="0" cy="-30" r="5" fill="#ffd45c"/>`,
+  // 小窩聯名第 47 章「薯餅的小窩」（Claude B，?collab=1 才畫得到）：小窩的房子、沙發、娃娃機，照這裡的畫法（沒有描邊、色塊、底部影子）
+  nesthouse: r => sh(26) + `<rect x="-20" y="-32" width="40" height="32" rx="6" fill="#ffe3ef"/><path d="M-20-24h40M-20-16h40M-20-8h40" stroke="#ffc2dc" stroke-width="3"/><path d="M-26-28L0-52L26-28Z" fill="#c98f56" stroke="#c98f56" stroke-width="6" stroke-linejoin="round"/><rect x="-6" y="-16" width="12" height="16" rx="6" fill="#ffd45c"/><circle cx="2.5" cy="-8" r="1.4" fill="#c98f56"/><path d="M13-24c0-2 2.6-2 2.6 0 0-2 2.6-2 2.6 0 0 2-2.6 3.6-2.6 3.6s-2.6-1.6-2.6-3.6z" fill="#ff6fa8"/>`,
+  sofa: r => { const c = pick(r, ['#ffd45c', '#ff8fb8', '#8fc9ff']); return sh(24) + `<rect x="-16" y="-4" width="4" height="4" rx="1" fill="#a3683a"/><rect x="12" y="-4" width="4" height="4" rx="1" fill="#a3683a"/><rect x="-16" y="-30" width="32" height="18" rx="8" fill="${c}"/><rect x="-15" y="-16" width="30" height="12" rx="5" fill="#fff" opacity=".5"/><rect x="-22" y="-20" width="9" height="17" rx="4.5" fill="${c}"/><rect x="13" y="-20" width="9" height="17" rx="4.5" fill="${c}"/><ellipse cx="-6" cy="-25" rx="5" ry="2" fill="#fff" opacity=".55"/>`; },
+  clawm: r => sh(18) + `<rect x="-15" y="-56" width="30" height="56" rx="5" fill="#ff8fb8"/><rect x="-11" y="-50" width="22" height="26" rx="3" fill="#dff3ff"/><path d="M0-50v8M-4-38l4-4 4 4" stroke="#a5657f" stroke-width="2" fill="none" stroke-linecap="round"/>${[[-6, -27, '#ffd45c'], [0, -28, '#7fd6a6'], [6, -27, '#8fc9ff']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="${c}"/>`).join('')}<rect x="-11" y="-20" width="22" height="9" rx="2" fill="#ffc2dc"/><circle cx="-5" cy="-15.5" r="2.4" fill="#ffd45c"/><rect x="2" y="-17" width="7" height="3" rx="1.5" fill="#fff"/><rect x="-7" y="-8" width="14" height="6" rx="2" fill="#c95b86"/><rect x="-15" y="-60" width="30" height="7" rx="3.5" fill="#ffd45c"/>`,
 };
 
 /* ---------- 各站（from～to 是這一站的關卡；關卡還沒做到的站不會畫出來） ---------- */
@@ -183,6 +187,12 @@ const R = [
   { name: '雲上城堡', from: 221, to: 225, drift: 3, stops: [[0, '#2a2d66'], [.35, '#d9cff5'], [.6, '#f5f0ff'], [1, '#fff4e6']], props: ['tower', 'cloud', 'pennant', 'tower'], link: '城堡的城門打開，就是薯餅王國', bridge: 'wall' },
   { name: '薯餅王國', from: 226, to: 230, stops: [[0, '#fff4e6'], [.5, '#ffefc4'], [1, '#ffe6a8']], props: ['crown', 'citygate', 'firework', 'hashbrown'], extra: 'sparkles', link: '', bridge: null },
 ];
+// 小窩聯名第 47 章（Claude B 草稿，2026-11-28）：?collab=1 才接在薯餅王國後面（js/levels.js 的 NEST_LEVELS 也是）。
+// 王國那一站本來是最後一站，接上的時候補上銜接：白色木柵欄和拱門（bridge 'fence'），通到粉紅條紋牆、木頭地板的小窩
+if ((() => { try { return /[?&]collab=1(&|$)/.test(location.search); } catch (e) { return false; } })()) {
+  Object.assign(R[R.length - 1], { link: '王國後面有一道小柵欄，打開就是薯餅的小窩', bridge: 'fence' });
+  R.push({ name: '薯餅的小窩', from: 231, to: 235, stops: [[0, '#ffe6a8'], [.35, '#ffe3ef'], [.75, '#fbe3d0'], [1, '#f6dcc0']], props: ['nesthouse', 'sofa', 'clawm', 'flower', 'sofa'], extra: 'planks', link: '', bridge: null });
+}
 
 /* ---------- 站內的固定花樣 ---------- */
 function extra(r, W, h, rng) {

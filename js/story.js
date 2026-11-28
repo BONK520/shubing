@@ -54,5 +54,9 @@ export const STORY = [
   { from: 221, lines: [['egg', '城堡在前面。還要走喔。'], ['dog', '城門好硬！要敲好幾下才打得開，我用頭撞撞看，汪！']] },
   { from: 226, lines: [['sloth', '城門打開了，是薯餅王國耶，我好像有來過，可是忘了'], ['egg', '龍寶寶都在等。路還很長喔。']] },
 ];
+// 小窩聯名第 47 章（Claude B 草稿，?collab=1 才有）：王國後面就是薯餅的家
+if ((() => { try { return /[?&]collab=1(&|$)/.test(location.search); } catch (e) { return false; } })()) STORY.push(
+  { from: 231, lines: [['sloth', '欸，王國後面有一間小房子，門口寫著薯餅的小窩，是我家耶'], ['dog', '汪！裡面住了好多娃娃！還有一台娃娃機！我可以玩嗎可以玩嗎！'], ['egg', '有沙發。先躺。']] },
+);
 
 export default STORY;
