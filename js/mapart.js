@@ -60,7 +60,8 @@ const PR = {
   bubble: r => `<circle cx="0" cy="-8" r="${(5 + r() * 6).toFixed(1)}" fill="#fff" fill-opacity=".18" stroke="#fff" stroke-width="1.8" opacity=".85"/><circle cx="-2" cy="-10" r="1.6" fill="#fff"/>`,
   star: r => `<path d="${star(0, -12, 10, 4.4)}" fill="#ffe27a" stroke="#ffe27a" stroke-width="2" stroke-linejoin="round"/>`,
   planet: r => { const c = pick(r, ['#ffb36b', '#ff8fb8', '#8fc9ff', '#b99bff']); return `<circle cx="0" cy="-22" r="15" fill="${c}"/><path d="M-12-26Q-4-30 4-24" stroke="#fff" stroke-width="3" fill="none" opacity=".35" stroke-linecap="round"/><ellipse cx="0" cy="-22" rx="26" ry="7" fill="none" stroke="#ffe9b0" stroke-width="3" transform="rotate(-18 0 -22)"/>`; },
-  moon: r => `<path d="M6-40A18 18 0 1 0 6-4A14 14 0 1 1 6-40Z" fill="#fff1b0"/>`,
+  // 彎月：外圈半徑 18 的半圓 + 內圈半徑 22 的小弧（2026-11-28 修正：原本內圈也是半圓、跟外圈走同一邊，畫出來是空的）
+  moon: r => `<path d="M6-40A18 18 0 1 0 6-4A22 22 0 0 1 6-40Z" fill="#fff1b0"/>`,
   rocket: r => `<g transform="rotate(-20 0 -26)"><path d="M0-56Q12-44 10-16H-10Q-12-44 0-56Z" fill="#fff"/><circle cx="0" cy="-36" r="5" fill="#8fc9ff" stroke="#d6d0e8" stroke-width="2"/><path d="M-10-24L-17-12L-10-14ZM10-24L17-12L10-14Z" fill="#ff6b8a"/><path d="M-6-16Q0-2 6-16Z" fill="#ffb02e"/></g>`,
   building: r => { const h = 50 + Math.floor(r() * 40), c = pick(r, ['#6a5aa0', '#7f6ab3', '#5b6aa8', '#8a6aa6']); let w = ''; for (let yy = -h + 8; yy < -8; yy += 11) for (const xx of [-10, 2]) if (r() < .75) w += `<rect x="${xx}" y="${yy}" width="7" height="6" rx="1" fill="#ffe28a" opacity="${(.6 + r() * .4).toFixed(2)}"/>`; return `<rect x="-17" y="${-h}" width="34" height="${h}" rx="3" fill="${c}"/>${w}`; },
   lamp: r => `<path d="M0 0V-40" stroke="#5a4a6e" stroke-width="3"/><circle cx="0" cy="-42" r="5" fill="#ffe28a"/><circle cx="0" cy="-42" r="12" fill="#ffe28a" opacity=".25"/>`,
