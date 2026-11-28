@@ -123,6 +123,14 @@ export const COLLAB_ITEMS = [
   { id: 'ring.nest',  cat: 'ring',  name: '小窩',       unlock: { collab: 'nest' } },
 ];
 if (COLLAB_PREVIEW) ITEMS.push(...COLLAB_ITEMS);
+// 過關送小窩家具（使用者 2026-11-28 決定「家具用過關送」）：蛋蛋島那一章的章末關卡過關（有星星）→ 薯餅小窩收到那件家具。
+// 小窩那邊在連上蛋蛋島帳號後讀 saves/{uid}.stars 判斷、自己發家具（Claude A 接，collab/nest/collab-grant.js 草稿）；這邊只負責告訴玩家。
+// 小窩還沒接好之前，提示一樣只在 ?collab=1 出現（main.js openStartCard / showWin）。level 是關卡 id（= 第幾關）。
+export const NEST_GIFTS = [
+  { id: 'egg-dino-175', level: 175, chapter: '恐龍谷', furn: 'egm_dinoshelf', name: '恐龍谷展示架' },
+  { id: 'egg-moon-210', level: 210, chapter: '月亮島', furn: 'egm_moonlamp', name: '月亮島夜燈' },
+];
+export const nestGiftOf = levelId => (COLLAB_PREVIEW && NEST_GIFTS.find(g => g.level === Number(levelId))) || null;
 export const DEFAULT_LOOK = { outfit: 'outfit.none', hat: 'hat.none', fx: 'fx.default', frame: 'frame.jelly', theme: 'theme.macaron', ring: 'ring.pink' };
 export const itemById = id => ITEMS.find(it => it.id === id) || null;
 

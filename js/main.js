@@ -1,7 +1,7 @@
 // 薯餅蛋蛋島 — 主程式：畫面流程、HUD、輸入、存檔、音效對應（SPEC §7）
 import { PIECES, TRIO, spritePath, spinPath } from './pieces.js?v=20261128c';
 import { SLOGANS } from './slogans.js?v=20261128c';
-import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook } from './cosmetics.js?v=20261128c';
+import { createCloset, CATEGORIES, ITEMS, CHESTS, iconSvg, svgUrl, totalStars, setLevels, outfitSvg, outfitSkipped, ringData, ringDecoSvg, ACCESSORY_SVG, ACCESSORY_PLACE, TOY_FACE, accTune, AVATAR_BGS, avatarBg, cleanLook, nestGiftOf } from './cosmetics.js?v=20261128c';
 import { blockerCanvas } from './blockers.js?v=20261128c';
 import { mapArtHTML, mapSignsHTML, mapStations, stationAt, stationOfLevel, levelStops, levelSceneSVG } from './mapart.js?v=20261128c';
 import { getOpAlways, setOpAlways, star4 } from './opening.js?v=20261128c';
@@ -2424,6 +2424,11 @@ function openStartCard(i) {
   const hint = lvl.hint || '';
   $('#ms-hint-box').hidden = !hint;
   $('#ms-hint').textContent = softWrap(hint);
+  // 小窩聯名：章末這關過關送薯餅小窩家具（?collab=1 才顯示，cosmetics.js NEST_GIFTS）
+  const gift = nestGiftOf(lvl.id);
+  let gl = $('#ms-collab');
+  if (gift && !gl) { gl = el('div', 'moves-line'); gl.id = 'ms-collab'; $('#ms-hint-box').before(gl); }
+  if (gl) { gl.hidden = !gift; gl.textContent = gift ? `過關送薯餅小窩「${gift.name}」` : ''; }
   const av = $('#ms-avatar');
   av.innerHTML = '';
   av.appendChild(toyEl(TITLE_TOYS[i % TITLE_TOYS.length], 24));
@@ -3742,6 +3747,9 @@ function showWin(stars, score, newBest, best, firstClear, newThree = false) {
     if (newThree) { coinChip = chip('rw-chip rw-coin wait', '三星造型幣 +1'); coinChip.prepend(coinEl()); rw.appendChild(coinChip); }
   }
   rw.hidden = !rw.childElementCount;
+  // 小窩聯名：第一次過了章末這關，告訴玩家小窩會收到家具（?collab=1 才顯示）
+  const nestGift = firstClear && level && nestGiftOf(level.id);
+  if (nestGift) winTimers.push(setTimeout(() => toast(`${nestGift.chapter}過關！薯餅小窩會收到「${nestGift.name}」（在小窩連上同一個蛋蛋島帳號就會送到）`, 3200), 1600));
   // 原本卡片上「去衣櫃幫玩偶換裝吧！」「有三星豪華寶箱可以開了！」那行，改成「玩偶衣櫃」按鈕上的提示：
   // 有寶箱可以開 → 紅點＋「開寶箱」小標籤＋按鈕輕輕發光；剛拿到造型幣 → 金幣翻進來後按鈕跳一下
   const cbtn = $('#mw-closet');
