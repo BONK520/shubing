@@ -1642,7 +1642,7 @@ function unlockText(it) {
   if (u.chest != null) return `寶箱 ★${CHESTS[u.chest].stars}`;
   if (u.station) return `走到第 ${u.station} 關`;
   if (u.allClear) return '全部關卡過關';
-  if (u.collab) return '聯名準備中';   // 小窩聯名（?collab=1 才看得到），還不能拿
+  if (u.clear) return `第 ${u.clear} 關過關`;
   return '';
 }
 function renderCloset() {
@@ -1757,7 +1757,7 @@ function onClosetItem(it) {
   else if (u.chest != null) toast(`試穿中～星星總數 ${CHESTS[u.chest].stars} 顆的寶箱開得到`, 2000);
   else if (u.station) toast(`試穿中～走到第 ${u.station} 關就送`, 2000);
   else if (u.allClear) toast(`試穿中～全部 ${LEVELS ? LEVELS.length : ''} 關都過關就送`, 2000);
-  else if (u.collab) toast('試穿中～這是跟薯餅小窩的聯名，還在準備，先看看就好', 2000);
+  else if (u.clear) toast(`試穿中～第 ${u.clear} 關過關就送`, 2000);
   renderCloset();
   renderClosetAva();
 }

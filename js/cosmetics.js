@@ -24,6 +24,7 @@ export const CATEGORIES = [
 
 // ---------- 外觀清單 ----------
 // unlock：null = 一開始就有；{ coins: n } = 用 n 枚造型幣兌換；{ stars: n } = 星星總數到 n 自動解鎖；{ chest: i } = 第 i 個寶箱開出來；
+//         { clear: n } = 第 n 關過關（有星星）就送（2026-11-29 小窩聯名加的）；
 //         { station: n } = 走到第 n 關就送（第 n−1 關有星星就算走到）；{ allClear: true } = 全部關卡都過關
 export const ITEMS = [
   // 分類 0：玩偶造型（地圖左下角的頭像）
@@ -112,15 +113,15 @@ export const ITEMS = [
 ];
 // ---------- 小窩聯名（Claude B，2026-11-28，草稿・待審）----------
 // 跟薯餅小窩（CharronYap/shubing-nest）聯名的第一批外觀，用蛋蛋島自己的畫法畫小窩：木頭地板、粉紅條紋牆、小房子。
-// 還沒核准（取得方式、上線時間都沒決定），所以平常完全看不到：網址加 ?collab=1 才會出現在衣櫃，而且只能試穿、不能兌換或穿上
-// （unlock: { collab } 不是任何一種已知的解鎖方式，isUnlocked 一律回 false；也不會亮「新」）。
-// 核准之後：把 unlock 換成決定好的方式（幣 / 星星 / 寶箱 / 跨遊戲獎勵），再把 COLLAB_PREVIEW 的判斷拿掉。
+// 跟第 47 章、品牌標語一起上線（使用者 2026-11-29：聯名內容一起上）；上線前網址加 ?collab=1 才會出現在衣櫃。
+// 上線時把 COLLAB_PREVIEW 的判斷拿掉（還有 levels.js、mapart.js、story.js、index.html 的同一個開關）。
 // 注意：字型子集（assets/fonts）沒有「窩、聯」，上線前要在有原始字型的電腦跑一次 python tools/font_subset.py。
 export const COLLAB_PREVIEW = (() => { try { return new URLSearchParams(location.search).get('collab') === '1'; } catch (e) { return false; } })();
 export const COLLAB_ITEMS = [
-  { id: 'theme.nest', cat: 'theme', name: '薯餅的小窩', unlock: { collab: 'nest' } },
-  { id: 'fx.nest',    cat: 'fx',    name: '小屋愛心',   unlock: { collab: 'nest' } },
-  { id: 'ring.nest',  cat: 'ring',  name: '小窩',       unlock: { collab: 'nest' } },
+  // 解鎖方式（使用者 2026-11-29 同意 B 的建議）：主題走到第 231 關（第 47 章「薯餅的小窩」）就送、外圈第 235 關過關送、特效 4 枚幣
+  { id: 'theme.nest', cat: 'theme', name: '薯餅的小窩', unlock: { station: 231 } },
+  { id: 'fx.nest',    cat: 'fx',    name: '小屋愛心',   unlock: { coins: 4 } },
+  { id: 'ring.nest',  cat: 'ring',  name: '小窩',       unlock: { clear: 235 } },
 ];
 if (COLLAB_PREVIEW) ITEMS.push(...COLLAB_ITEMS);
 // 過關送小窩家具（使用者 2026-11-28 決定「家具用過關送」）：蛋蛋島那一章的章末關卡過關（有星星）→ 薯餅小窩收到那件家具。
@@ -725,6 +726,7 @@ export function createCloset() {
       if (u.chest != null) return st.chests.includes(u.chest);
       if (u.station) return reachedStation(u.station, stars);
       if (u.allClear) return allCleared(stars);
+      if (u.clear) return hasStar(stars, u.clear);
       return false;
     },
     canBuy(item, stars) { return !!(item && item.unlock && item.unlock.coins && !api.isUnlocked(item, stars) && api.coins(stars) >= item.unlock.coins); },
